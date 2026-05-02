@@ -1,0 +1,14 @@
+.DS_Store
+
+# Dependencies
+/vendor/
+
+# Test and coverage artifacts
+/.phpunit.cache/
+/coverage/
+
+# Local tool state
+/.claude/
+
+# Potentially sensitive XML fixtures and outputs
+/resources/XML/

@@ -1,0 +1,27 @@
+{
+  "name": "cyrilbele/calcul-dpe",
+  "description": "Moteur PHP de calcul DPE 3CL-2021",
+  "type": "project",
+  "require": {
+    "php": "^8.2",
+    "ext-dom": "*",
+    "ext-libxml": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "CalculDpe\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "bin": [
+    "bin/process-xml",
+    "bin/calcul-dpe"
+  ]
+}

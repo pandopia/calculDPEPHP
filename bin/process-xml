@@ -1,0 +1,31 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use CalculDpe\XmlSanitizer;
+
+require __DIR__ . '/../vendor/autoload.php';
+
+if ($argc < 2) {
+    fwrite(STDERR, "Usage: php bin/process-xml /chemin/vers/fichier.xml\n");
+    exit(1);
+}
+
+$inputFilePath = $argv[1];
+$projectRoot = dirname(__DIR__);
+$verifDirectory = $projectRoot . '/resources/XML/verif';
+$inputDirectory = $projectRoot . '/resources/XML/input';
+
+try {
+    $sanitizer = new XmlSanitizer();
+    $result = $sanitizer->process($inputFilePath, $verifDirectory, $inputDirectory);
+
+    fwrite(STDOUT, sprintf("Source : %s\n", $result['source']));
+    fwrite(STDOUT, sprintf("Verif  : %s\n", $result['verif']));
+    fwrite(STDOUT, sprintf("Input  : %s\n", $result['input']));
+    fwrite(STDOUT, sprintf("Balises supprimees : %d\n", $result['removed_count']));
+} catch (Throwable $throwable) {
+    fwrite(STDERR, $throwable->getMessage() . "\n");
+    exit(1);
+}

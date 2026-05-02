@@ -1,0 +1,329 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use CalculDpe\Engine\CalculatorPipeline;
+use CalculDpe\Engine\DpeEngine;
+use CalculDpe\Tables\TableRepository;
+
+require __DIR__ . '/../vendor/autoload.php';
+
+// ── Options ────────────────────────────────────────────────────────────────
+$opts       = getopt('', ['tags:', 'filter:', 'json']);
+$filterNum  = $opts['filter'] ?? null;   // --filter=2517E0227225G
+$jsonMode   = isset($opts['json']);
+$onlyTags   = isset($opts['tags']) ? array_map('trim', explode(',', $opts['tags'])) : null;
+
+$projectRoot = dirname(__DIR__);
+$verifDir    = $projectRoot . '/resources/XML/verif';
+$inputDir    = $projectRoot . '/resources/XML/input';
+
+// ── Tags comparés (même liste que EndToEndTest) ────────────────────────────
+$tagsCovered = [
+    'b', 'umur', 'umur0',
+    'upb', 'upb0', 'upb_final', 'uph', 'uph0',
+    'ug', 'uw', 'ujn', 'u_menuiserie', 'sw', 'fe1', 'fe2', 'uporte', 'k',
+    'deperdition_mur', 'deperdition_plancher_bas', 'deperdition_plancher_haut',
+    'deperdition_baie_vitree', 'deperdition_porte', 'deperdition_pont_thermique',
+    'deperdition_enveloppe', 'deperdition_renouvellement_air',
+    'q4pa_conv', 'hvent', 'hperm', 'pvent_moy', 'conso_auxiliaire_ventilation',
+    'ubat', 'qualite_isol_enveloppe', 'qualite_isol_mur',
+    'qualite_isol_plancher_haut_toit_terrasse', 'qualite_isol_plancher_bas', 'qualite_isol_menuiserie',
+    'surface_sud_equivalente',
+    'apport_solaire_ch', 'apport_interne_ch',
+    'apport_solaire_fr', 'apport_interne_fr',
+    'fraction_apport_gratuit_ch',
+    'pertes_generateur_ch_recup', 'pertes_generateur_ch_recup_depensier',
+    'pertes_distribution_ecs_recup', 'pertes_distribution_ecs_recup_depensier',
+    'nadeq', 'v40_ecs_journalier', 'v40_ecs_journalier_depensier',
+    'rendement_generation', 'rendement_distribution', 'rendement_emission', 'rendement_regulation',
+    'rpn', 'rpint',
+    'conso_auxiliaire_generation_ch', 'conso_auxiliaire_distribution_ch',
+    'conso_auxiliaire_generation_ecs', 'conso_auxiliaire_generation_ecs_depensier',
+    'conso_totale_auxiliaire',
+    'ep_conso_auxiliaire_generation_ch', 'ep_conso_auxiliaire_generation_ch_depensier',
+    'ep_conso_auxiliaire_distribution_ch',
+    'ep_conso_auxiliaire_generation_ecs', 'ep_conso_auxiliaire_generation_ecs_depensier',
+    'ep_conso_auxiliaire_ventilation', 'ep_conso_totale_auxiliaire',
+    'emission_ges_auxiliaire_generation_ch', 'emission_ges_auxiliaire_generation_ch_depensier',
+    'emission_ges_auxiliaire_distribution_ch',
+    'emission_ges_auxiliaire_generation_ecs', 'emission_ges_auxiliaire_generation_ecs_depensier',
+    'emission_ges_auxiliaire_ventilation', 'emission_ges_totale_auxiliaire',
+    'conso_eclairage', 'ep_conso_eclairage', 'emission_ges_eclairage',
+    'conso_fr', 'conso_fr_depensier',
+    'ep_conso_fr', 'ep_conso_fr_depensier',
+    'emission_ges_fr', 'emission_ges_fr_depensier',
+    'besoin_fr', 'besoin_fr_depensier',
+    'cout_fr', 'cout_fr_depensier',
+    'besoin_ecs', 'besoin_ecs_depensier',
+    'conso_ecs', 'conso_ecs_depensier',
+    'ep_conso_ecs', 'ep_conso_ecs_depensier',
+    'emission_ges_ecs', 'emission_ges_ecs_depensier',
+    'besoin_ch', 'conso_ch',
+    'ep_conso_ch', 'ep_conso_ch_depensier',
+    'emission_ges_ch', 'emission_ges_ch_depensier',
+    'conso_5_usages', 'conso_5_usages_m2',
+    'ep_conso_5_usages', 'ep_conso_5_usages_m2',
+    'emission_ges_5_usages', 'emission_ges_5_usages_m2',
+    'classe_bilan_dpe', 'classe_emission_ges',
+    'production_pv', 'conso_elec_ac',
+];
+
+if ($onlyTags !== null) {
+    $tagsCovered = array_values(array_intersect($tagsCovered, $onlyTags));
+}
+
+$tagSet = array_flip($tagsCovered);
+$tol    = require $projectRoot . '/tests/tolerances.php';
+
+// ── Pipeline (miroir de bin/calcul-dpe) ───────────────────────────────────
+function buildPipeline(): CalculatorPipeline
+{
+    $p = new CalculatorPipeline();
+    $p->add(new \CalculDpe\Enveloppe\Mur\BCalculator());
+    $p->add(new \CalculDpe\Enveloppe\PlancherBas\BCalculator());
+    $p->add(new \CalculDpe\Enveloppe\PlancherHaut\BCalculator());
+    $p->add(new \CalculDpe\Enveloppe\BaieVitree\BCalculator());
+    $p->add(new \CalculDpe\Enveloppe\Porte\BCalculator());
+    $p->add(new \CalculDpe\Enveloppe\Mur\Umur0Calculator());
+    $p->add(new \CalculDpe\Enveloppe\Mur\UmurCalculator());
+    $p->add(new \CalculDpe\Enveloppe\PlancherBas\Upb0Calculator());
+    $p->add(new \CalculDpe\Enveloppe\PlancherBas\UpbCalculator());
+    $p->add(new \CalculDpe\Enveloppe\PlancherBas\UpbFinalCalculator());
+    $p->add(new \CalculDpe\Enveloppe\PlancherHaut\Uph0Calculator());
+    $p->add(new \CalculDpe\Enveloppe\PlancherHaut\UphCalculator());
+    $p->add(new \CalculDpe\Enveloppe\BaieVitree\UgCalculator());
+    $p->add(new \CalculDpe\Enveloppe\BaieVitree\UwCalculator());
+    $p->add(new \CalculDpe\Enveloppe\BaieVitree\UjnCalculator());
+    $p->add(new \CalculDpe\Enveloppe\BaieVitree\UMenuiserieCalculator());
+    $p->add(new \CalculDpe\Enveloppe\BaieVitree\SwCalculator());
+    $p->add(new \CalculDpe\Enveloppe\BaieVitree\Fe1Calculator());
+    $p->add(new \CalculDpe\Enveloppe\BaieVitree\Fe2Calculator());
+    $p->add(new \CalculDpe\Enveloppe\Porte\UporteCalculator());
+    $p->add(new \CalculDpe\Enveloppe\PontThermique\KCalculator());
+    $p->add(new \CalculDpe\Enveloppe\EnveloppeAggregator());
+    $p->add(new \CalculDpe\Ventilation\Q4PaConvCalculator());
+    $p->add(new \CalculDpe\Ventilation\HventCalculator());
+    $p->add(new \CalculDpe\Ventilation\HpermCalculator());
+    $p->add(new \CalculDpe\Ventilation\PventMoyCalculator());
+    $p->add(new \CalculDpe\Ventilation\ConsoAuxiliaireVentilationCalculator());
+    $p->add(new \CalculDpe\Ventilation\VentilationAggregator());
+    $p->add(new \CalculDpe\Sortie\DeperditionCalculator());
+    $p->add(new \CalculDpe\Inertie\InertieCalculator());
+    $p->add(new \CalculDpe\Intermittence\IntermittenceCalculator());
+    $p->add(new \CalculDpe\Apport\SurfaceSudEquivalenteCalculator());
+    $p->add(new \CalculDpe\Apport\EspaceTamponSolariseCalculator());
+    $p->add(new \CalculDpe\Apport\FCalculator());
+    $p->add(new \CalculDpe\Chauffage\BesoinChauffageCalculator());
+    $p->add(new \CalculDpe\Froid\BesoinAnnuelCalculator());
+    $p->add(new \CalculDpe\Froid\ConsoFroidCalculator());
+    $p->add(new \CalculDpe\Ecs\BesoinEcsCalculator());
+    $p->add(new \CalculDpe\Ecs\Rendement\DistributionCalculator());
+    $p->add(new \CalculDpe\Ecs\Rendement\StockageCalculator());
+    $p->add(new \CalculDpe\Ecs\Rendement\CombustionCalculator());
+    $p->add(new \CalculDpe\Ecs\Rendement\CetAccumulationCalculator());
+    $p->add(new \CalculDpe\Ecs\Rendement\ReseauChaleurCalculator());
+    $p->add(new \CalculDpe\Ecs\ConsoEcsCalculator());
+    $p->add(new \CalculDpe\Chauffage\Rendement\EmissionCalculator());
+    $p->add(new \CalculDpe\Chauffage\Rendement\DistributionCalculator());
+    $p->add(new \CalculDpe\Chauffage\Rendement\RegulationCalculator());
+    $p->add(new \CalculDpe\Chauffage\Rendement\GenerationNonCombustionCalculator());
+    $p->add(new \CalculDpe\Chauffage\Rendement\Combustion\InsertsPoelesCalculator());
+    $p->add(new \CalculDpe\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator());
+    $p->add(new \CalculDpe\Chauffage\Rendement\Combustion\ChaudiereProfilChargeCalculator());
+    $p->add(new \CalculDpe\Chauffage\Rendement\Combustion\RendementAnnuelMoyenCalculator());
+    $p->add(new \CalculDpe\Chauffage\Strategy\InstallationClassique());
+    $p->add(new \CalculDpe\Chauffage\Strategy\MultiGenerateurs());
+    $p->add(new \CalculDpe\Chauffage\Strategy\InsertPoeleAppoint());
+    $p->add(new \CalculDpe\Chauffage\Strategy\InsertElecSdb());
+    $p->add(new \CalculDpe\Chauffage\Strategy\AppointInsertElecSdb());
+    $p->add(new \CalculDpe\Chauffage\Strategy\ChaudiereReleve());
+    $p->add(new \CalculDpe\Chauffage\Strategy\ConvecteurBijonction());
+    $p->add(new \CalculDpe\Chauffage\Strategy\ChauffageSolaire());
+    $p->add(new \CalculDpe\Chauffage\Strategy\SolaireInsertPoele());
+    $p->add(new \CalculDpe\Chauffage\Strategy\CollectifBaseAppoint());
+    $p->add(new \CalculDpe\Auxiliaire\AuxGenerationCalculator());
+    $p->add(new \CalculDpe\Auxiliaire\AuxDistributionCalculator());
+    $p->add(new \CalculDpe\Eclairage\ConsoEclairageCalculator());
+    $p->add(new \CalculDpe\Sortie\EfConsoCalculator());
+    $p->add(new \CalculDpe\Sortie\EpConsoCalculator());
+    $p->add(new \CalculDpe\Sortie\EmissionGesCalculator());
+    $p->add(new \CalculDpe\Sortie\QualiteIsolationCalculator());
+    $p->add(new \CalculDpe\Sortie\ConfortEteCalculator());
+    $p->add(new \CalculDpe\Sortie\CoutCalculator());
+    $p->add(new \CalculDpe\Sortie\SortieParEnergieAggregator());
+    $p->add(new \CalculDpe\ProductionElec\ProductionPvCalculator());
+    $p->add(new \CalculDpe\Sortie\ProductionElectriciteCalculator());
+    $p->add(new \CalculDpe\Sortie\ApportEtBesoinCalculator());
+    return $p;
+}
+
+// ── Helpers XML ────────────────────────────────────────────────────────────
+function readXmlLeaves(string $path): array
+{
+    $doc = new DOMDocument();
+    $doc->preserveWhiteSpace = false;
+    $doc->load($path);
+    $out = [];
+    foreach (['donnee_intermediaire', 'sortie'] as $container) {
+        foreach ($doc->getElementsByTagName($container) as $node) {
+            if ($node instanceof DOMElement) {
+                collectLeaves($node, pathOf($node), $out);
+            }
+        }
+    }
+    return $out;
+}
+
+function pathOf(DOMElement $node): string
+{
+    $parts = []; $cursor = $node;
+    while ($cursor instanceof DOMElement) {
+        $parts[] = $cursor->nodeName;
+        $cursor  = $cursor->parentNode instanceof DOMElement ? $cursor->parentNode : null;
+    }
+    return implode('/', array_reverse($parts));
+}
+
+function collectLeaves(DOMElement $node, string $path, array &$out): void
+{
+    $hasEl = false;
+    foreach ($node->childNodes as $child) {
+        if ($child instanceof DOMElement) { $hasEl = true; collectLeaves($child, $path . '/' . $child->nodeName, $out); }
+    }
+    if (!$hasEl) $out[$path] = trim($node->textContent ?? '');
+}
+
+function filterByTag(array $values, array $tagSet): array
+{
+    $out = [];
+    foreach ($values as $path => $v) {
+        $leaf = (string)substr((string)strrchr('/' . $path, '/'), 1);
+        if (isset($tagSet[$leaf])) $out[$path] = $v;
+    }
+    return $out;
+}
+
+function diffValues(array $expected, array $actual, array $tol): array
+{
+    $defaultTol = (float)$tol['default'];
+    $overrides  = $tol['overrides'];
+    $diffs = [];
+    foreach (array_unique(array_merge(array_keys($expected), array_keys($actual))) as $key) {
+        $e = $expected[$key] ?? ''; $a = $actual[$key] ?? '';
+        if ($e === $a) continue;
+        $tag    = (string)substr((string)strrchr('/' . $key, '/'), 1);
+        $tagTol = $overrides[$tag] ?? $defaultTol;
+        if (is_numeric($e) && is_numeric($a)) {
+            $delta    = abs((float)$e - (float)$a);
+            $relative = ((float)$e !== 0.0) ? $delta / abs((float)$e) : $delta;
+            if ($relative <= $tagTol) continue;
+            $diffs[] = ['path' => $key, 'expected' => $e, 'actual' => $a,
+                        'delta_abs' => $delta, 'delta_rel' => $relative, 'tag' => $tag];
+        } else {
+            $diffs[] = ['path' => $key, 'expected' => $e, 'actual' => $a,
+                        'delta_abs' => null, 'delta_rel' => null, 'tag' => $tag];
+        }
+    }
+    return $diffs;
+}
+
+// ── Collecte des paires input/verif ───────────────────────────────────────
+$pairs = [];
+foreach (glob($inputDir . '/*.xml') as $inputPath) {
+    $name = basename($inputPath, '.xml');
+    if (str_ends_with($name, '.calculated')) continue;
+    if ($filterNum !== null && !str_contains($name, $filterNum)) continue;
+    $verifPath = $verifDir . '/' . $name . '.xml';
+    if (!is_file($verifPath)) continue;
+    $pairs[$name] = ['input' => $inputPath, 'verif' => $verifPath];
+}
+ksort($pairs);
+
+if (empty($pairs)) {
+    fwrite(STDERR, "Aucune paire input/verif trouvée" . ($filterNum ? " pour '$filterNum'" : "") . ".\n");
+    exit(1);
+}
+
+// ── Lancement ─────────────────────────────────────────────────────────────
+$tables  = new TableRepository($projectRoot . '/resources/tables');
+$results = [];
+
+foreach ($pairs as $name => ['input' => $inputPath, 'verif' => $verifPath]) {
+    fwrite(STDERR, "  $name ... ");
+    $tmpOut = sys_get_temp_dir() . '/dpe_diff_' . $name . '.xml';
+
+    try {
+        $engine = new DpeEngine(buildPipeline(), $tables);
+        $engine->run($inputPath, $tmpOut);
+
+        $expected = filterByTag(readXmlLeaves($verifPath),  $tagSet);
+        $actual   = filterByTag(readXmlLeaves($tmpOut),     $tagSet);
+
+        $diffs = diffValues($expected, $actual, $tol);
+        fwrite(STDERR, count($diffs) === 0 ? "OK\n" : count($diffs) . " delta(s)\n");
+        $results[$name] = ['status' => count($diffs) === 0 ? 'ok' : 'delta', 'diffs' => $diffs, 'error' => null];
+    } catch (Throwable $e) {
+        fwrite(STDERR, "ERREUR: " . $e->getMessage() . "\n");
+        $results[$name] = ['status' => 'error', 'diffs' => [], 'error' => $e->getMessage()];
+    } finally {
+        @unlink($tmpOut);
+    }
+}
+
+// ── Rapport ────────────────────────────────────────────────────────────────
+if ($jsonMode) {
+    echo json_encode($results, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    exit(0);
+}
+
+$totalDiffs  = 0;
+$totalErrors = 0;
+
+foreach ($results as $name => $r) {
+    if ($r['status'] === 'ok') continue;
+
+    echo "\n" . str_repeat('═', 70) . "\n";
+    echo "  $name\n";
+    echo str_repeat('─', 70) . "\n";
+
+    if ($r['status'] === 'error') {
+        echo "  ERREUR : " . $r['error'] . "\n";
+        $totalErrors++;
+        continue;
+    }
+
+    // Regrouper les deltas par tag
+    $byTag = [];
+    foreach ($r['diffs'] as $d) {
+        $byTag[$d['tag']][] = $d;
+    }
+    ksort($byTag);
+
+    foreach ($byTag as $tag => $tagDiffs) {
+        echo "\n  [$tag] — " . count($tagDiffs) . " occurrence(s)\n";
+        foreach ($tagDiffs as $d) {
+            if ($d['delta_abs'] !== null) {
+                echo sprintf("    path    : %s\n", $d['path']);
+                echo sprintf("    attendu : %s\n", $d['expected']);
+                echo sprintf("    obtenu  : %s\n", $d['actual']);
+                echo sprintf("    écart   : %.4g abs / %.2f%% rel\n", $d['delta_abs'], $d['delta_rel'] * 100);
+            } else {
+                echo sprintf("    path    : %s\n", $d['path']);
+                echo sprintf("    attendu : %s\n", $d['expected']);
+                echo sprintf("    obtenu  : %s\n", $d['actual']);
+                echo "    écart   : string mismatch\n";
+            }
+        }
+    }
+    $totalDiffs += count($r['diffs']);
+}
+
+echo "\n" . str_repeat('═', 70) . "\n";
+$ok = count(array_filter($results, fn($r) => $r['status'] === 'ok'));
+echo sprintf("  Résumé : %d/%d OK | %d delta(s) | %d erreur(s)\n",
+    $ok, count($results), $totalDiffs, $totalErrors);
+echo str_repeat('═', 70) . "\n";
+
+exit(($totalDiffs + $totalErrors) > 0 ? 1 : 0);
