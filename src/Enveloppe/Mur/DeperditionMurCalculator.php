@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Enveloppe\Mur;
+namespace CalculDpePHP\Enveloppe\Mur;
 
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Engine\CalculationContext;
 use DOMElement;
 use LogicException;
 
@@ -17,7 +17,7 @@ use LogicException;
  * @spec-source  resources/specsplitted/03-enveloppe-deperditions/00-overview-GV.md
  * @xml-input    mur.donnee_entree.surface_paroi_opaque + donnee_intermediaire.{b, umur}
  * @xml-output   (agrégat)
- * @depends-on   \CalculDpe\Enveloppe\Mur\BCalculator, \CalculDpe\Enveloppe\Mur\UmurCalculator
+ * @depends-on   \CalculDpePHP\Enveloppe\Mur\BCalculator, \CalculDpePHP\Enveloppe\Mur\UmurCalculator
  * @tables       (aucune)
  *
  * Stub : implémentation à réaliser dans la tâche TASK-B09 (voir TASKS.md).
@@ -31,7 +31,7 @@ final class DeperditionMurCalculator implements CalculatorInterface
 
     public function dependencies(): array
     {
-        return ['\CalculDpe\Enveloppe\Mur\BCalculator', '\CalculDpe\Enveloppe\Mur\UmurCalculator'];
+        return ['\CalculDpePHP\Enveloppe\Mur\BCalculator', '\CalculDpePHP\Enveloppe\Mur\UmurCalculator'];
     }
 
     public function appliesTo(DOMElement $node): bool

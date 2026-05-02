@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Intermittence;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Intermittence\IntermittenceCalculator;
-use CalculDpe\Tables\TableRepository;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Intermittence\IntermittenceCalculator;
+use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
 use PHPUnit\Framework\TestCase;
 

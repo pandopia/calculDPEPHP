@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Apport;
 
-use CalculDpe\Apport\FCalculator;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Tables\TableRepository;
+use CalculDpePHP\Apport\FCalculator;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
 use PHPUnit\Framework\TestCase;
 

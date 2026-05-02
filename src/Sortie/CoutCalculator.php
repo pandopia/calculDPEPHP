@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Sortie;
+namespace CalculDpePHP\Sortie;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -25,7 +25,7 @@ use DOMElement;
  * @xml-output    sortie.cout.{cout_ch, cout_ch_depensier, cout_ecs, cout_ecs_depensier,
  *                    cout_eclairage, cout_auxiliaire_*, cout_total_auxiliaire,
  *                    cout_fr, cout_fr_depensier, cout_5_usages}
- * @depends-on    \CalculDpe\Sortie\EfConsoCalculator
+ * @depends-on    \CalculDpePHP\Sortie\EfConsoCalculator
  * @tables        (aucune)
  */
 final class CoutCalculator implements CalculatorInterface

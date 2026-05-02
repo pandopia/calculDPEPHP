@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Sortie;
+namespace CalculDpePHP\Sortie;
 
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -29,12 +29,12 @@ use DOMElement;
  *                logement.sortie.ef_conso.conso_auxiliaire_ventilation
  * @xml-output    logement.sortie.ef_conso.{conso_ch, conso_ecs, conso_eclairage, conso_fr,
  *                    conso_auxiliaire_*, conso_totale_auxiliaire, conso_5_usages, conso_5_usages_m2}
- * @depends-on    \CalculDpe\Chauffage\Strategy\InstallationClassique
- *                \CalculDpe\Ecs\ConsoEcsCalculator
- *                \CalculDpe\Froid\ConsoFroidCalculator
- *                \CalculDpe\Eclairage\ConsoEclairageCalculator
- *                \CalculDpe\Ventilation\VentilationAggregator
- *                \CalculDpe\Auxiliaire\AuxDistributionCalculator
+ * @depends-on    \CalculDpePHP\Chauffage\Strategy\InstallationClassique
+ *                \CalculDpePHP\Ecs\ConsoEcsCalculator
+ *                \CalculDpePHP\Froid\ConsoFroidCalculator
+ *                \CalculDpePHP\Eclairage\ConsoEclairageCalculator
+ *                \CalculDpePHP\Ventilation\VentilationAggregator
+ *                \CalculDpePHP\Auxiliaire\AuxDistributionCalculator
  * @tables        (aucune)
  */
 final class EfConsoCalculator implements CalculatorInterface
@@ -47,13 +47,13 @@ final class EfConsoCalculator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            '\CalculDpe\Chauffage\Strategy\InstallationClassique',
-            '\CalculDpe\Ecs\ConsoEcsCalculator',
-            '\CalculDpe\Froid\ConsoFroidCalculator',
-            '\CalculDpe\Eclairage\ConsoEclairageCalculator',
-            '\CalculDpe\Ventilation\VentilationAggregator',
-            '\CalculDpe\Auxiliaire\AuxDistributionCalculator',
-            '\CalculDpe\Auxiliaire\AuxGenerationCalculator',
+            '\CalculDpePHP\Chauffage\Strategy\InstallationClassique',
+            '\CalculDpePHP\Ecs\ConsoEcsCalculator',
+            '\CalculDpePHP\Froid\ConsoFroidCalculator',
+            '\CalculDpePHP\Eclairage\ConsoEclairageCalculator',
+            '\CalculDpePHP\Ventilation\VentilationAggregator',
+            '\CalculDpePHP\Auxiliaire\AuxDistributionCalculator',
+            '\CalculDpePHP\Auxiliaire\AuxGenerationCalculator',
         ];
     }
 

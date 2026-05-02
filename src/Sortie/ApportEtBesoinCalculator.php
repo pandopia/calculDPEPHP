@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Sortie;
+namespace CalculDpePHP\Sortie;
 
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -28,10 +28,10 @@ use DOMElement;
  *               pertes_generateur_ch_recup_depensier, nadeq, v40_ecs_journalier,
  *               v40_ecs_journalier_depensier, besoin_ch, besoin_ch_depensier,
  *               besoin_ecs, besoin_ecs_depensier, besoin_fr, besoin_fr_depensier}
- * @depends-on   \CalculDpe\Chauffage\BesoinChauffageCalculator,
- *               \CalculDpe\Ecs\BesoinEcsCalculator,
- *               \CalculDpe\Froid\BesoinAnnuelCalculator,
- *               \CalculDpe\Apport\FCalculator
+ * @depends-on   \CalculDpePHP\Chauffage\BesoinChauffageCalculator,
+ *               \CalculDpePHP\Ecs\BesoinEcsCalculator,
+ *               \CalculDpePHP\Froid\BesoinAnnuelCalculator,
+ *               \CalculDpePHP\Apport\FCalculator
  * @tables       (aucune)
  */
 final class ApportEtBesoinCalculator implements CalculatorInterface
@@ -44,10 +44,10 @@ final class ApportEtBesoinCalculator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            '\CalculDpe\Chauffage\BesoinChauffageCalculator',
-            '\CalculDpe\Ecs\BesoinEcsCalculator',
-            '\CalculDpe\Froid\BesoinAnnuelCalculator',
-            '\CalculDpe\Apport\FCalculator',
+            '\CalculDpePHP\Chauffage\BesoinChauffageCalculator',
+            '\CalculDpePHP\Ecs\BesoinEcsCalculator',
+            '\CalculDpePHP\Froid\BesoinAnnuelCalculator',
+            '\CalculDpePHP\Apport\FCalculator',
         ];
     }
 

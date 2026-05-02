@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Sortie;
+namespace CalculDpePHP\Sortie;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\ProductionElec\ProductionPvCalculator;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\ProductionElec\ProductionPvCalculator;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -28,7 +28,7 @@ use DOMElement;
  * @xml-output   sortie.production_electricite.{production_pv, conso_elec_ac,
  *                   conso_elec_ac_ch, conso_elec_ac_ecs, conso_elec_ac_fr,
  *                   conso_elec_ac_eclairage, conso_elec_ac_auxiliaire, conso_elec_ac_autre_usage}
- * @depends-on   \CalculDpe\ProductionElec\ProductionPvCalculator
+ * @depends-on   \CalculDpePHP\ProductionElec\ProductionPvCalculator
  * @tables       (aucune)
  */
 final class ProductionElectriciteCalculator implements CalculatorInterface

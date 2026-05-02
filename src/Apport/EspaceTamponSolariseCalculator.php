@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Apport;
+namespace CalculDpePHP\Apport;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -29,7 +29,7 @@ use DOMElement;
  * @xml-input    ets.donnee_entree.{tv_coef_transparence_ets_id, enum_cfg_isolation_lnc_id}
  * @xml-input    ets.baie_ets_collection.baie_ets.donnee_entree.{surface_totale_baie, enum_orientation_id, enum_inclinaison_vitrage_id}
  * @xml-output   ets.donnee_intermediaire.{coef_transparence_ets, bver}
- * @depends-on   \CalculDpe\Apport\SurfaceSudEquivalenteCalculator
+ * @depends-on   \CalculDpePHP\Apport\SurfaceSudEquivalenteCalculator
  * @tables       apports/tv_coef_transparence_ets, enveloppe/tv_b
  */
 final class EspaceTamponSolariseCalculator implements CalculatorInterface

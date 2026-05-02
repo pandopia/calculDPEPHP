@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Chauffage\Rendement\Combustion;
+namespace CalculDpePHP\Chauffage\Rendement\Combustion;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -24,7 +24,7 @@ use DOMElement;
  * @xml-input    generateur_chauffage.donnee_entree.{enum_type_generateur_ch_id, presence_regulation_combustion}
  * @xml-input    emetteur_chauffage.donnee_entree.{enum_temp_distribution_ch_id, annee_installation_emetteur}
  * @xml-output   generateur_chauffage.donnee_intermediaire.{temp_fonc_100, temp_fonc_30}
- * @depends-on   \CalculDpe\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator
+ * @depends-on   \CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator
  * @tables       (aucune — tables inline §13.2.1.5 p.81-85)
  */
 final class ChaudiereProfilChargeCalculator implements CalculatorInterface

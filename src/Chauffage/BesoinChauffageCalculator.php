@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Chauffage;
+namespace CalculDpePHP\Chauffage;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -32,7 +32,7 @@ use DOMElement;
  * @spec-source  resources/specsplitted/09-conso-chauffage/01-installation-seule/01-conso.md
  * @xml-input    (intermédiaires via contexte : GV, fraction_ch, DH mensuel, pertes_recup)
  * @xml-output   logement.sortie.apport_et_besoin.{besoin_ch, besoin_ch_depensier}
- * @depends-on   \CalculDpe\Apport\FCalculator, \CalculDpe\Enveloppe\EnveloppeAggregator, \CalculDpe\Ventilation\VentilationAggregator
+ * @depends-on   \CalculDpePHP\Apport\FCalculator, \CalculDpePHP\Enveloppe\EnveloppeAggregator, \CalculDpePHP\Ventilation\VentilationAggregator
  * @tables       reference/tv_sollicitations
  */
 final class BesoinChauffageCalculator implements CalculatorInterface
@@ -45,11 +45,11 @@ final class BesoinChauffageCalculator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            '\CalculDpe\Apport\FCalculator',
-            '\CalculDpe\Enveloppe\EnveloppeAggregator',
-            '\CalculDpe\Ventilation\VentilationAggregator',
-            '\CalculDpe\Ecs\BesoinEcsCalculator',
-            '\CalculDpe\Ecs\Rendement\StockageCalculator', // writes Qgw to DOM
+            '\CalculDpePHP\Apport\FCalculator',
+            '\CalculDpePHP\Enveloppe\EnveloppeAggregator',
+            '\CalculDpePHP\Ventilation\VentilationAggregator',
+            '\CalculDpePHP\Ecs\BesoinEcsCalculator',
+            '\CalculDpePHP\Ecs\Rendement\StockageCalculator', // writes Qgw to DOM
         ];
     }
 

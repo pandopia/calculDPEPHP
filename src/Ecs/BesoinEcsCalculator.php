@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Ecs;
+namespace CalculDpePHP\Ecs;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -35,7 +35,7 @@ use DOMElement;
  * @xml-input    logement.installation_ecs_collection.installation_ecs.donnee_entree.enum_type_installation_id
  * @xml-output   logement.sortie.apport_et_besoin.{besoin_ecs, besoin_ecs_depensier, v40_ecs_journalier, v40_ecs_journalier_depensier, nadeq}
  * @xml-output   logement.installation_ecs_collection.installation_ecs.donnee_intermediaire.{besoin_ecs, besoin_ecs_depensier}
- * @depends-on   \CalculDpe\Apport\FCalculator
+ * @depends-on   \CalculDpePHP\Apport\FCalculator
  * @tables       ecs/tv_tefs
  */
 final class BesoinEcsCalculator implements CalculatorInterface
@@ -60,7 +60,7 @@ final class BesoinEcsCalculator implements CalculatorInterface
 
     public function dependencies(): array
     {
-        return ['\CalculDpe\Apport\FCalculator'];
+        return ['\CalculDpePHP\Apport\FCalculator'];
     }
 
     public function appliesTo(DOMElement $node): bool

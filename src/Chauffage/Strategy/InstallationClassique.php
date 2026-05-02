@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Chauffage\Strategy;
+namespace CalculDpePHP\Chauffage\Strategy;
 
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -36,12 +36,12 @@ use DOMElement;
  *                generateur_chauffage.donnee_intermediaire.rendement_generation
  * @xml-output    installation_chauffage.donnee_intermediaire.{besoin_ch, besoin_ch_depensier, conso_ch, conso_ch_depensier}
  *                generateur_chauffage.donnee_intermediaire.{conso_ch, conso_ch_depensier}
- * @depends-on    \CalculDpe\Chauffage\BesoinChauffageCalculator
- *                \CalculDpe\Chauffage\Rendement\EmissionCalculator
- *                \CalculDpe\Chauffage\Rendement\DistributionCalculator
- *                \CalculDpe\Chauffage\Rendement\RegulationCalculator
- *                \CalculDpe\Chauffage\Rendement\GenerationNonCombustionCalculator
- *                \CalculDpe\Chauffage\Rendement\Combustion\RendementAnnuelMoyenCalculator
+ * @depends-on    \CalculDpePHP\Chauffage\BesoinChauffageCalculator
+ *                \CalculDpePHP\Chauffage\Rendement\EmissionCalculator
+ *                \CalculDpePHP\Chauffage\Rendement\DistributionCalculator
+ *                \CalculDpePHP\Chauffage\Rendement\RegulationCalculator
+ *                \CalculDpePHP\Chauffage\Rendement\GenerationNonCombustionCalculator
+ *                \CalculDpePHP\Chauffage\Rendement\Combustion\RendementAnnuelMoyenCalculator
  * @tables        (aucune)
  */
 final class InstallationClassique implements CalculatorInterface
@@ -54,12 +54,12 @@ final class InstallationClassique implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            '\CalculDpe\Chauffage\BesoinChauffageCalculator',
-            '\CalculDpe\Chauffage\Rendement\EmissionCalculator',
-            '\CalculDpe\Chauffage\Rendement\DistributionCalculator',
-            '\CalculDpe\Chauffage\Rendement\RegulationCalculator',
-            '\CalculDpe\Chauffage\Rendement\GenerationNonCombustionCalculator',
-            '\CalculDpe\Chauffage\Rendement\Combustion\RendementAnnuelMoyenCalculator',
+            '\CalculDpePHP\Chauffage\BesoinChauffageCalculator',
+            '\CalculDpePHP\Chauffage\Rendement\EmissionCalculator',
+            '\CalculDpePHP\Chauffage\Rendement\DistributionCalculator',
+            '\CalculDpePHP\Chauffage\Rendement\RegulationCalculator',
+            '\CalculDpePHP\Chauffage\Rendement\GenerationNonCombustionCalculator',
+            '\CalculDpePHP\Chauffage\Rendement\Combustion\RendementAnnuelMoyenCalculator',
         ];
     }
 

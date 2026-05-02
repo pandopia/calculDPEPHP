@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Sortie;
+namespace CalculDpePHP\Sortie;
 
-use CalculDpe\Common\Period;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Common\Period;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -31,7 +31,7 @@ use DOMElement;
  * @xml-output    sortie.ep_conso.{ep_conso_ch, ep_conso_ecs, ep_conso_eclairage, ep_conso_fr,
  *                    ep_conso_auxiliaire_*, ep_conso_totale_auxiliaire, ep_conso_5_usages,
  *                    ep_conso_5_usages_m2, classe_bilan_dpe}
- * @depends-on    \CalculDpe\Sortie\EfConsoCalculator
+ * @depends-on    \CalculDpePHP\Sortie\EfConsoCalculator
  * @tables        (aucune)
  */
 final class EpConsoCalculator implements CalculatorInterface
@@ -52,7 +52,7 @@ final class EpConsoCalculator implements CalculatorInterface
 
     public function dependencies(): array
     {
-        return ['\CalculDpe\Sortie\EfConsoCalculator'];
+        return ['\CalculDpePHP\Sortie\EfConsoCalculator'];
     }
 
     public function appliesTo(DOMElement $node): bool

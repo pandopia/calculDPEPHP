@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Chauffage\Strategy;
+namespace CalculDpePHP\Chauffage\Strategy;
 
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Engine\CalculationContext;
 use DOMElement;
 use LogicException;
 
@@ -17,7 +17,7 @@ use LogicException;
  * @spec-source  resources/specsplitted/09-conso-chauffage/10-installations-independantes.md
  * @xml-input    installation_chauffage_collection.*
  * @xml-output   conso_ch
- * @depends-on   \CalculDpe\Chauffage\Strategy\InstallationClassique
+ * @depends-on   \CalculDpePHP\Chauffage\Strategy\InstallationClassique
  * @tables       (aucune)
  *
  * Stub : implémentation à réaliser dans la tâche TASK-E21 (voir TASKS.md).
@@ -31,7 +31,7 @@ final class InstallationsIndependantes implements CalculatorInterface
 
     public function dependencies(): array
     {
-        return ['\CalculDpe\Chauffage\Strategy\InstallationClassique'];
+        return ['\CalculDpePHP\Chauffage\Strategy\InstallationClassique'];
     }
 
     public function appliesTo(DOMElement $node): bool

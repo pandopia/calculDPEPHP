@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Froid;
+namespace CalculDpePHP\Froid;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -35,7 +35,7 @@ use DOMElement;
  * @spec-source  resources/specsplitted/10-conso-froid/01-besoin-annuel.md
  * @xml-input    logement.climatisation_collection
  * @xml-output   logement.sortie.apport_et_besoin.{besoin_fr, besoin_fr_depensier}
- * @depends-on   \CalculDpe\Enveloppe\EnveloppeAggregator, \CalculDpe\Apport\FCalculator, \CalculDpe\Ventilation\VentilationAggregator
+ * @depends-on   \CalculDpePHP\Enveloppe\EnveloppeAggregator, \CalculDpePHP\Apport\FCalculator, \CalculDpePHP\Ventilation\VentilationAggregator
  * @tables       reference/tv_sollicitations (colonnes DH28, DH26, Nref28, Nref26 — à digitaliser TASK-A05)
  */
 final class BesoinAnnuelCalculator implements CalculatorInterface
@@ -56,9 +56,9 @@ final class BesoinAnnuelCalculator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            '\CalculDpe\Enveloppe\EnveloppeAggregator',
-            '\CalculDpe\Apport\FCalculator',
-            '\CalculDpe\Ventilation\VentilationAggregator',
+            '\CalculDpePHP\Enveloppe\EnveloppeAggregator',
+            '\CalculDpePHP\Apport\FCalculator',
+            '\CalculDpePHP\Ventilation\VentilationAggregator',
         ];
     }
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Xml;
+namespace CalculDpePHP\Xml;
 
 use DOMDocument;
 use RuntimeException;
@@ -19,5 +19,15 @@ final class XmlWriter
         if ($document->save($path) === false) {
             throw new RuntimeException(sprintf('Impossible d\'écrire %s', $path));
         }
+    }
+
+    public function toString(DOMDocument $document): string
+    {
+        $xml = $document->saveXML();
+        if ($xml === false) {
+            throw new RuntimeException('Impossible de sérialiser le XML.');
+        }
+
+        return $xml;
     }
 }

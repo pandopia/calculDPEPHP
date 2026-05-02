@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Enveloppe\Porte;
+namespace CalculDpePHP\Enveloppe\Porte;
 
-use CalculDpe\Enveloppe\AbstractBCalculator;
+use CalculDpePHP\Enveloppe\AbstractBCalculator;
 
 /**
  * Coefficient de réduction des déperditions b pour une porte.

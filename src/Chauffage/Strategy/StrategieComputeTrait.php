@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Chauffage\Strategy;
+namespace CalculDpePHP\Chauffage\Strategy;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**

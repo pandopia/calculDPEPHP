@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Enveloppe\BaieVitree;
+namespace CalculDpePHP\Enveloppe\BaieVitree;
 
-use CalculDpe\Enveloppe\AbstractBCalculator;
+use CalculDpePHP\Enveloppe\AbstractBCalculator;
 
 /**
  * Coefficient de réduction des déperditions b pour une baie vitrée.

@@ -1,31 +1,49 @@
 # calculDPE
 
-Script PHP qui :
-
-- prend un fichier XML en entree ;
-- sauvegarde l'original dans `resources/XML/verif` ;
-- sauvegarde une copie du meme fichier dans `resources/XML/input` en supprimant les balises `<donnee_intermediaire>` et `<sortie>`.
+Librairie et CLI PHP pour calculer un DPE 3CL-2021 a partir d'un XML ADEME.
 
 ## Installation
 
 ```bash
+composer install
 composer dump-autoload
-chmod +x bin/process-xml
 ```
 
-## Utilisation
+## Utilisation en librairie
+
+```bash
+composer require pandopia/calcul-dpe-php
+```
+
+```php
+<?php
+
+use CalculDpePHP\CalculDpePHP;
+
+$xml = file_get_contents('dpe.xml');
+
+$calculatedXml = CalculDpePHP::calculate($xml);
+
+$energy = CalculDpePHP::calculate($xml, ['energieOnly' => true]);
+// $energy->epConso5UsagesM2
+// $energy->classeBilanDpe
+// $energy->emissionGes5UsagesM2
+// $energy->classeEmissionGes
+```
+
+## Utilisation en CLI
+
+```bash
+php bin/calcul-dpe /chemin/vers/input.xml [/chemin/vers/output.xml]
+```
+
+## Outil de preparation des fixtures XML
 
 ```bash
 php bin/process-xml /chemin/vers/fichier.xml
 ```
 
-Exemple avec le fichier fourni :
+Le script :
 
-```bash
-php bin/process-xml resources/XML/verif/diag2356736.xml
-```
-
-Le script ecrit :
-
-- l'original dans `resources/XML/verif/<nom-du-fichier>.xml`
-- la version nettoyee dans `resources/XML/input/<nom-du-fichier>.xml`
+- sauvegarde l'original dans `resources/XML/verif`
+- sauvegarde une copie nettoyee dans `resources/XML/input` en supprimant `<donnee_intermediaire>` et `<sortie>`

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Enveloppe\Mur;
+namespace CalculDpePHP\Enveloppe\Mur;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 use RuntimeException;
 
@@ -35,7 +35,7 @@ use RuntimeException;
  * @spec-source resources/specsplitted/03-enveloppe-deperditions/02-parois-opaques/01-umur/00-calcul.md
  * @xml-input  mur.donnee_entree.{enum_methode_saisie_u_id, enum_type_isolation_id, epaisseur_isolation, resistance_isolation, u_saisi}
  * @xml-output mur.donnee_intermediaire.umur
- * @depends-on \CalculDpe\Enveloppe\Mur\Umur0Calculator
+ * @depends-on \CalculDpePHP\Enveloppe\Mur\Umur0Calculator
  * @tables tv_umur
  */
 final class UmurCalculator implements CalculatorInterface

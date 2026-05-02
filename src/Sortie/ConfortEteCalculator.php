@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Sortie;
+namespace CalculDpePHP\Sortie;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Inertie\InertieCalculator;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Inertie\InertieCalculator;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -26,7 +26,7 @@ use DOMElement;
  * @spec-source  resources/specsplitted/10-conso-froid/00-overview.md
  * @xml-input    enveloppe.{baie_vitree_collection, plancher_haut_collection}, inertie.enum_classe_inertie_id
  * @xml-output   sortie.confort_ete.{enum_indicateur_confort_ete_id, isolation_toiture, protection_solaire_exterieure, aspect_traversant, brasseur_air, inertie_lourde}
- * @depends-on   \CalculDpe\Inertie\InertieCalculator
+ * @depends-on   \CalculDpePHP\Inertie\InertieCalculator
  * @tables       (aucune)
  */
 final class ConfortEteCalculator implements CalculatorInterface

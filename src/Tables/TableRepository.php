@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Tables;
+namespace CalculDpePHP\Tables;
 
 use RuntimeException;
 

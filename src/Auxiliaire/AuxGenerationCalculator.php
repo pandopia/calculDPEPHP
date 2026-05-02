@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Auxiliaire;
+namespace CalculDpePHP\Auxiliaire;
 
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -44,9 +44,9 @@ use DOMElement;
  *               installation_ecs.donnee_intermediaire.{besoin_ecs, besoin_ecs_depensier}
  * @xml-output   sortie.ef_conso.{conso_auxiliaire_generation_ch, conso_auxiliaire_generation_ch_depensier,
  *               conso_auxiliaire_generation_ecs, conso_auxiliaire_generation_ecs_depensier}
- * @depends-on   \CalculDpe\Chauffage\BesoinChauffageCalculator,
- *               \CalculDpe\Ecs\BesoinEcsCalculator,
- *               \CalculDpe\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator,
+ * @depends-on   \CalculDpePHP\Chauffage\BesoinChauffageCalculator,
+ *               \CalculDpePHP\Ecs\BesoinEcsCalculator,
+ *               \CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator,
  *               all heating strategy classes (write besoin_ch to installation.donnee_intermediaire)
  * @tables       (aucune)
  */
@@ -85,19 +85,19 @@ final class AuxGenerationCalculator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            '\CalculDpe\Chauffage\BesoinChauffageCalculator',
-            '\CalculDpe\Ecs\BesoinEcsCalculator',
-            '\CalculDpe\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator',
+            '\CalculDpePHP\Chauffage\BesoinChauffageCalculator',
+            '\CalculDpePHP\Ecs\BesoinEcsCalculator',
+            '\CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator',
             // Strategies write besoin_ch to installation.donnee_intermediaire — must run first
-            '\CalculDpe\Chauffage\Strategy\InstallationClassique',
-            '\CalculDpe\Chauffage\Strategy\AppointInsertElecSdb',
-            '\CalculDpe\Chauffage\Strategy\ChaudiereReleve',
-            '\CalculDpe\Chauffage\Strategy\ChauffageSolaire',
-            '\CalculDpe\Chauffage\Strategy\InsertPoeleAppoint',
-            '\CalculDpe\Chauffage\Strategy\ConvecteurBijonction',
-            '\CalculDpe\Chauffage\Strategy\MultiGenerateurs',
-            '\CalculDpe\Chauffage\Strategy\InsertElecSdb',
-            '\CalculDpe\Chauffage\Strategy\SolaireInsertPoele',
+            '\CalculDpePHP\Chauffage\Strategy\InstallationClassique',
+            '\CalculDpePHP\Chauffage\Strategy\AppointInsertElecSdb',
+            '\CalculDpePHP\Chauffage\Strategy\ChaudiereReleve',
+            '\CalculDpePHP\Chauffage\Strategy\ChauffageSolaire',
+            '\CalculDpePHP\Chauffage\Strategy\InsertPoeleAppoint',
+            '\CalculDpePHP\Chauffage\Strategy\ConvecteurBijonction',
+            '\CalculDpePHP\Chauffage\Strategy\MultiGenerateurs',
+            '\CalculDpePHP\Chauffage\Strategy\InsertElecSdb',
+            '\CalculDpePHP\Chauffage\Strategy\SolaireInsertPoele',
         ];
     }
 

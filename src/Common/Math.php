@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Common;
+namespace CalculDpePHP\Common;
 
 final class Math
 {

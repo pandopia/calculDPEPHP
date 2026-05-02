@@ -1,7 +1,8 @@
 {
-  "name": "cyrilbele/calcul-dpe",
+  "name": "pandopia/calcul-dpe-php",
   "description": "Moteur PHP de calcul DPE 3CL-2021",
-  "type": "project",
+  "license": "MIT",
+  "type": "library",
   "require": {
     "php": "^8.2",
     "ext-dom": "*",
@@ -12,7 +13,7 @@
   },
   "autoload": {
     "psr-4": {
-      "CalculDpe\\": "src/"
+      "CalculDpePHP\\": "src/"
     }
   },
   "autoload-dev": {

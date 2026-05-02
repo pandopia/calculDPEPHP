@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Enveloppe\PlancherBas;
+namespace CalculDpePHP\Enveloppe\PlancherBas;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 use RuntimeException;
 
@@ -30,7 +30,7 @@ use RuntimeException;
  * @xml-input  plancher_bas.donnee_entree.{enum_methode_saisie_u_id, enum_type_isolation_id, epaisseur_isolation, resistance_isolation, enum_periode_isolation_id}
  * @xml-input  plancher_bas.donnee_intermediaire.upb0
  * @xml-output plancher_bas.donnee_intermediaire.upb
- * @depends-on \CalculDpe\Enveloppe\PlancherBas\Upb0Calculator
+ * @depends-on \CalculDpePHP\Enveloppe\PlancherBas\Upb0Calculator
  * @tables tv_upb_tab
  */
 final class UpbCalculator implements CalculatorInterface

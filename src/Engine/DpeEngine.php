@@ -2,14 +2,13 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Engine;
+namespace CalculDpePHP\Engine;
 
-use CalculDpe\Common\Period;
-use CalculDpe\Tables\TableRepository;
-use CalculDpe\Xml\NodeAccessor;
-use CalculDpe\Xml\XmlReader;
-use CalculDpe\Xml\XmlWriter;
-use CalculDpe\XmlSanitizer;
+use CalculDpePHP\Common\Period;
+use CalculDpePHP\Tables\TableRepository;
+use CalculDpePHP\Xml\NodeAccessor;
+use CalculDpePHP\Xml\XmlReader;
+use CalculDpePHP\Xml\XmlWriter;
 use DOMDocument;
 
 /**
@@ -33,7 +32,20 @@ final class DpeEngine
     public function run(string $inputFile, string $outputFile): void
     {
         $document = (new XmlReader())->load($inputFile);
+        $document = $this->calculateDocument($document);
 
+        (new XmlWriter())->save($document, $outputFile);
+    }
+
+    public function calculate(string $xml): DOMDocument
+    {
+        $document = (new XmlReader())->loadString($xml);
+
+        return $this->calculateDocument($document);
+    }
+
+    public function calculateDocument(DOMDocument $document): DOMDocument
+    {
         // Idempotence : on retire d'abord toute donnée intermédiaire / sortie pré-existante
         $this->purgeOutputs($document);
 
@@ -41,7 +53,7 @@ final class DpeEngine
 
         $this->pipeline->run($document, $context);
 
-        (new XmlWriter())->save($document, $outputFile);
+        return $document;
     }
 
     private function purgeOutputs(DOMDocument $document): void

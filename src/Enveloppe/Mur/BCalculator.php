@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Enveloppe\Mur;
+namespace CalculDpePHP\Enveloppe\Mur;
 
-use CalculDpe\Enveloppe\AbstractBCalculator;
+use CalculDpePHP\Enveloppe\AbstractBCalculator;
 
 /**
  * Coefficient de réduction des déperditions b pour un mur.

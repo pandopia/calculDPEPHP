@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Auxiliaire;
 
-use CalculDpe\Auxiliaire\AuxDistributionCalculator;
-use CalculDpe\Common\Period;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Tables\TableRepository;
+use CalculDpePHP\Auxiliaire\AuxDistributionCalculator;
+use CalculDpePHP\Common\Period;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
 use DOMXPath;
 use PHPUnit\Framework\TestCase;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Collectif;
+namespace CalculDpePHP\Collectif;
 
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -29,7 +29,7 @@ use DOMElement;
  * @xml-input    logement.caracteristique_generale.{enum_methode_application_dpe_log_id, nombre_appartement}
  * @xml-input    logement.ventilation_collection.ventilation.donnee_intermediaire.conso_auxiliaire_ventilation
  * @xml-output   logement.ventilation_collection.ventilation.donnee_intermediaire.conso_auxiliaire_ventilation (→ 0)
- * @depends-on   \CalculDpe\Ventilation\VentilationAggregator, \CalculDpe\Sortie\SortieParEnergieAggregator
+ * @depends-on   \CalculDpePHP\Ventilation\VentilationAggregator, \CalculDpePHP\Sortie\SortieParEnergieAggregator
  * @tables       (aucune)
  */
 final class DpeImmeubleCalculator implements CalculatorInterface
@@ -45,8 +45,8 @@ final class DpeImmeubleCalculator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            '\CalculDpe\Ventilation\VentilationAggregator',
-            '\CalculDpe\Sortie\SortieParEnergieAggregator',
+            '\CalculDpePHP\Ventilation\VentilationAggregator',
+            '\CalculDpePHP\Sortie\SortieParEnergieAggregator',
         ];
     }
 

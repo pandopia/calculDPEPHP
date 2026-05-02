@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Chauffage\Strategy;
 
-use CalculDpe\Chauffage\Strategy\InstallationClassique;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Tables\TableRepository;
+use CalculDpePHP\Chauffage\Strategy\InstallationClassique;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
 use PHPUnit\Framework\TestCase;
 

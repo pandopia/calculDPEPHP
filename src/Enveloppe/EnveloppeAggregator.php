@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Enveloppe;
+namespace CalculDpePHP\Enveloppe;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 use DOMXPath;
 
@@ -32,12 +32,12 @@ use DOMXPath;
  * @xml-input  enveloppe.*.donnee_intermediaire.{b, umur, upb_final, uph, u_menuiserie, uporte, k}
  *             enveloppe.*.donnee_entree.{surface_paroi_opaque, surface_totale_baie, surface_porte, l}
  * @xml-output logement.sortie.deperdition.{deperdition_mur, deperdition_plancher_bas, deperdition_plancher_haut, deperdition_baie_vitree, deperdition_porte, deperdition_pont_thermique}
- * @depends-on \CalculDpe\Enveloppe\Mur\UmurCalculator,
- *             \CalculDpe\Enveloppe\PlancherBas\UpbFinalCalculator,
- *             \CalculDpe\Enveloppe\PlancherHaut\UphCalculator,
- *             \CalculDpe\Enveloppe\BaieVitree\UMenuiserieCalculator,
- *             \CalculDpe\Enveloppe\Porte\UporteCalculator,
- *             \CalculDpe\Enveloppe\PontThermique\KCalculator
+ * @depends-on \CalculDpePHP\Enveloppe\Mur\UmurCalculator,
+ *             \CalculDpePHP\Enveloppe\PlancherBas\UpbFinalCalculator,
+ *             \CalculDpePHP\Enveloppe\PlancherHaut\UphCalculator,
+ *             \CalculDpePHP\Enveloppe\BaieVitree\UMenuiserieCalculator,
+ *             \CalculDpePHP\Enveloppe\Porte\UporteCalculator,
+ *             \CalculDpePHP\Enveloppe\PontThermique\KCalculator
  */
 final class EnveloppeAggregator implements CalculatorInterface
 {
@@ -49,12 +49,12 @@ final class EnveloppeAggregator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            \CalculDpe\Enveloppe\Mur\UmurCalculator::class,
-            \CalculDpe\Enveloppe\PlancherBas\UpbFinalCalculator::class,
-            \CalculDpe\Enveloppe\PlancherHaut\UphCalculator::class,
-            \CalculDpe\Enveloppe\BaieVitree\UMenuiserieCalculator::class,
-            \CalculDpe\Enveloppe\Porte\UporteCalculator::class,
-            \CalculDpe\Enveloppe\PontThermique\KCalculator::class,
+            \CalculDpePHP\Enveloppe\Mur\UmurCalculator::class,
+            \CalculDpePHP\Enveloppe\PlancherBas\UpbFinalCalculator::class,
+            \CalculDpePHP\Enveloppe\PlancherHaut\UphCalculator::class,
+            \CalculDpePHP\Enveloppe\BaieVitree\UMenuiserieCalculator::class,
+            \CalculDpePHP\Enveloppe\Porte\UporteCalculator::class,
+            \CalculDpePHP\Enveloppe\PontThermique\KCalculator::class,
         ];
     }
 

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Chauffage\Strategy;
 
-use CalculDpe\Chauffage\Strategy\ChauffageSolaire;
-use CalculDpe\Chauffage\Strategy\SolaireInsertPoele;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Tables\TableRepository;
+use CalculDpePHP\Chauffage\Strategy\ChauffageSolaire;
+use CalculDpePHP\Chauffage\Strategy\SolaireInsertPoele;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
 use DOMElement;
 use PHPUnit\Framework\TestCase;

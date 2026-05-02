@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Sortie;
+namespace CalculDpePHP\Sortie;
 
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -30,8 +30,8 @@ use DOMElement;
  *                    emission_ges_fr, emission_ges_auxiliaire_*, emission_ges_totale_auxiliaire,
  *                    emission_ges_5_usages, emission_ges_5_usages_m2, classe_emission_ges}
  *                sortie.ep_conso.classe_bilan_dpe (mis à jour avec WORST(classe_energie, classe_ges))
- * @depends-on    \CalculDpe\Sortie\EfConsoCalculator
- *                \CalculDpe\Sortie\EpConsoCalculator
+ * @depends-on    \CalculDpePHP\Sortie\EfConsoCalculator
+ *                \CalculDpePHP\Sortie\EpConsoCalculator
  * @tables        (aucune)
  */
 final class EmissionGesCalculator implements CalculatorInterface
@@ -71,9 +71,9 @@ final class EmissionGesCalculator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            '\CalculDpe\Sortie\EfConsoCalculator',
-            '\CalculDpe\Sortie\EpConsoCalculator',
-            '\CalculDpe\ProductionElec\ProductionPvCalculator',
+            '\CalculDpePHP\Sortie\EfConsoCalculator',
+            '\CalculDpePHP\Sortie\EpConsoCalculator',
+            '\CalculDpePHP\ProductionElec\ProductionPvCalculator',
         ];
     }
 

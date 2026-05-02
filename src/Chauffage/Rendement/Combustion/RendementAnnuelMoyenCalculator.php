@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Chauffage\Rendement\Combustion;
+namespace CalculDpePHP\Chauffage\Rendement\Combustion;
 
-use CalculDpe\Chauffage\BesoinChauffageCalculator;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Chauffage\BesoinChauffageCalculator;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -28,8 +28,8 @@ use DOMElement;
  * @xml-input    generateur_chauffage.donnee_intermediaire.{pn, rpn, rpint, qp0, pveil, temp_fonc_100, temp_fonc_30}
  * @xml-input    generateur_chauffage.donnee_entree.{enum_type_energie_id, presence_regulation_combustion}
  * @xml-output   generateur_chauffage.donnee_intermediaire.rendement_generation
- * @depends-on   \CalculDpe\Chauffage\Rendement\Combustion\ChaudiereProfilChargeCalculator
- * @depends-on   \CalculDpe\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator
+ * @depends-on   \CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereProfilChargeCalculator
+ * @depends-on   \CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator
  * @tables       (aucune)
  */
 final class RendementAnnuelMoyenCalculator implements CalculatorInterface

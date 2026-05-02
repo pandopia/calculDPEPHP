@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Collectif;
+namespace CalculDpePHP\Collectif;
 
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -36,7 +36,7 @@ use DOMElement;
  * @xml-input    logement.caracteristique_generale.{enum_methode_application_dpe_log_id, surface_habitable_logement}
  * @xml-input    logement.dpe_immeuble_associe.* (si présent)
  * @xml-output   (répartition des conso depuis données immeuble le cas échéant)
- * @depends-on   \CalculDpe\Collectif\DpeImmeubleCalculator
+ * @depends-on   \CalculDpePHP\Collectif\DpeImmeubleCalculator
  * @tables       (aucune)
  */
 final class DpeAppartementCalculator implements CalculatorInterface
@@ -60,7 +60,7 @@ final class DpeAppartementCalculator implements CalculatorInterface
 
     public function dependencies(): array
     {
-        return ['\CalculDpe\Collectif\DpeImmeubleCalculator'];
+        return ['\CalculDpePHP\Collectif\DpeImmeubleCalculator'];
     }
 
     public function appliesTo(DOMElement $node): bool

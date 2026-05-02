@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Ventilation;
+namespace CalculDpePHP\Ventilation;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 use RuntimeException;
 
@@ -21,7 +21,7 @@ use RuntimeException;
  * @spec-source resources/specsplitted/05-auxiliaires-ventilation/00-calcul.md
  * @xml-input  ventilation.donnee_intermediaire.pvent_moy
  * @xml-output ventilation.donnee_intermediaire.conso_auxiliaire_ventilation
- * @depends-on \CalculDpe\Ventilation\PventMoyCalculator
+ * @depends-on \CalculDpePHP\Ventilation\PventMoyCalculator
  * @tables (aucune)
  */
 final class ConsoAuxiliaireVentilationCalculator implements CalculatorInterface

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Chauffage\Rendement;
 
-use CalculDpe\Chauffage\Rendement\Combustion\InsertsPoelesCalculator;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Tables\TableRepository;
+use CalculDpePHP\Chauffage\Rendement\Combustion\InsertsPoelesCalculator;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
 use PHPUnit\Framework\TestCase;
 

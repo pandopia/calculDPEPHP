@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Ventilation;
+namespace CalculDpePHP\Ventilation;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 use RuntimeException;
 
@@ -41,7 +41,7 @@ use RuntimeException;
  * @xml-input  ancestor::logement.{hsp}
  * @xml-input  ancestor::logement.enveloppe.{mur, plancher_haut, baie_vitree, porte}
  * @xml-output ventilation.donnee_intermediaire.hperm
- * @depends-on \CalculDpe\Ventilation\Q4PaConvCalculator
+ * @depends-on \CalculDpePHP\Ventilation\Q4PaConvCalculator
  * @tables tv_debits_ventilation
  */
 final class HpermCalculator implements CalculatorInterface

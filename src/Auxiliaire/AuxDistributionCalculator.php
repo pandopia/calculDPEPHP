@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Auxiliaire;
+namespace CalculDpePHP\Auxiliaire;
 
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -46,8 +46,8 @@ use DOMElement;
  *               installation_ecs.donnee_entree.{surface_habitable, nombre_niveau_installation_ecs,
  *               enum_type_installation_id, reseau_distribution_isole, cle_repartition_ecs}
  * @xml-output   sortie.ef_conso.{conso_auxiliaire_distribution_ch, conso_auxiliaire_distribution_ecs}
- * @depends-on   \CalculDpe\Chauffage\BesoinChauffageCalculator,
- *               \CalculDpe\Ecs\BesoinEcsCalculator
+ * @depends-on   \CalculDpePHP\Chauffage\BesoinChauffageCalculator,
+ *               \CalculDpePHP\Ecs\BesoinEcsCalculator
  * @tables       reference/tv_sollicitations
  */
 final class AuxDistributionCalculator implements CalculatorInterface
@@ -104,8 +104,8 @@ final class AuxDistributionCalculator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            '\CalculDpe\Chauffage\BesoinChauffageCalculator',
-            '\CalculDpe\Ecs\BesoinEcsCalculator',
+            '\CalculDpePHP\Chauffage\BesoinChauffageCalculator',
+            '\CalculDpePHP\Ecs\BesoinEcsCalculator',
         ];
     }
 

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Sortie;
+namespace CalculDpePHP\Sortie;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -29,7 +29,7 @@ use DOMElement;
  *                    donnee_intermediaire.{conso_ecs, conso_ecs_depensier}}
  *                sortie.ef_conso.{conso_eclairage, conso_totale_auxiliaire, conso_fr}
  * @xml-output    sortie.sortie_par_energie_collection.sortie_par_energie[]
- * @depends-on    \CalculDpe\Sortie\EpConsoCalculator, \CalculDpe\Sortie\EmissionGesCalculator, \CalculDpe\Sortie\CoutCalculator
+ * @depends-on    \CalculDpePHP\Sortie\EpConsoCalculator, \CalculDpePHP\Sortie\EmissionGesCalculator, \CalculDpePHP\Sortie\CoutCalculator
  * @tables        (aucune)
  */
 final class SortieParEnergieAggregator implements CalculatorInterface

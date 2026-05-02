@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\ProductionElec;
+namespace CalculDpePHP\ProductionElec;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -33,7 +33,7 @@ use DOMElement;
  * @xml-output   logement.production_elec_enr.donnee_intermediaire.{production_pv, conso_elec_ac, taux_autoproduction}
  * @xml-output   logement.sortie.ef_conso.{conso_ch, conso_ecs, …} (modifiés -Celec_ac_i)
  * @xml-output   logement.sortie.ep_conso.{ep_conso_ch, ep_conso_ecs, …} (modifiés)
- * @depends-on   \CalculDpe\Sortie\EpConsoCalculator, \CalculDpe\Sortie\SortieParEnergieAggregator
+ * @depends-on   \CalculDpePHP\Sortie\EpConsoCalculator, \CalculDpePHP\Sortie\SortieParEnergieAggregator
  * @tables       prod_elec/e_pv, prod_elec/tv_coef_orientation_pv
  */
 final class ProductionPvCalculator implements CalculatorInterface
@@ -69,7 +69,7 @@ final class ProductionPvCalculator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            '\CalculDpe\Sortie\EpConsoCalculator',
+            '\CalculDpePHP\Sortie\EpConsoCalculator',
         ];
     }
 
@@ -219,7 +219,7 @@ final class ProductionPvCalculator implements CalculatorInterface
 
         // ── 14. Réduire ep_conso dans le sortie ────────────────────────────
         $epNode = $this->getChild($sortie, 'ep_conso');
-        $coefEp = $context->period === \CalculDpe\Common\Period::POST_2026 ? 2.3 : 1.9;
+        $coefEp = $context->period === \CalculDpePHP\Common\Period::POST_2026 ? 2.3 : 1.9;
         if ($epNode !== null && $sh > 0.0) {
             $this->reduceEpConso($epNode, $accessor, $acCh, $acEcs, $acFr, $acEcl, $acAux, $coefEp, $sh);
         }

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Froid;
+namespace CalculDpePHP\Froid;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -27,7 +27,7 @@ use DOMElement;
  * @xml-input    logement.climatisation_collection.climatisation.donnee_entree.{tv_seer_id, surface_refroidie}
  * @xml-output   logement.sortie.ef_conso.{conso_fr, conso_fr_depensier}
  * @xml-output   logement.sortie.apport_et_besoin.eer
- * @depends-on   \CalculDpe\Froid\BesoinAnnuelCalculator
+ * @depends-on   \CalculDpePHP\Froid\BesoinAnnuelCalculator
  * @tables       froid/tv_seer
  */
 final class ConsoFroidCalculator implements CalculatorInterface
@@ -41,7 +41,7 @@ final class ConsoFroidCalculator implements CalculatorInterface
 
     public function dependencies(): array
     {
-        return ['\CalculDpe\Froid\BesoinAnnuelCalculator'];
+        return ['\CalculDpePHP\Froid\BesoinAnnuelCalculator'];
     }
 
     public function appliesTo(DOMElement $node): bool

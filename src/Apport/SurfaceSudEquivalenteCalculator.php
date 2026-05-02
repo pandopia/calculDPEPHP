@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Apport;
+namespace CalculDpePHP\Apport;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -34,7 +34,7 @@ use DOMElement;
  * @xml-input    logement.enveloppe.baie_vitree_collection.baie_vitree.donnee_entree.{surface_totale_baie, enum_orientation_id, enum_inclinaison_vitrage_id}
  * @xml-input    logement.enveloppe.baie_vitree_collection.baie_vitree.donnee_intermediaire.{sw, fe1, fe2}
  * @xml-output   context:apport.sse_annuel (annual sum), context:apport.sse_mensuel (monthly array)
- * @depends-on   \CalculDpe\Enveloppe\BaieVitree\SwCalculator, \CalculDpe\Enveloppe\BaieVitree\Fe1Calculator, \CalculDpe\Enveloppe\BaieVitree\Fe2Calculator
+ * @depends-on   \CalculDpePHP\Enveloppe\BaieVitree\SwCalculator, \CalculDpePHP\Enveloppe\BaieVitree\Fe1Calculator, \CalculDpePHP\Enveloppe\BaieVitree\Fe2Calculator
  * @tables       apports/tv_c1
  */
 final class SurfaceSudEquivalenteCalculator implements CalculatorInterface
@@ -53,9 +53,9 @@ final class SurfaceSudEquivalenteCalculator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            \CalculDpe\Enveloppe\BaieVitree\SwCalculator::class,
-            \CalculDpe\Enveloppe\BaieVitree\Fe1Calculator::class,
-            \CalculDpe\Enveloppe\BaieVitree\Fe2Calculator::class,
+            \CalculDpePHP\Enveloppe\BaieVitree\SwCalculator::class,
+            \CalculDpePHP\Enveloppe\BaieVitree\Fe1Calculator::class,
+            \CalculDpePHP\Enveloppe\BaieVitree\Fe2Calculator::class,
         ];
     }
 

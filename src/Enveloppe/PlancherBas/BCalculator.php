@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Enveloppe\PlancherBas;
+namespace CalculDpePHP\Enveloppe\PlancherBas;
 
-use CalculDpe\Enveloppe\AbstractBCalculator;
+use CalculDpePHP\Enveloppe\AbstractBCalculator;
 
 /**
  * Coefficient de réduction des déperditions b pour un plancher bas.

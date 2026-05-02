@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Intermittence;
+namespace CalculDpePHP\Intermittence;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -33,7 +33,7 @@ use DOMElement;
  *               enum_equipement_intermittence_id, enum_type_emission_distribution_id}
  * @xml-input    logement.caracteristique_generale.enum_methode_application_dpe_log_id
  * @xml-output   emetteur_chauffage.donnee_intermediaire.i0
- * @depends-on   \CalculDpe\Inertie\InertieCalculator
+ * @depends-on   \CalculDpePHP\Inertie\InertieCalculator
  * @tables       chauffage/tv_intermittence
  */
 final class IntermittenceCalculator implements CalculatorInterface
@@ -53,7 +53,7 @@ final class IntermittenceCalculator implements CalculatorInterface
 
     public function dependencies(): array
     {
-        return [\CalculDpe\Inertie\InertieCalculator::class];
+        return [\CalculDpePHP\Inertie\InertieCalculator::class];
     }
 
     public function appliesTo(DOMElement $node): bool

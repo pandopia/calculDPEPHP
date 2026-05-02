@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Xml;
+namespace CalculDpePHP\Xml;
 
 use DOMDocument;
 use InvalidArgumentException;
@@ -22,6 +22,19 @@ final class XmlReader
 
         if (!$document->load($path)) {
             throw new RuntimeException(sprintf('Impossible de charger le XML : %s', $path));
+        }
+
+        return $document;
+    }
+
+    public function loadString(string $xml): DOMDocument
+    {
+        $document = new DOMDocument('1.0', 'UTF-8');
+        $document->preserveWhiteSpace = false;
+        $document->formatOutput = true;
+
+        if (!$document->loadXML($xml)) {
+            throw new RuntimeException('Impossible de charger le XML fourni.');
         }
 
         return $document;

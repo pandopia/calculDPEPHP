@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Inertie;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Inertie\InertieCalculator;
-use CalculDpe\Tables\TableRepository;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Inertie\InertieCalculator;
+use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
 use PHPUnit\Framework\TestCase;
 

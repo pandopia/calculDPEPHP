@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Collectif;
+namespace CalculDpePHP\Collectif;
 
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Engine\CalculationContext;
 use DOMElement;
 
 /**
@@ -36,7 +36,7 @@ use DOMElement;
  * @spec-source  resources/specsplitted/17-collectif/04-immeuble-mixte.md
  * @xml-input    (locaux tertiaires non identifiables dans le format XML ADEME standard)
  * @xml-output   (aucun)
- * @depends-on   \CalculDpe\Collectif\DpeImmeubleCalculator
+ * @depends-on   \CalculDpePHP\Collectif\DpeImmeubleCalculator
  * @tables       (aucune)
  */
 final class ImmeubleMixteCalculator implements CalculatorInterface
@@ -48,7 +48,7 @@ final class ImmeubleMixteCalculator implements CalculatorInterface
 
     public function dependencies(): array
     {
-        return ['\CalculDpe\Collectif\DpeImmeubleCalculator'];
+        return ['\CalculDpePHP\Collectif\DpeImmeubleCalculator'];
     }
 
     public function appliesTo(DOMElement $node): bool

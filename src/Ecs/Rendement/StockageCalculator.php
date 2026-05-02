@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Ecs\Rendement;
+namespace CalculDpePHP\Ecs\Rendement;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -31,8 +31,8 @@ use DOMElement;
  * @spec-source  resources/specsplitted/11-conso-ecs/06-rendement-stockage.md
  * @xml-input    generateur_ecs.donnee_entree.{volume_stockage, enum_type_energie_id, enum_type_generateur_ecs_id, tv_pertes_stockage_id}
  * @xml-output   generateur_ecs.donnee_intermediaire.rendement_stockage
- * @depends-on   \CalculDpe\Ecs\BesoinEcsCalculator
- * @depends-on   \CalculDpe\Ecs\Rendement\DistributionCalculator
+ * @depends-on   \CalculDpePHP\Ecs\BesoinEcsCalculator
+ * @depends-on   \CalculDpePHP\Ecs\Rendement\DistributionCalculator
  * @tables       ecs/tv_pertes_stockage
  */
 final class StockageCalculator implements CalculatorInterface
@@ -51,8 +51,8 @@ final class StockageCalculator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            '\CalculDpe\Ecs\BesoinEcsCalculator',
-            '\CalculDpe\Ecs\Rendement\DistributionCalculator',
+            '\CalculDpePHP\Ecs\BesoinEcsCalculator',
+            '\CalculDpePHP\Ecs\Rendement\DistributionCalculator',
         ];
     }
 

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Enveloppe\PlancherHaut;
+namespace CalculDpePHP\Enveloppe\PlancherHaut;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 use RuntimeException;
 
@@ -31,7 +31,7 @@ use RuntimeException;
  * @spec-source resources/specsplitted/03-enveloppe-deperditions/02-parois-opaques/03-uph/00-calcul.md
  * @xml-input  plancher_haut.donnee_entree.{enum_methode_saisie_u_id, enum_type_isolation_id, enum_type_adjacence_id, epaisseur_isolation, resistance_isolation, enum_periode_isolation_id}
  * @xml-output plancher_haut.donnee_intermediaire.uph
- * @depends-on \CalculDpe\Enveloppe\PlancherHaut\Uph0Calculator
+ * @depends-on \CalculDpePHP\Enveloppe\PlancherHaut\Uph0Calculator
  * @tables tv_uph_tab
  */
 final class UphCalculator implements CalculatorInterface

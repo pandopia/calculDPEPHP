@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Enveloppe\BaieVitree;
+namespace CalculDpePHP\Enveloppe\BaieVitree;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 use RuntimeException;
 
@@ -30,7 +30,7 @@ use RuntimeException;
  * @spec-source resources/specsplitted/03-enveloppe-deperditions/03-parois-vitrees-portes/02-uw/00-calcul.md
  * @xml-input  baie_vitree.donnee_entree.{enum_type_baie_id, enum_type_materiaux_menuiserie_id, uw_saisi, uw_1, double_fenetre}
  * @xml-output baie_vitree.donnee_intermediaire.uw
- * @depends-on \CalculDpe\Enveloppe\BaieVitree\UgCalculator
+ * @depends-on \CalculDpePHP\Enveloppe\BaieVitree\UgCalculator
  * @tables tv_uw, tv_ug.special_uw
  */
 final class UwCalculator implements CalculatorInterface

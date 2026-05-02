@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Apport;
+namespace CalculDpePHP\Apport;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -29,7 +29,7 @@ use DOMElement;
  * @xml-input    logement.caracteristique_generale.{surface_habitable_logement, surface_habitable_immeuble, nombre_appartement}
  * @xml-input    logement.enveloppe.inertie.enum_classe_inertie_id
  * @xml-output   logement.sortie.apport_et_besoin.{apport_solaire_ch, apport_interne_ch, apport_solaire_fr, apport_interne_fr, fraction_apport_gratuit_ch, fraction_apport_gratuit_depensier_ch, nadeq}
- * @depends-on   \CalculDpe\Apport\SurfaceSudEquivalenteCalculator, \CalculDpe\Inertie\InertieCalculator, \CalculDpe\Enveloppe\EnveloppeAggregator, \CalculDpe\Ventilation\VentilationAggregator
+ * @depends-on   \CalculDpePHP\Apport\SurfaceSudEquivalenteCalculator, \CalculDpePHP\Inertie\InertieCalculator, \CalculDpePHP\Enveloppe\EnveloppeAggregator, \CalculDpePHP\Ventilation\VentilationAggregator
  * @tables       reference/tv_sollicitations
  */
 final class FCalculator implements CalculatorInterface
@@ -54,10 +54,10 @@ final class FCalculator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            '\CalculDpe\Apport\SurfaceSudEquivalenteCalculator',
-            '\CalculDpe\Inertie\InertieCalculator',
-            '\CalculDpe\Enveloppe\EnveloppeAggregator',
-            '\CalculDpe\Ventilation\VentilationAggregator',
+            '\CalculDpePHP\Apport\SurfaceSudEquivalenteCalculator',
+            '\CalculDpePHP\Inertie\InertieCalculator',
+            '\CalculDpePHP\Enveloppe\EnveloppeAggregator',
+            '\CalculDpePHP\Ventilation\VentilationAggregator',
         ];
     }
 

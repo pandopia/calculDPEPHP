@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Xml;
+namespace CalculDpePHP\Xml;
 
 use DOMDocument;
 use DOMElement;

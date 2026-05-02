@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Smoke;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Engine\CalculatorPipeline;
-use CalculDpe\Tables\TableRepository;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Engine\CalculatorPipeline;
+use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
 use DOMElement;
 use PHPUnit\Framework\TestCase;

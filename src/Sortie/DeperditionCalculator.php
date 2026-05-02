@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Sortie;
+namespace CalculDpePHP\Sortie;
 
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 use DOMXPath;
 
@@ -26,7 +26,7 @@ use DOMXPath;
  *               context: enveloppe.dp_parois, enveloppe.dp_pont_thermique
  *               context: ventilation.hvent, ventilation.hperm
  * @xml-output   sortie.deperdition.{deperdition_renouvellement_air, deperdition_enveloppe}
- * @depends-on   \CalculDpe\Enveloppe\EnveloppeAggregator, \CalculDpe\Ventilation\VentilationAggregator
+ * @depends-on   \CalculDpePHP\Enveloppe\EnveloppeAggregator, \CalculDpePHP\Ventilation\VentilationAggregator
  * @tables       (aucune)
  */
 final class DeperditionCalculator implements CalculatorInterface
@@ -39,8 +39,8 @@ final class DeperditionCalculator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            '\CalculDpe\Enveloppe\EnveloppeAggregator',
-            '\CalculDpe\Ventilation\VentilationAggregator',
+            '\CalculDpePHP\Enveloppe\EnveloppeAggregator',
+            '\CalculDpePHP\Ventilation\VentilationAggregator',
         ];
     }
 

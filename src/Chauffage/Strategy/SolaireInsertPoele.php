@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Chauffage\Strategy;
+namespace CalculDpePHP\Chauffage\Strategy;
 
-use CalculDpe\Chauffage\BesoinChauffageCalculator;
-use CalculDpe\Chauffage\Rendement\Combustion\InsertsPoelesCalculator;
-use CalculDpe\Chauffage\Rendement\Combustion\RendementAnnuelMoyenCalculator;
-use CalculDpe\Chauffage\Rendement\DistributionCalculator;
-use CalculDpe\Chauffage\Rendement\EmissionCalculator;
-use CalculDpe\Chauffage\Rendement\GenerationNonCombustionCalculator;
-use CalculDpe\Chauffage\Rendement\RegulationCalculator;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Chauffage\BesoinChauffageCalculator;
+use CalculDpePHP\Chauffage\Rendement\Combustion\InsertsPoelesCalculator;
+use CalculDpePHP\Chauffage\Rendement\Combustion\RendementAnnuelMoyenCalculator;
+use CalculDpePHP\Chauffage\Rendement\DistributionCalculator;
+use CalculDpePHP\Chauffage\Rendement\EmissionCalculator;
+use CalculDpePHP\Chauffage\Rendement\GenerationNonCombustionCalculator;
+use CalculDpePHP\Chauffage\Rendement\RegulationCalculator;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -30,7 +30,7 @@ use DOMElement;
  * @spec-source  resources/specsplitted/09-conso-chauffage/06-solaire-insert-poele.md
  * @xml-input    installation_chauffage.donnee_entree.{enum_cfg_installation_ch_id, rdim, fch_saisi}
  * @xml-output   installation_chauffage.donnee_intermediaire.{besoin_ch, conso_ch}
- * @depends-on   \CalculDpe\Chauffage\Strategy\ChauffageSolaire
+ * @depends-on   \CalculDpePHP\Chauffage\Strategy\ChauffageSolaire
  * @tables       tv_facteur_couverture_solaire_id (§18.4 — via ChauffageSolaire::resolveFch)
  */
 final class SolaireInsertPoele implements CalculatorInterface

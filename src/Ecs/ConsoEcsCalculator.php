@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Ecs;
+namespace CalculDpePHP\Ecs;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -35,10 +35,10 @@ use DOMElement;
  * @xml-input    installation_ecs.donnee_intermediaire.{besoin_ecs, besoin_ecs_depensier, rendement_distribution}
  * @xml-input    generateur_ecs.donnee_intermediaire.{rendement_stockage, rendement_generation, rpn}
  * @xml-output   generateur_ecs.donnee_intermediaire.{conso_ecs, conso_ecs_depensier}
- * @depends-on   \CalculDpe\Ecs\BesoinEcsCalculator
- * @depends-on   \CalculDpe\Ecs\Rendement\DistributionCalculator
- * @depends-on   \CalculDpe\Ecs\Rendement\StockageCalculator
- * @depends-on   \CalculDpe\Ecs\Rendement\CombustionCalculator
+ * @depends-on   \CalculDpePHP\Ecs\BesoinEcsCalculator
+ * @depends-on   \CalculDpePHP\Ecs\Rendement\DistributionCalculator
+ * @depends-on   \CalculDpePHP\Ecs\Rendement\StockageCalculator
+ * @depends-on   \CalculDpePHP\Ecs\Rendement\CombustionCalculator
  * @tables       (aucune)
  */
 final class ConsoEcsCalculator implements CalculatorInterface
@@ -54,10 +54,10 @@ final class ConsoEcsCalculator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            '\CalculDpe\Ecs\BesoinEcsCalculator',
-            '\CalculDpe\Ecs\Rendement\DistributionCalculator',
-            '\CalculDpe\Ecs\Rendement\StockageCalculator',
-            '\CalculDpe\Ecs\Rendement\CombustionCalculator',
+            '\CalculDpePHP\Ecs\BesoinEcsCalculator',
+            '\CalculDpePHP\Ecs\Rendement\DistributionCalculator',
+            '\CalculDpePHP\Ecs\Rendement\StockageCalculator',
+            '\CalculDpePHP\Ecs\Rendement\CombustionCalculator',
         ];
     }
 

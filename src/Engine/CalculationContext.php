@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Engine;
+namespace CalculDpePHP\Engine;
 
-use CalculDpe\Common\Period;
-use CalculDpe\Tables\TableRepository;
+use CalculDpePHP\Common\Period;
+use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
 
 /**

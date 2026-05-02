@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Chauffage\Rendement\Combustion;
+namespace CalculDpePHP\Chauffage\Rendement\Combustion;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -27,7 +27,7 @@ use DOMElement;
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
  * @xml-input    generateur_chauffage.donnee_entree.{tv_generateur_combustion_id, enum_methode_saisie_carac_sys_id, pn, presence_ventouse}
  * @xml-output   generateur_chauffage.donnee_intermediaire.{pn, rpn, rpint, qp0, pveil}
- * @depends-on   \CalculDpe\Enveloppe\EnveloppeAggregator, \CalculDpe\Ventilation\VentilationAggregator
+ * @depends-on   \CalculDpePHP\Enveloppe\EnveloppeAggregator, \CalculDpePHP\Ventilation\VentilationAggregator
  * @tables       chauffage/tv_generateur_combustion
  */
 final class ChaudiereDefautCalculator implements CalculatorInterface
@@ -63,8 +63,8 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
     public function dependencies(): array
     {
         return [
-            '\CalculDpe\Enveloppe\EnveloppeAggregator',
-            '\CalculDpe\Ventilation\VentilationAggregator',
+            '\CalculDpePHP\Enveloppe\EnveloppeAggregator',
+            '\CalculDpePHP\Ventilation\VentilationAggregator',
         ];
     }
 

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Sortie;
 
-use CalculDpe\Common\Period;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Sortie\ApportEtBesoinCalculator;
-use CalculDpe\Tables\TableRepository;
+use CalculDpePHP\Common\Period;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Sortie\ApportEtBesoinCalculator;
+use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
 use DOMXPath;
 use PHPUnit\Framework\TestCase;

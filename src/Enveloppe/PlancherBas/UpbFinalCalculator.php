@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Enveloppe\PlancherBas;
+namespace CalculDpePHP\Enveloppe\PlancherBas;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 use RuntimeException;
 
@@ -32,7 +32,7 @@ use RuntimeException;
  * @spec-source resources/specsplitted/03-enveloppe-deperditions/02-parois-opaques/02-upb/00-calcul.md
  * @xml-input  plancher_bas.donnee_entree.{enum_type_adjacence_id, surface_ue, perimetre_ue} + donnee_intermediaire.upb
  * @xml-output plancher_bas.donnee_intermediaire.upb_final
- * @depends-on \CalculDpe\Enveloppe\PlancherBas\UpbCalculator
+ * @depends-on \CalculDpePHP\Enveloppe\PlancherBas\UpbCalculator
  * @tables tv_ue_vide_sanitaire, tv_ue_terre_plein
  */
 final class UpbFinalCalculator implements CalculatorInterface

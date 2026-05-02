@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Chauffage\Strategy;
 
-use CalculDpe\Chauffage\Strategy\AppointInsertElecSdb;
-use CalculDpe\Chauffage\Strategy\ChaudiereReleve;
-use CalculDpe\Chauffage\Strategy\ConvecteurBijonction;
-use CalculDpe\Chauffage\Strategy\InsertElecSdb;
-use CalculDpe\Chauffage\Strategy\InsertPoeleAppoint;
-use CalculDpe\Chauffage\Strategy\MultiGenerateurs;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Tables\TableRepository;
+use CalculDpePHP\Chauffage\Strategy\AppointInsertElecSdb;
+use CalculDpePHP\Chauffage\Strategy\ChaudiereReleve;
+use CalculDpePHP\Chauffage\Strategy\ConvecteurBijonction;
+use CalculDpePHP\Chauffage\Strategy\InsertElecSdb;
+use CalculDpePHP\Chauffage\Strategy\InsertPoeleAppoint;
+use CalculDpePHP\Chauffage\Strategy\MultiGenerateurs;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
 use DOMElement;
 use PHPUnit\Framework\TestCase;

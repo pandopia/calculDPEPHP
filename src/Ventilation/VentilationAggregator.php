@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Ventilation;
+namespace CalculDpePHP\Ventilation;
 
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 
 /**
@@ -23,9 +23,9 @@ use DOMElement;
  * @xml-input  ventilation.donnee_intermediaire.{hvent, hperm, conso_auxiliaire_ventilation}
  * @xml-output logement.sortie.deperdition.{hvent, hperm}
  * @xml-output logement.sortie.ef_conso.conso_auxiliaire_ventilation
- * @depends-on \CalculDpe\Ventilation\HventCalculator,
- *             \CalculDpe\Ventilation\HpermCalculator,
- *             \CalculDpe\Ventilation\ConsoAuxiliaireVentilationCalculator
+ * @depends-on \CalculDpePHP\Ventilation\HventCalculator,
+ *             \CalculDpePHP\Ventilation\HpermCalculator,
+ *             \CalculDpePHP\Ventilation\ConsoAuxiliaireVentilationCalculator
  * @tables (aucune)
  */
 final class VentilationAggregator implements CalculatorInterface

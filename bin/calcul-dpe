@@ -3,9 +3,7 @@
 
 declare(strict_types=1);
 
-use CalculDpe\Engine\CalculatorPipeline;
-use CalculDpe\Engine\DpeEngine;
-use CalculDpe\Tables\TableRepository;
+use CalculDpePHP\Engine\DefaultDpeEngineFactory;
 
 require __DIR__ . '/../vendor/autoload.php';
 
@@ -23,157 +21,8 @@ if ($output === $input) {
     exit(1);
 }
 
-$projectRoot = dirname(__DIR__);
-$tables   = new TableRepository($projectRoot . '/resources/tables');
-$pipeline = new CalculatorPipeline();
-
-// =============================================================================
-// Enregistrement des Calculators
-// -----------------------------------------------------------------------------
-// Au fur et à mesure que les phases B → G sont implémentées, ajouter ici les
-// instances de Calculators dans n'importe quel ordre — le tri topologique est
-// fait automatiquement par CalculatorPipeline en fonction des dependencies()
-// déclarées par chaque Calculator.
-// =============================================================================
-
-// Phase B — Coefficient b (TASK-B03)
-$pipeline->add(new \CalculDpe\Enveloppe\Mur\BCalculator());
-$pipeline->add(new \CalculDpe\Enveloppe\PlancherBas\BCalculator());
-$pipeline->add(new \CalculDpe\Enveloppe\PlancherHaut\BCalculator());
-$pipeline->add(new \CalculDpe\Enveloppe\BaieVitree\BCalculator());
-$pipeline->add(new \CalculDpe\Enveloppe\Porte\BCalculator());
-
-// Phase B — Mur Umur0 + Umur (TASK-B02)
-$pipeline->add(new \CalculDpe\Enveloppe\Mur\Umur0Calculator());
-$pipeline->add(new \CalculDpe\Enveloppe\Mur\UmurCalculator());
-
-// Phase B — Plancher bas Upb0 + Upb + UpbFinal (TASK-B05)
-$pipeline->add(new \CalculDpe\Enveloppe\PlancherBas\Upb0Calculator());
-$pipeline->add(new \CalculDpe\Enveloppe\PlancherBas\UpbCalculator());
-$pipeline->add(new \CalculDpe\Enveloppe\PlancherBas\UpbFinalCalculator());
-
-// Phase B — Plancher haut Uph0 + Uph (TASK-B05)
-$pipeline->add(new \CalculDpe\Enveloppe\PlancherHaut\Uph0Calculator());
-$pipeline->add(new \CalculDpe\Enveloppe\PlancherHaut\UphCalculator());
-
-// Phase B — Baies vitrées (TASK-B06)
-$pipeline->add(new \CalculDpe\Enveloppe\BaieVitree\UgCalculator());
-$pipeline->add(new \CalculDpe\Enveloppe\BaieVitree\UwCalculator());
-$pipeline->add(new \CalculDpe\Enveloppe\BaieVitree\UjnCalculator());
-$pipeline->add(new \CalculDpe\Enveloppe\BaieVitree\UMenuiserieCalculator());
-$pipeline->add(new \CalculDpe\Enveloppe\BaieVitree\SwCalculator());
-$pipeline->add(new \CalculDpe\Enveloppe\BaieVitree\Fe1Calculator());
-$pipeline->add(new \CalculDpe\Enveloppe\BaieVitree\Fe2Calculator());
-
-// Phase B — Portes (TASK-B06)
-$pipeline->add(new \CalculDpe\Enveloppe\Porte\UporteCalculator());
-
-// Phase B — Ponts thermiques (TASK-B08)
-$pipeline->add(new \CalculDpe\Enveloppe\PontThermique\KCalculator());
-
-// Phase B — Agrégation enveloppe (TASK-B09)
-$pipeline->add(new \CalculDpe\Enveloppe\EnveloppeAggregator());
-
-// §4 — Ventilation (déperditions par renouvellement d'air)
-$pipeline->add(new \CalculDpe\Ventilation\Q4PaConvCalculator());
-$pipeline->add(new \CalculDpe\Ventilation\HventCalculator());
-$pipeline->add(new \CalculDpe\Ventilation\HpermCalculator());
-
-// §5 — Auxiliaires de ventilation
-$pipeline->add(new \CalculDpe\Ventilation\PventMoyCalculator());
-$pipeline->add(new \CalculDpe\Ventilation\ConsoAuxiliaireVentilationCalculator());
-$pipeline->add(new \CalculDpe\Ventilation\VentilationAggregator());
-
-// Phase F — Déperditions totales (TASK-F01)
-$pipeline->add(new \CalculDpe\Sortie\DeperditionCalculator());
-
-// Phase C — Apports gratuits, inertie, intermittence
-$pipeline->add(new \CalculDpe\Inertie\InertieCalculator());
-$pipeline->add(new \CalculDpe\Intermittence\IntermittenceCalculator());
-$pipeline->add(new \CalculDpe\Apport\SurfaceSudEquivalenteCalculator());
-$pipeline->add(new \CalculDpe\Apport\EspaceTamponSolariseCalculator());
-$pipeline->add(new \CalculDpe\Apport\FCalculator());
-
-// Phase D — Besoins
-$pipeline->add(new \CalculDpe\Chauffage\BesoinChauffageCalculator());
-$pipeline->add(new \CalculDpe\Froid\BesoinAnnuelCalculator());
-$pipeline->add(new \CalculDpe\Froid\ConsoFroidCalculator());
-$pipeline->add(new \CalculDpe\Ecs\BesoinEcsCalculator());
-
-// Phase E — Rendements ECS
-$pipeline->add(new \CalculDpe\Ecs\Rendement\DistributionCalculator());
-$pipeline->add(new \CalculDpe\Ecs\Rendement\StockageCalculator());
-$pipeline->add(new \CalculDpe\Ecs\Rendement\CombustionCalculator());
-$pipeline->add(new \CalculDpe\Ecs\Rendement\CetAccumulationCalculator());
-$pipeline->add(new \CalculDpe\Ecs\Rendement\ReseauChaleurCalculator());
-
-// Phase D — Conso ECS
-$pipeline->add(new \CalculDpe\Ecs\ConsoEcsCalculator());
-
-// Phase E — Rendements chauffage (émetteurs)
-$pipeline->add(new \CalculDpe\Chauffage\Rendement\EmissionCalculator());
-$pipeline->add(new \CalculDpe\Chauffage\Rendement\DistributionCalculator());
-$pipeline->add(new \CalculDpe\Chauffage\Rendement\RegulationCalculator());
-
-// Phase E — Rendements chauffage (générateurs)
-$pipeline->add(new \CalculDpe\Chauffage\Rendement\GenerationNonCombustionCalculator());
-$pipeline->add(new \CalculDpe\Chauffage\Rendement\Combustion\InsertsPoelesCalculator());
-$pipeline->add(new \CalculDpe\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator());
-$pipeline->add(new \CalculDpe\Chauffage\Rendement\Combustion\ChaudiereProfilChargeCalculator());
-$pipeline->add(new \CalculDpe\Chauffage\Rendement\Combustion\RendementAnnuelMoyenCalculator());
-
-// Phase E — Stratégies de consommation chauffage (§9.x)
-$pipeline->add(new \CalculDpe\Chauffage\Strategy\InstallationClassique());
-$pipeline->add(new \CalculDpe\Chauffage\Strategy\MultiGenerateurs());       // cfg_id=6,8
-$pipeline->add(new \CalculDpe\Chauffage\Strategy\InsertPoeleAppoint());     // cfg_id=3
-$pipeline->add(new \CalculDpe\Chauffage\Strategy\InsertElecSdb());          // cfg_id=4
-$pipeline->add(new \CalculDpe\Chauffage\Strategy\AppointInsertElecSdb());   // cfg_id=5
-$pipeline->add(new \CalculDpe\Chauffage\Strategy\ChaudiereReleve());        // cfg_id=9
-$pipeline->add(new \CalculDpe\Chauffage\Strategy\ConvecteurBijonction());   // cfg_id=11
-$pipeline->add(new \CalculDpe\Chauffage\Strategy\ChauffageSolaire());       // cfg_id=2
-$pipeline->add(new \CalculDpe\Chauffage\Strategy\SolaireInsertPoele());     // cfg_id=7
-
-// Phase E — Auxiliaires de génération (§15.1) et distribution (§15.2)
-$pipeline->add(new \CalculDpe\Auxiliaire\AuxGenerationCalculator());
-$pipeline->add(new \CalculDpe\Auxiliaire\AuxDistributionCalculator());
-
-// Phase F — Éclairage (§16.1) et agrégation EF
-$pipeline->add(new \CalculDpe\Eclairage\ConsoEclairageCalculator());
-$pipeline->add(new \CalculDpe\Sortie\EfConsoCalculator());
-
-// Phase F — Énergie primaire + classe DPE (§1 p.6)
-$pipeline->add(new \CalculDpe\Sortie\EpConsoCalculator());
-
-// Phase F — Émissions GES + classe GES + mise à jour classe_bilan_dpe
-$pipeline->add(new \CalculDpe\Sortie\EmissionGesCalculator());
-
-// Phase F — Ubat + qualité isolation par paroi (TASK-F07)
-$pipeline->add(new \CalculDpe\Sortie\QualiteIsolationCalculator());
-
-// Phase F — Confort été (TASK-F08)
-$pipeline->add(new \CalculDpe\Sortie\ConfortEteCalculator());
-
-// Phase F — Coût (TASK-F06)
-$pipeline->add(new \CalculDpe\Sortie\CoutCalculator());
-
-// Phase F — Sortie par énergie (TASK-F10)
-$pipeline->add(new \CalculDpe\Sortie\SortieParEnergieAggregator());
-
-// Phase G — §17 Collectif (TASK-G01 à G04)
-$pipeline->add(new \CalculDpe\Collectif\DpeImmeubleCalculator());
-$pipeline->add(new \CalculDpe\Collectif\DpeAppartementCalculator());
-$pipeline->add(new \CalculDpe\Collectif\ChauffageMultiImmeubleCalculator());
-$pipeline->add(new \CalculDpe\Collectif\ImmeubleMixteCalculator());
-
-// Phase E41 + F09 — Production PV et électricité autoconsommée
-$pipeline->add(new \CalculDpe\ProductionElec\ProductionPvCalculator());
-$pipeline->add(new \CalculDpe\Sortie\ProductionElectriciteCalculator());
-
-// Phase F — Apports et besoins agrégés (TASK-F02)
-$pipeline->add(new \CalculDpe\Sortie\ApportEtBesoinCalculator());
-
 try {
-    $engine = new DpeEngine($pipeline, $tables);
+    $engine = DefaultDpeEngineFactory::create(dirname(__DIR__));
     $engine->run($input, $output);
     fwrite(STDOUT, "✓ DPE calculé : $output\n");
 } catch (Throwable $t) {

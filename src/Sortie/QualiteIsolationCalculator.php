@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace CalculDpe\Sortie;
+namespace CalculDpePHP\Sortie;
 
-use CalculDpe\Engine\CalculatorInterface;
-use CalculDpe\Engine\CalculationContext;
-use CalculDpe\Xml\NodeAccessor;
+use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Engine\CalculationContext;
+use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 use DOMXPath;
 
@@ -37,7 +37,7 @@ use DOMXPath;
  *               qualite_isol_plancher_haut_comble_amenage, qualite_isol_plancher_haut_toit_terrasse,
  *               qualite_isol_plancher_haut_comble_perdu, qualite_isol_plancher_bas,
  *               qualite_isol_menuiserie}
- * @depends-on   \CalculDpe\Enveloppe\EnveloppeAggregator
+ * @depends-on   \CalculDpePHP\Enveloppe\EnveloppeAggregator
  * @tables       (aucune)
  */
 final class QualiteIsolationCalculator implements CalculatorInterface
@@ -61,7 +61,7 @@ final class QualiteIsolationCalculator implements CalculatorInterface
 
     public function dependencies(): array
     {
-        return ['\CalculDpe\Enveloppe\EnveloppeAggregator'];
+        return ['\CalculDpePHP\Enveloppe\EnveloppeAggregator'];
     }
 
     public function appliesTo(DOMElement $node): bool
