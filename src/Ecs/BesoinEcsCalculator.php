@@ -131,10 +131,16 @@ final class BesoinEcsCalculator implements CalculatorInterface
         //   • N installs partitionnant l'immeuble par surface (chacune rdim=1)
         //     → ratio = surface_install/surface_immeuble                (besoin proportionnel)
         $nbApt        = $accessor->getIntOrNull('./caracteristique_generale/nombre_appartement', $node) ?? 1;
-        $surfImmeuble = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $node);
-        if ($surfImmeuble === null || $surfImmeuble <= 0.0) {
-            $surfImmeuble = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node);
-        }
+        // Surface de référence : surface_habitable_immeuble pour un DPE immeuble,
+        // sinon surface_habitable_logement (DPE appartement / zone, modes 2-5, 10-13)
+        // où le besoin_total est déjà à l'échelle apt.
+        $modeAppId   = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $node);
+        $isZoneDpe   = $modeAppId !== null && in_array($modeAppId, [2, 3, 4, 5, 10, 11, 12, 13, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40], true);
+        $surfImmeuble = $isZoneDpe
+            ? ($accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node)
+                ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $node))
+            : ($accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $node)
+                ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node));
         $instalNodes  = [];
         $allIndividual = true;
         foreach ($node->getElementsByTagName('installation_ecs') as $inst) {

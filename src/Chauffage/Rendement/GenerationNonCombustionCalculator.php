@@ -145,6 +145,17 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
             return $scopInput;
         }
 
+        // §12.4 enum_methode_saisie_carac_sys_id = 6 : « scop saisi » justifié par
+        // documentation technique. LICIEL stocke alors la valeur dans la fiche
+        // technique catégorie 7 (chauffage), description "SCOP / COP: <valeur>".
+        $methode = $accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node);
+        if ($methode === 6) {
+            $scopFiche = $this->readScopFromFicheTechnique($node, 7);
+            if ($scopFiche !== null && $scopFiche > 0.0) {
+                return $scopFiche;
+            }
+        }
+
         $row       = self::SCOP_TABLE[$genId] ?? null;
         if ($row === null) {
             return 2.2;
@@ -155,6 +166,41 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
         $emType    = $context->get('installation.emetteur_type', 'autres');
 
         return (float)($row[$zoneKey][$emType] ?? $row[$zoneKey]['autres'] ?? 2.2);
+    }
+
+    /**
+     * Lit la valeur SCOP/COP saisie dans la fiche technique de la catégorie donnée
+     * (7 = chauffage, 8 = ECS). Cherche une sous-fiche dont la description contient
+     * "SCOP" ou "COP". Retourne null si introuvable / illisible.
+     */
+    private function readScopFromFicheTechnique(DOMElement $node, int $category): ?float
+    {
+        $doc = $node->ownerDocument;
+        if ($doc === null) {
+            return null;
+        }
+        $xpath = new \DOMXPath($doc);
+        // Cible toutes les sous-fiches de la catégorie demandée dont la description
+        // mentionne SCOP ou COP.
+        $expr = sprintf(
+            '//fiche_technique[enum_categorie_fiche_technique_id="%d"]/sous_fiche_technique_collection/sous_fiche_technique[contains(translate(description, "scop", "SCOP"), "SCOP") or contains(translate(description, "cop", "COP"), "COP")]/valeur',
+            $category
+        );
+        $nodes = @$xpath->query($expr);
+        if ($nodes === false) {
+            return null;
+        }
+        foreach ($nodes as $n) {
+            $raw = trim(str_replace(',', '.', (string)$n->textContent));
+            if ($raw === '' || !is_numeric($raw)) {
+                continue;
+            }
+            $v = (float)$raw;
+            if ($v > 0.0) {
+                return $v;
+            }
+        }
+        return null;
     }
 
     private function resolveZone(CalculationContext $context, NodeAccessor $accessor): int
