@@ -133,8 +133,20 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
 
             $pchW = $this->computePnFromGv($context, $ratioVirt, $genId);
             if ($isImmeubleIndividuel) {
-                // Pch à l'échelle de l'appartement moyen (§13.2.2.4, §17.1.4.2)
-                $pchW = $pchW / $nblgt;
+                // §17.1.4.2 : pour un DPE immeuble chauffage individuel, Pch reflète
+                // la portion d'immeuble servie par cette installation.
+                //   • Si l'installation déclare sa surface (surface_chauffee / surface_habitable) :
+                //     on partitionne Pch au prorata (LICIEL).
+                //   • Sinon : on retombe sur l'« appartement moyen » (Pch / nblgt).
+                $shImmeuble = $accessor->getFloatOrNull('//caracteristique_generale/surface_habitable_immeuble', $node);
+                $shInstall  = $this->getSurfaceInstallation($node, $accessor);
+                if ($shImmeuble !== null && $shImmeuble > 0.0
+                    && $shInstall !== null && $shInstall > 0.0
+                    && $shInstall < $shImmeuble) {
+                    $pchW = $pchW * ($shInstall / $shImmeuble);
+                } else {
+                    $pchW = $pchW / $nblgt;
+                }
             }
 
             // Pour les chaudières mixtes, Pdim = max(Pch, Pecs) puis Pn lue dans la table §13.2.2.4
@@ -341,6 +353,26 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             return self::PN_CAP_GAZ_FIOUL;
         }
         return PHP_FLOAT_MAX;
+    }
+
+    /**
+     * Lit la surface couverte par l'installation parente (chauffage ou ECS).
+     * Pour les générateurs CH : surface_chauffee ; pour ECS : surface_habitable.
+     */
+    private function getSurfaceInstallation(DOMElement $genNode, NodeAccessor $accessor): ?float
+    {
+        // generateur → generateur_collection → installation
+        $parent = $genNode->parentNode?->parentNode;
+        if (!$parent instanceof DOMElement) {
+            return null;
+        }
+        if ($parent->nodeName === 'installation_chauffage') {
+            return $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $parent);
+        }
+        if ($parent->nodeName === 'installation_ecs') {
+            return $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $parent);
+        }
+        return null;
     }
 
     /**

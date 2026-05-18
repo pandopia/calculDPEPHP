@@ -325,16 +325,42 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         }
 
         // Immeuble avec chauffage individuel (§17.1.4.2) : Cdimref doit être calculé
-        // à l'échelle de l'appartement moyen. Le générateur n'alimente qu'un seul
-        // appartement, donc GV utile = GV_immeuble / Nblgt.
+        // à l'échelle servie par l'installation.
+        //   • Si l'installation déclare sa surface : GV utile = GV × sh_install/sh_immeuble.
+        //   • Sinon : GV utile = GV_immeuble / Nblgt (« appartement moyen »).
         $modeApp = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
         if ($modeApp !== null && in_array($modeApp, [6, 8, 10, 12], true)) {
+            $shImmeuble = $accessor->getFloatOrNull('//caracteristique_generale/surface_habitable_immeuble');
+            $shInstall  = $this->getSurfaceInstallation($node, $accessor);
+            if ($shImmeuble !== null && $shImmeuble > 0.0
+                && $shInstall !== null && $shInstall > 0.0
+                && $shInstall < $shImmeuble) {
+                return $gv * ($shInstall / $shImmeuble);
+            }
             $nblgt = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement');
             if ($nblgt !== null && $nblgt > 1) {
                 return $gv / $nblgt;
             }
         }
         return $gv;
+    }
+
+    /**
+     * Lit la surface couverte par l'installation parente (chauffage ou ECS).
+     */
+    private function getSurfaceInstallation(DOMElement $genNode, NodeAccessor $accessor): ?float
+    {
+        $parent = $genNode->parentNode?->parentNode;
+        if (!$parent instanceof DOMElement) {
+            return null;
+        }
+        if ($parent->nodeName === 'installation_chauffage') {
+            return $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $parent);
+        }
+        if ($parent->nodeName === 'installation_ecs') {
+            return $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $parent);
+        }
+        return null;
     }
 
     private function resolveTbase(CalculationContext $context, NodeAccessor $accessor): float
