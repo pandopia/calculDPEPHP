@@ -45,8 +45,8 @@ return [
         'autres' => [
             1 => 2.50,  2 => 2.50,
             3 => 1.00,
-            4 => 0.80,
-            5 => 0.70,                       // H1 : RT82 ne distinguait pas EJ/autres
+            4 => 1.00,                       // RT74 autres : exigence moins stricte qu'effet joule
+            5 => 0.80,                       // RT82 autres H1
             6 => 0.50,
             7 => 0.40,
             8 => 0.36,
@@ -67,8 +67,8 @@ return [
         'autres' => [
             1 => 2.50,  2 => 2.50,
             3 => 1.05,
-            4 => 0.84,
-            5 => 0.84,                       // H2 RT82 autres : même que 78-82
+            4 => 1.05,                       // RT74 autres : exigence moins stricte qu'effet joule
+            5 => 0.84,                       // RT82 autres H2
             6 => 0.53,
             7 => 0.40,
             8 => 0.36,
@@ -89,8 +89,8 @@ return [
         'autres' => [
             1 => 2.50,  2 => 2.50,
             3 => 1.11,
-            4 => 0.89,
-            5 => 0.89,                       // H3 RT82 autres : même que 78-82
+            4 => 1.11,                       // RT74 autres : exigence moins stricte qu'effet joule
+            5 => 0.89,                       // RT82 autres H3
             6 => 0.56,
             7 => 0.47,
             8 => 0.40,

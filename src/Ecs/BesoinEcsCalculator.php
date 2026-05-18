@@ -122,11 +122,19 @@ final class BesoinEcsCalculator implements CalculatorInterface
         $accessor->setChildValue($apportEtBesoin, 'v40_ecs_journalier_depensier',  $v40JournalierDep);
 
         // ── 8. Écriture dans chaque installation_ecs/donnee_intermediaire ───────
-        // Ratio open3cl 11_ecs.js :
-        //   - Immeuble avec systèmes ECS individuels (>1 install, tous type=1)
-        //     → ratio = 1 / nombre_appartement (chaque install ≃ 1 apt-moyen)
-        //   - Sinon (1 install, ou install collective) → ratio = 1/rdim
+        // Ratio LICIEL : besoin_install = besoin_immeuble × surface_install / (surface_immeuble × rdim)
+        //
+        // Cas typiques :
+        //   • 1 install couvrant tout l'immeuble, rdim=1 → ratio = 1   (besoin install = total)
+        //   • 1 install rdim=N représentant N apt moyens, surface_install = surface_immeuble
+        //     → ratio = 1/N                                            (besoin install = total/N)
+        //   • N installs partitionnant l'immeuble par surface (chacune rdim=1)
+        //     → ratio = surface_install/surface_immeuble                (besoin proportionnel)
         $nbApt        = $accessor->getIntOrNull('./caracteristique_generale/nombre_appartement', $node) ?? 1;
+        $surfImmeuble = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $node);
+        if ($surfImmeuble === null || $surfImmeuble <= 0.0) {
+            $surfImmeuble = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node);
+        }
         $instalNodes  = [];
         $allIndividual = true;
         foreach ($node->getElementsByTagName('installation_ecs') as $inst) {
@@ -142,11 +150,19 @@ final class BesoinEcsCalculator implements CalculatorInterface
         $isImmeubleEcsIndividuels = count($instalNodes) > 1 && $allIndividual && $nbApt > 1;
 
         foreach ($instalNodes as $inst) {
-            if ($isImmeubleEcsIndividuels) {
+            $rdim     = $accessor->getFloatOrNull('./donnee_entree/rdim',              $inst) ?? 1.0;
+            $rdim     = $rdim > 0.0 ? $rdim : 1.0;
+            $surfInst = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $inst);
+
+            if ($surfInst !== null && $surfInst > 0.0 && $surfImmeuble !== null && $surfImmeuble > 0.0) {
+                // Partition par surface : besoin_install = besoin × surface_install / (surface_immeuble × rdim)
+                $ratio = $surfInst / ($surfImmeuble * $rdim);
+            } elseif ($isImmeubleEcsIndividuels) {
+                // Plusieurs installs ECS individuelles sans surface saisie : chaque install ≃ 1 apt-moyen
                 $ratio = 1.0 / $nbApt;
             } else {
-                $rdim  = $accessor->getFloatOrNull('./donnee_entree/rdim', $inst) ?? 1.0;
-                $ratio = $rdim > 0.0 ? (1.0 / $rdim) : 1.0;
+                // 1 seule install (ou install collective) → besoin /rdim
+                $ratio = 1.0 / $rdim;
             }
             $becsForInst    = $becsTotal    * $ratio;
             $becsForInstDep = $becsTotalDep * $ratio;

@@ -233,6 +233,10 @@ final class AuxGenerationCalculator implements CalculatorInterface
             $besoin    = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs',           $install) ?? 0.0;
             $besoinDep = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs_depensier', $install) ?? 0.0;
             $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation',        $install) ?? 1.0;
+            // rdim : nombre d'unités (appartements) représentées par cette installation.
+            // Comme pour conso_ecs, la conso d'aux est agrégée à l'échelle bâtiment au niveau sortie.
+            $rdim      = $accessor->getFloatOrNull('./donnee_entree/rdim',                        $install) ?? 1.0;
+            $rdim      = $rdim > 0.0 ? $rdim : 1.0;
 
             foreach ($install->getElementsByTagName('generateur_ecs') as $gen) {
                 if (!$gen instanceof DOMElement) {
@@ -252,16 +256,16 @@ final class AuxGenerationCalculator implements CalculatorInterface
                     if ($paux <= 0.0) {
                         continue;
                     }
-                    $totalQ    += $ratioVirt * $paux * $besoin    / $pe;
-                    $totalQDep += $ratioVirt * $paux * $besoinDep / $pe;
+                    $totalQ    += $rdim * $ratioVirt * $paux * $besoin    / $pe;
+                    $totalQDep += $rdim * $ratioVirt * $paux * $besoinDep / $pe;
                 } else {
                     $pnKw  = min($pn / 1000.0, $pnCapKw);
                     $paux  = $g + $h * $pnKw;
                     if ($paux <= 0.0) {
                         continue;
                     }
-                    $totalQ    += $paux * $besoin    / $pn;
-                    $totalQDep += $paux * $besoinDep / $pn;
+                    $totalQ    += $rdim * $paux * $besoin    / $pn;
+                    $totalQDep += $rdim * $paux * $besoinDep / $pn;
                 }
             }
 
