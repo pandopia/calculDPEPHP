@@ -208,21 +208,36 @@ final class AuxDistributionCalculator implements CalculatorInterface
                 continue;
             }
 
+            // Échelle de calcul : Pcircem doit être dimensionné à la taille du circuit
+            // réellement piloté par UN circulateur (§15.2.1).
+            //   • Chauffage collectif (type=2) : un seul circulateur pour l'immeuble entier
+            //     → on calcule à l'échelle bâtiment (rdim=1).
+            //   • Chauffage individuel dans un DPE immeuble (type=1 avec rdim>1) :
+            //     chaque appartement a son propre circulateur → on calcule à l'échelle
+            //     d'un appartement « moyen » (Sh/rdim, GV/rdim) puis on multiplie par rdim
+            //     pour obtenir le total bâtiment. Le plancher de 30 W joue par circulateur.
+            $rdimInstall = $accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0;
+            $rdimInstall = $rdimInstall > 0.0 ? $rdimInstall : 1.0;
+            $isIndividuelMultiplie = ($typeInstall === 1 && $rdimInstall > 1.0);
+
+            $shCalcEff = $isIndividuelMultiplie ? ($shCalc / $rdimInstall) : $shCalc;
+            $pncEff    = $isIndividuelMultiplie ? ($pnc / $rdimInstall)    : $pnc;
+
             // Spec §15.2.1 / open3cl 15_conso_aux.js : Lem et shFactor à l'échelle bâtiment
-            $lem       = 5.0 * $fcot * ($niv + sqrt($shCalc / $niv));
+            $lem       = 5.0 * $fcot * ($niv + sqrt($shCalcEff / $niv));
             $deltaPnom = 0.15 * $lem + $deltaP;
 
             // Ratio de surface couverte par l'installation : surface_chauffee / Sh_bâtiment
             // (= 1.0 pour maison/appartement individuel ; < 1 pour immeuble multi-installations)
             $ratioSurf = ($surfChauffee > 0.0 && $shCalc > 0.0) ? min(1.0, $surfChauffee / $shCalc) : 1.0;
 
-            $qvem = $dtDim > 0.0 ? ($pnc * $ratioSurf / (1.163 * $dtDim)) : 0.0;
+            $qvem = $dtDim > 0.0 ? ($pncEff * $ratioSurf / (1.163 * $dtDim)) : 0.0;
 
-            $shFactor  = max(1.0, $shCalc / 400.0);
+            $shFactor  = max(1.0, $shCalcEff / 400.0);
             $inner     = ($shFactor > 0.0) ? ($deltaPnom * $qvem / $shFactor) : 0.0;
             $pcircem   = max(self::PCIRCEM_MIN, 6.44 * (($inner > 0.0) ? ($inner ** 0.676) : 0.0) * $shFactor);
 
-            $totalCaux += $pcircem * $nref / 1000.0;
+            $totalCaux += $pcircem * $nref * ($isIndividuelMultiplie ? $rdimInstall : 1.0) / 1000.0;
 
             $cleInst = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ch', $install);
             if ($cleInst !== null && $cleInst > 0.0) {
