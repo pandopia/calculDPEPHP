@@ -132,6 +132,10 @@ final class EndToEndTest extends TestCase
             if (!is_file($verif)) {
                 continue;
             }
+            // DPE logement_neuf (RE2020/RT2012) : non couvert par le moteur 3CL.
+            if (self::isDpeNeuf($input)) {
+                continue;
+            }
             $excluded = [];
             foreach (self::TAGS_EXCLUDED_BY_FILE as $prefix => $tags) {
                 if (str_contains($name, $prefix)) {
@@ -141,6 +145,28 @@ final class EndToEndTest extends TestCase
             $cases[$name] = [$input, $verif, array_unique($excluded)];
         }
         return $cases;
+    }
+
+    /**
+     * Détecte les DPE « logement_neuf » (RE2020/RT2012) — racine
+     * `<dpe>/<logement_neuf>` — qui suivent une méthodologie différente du 3CL.
+     */
+    private static function isDpeNeuf(string $path): bool
+    {
+        $r = new \XMLReader();
+        if (!$r->open($path)) {
+            return false;
+        }
+        $isNeuf = false;
+        while ($r->read()) {
+            if ($r->nodeType !== \XMLReader::ELEMENT) {
+                continue;
+            }
+            if ($r->name === 'logement_neuf') { $isNeuf = true; break; }
+            if ($r->name === 'logement')       { break; }
+        }
+        $r->close();
+        return $isNeuf;
     }
 
     /**

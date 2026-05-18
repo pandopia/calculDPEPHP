@@ -205,6 +205,25 @@ function filterByTag(array $values, array $tagSet): array
     return $out;
 }
 
+/**
+ * Détecte les DPE « logement_neuf » (RE2020 / RT2012) — racine
+ * `<dpe>/<logement_neuf>` au lieu de `<dpe>/<logement>` — qui suivent une
+ * méthodologie différente du 3CL-2021 et ne sont pas couverts par ce moteur.
+ */
+function isDpeNeuf(string $path): bool
+{
+    $r = new XMLReader();
+    if (!$r->open($path)) return false;
+    $isNeuf = false;
+    while ($r->read()) {
+        if ($r->nodeType !== XMLReader::ELEMENT) continue;
+        if ($r->name === 'logement_neuf') { $isNeuf = true; break; }
+        if ($r->name === 'logement')       { break; }
+    }
+    $r->close();
+    return $isNeuf;
+}
+
 function diffValues(array $expected, array $actual, array $tol): array
 {
     $defaultTol = (float)$tol['default'];
@@ -230,14 +249,23 @@ function diffValues(array $expected, array $actual, array $tol): array
 }
 
 // ── Collecte des paires input/verif ───────────────────────────────────────
-$pairs = [];
+$pairs   = [];
+$skipped = [];
 foreach (glob($inputDir . '/*.xml') as $inputPath) {
     $name = basename($inputPath, '.xml');
     if (str_ends_with($name, '.calculated')) continue;
     if ($filterNum !== null && !str_contains($name, $filterNum)) continue;
     $verifPath = $verifDir . '/' . $name . '.xml';
     if (!is_file($verifPath)) continue;
+    // DPE logement_neuf (RE2020 / RT2012) : méthodologie distincte du 3CL — non couvert.
+    if (isDpeNeuf($inputPath)) {
+        $skipped[] = $name;
+        continue;
+    }
     $pairs[$name] = ['input' => $inputPath, 'verif' => $verifPath];
+}
+foreach ($skipped as $name) {
+    fwrite(STDERR, "  $name ... SKIP (DPE neuf)\n");
 }
 ksort($pairs);
 
