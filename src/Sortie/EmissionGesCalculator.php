@@ -95,7 +95,7 @@ final class EmissionGesCalculator implements CalculatorInterface
 
         // ── 2. Chauffage GES ─────────────────────────────────────────────────
         [$gesChTotal, $gesChDepTotal, $cleRepartitionCh] =
-            $this->aggregateChGes($accessor, $node, $nbreAppt);
+            $this->aggregateChGes($accessor, $node, $nbreAppt, $context);
 
         $gesConsoChEf    = $isZone ? $gesChTotal * $cleRepartitionCh : $gesChTotal;
         // GES dépensier chauffage = GES conventionnel (même convention que l'EP :
@@ -104,7 +104,7 @@ final class EmissionGesCalculator implements CalculatorInterface
 
         // ── 3. ECS GES ───────────────────────────────────────────────────────
         [$gesEcsTotal, , $cleRepartitionEcs] =
-            $this->aggregateEcsGes($accessor, $node, $nbreAppt);
+            $this->aggregateEcsGes($accessor, $node, $nbreAppt, $context);
 
         $gesConsoEcsEf    = $isZone ? $gesEcsTotal * $cleRepartitionEcs : $gesEcsTotal;
         // GES dépensier ECS = GES conventionnel (même convention).
@@ -180,7 +180,7 @@ final class EmissionGesCalculator implements CalculatorInterface
     /**
      * @return array{float, float, float} [ges_total, ges_total_dep, cle_repartition_ch]
      */
-    private function aggregateChGes(NodeAccessor $accessor, DOMElement $logement, float $nbreAppt): array
+    private function aggregateChGes(NodeAccessor $accessor, DOMElement $logement, float $nbreAppt, CalculationContext $context): array
     {
         $collection = $this->getChild($logement, 'installation_chauffage_collection');
         if ($collection === null) {
@@ -213,7 +213,7 @@ final class EmissionGesCalculator implements CalculatorInterface
             $consoDep = $accessor->getFloatOrNull('./donnee_intermediaire/conso_ch_depensier', $install) ?? 0.0;
 
             $energyId = $this->firstGeneratorEnergyType($accessor, $install, 'generateur_chauffage');
-            $gesFact  = $this->gesFactorCh($energyId);
+            $gesFact  = $this->gesFactorCh($energyId, $install, $accessor, 'generateur_chauffage', $context);
 
             $totalGes    += $conso    * $rdimEff * $gesFact;
             $totalGesDep += $consoDep * $rdimEff * $gesFact;
@@ -230,7 +230,7 @@ final class EmissionGesCalculator implements CalculatorInterface
     /**
      * @return array{float, float, float} [ges_total, ges_total_dep, cle_repartition_ecs]
      */
-    private function aggregateEcsGes(NodeAccessor $accessor, DOMElement $logement, float $nbreAppt): array
+    private function aggregateEcsGes(NodeAccessor $accessor, DOMElement $logement, float $nbreAppt, CalculationContext $context): array
     {
         $collection = $this->getChild($logement, 'installation_ecs_collection');
         if ($collection === null) {
@@ -270,7 +270,7 @@ final class EmissionGesCalculator implements CalculatorInterface
                 $consoDep = $accessor->getFloatOrNull('./donnee_intermediaire/conso_ecs_depensier', $gen) ?? 0.0;
 
                 $energyId = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $gen) ?? 2;
-                $gesFact  = $this->gesFactorEcs($energyId);
+                $gesFact  = $this->gesFactorEcs($energyId, $gen, $accessor, $context);
 
                 $installGes    += $conso    * $gesFact;
                 $installGesDep += $consoDep * $gesFact;
@@ -288,20 +288,88 @@ final class EmissionGesCalculator implements CalculatorInterface
         return [$totalGes, $totalGesDep, $cleRepartition];
     }
 
-    private function gesFactorCh(int $energyTypeId): float
-    {
+    private function gesFactorCh(
+        int $energyTypeId,
+        ?DOMElement $install = null,
+        ?NodeAccessor $accessor = null,
+        ?string $generatorTag = null,
+        ?CalculationContext $context = null,
+    ): float {
         if ($energyTypeId === 1) {
             return self::GES_ELEC_CH;
+        }
+        if ($energyTypeId === 8 && $install !== null && $accessor !== null && $context !== null && $generatorTag !== null) {
+            $gen = $this->firstGenerator($install, $generatorTag);
+            if ($gen !== null) {
+                $factor = $this->resolveReseauChaleurFactor($gen, $accessor, $context);
+                if ($factor !== null) {
+                    return $factor;
+                }
+            }
         }
         return self::GES_BY_ENERGY[$energyTypeId] ?? 0.0;
     }
 
-    private function gesFactorEcs(int $energyTypeId): float
-    {
+    private function gesFactorEcs(
+        int $energyTypeId,
+        ?DOMElement $gen = null,
+        ?NodeAccessor $accessor = null,
+        ?CalculationContext $context = null,
+    ): float {
         if ($energyTypeId === 1) {
             return self::GES_ELEC_ECS;
         }
+        if ($energyTypeId === 8 && $gen !== null && $accessor !== null && $context !== null) {
+            $factor = $this->resolveReseauChaleurFactor($gen, $accessor, $context);
+            if ($factor !== null) {
+                return $factor;
+            }
+        }
         return self::GES_BY_ENERGY[$energyTypeId] ?? 0.0;
+    }
+
+    /**
+     * Lookup contenu_co2_acv pour un générateur sur réseau de chauffage urbain.
+     * Année : year(date_arrete_reseau_chaleur) - 1, sinon year(date_etablissement_dpe) - 1.
+     * Clamp ≥ 2022. Fallback null (caller utilise 0.385 par défaut).
+     */
+    private function resolveReseauChaleurFactor(
+        DOMElement $gen,
+        NodeAccessor $accessor,
+        CalculationContext $context,
+    ): ?float {
+        $reseauId = $accessor->getStringOrNull('./donnee_entree/identifiant_reseau_chaleur', $gen);
+        if ($reseauId === null || $reseauId === '') {
+            return 0.385; // « autres réseaux de chaleur »
+        }
+
+        $dateArrete = $accessor->getStringOrNull('./donnee_entree/date_arrete_reseau_chaleur', $gen);
+        $dateRef    = $dateArrete ?: $accessor->getStringOrNull('//date_etablissement_dpe', $gen);
+        $year = 2022;
+        if ($dateRef !== null) {
+            $ts = strtotime($dateRef);
+            if ($ts !== false) {
+                $year = max(2022, (int)date('Y', $ts) - 1);
+            }
+        }
+
+        $table = $context->tables->load('reference/tv_reseau_chaleur');
+        for ($y = $year; $y >= 2022; $y--) {
+            if (isset($table[$y][$reseauId])) {
+                return (float)$table[$y][$reseauId];
+            }
+        }
+        return null;
+    }
+
+    private function firstGenerator(DOMElement $install, string $generatorTag): ?DOMElement
+    {
+        foreach ($install->getElementsByTagName($generatorTag) as $gen) {
+            if ($gen instanceof DOMElement) {
+                return $gen;
+            }
+        }
+        return null;
     }
 
     private function firstGeneratorEnergyType(

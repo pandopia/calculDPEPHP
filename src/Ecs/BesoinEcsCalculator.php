@@ -122,13 +122,38 @@ final class BesoinEcsCalculator implements CalculatorInterface
         $accessor->setChildValue($apportEtBesoin, 'v40_ecs_journalier_depensier',  $v40JournalierDep);
 
         // ── 8. Écriture dans chaque installation_ecs/donnee_intermediaire ───────
+        // Ratio open3cl 11_ecs.js :
+        //   - Immeuble avec systèmes ECS individuels (>1 install, tous type=1)
+        //     → ratio = 1 / nombre_appartement (chaque install ≃ 1 apt-moyen)
+        //   - Sinon (1 install, ou install collective) → ratio = 1/rdim
+        $nbApt        = $accessor->getIntOrNull('./caracteristique_generale/nombre_appartement', $node) ?? 1;
+        $instalNodes  = [];
+        $allIndividual = true;
         foreach ($node->getElementsByTagName('installation_ecs') as $inst) {
             if (!$inst instanceof DOMElement) {
                 continue;
             }
+            $instalNodes[] = $inst;
+            $typeId = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $inst);
+            if ($typeId !== 1) {
+                $allIndividual = false;
+            }
+        }
+        $isImmeubleEcsIndividuels = count($instalNodes) > 1 && $allIndividual && $nbApt > 1;
+
+        foreach ($instalNodes as $inst) {
+            if ($isImmeubleEcsIndividuels) {
+                $ratio = 1.0 / $nbApt;
+            } else {
+                $rdim  = $accessor->getFloatOrNull('./donnee_entree/rdim', $inst) ?? 1.0;
+                $ratio = $rdim > 0.0 ? (1.0 / $rdim) : 1.0;
+            }
+            $becsForInst    = $becsTotal    * $ratio;
+            $becsForInstDep = $becsTotalDep * $ratio;
+
             $di = $this->ensureChild($context->document, $inst, 'donnee_intermediaire');
-            $accessor->setChildValue($di, 'besoin_ecs',           $becsInstall);
-            $accessor->setChildValue($di, 'besoin_ecs_depensier', $becsInstallDep);
+            $accessor->setChildValue($di, 'besoin_ecs',           $becsForInst);
+            $accessor->setChildValue($di, 'besoin_ecs_depensier', $becsForInstDep);
         }
 
         // ── 9. Contexte pour ConsoEcsCalculator ────────────────────────────────

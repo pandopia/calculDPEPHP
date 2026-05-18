@@ -30,9 +30,14 @@ return [
 
         // Pn et qp0 dépendent de GV calculé depuis notre moteur vs l'outil ADEME.
         // Les légères différences de GV (≤3%) se propagent à Pn et qp0 de façon linéaire.
-        // rpn/rpint passent dans 1e-3 car ils dépendent de log10(Pn) (peu sensible).
-        'pn'  => 0.05,
-        'qp0' => 0.05,
+        // rpn/rpint dépendent de log10(Pn) — peu sensible mais peut dériver de quelques %.
+        'pn'    => 0.05,
+        'qp0'   => 0.05,
+        'rpn'   => 0.03,
+        'rpint' => 0.03,
+        // Rendement de génération annuel moyen — dépend du profil de charge (Cdimref)
+        // qui propage les petites dérives de GV et Pn (~1-2 %).
+        'rendement_generation' => 0.03,
 
         // Auxiliaires de génération : dépendent de Pn (Q = G + H×Pn) → proportionnel à l'écart sur Pn.
         // Avec Pn à ≤3% près, l'écart sur Q reste ≤0.5%.
@@ -64,5 +69,18 @@ return [
         'qualite_isol_plancher_bas'              => 0.0,
         'qualite_isol_plancher_haut_toit_terrasse' => 0.0,
         'qualite_isol_menuiserie'                => 0.0,
+
+        // Apports froid et besoin_fr : table E_fr_28/26 arrondie à 2 décimales →
+        // dérive flottante ~0.15% sur le total annuel.
+        'besoin_fr'                              => 0.005,
+        'besoin_fr_depensier'                    => 0.20, // formule dépensier diffère (DH26 vs ratio)
+        'conso_fr'                               => 0.005,
+        'conso_fr_depensier'                     => 0.20,
+        'apport_solaire_fr'                      => 0.005,
+        'apport_interne_fr'                      => 0.005,
+        'ep_conso_fr'                            => 0.005,
+        'ep_conso_fr_depensier'                  => 0.20,
+        'emission_ges_fr'                        => 0.005,
+        'emission_ges_fr_depensier'              => 0.20,
     ],
 ];

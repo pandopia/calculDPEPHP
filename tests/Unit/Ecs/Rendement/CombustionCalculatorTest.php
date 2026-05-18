@@ -227,4 +227,43 @@ XML;
         // Rpn=0 → dénominateur infini → Rg=1 (convention sécurisée)
         $this->assertEqualsWithDelta(1.0, $rg, self::TOL);
     }
+
+    /**
+     * Régression : pour un générateur CET (IDs 1-12), l'énergie est électrique
+     * mais le `rendement_generation` doit être préservé tel quel (= COP, écrit
+     * par CetAccumulationCalculator). On ne doit PAS l'écraser à 1.0 comme on
+     * le ferait pour un ballon électrique standard.
+     */
+    public function testCetGeneratorRgPreserved(): void
+    {
+        // CET sur air extérieur après 2014 (id=6)
+        [$doc, $gen] = $this->buildElectricGen(6);
+
+        // Simule l'écriture préalable par CetAccumulationCalculator : Rg = COP = 2.5
+        $di = $doc->createElement('donnee_intermediaire');
+        $cop = $doc->createElement('rendement_generation', '2.5');
+        $di->appendChild($cop);
+        $gen->appendChild($di);
+
+        $ctx = $this->makeContext($doc);
+        (new CombustionCalculator())->calculate($gen, $ctx);
+
+        // Rg doit rester à 2.5 (CombustionCalculator ne doit pas écraser).
+        $rg = (float)$di->getElementsByTagName('rendement_generation')->item(0)->textContent;
+        $this->assertEqualsWithDelta(2.5, $rg, self::TOL);
+    }
+
+    /**
+     * Pour un ballon électrique standard (ID 68-71, hors CET), le rendement
+     * est bien écrasé à 1.0 (pas d'apport thermodynamique).
+     */
+    public function testBallonElectriqueStandardRgEqualsOne(): void
+    {
+        [$doc, $gen] = $this->buildElectricGen(71); // cat C/3* — hors plage CET
+        $ctx = $this->makeContext($doc);
+        (new CombustionCalculator())->calculate($gen, $ctx);
+
+        $rg = (float)$doc->getElementsByTagName('rendement_generation')->item(0)->textContent;
+        $this->assertEqualsWithDelta(1.0, $rg, self::TOL);
+    }
 }

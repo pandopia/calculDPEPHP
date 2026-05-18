@@ -389,6 +389,130 @@ XML;
         $this->assertSame('C', $classeBilan, 'WORST(C, A) = C');
     }
 
+    /**
+     * Chauffage sur réseau de chaleur urbain → facteur GES = contenu_co2_acv
+     * spécifique au réseau (lookup tv_reseau_chaleur), pas la valeur générique 0.110.
+     *
+     * Test sur 9120C (Réseau Viry-Châtillon, contenu_co2_acv table 2024 = 0.314).
+     * date_arrete_reseau_chaleur=2025-04-11 → year-1 = 2024.
+     */
+    public function testGesReseauChaleurLookupByIdentifiant(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<dpe>
+    <administratif>
+        <date_etablissement_dpe>2026-04-03</date_etablissement_dpe>
+    </administratif>
+    <logement>
+        <caracteristique_generale>
+            <surface_habitable_immeuble>1000</surface_habitable_immeuble>
+            <nombre_appartement>10</nombre_appartement>
+        </caracteristique_generale>
+        <installation_chauffage_collection>
+            <installation_chauffage>
+                <donnee_entree>
+                    <rdim>1</rdim>
+                </donnee_entree>
+                <donnee_intermediaire>
+                    <conso_ch>10000</conso_ch>
+                    <conso_ch_depensier>12000</conso_ch_depensier>
+                </donnee_intermediaire>
+                <generateur_chauffage_collection>
+                    <generateur_chauffage>
+                        <donnee_entree>
+                            <enum_type_energie_id>8</enum_type_energie_id>
+                            <identifiant_reseau_chaleur>9120C</identifiant_reseau_chaleur>
+                            <date_arrete_reseau_chaleur>2025-04-11</date_arrete_reseau_chaleur>
+                        </donnee_entree>
+                    </generateur_chauffage>
+                </generateur_chauffage_collection>
+            </installation_chauffage>
+        </installation_chauffage_collection>
+        <installation_ecs_collection/>
+        <sortie>
+            <ef_conso>
+                <conso_ch>10000</conso_ch>
+                <conso_eclairage>0</conso_eclairage>
+                <conso_fr>0</conso_fr>
+                <conso_fr_depensier>0</conso_fr_depensier>
+            </ef_conso>
+            <ep_conso><classe_bilan_dpe>D</classe_bilan_dpe></ep_conso>
+        </sortie>
+    </logement>
+</dpe>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $node = $doc->getElementsByTagName('logement')->item(0);
+        $ctx  = $this->makeContext($doc);
+
+        (new EmissionGesCalculator())->calculate($node, $ctx);
+
+        $emGes = $doc->getElementsByTagName('emission_ges')->item(0);
+        $gesCh = (float)$emGes->getElementsByTagName('emission_ges_ch')->item(0)->textContent;
+
+        // 10000 kWh × 0.314 (contenu_co2_acv 9120C 2023) = 3140 kgCO2
+        $this->assertEqualsWithDelta(10000 * 0.314, $gesCh, 1.0,
+            'GES réseau de chaleur urbain doit utiliser le facteur spécifique au réseau');
+    }
+
+    /**
+     * Réseau de chaleur sans identifiant → fallback 0.385 (« autres réseaux »).
+     */
+    public function testGesReseauChaleurFallbackSansIdentifiant(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale>
+        <surface_habitable_immeuble>1000</surface_habitable_immeuble>
+        <nombre_appartement>10</nombre_appartement>
+    </caracteristique_generale>
+    <installation_chauffage_collection>
+        <installation_chauffage>
+            <donnee_entree>
+                <rdim>1</rdim>
+            </donnee_entree>
+            <donnee_intermediaire>
+                <conso_ch>10000</conso_ch>
+                <conso_ch_depensier>12000</conso_ch_depensier>
+            </donnee_intermediaire>
+            <generateur_chauffage_collection>
+                <generateur_chauffage>
+                    <donnee_entree>
+                        <enum_type_energie_id>8</enum_type_energie_id>
+                    </donnee_entree>
+                </generateur_chauffage>
+            </generateur_chauffage_collection>
+        </installation_chauffage>
+    </installation_chauffage_collection>
+    <installation_ecs_collection/>
+    <sortie>
+        <ef_conso>
+            <conso_ch>10000</conso_ch>
+            <conso_eclairage>0</conso_eclairage>
+            <conso_fr>0</conso_fr>
+            <conso_fr_depensier>0</conso_fr_depensier>
+        </ef_conso>
+        <ep_conso><classe_bilan_dpe>D</classe_bilan_dpe></ep_conso>
+    </sortie>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $node = $doc->getElementsByTagName('logement')->item(0);
+        $ctx  = $this->makeContext($doc);
+
+        (new EmissionGesCalculator())->calculate($node, $ctx);
+
+        $emGes = $doc->getElementsByTagName('emission_ges')->item(0);
+        $gesCh = (float)$emGes->getElementsByTagName('emission_ges_ch')->item(0)->textContent;
+
+        $this->assertEqualsWithDelta(10000 * 0.385, $gesCh, 1.0,
+            'Sans identifiant → fallback 0.385 (autres réseaux de chaleur)');
+    }
+
     public function testAppliesToLogement(): void
     {
         $doc = new DOMDocument();

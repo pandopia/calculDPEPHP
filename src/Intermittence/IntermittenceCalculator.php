@@ -158,15 +158,38 @@ final class IntermittenceCalculator implements CalculatorInterface
 
     private function inertieKey(mixed $classeId): string
     {
-        return ((int)$classeId >= 3) ? 'lourde' : 'legere_moyenne';
+        // Mapping XSD : 1=très lourde, 2=lourde, 3=moyenne, 4=légère.
+        return ((int)$classeId <= 2) ? 'lourde' : 'legere_moyenne';
     }
 
     /**
      * Détermine la présence d'un comptage individuel.
-     * Par défaut : absent (non détecté dans la structure XML actuelle).
+     * Détection via fiche_technique[categorie=7]/sous_fiche_technique[description~="comptage"].valeur=1.
+     * Voir open3cl 9_emetteur_ch.js (`ficheTechniqueComptage`).
      */
     private function comptageKey(CalculationContext $context): string
     {
-        return $context->get('logement.comptage_individuel', 'absent');
+        $cached = $context->get('logement.comptage_individuel');
+        if ($cached !== null) {
+            return (string)$cached;
+        }
+
+        $key = 'absent';
+        $xpath = new \DOMXPath($context->document);
+        $nodes = $xpath->query(
+            '//fiche_technique[enum_categorie_fiche_technique_id="7"]'
+            . '//sous_fiche_technique[contains(translate(description, "PRÉSENCEC", "présencec"), "comptage")]/valeur'
+        );
+        if ($nodes !== false) {
+            foreach ($nodes as $n) {
+                $val = trim($n->textContent);
+                if ($val === '1' || strcasecmp($val, 'présence') === 0 || strcasecmp($val, 'present') === 0 || strcasecmp($val, 'présent') === 0) {
+                    $key = 'present';
+                    break;
+                }
+            }
+        }
+        $context->set('logement.comptage_individuel', $key);
+        return $key;
     }
 }

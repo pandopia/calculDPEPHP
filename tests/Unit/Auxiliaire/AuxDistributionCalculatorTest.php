@@ -334,4 +334,60 @@ XML;
         // Non-isolated uses 0.140 × Becs instead of 0.112 × Becs → higher flow → higher pump power
         $this->assertGreaterThanOrEqual($valIso, $valNonIso);
     }
+
+    /**
+     * Pour une installation collective multi-bâtiment (enum_type_installation_id=3,
+     * typiquement réseau de chauffage urbain modélisé en multi-bâtiment §17.3),
+     * il n'y a pas de circulateur côté utilisateur → conso_aux_distribution_ch = 0.
+     */
+    public function testInstallationMultiBatimentReseauNoCirculator(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale>
+        <surface_habitable_immeuble>1000</surface_habitable_immeuble>
+        <nombre_appartement>10</nombre_appartement>
+    </caracteristique_generale>
+    <installation_chauffage_collection>
+        <installation_chauffage>
+            <donnee_entree>
+                <enum_type_installation_id>3</enum_type_installation_id>
+                <surface_chauffee>1000</surface_chauffee>
+                <nombre_niveau_installation_ch>3</nombre_niveau_installation_ch>
+            </donnee_entree>
+            <emetteur_chauffage_collection>
+                <emetteur_chauffage>
+                    <donnee_entree>
+                        <enum_type_emission_distribution_id>33</enum_type_emission_distribution_id>
+                        <enum_temp_distribution_ch_id>1</enum_temp_distribution_ch_id>
+                    </donnee_entree>
+                </emetteur_chauffage>
+            </emetteur_chauffage_collection>
+            <generateur_chauffage_collection>
+                <generateur_chauffage>
+                    <donnee_entree>
+                        <enum_type_energie_id>8</enum_type_energie_id>
+                    </donnee_entree>
+                </generateur_chauffage>
+            </generateur_chauffage_collection>
+        </installation_chauffage>
+    </installation_chauffage_collection>
+    <installation_ecs_collection/>
+    <sortie/>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $ctx = $this->buildCtx($doc, [
+            'enveloppe.dp_parois' => 2000.0,
+            'ventilation.hvent'   => 500.0,
+        ]);
+
+        (new AuxDistributionCalculator())->calculate($doc->documentElement, $ctx);
+
+        $val = $this->efValue($doc, 'conso_auxiliaire_distribution_ch');
+        $this->assertSame(0.0, $val,
+            'Réseau de chauffage multi-bâtiment (type_install=3) ne consomme pas de circulateur local');
+    }
 }
