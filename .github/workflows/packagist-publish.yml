@@ -1,0 +1,105 @@
+name: Publish to Packagist
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Bump (patch | minor | major)'
+        required: false
+        default: patch
+        type: choice
+        options: [patch, minor, major]
+
+# Empêche deux mises à jour simultanées de Packagist
+concurrency:
+  group: packagist-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Notify Packagist
+    runs-on: ubuntu-latest
+    # Permet d'éviter une publication via le message de commit
+    if: "!contains(github.event.head_commit.message, '[skip publish]') && !contains(github.event.head_commit.message, '[skip release]')"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # nécessaire pour lister les tags existants
+
+      - name: Read package name
+        id: pkg
+        run: |
+          NAME=$(jq -r '.name' composer.json)
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "Package: $NAME"
+
+      - name: Bump semver tag
+        id: tag
+        env:
+          BUMP: ${{ github.event.inputs.bump || 'patch' }}
+        run: |
+          git config user.email "noreply@github.com"
+          git config user.name  "github-actions[bot]"
+
+          # Dernière version semver présente sur la branche
+          LAST=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n1)
+          if [ -z "$LAST" ]; then
+            NEW="v0.1.0"
+          else
+            VER=${LAST#v}
+            IFS='.' read -r MAJOR MINOR PATCH <<<"$VER"
+            case "$BUMP" in
+              major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+              minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+              *)     PATCH=$((PATCH + 1)) ;;
+            esac
+            NEW="v${MAJOR}.${MINOR}.${PATCH}"
+          fi
+
+          echo "last=$LAST" >> "$GITHUB_OUTPUT"
+          echo "new=$NEW"   >> "$GITHUB_OUTPUT"
+
+          # Ne tagge pas si rien n'a changé depuis le dernier tag
+          if [ -n "$LAST" ] && [ "$(git rev-parse HEAD)" = "$(git rev-parse "$LAST"^{commit})" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "HEAD = $LAST, rien à publier"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            git tag -a "$NEW" -m "Release $NEW"
+            git push origin "$NEW"
+            echo "Tag créé : $NEW (bump=$BUMP)"
+          fi
+
+      - name: Notify Packagist
+        if: steps.tag.outputs.skip != 'true'
+        env:
+          PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
+          PACKAGIST_TOKEN:    ${{ secrets.PACKAGIST_TOKEN }}
+          PACKAGE_NAME:       ${{ steps.pkg.outputs.name }}
+        run: |
+          if [ -z "$PACKAGIST_USERNAME" ] || [ -z "$PACKAGIST_TOKEN" ]; then
+            echo "::error::Les secrets PACKAGIST_USERNAME et PACKAGIST_TOKEN doivent être configurés"
+            echo "Settings → Secrets and variables → Actions → New repository secret"
+            exit 1
+          fi
+
+          REPO_URL="https://github.com/${GITHUB_REPOSITORY}"
+          STATUS=$(curl -sS -o /tmp/resp.json -w '%{http_code}' \
+            -XPOST "https://packagist.org/api/update-package?username=${PACKAGIST_USERNAME}&apiToken=${PACKAGIST_TOKEN}" \
+            -H 'content-type:application/json' \
+            -d "{\"repository\":{\"url\":\"$REPO_URL\"}}")
+
+          echo "Packagist répond : $STATUS"
+          cat /tmp/resp.json
+          echo
+
+          if [ "$STATUS" -ge 400 ]; then
+            echo "::error::Échec de mise à jour Packagist (HTTP $STATUS)"
+            exit 1
+          fi
