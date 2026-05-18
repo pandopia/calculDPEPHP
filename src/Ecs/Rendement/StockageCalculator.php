@@ -74,13 +74,15 @@ final class StockageCalculator implements CalculatorInterface
         $qgw = 0.0;
 
         if ($vs > 0.0) {
-            // CET (1-12) sont aussi électriques → utilisent la formule électrique pour Qgw.
-            $isElectric = ($energieId === 1) || $isCet;
-            $rd         = $this->resolveRd($node, $accessor, $context);
-            $becsWh     = $this->resolveBecsWh($node, $accessor, $context);
+            // §11.6.2 ne s'applique qu'aux « ballons électriques à accumulation » (enum 68-71).
+            // Les CET utilisent la formule générique §11.6.1 (Qgw = 67662 × Vs^0.55), comme
+            // open3cl `14_generateur_ecs.js:calc_Qgw`. Leur Rs réel est porté par le COP (§14.2).
+            $isBallonElec = in_array($typeGenId, [68, 69, 70, 71], true);
+            $rd           = $this->resolveRd($node, $accessor, $context);
+            $becsWh       = $this->resolveBecsWh($node, $accessor, $context);
 
             if ($becsWh > 0.0) {
-                if ($isElectric) {
+                if ($isBallonElec) {
                     $qgw   = $this->qgwElectrique($vs, $node, $accessor, $context);
                     $catC  = $this->isCatCVertical($node, $accessor, $context);
                     $denom = 1.0 + $qgw * $rd / $becsWh;
