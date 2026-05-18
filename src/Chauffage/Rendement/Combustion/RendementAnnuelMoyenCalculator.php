@@ -236,9 +236,11 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         float $rp_n, float $rp_int, float $tf100, float $tf30,
         float $qp0, float $pn, bool $reg,
     ): array {
-        // Condensation : QP30 avec coefficient 0.2 × (33 - Tfonc_30)
-        $numQp30  = 100.0 - ($rp_int * 100.0 + 0.2 * (33.0 - $tf30));
-        $denQp30  = $rp_int * 100.0 + 0.2 * (33.0 - $tf30);
+        // Condensation §13.2.1.5 : QP30 avec coefficient 0.2 × (33 − Tfonc)
+        //   Tfonc = Tfonc_30 s'il y a une régulation de combustion, Tfonc_100 sinon.
+        $tfRef    = $reg ? $tf30 : $tf100;
+        $numQp30  = 100.0 - ($rp_int * 100.0 + 0.2 * (33.0 - $tfRef));
+        $denQp30  = $rp_int * 100.0 + 0.2 * (33.0 - $tfRef);
         $qp30     = ($denQp30 > 0.0) ? 0.3 * $pn * $numQp30 / $denQp30 : 0.0;
         $qp15     = $qp30 / 2.0;
 

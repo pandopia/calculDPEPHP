@@ -140,10 +140,8 @@ final class ChaudiereProfilChargeCalculator implements CalculatorInterface
         // On remplace "absent" (1) par "basse" (2) pour les tables Tfonc
         $tempKey = max(2, $tempDistId ?? 3); // défaut: moyenne
 
-        // Période des émetteurs
-        $anneeBat = $accessor->getIntOrNull('//caracteristique_generale/annee_construction', $node) ?? 2000;
-        $anneeEm  = $this->resolveAnneEmetteur($node, $accessor, $anneeBat);
-        $periodeEm = $this->periodeEmetteur($anneeEm);
+        // Période des émetteurs : on lit d'abord l'enum dédié, puis on retombe sur l'année
+        $periodeEm = $this->resolvePeriodeEmetteur($node, $accessor);
 
         [$tfonc100, $tfonc30] = $this->computeTemps($boilerType, $periodeEm, $tempKey, $regulation, $genId);
 
@@ -175,6 +173,33 @@ final class ChaudiereProfilChargeCalculator implements CalculatorInterface
             './emetteur_chauffage_collection/emetteur_chauffage/donnee_entree/enum_temp_distribution_ch_id',
             $parent,
         );
+    }
+
+    /**
+     * Résout la période d'installation des émetteurs.
+     * Lit en priorité `enum_periode_installation_emetteur_id` (1=avant 1981, 2=1981-2000, 3=après 2000),
+     * sinon retombe sur `annee_installation_emetteur`, sinon sur `annee_construction`.
+     */
+    private function resolvePeriodeEmetteur(DOMElement $node, NodeAccessor $accessor): string
+    {
+        $parent = $node->parentNode?->parentNode;
+        if ($parent instanceof DOMElement) {
+            $periodeId = $accessor->getIntOrNull(
+                './emetteur_chauffage_collection/emetteur_chauffage/donnee_entree/enum_periode_installation_emetteur_id',
+                $parent,
+            );
+            if ($periodeId !== null) {
+                return match ($periodeId) {
+                    1 => 'avant_1981',
+                    2 => '1981_2000',
+                    default => 'apres_2000',
+                };
+            }
+        }
+
+        $anneeBat = $accessor->getIntOrNull('//caracteristique_generale/annee_construction', $node) ?? 2000;
+        $anneeEm  = $this->resolveAnneEmetteur($node, $accessor, $anneeBat);
+        return $this->periodeEmetteur($anneeEm);
     }
 
     /** Lit l'année d'installation des émetteurs depuis le premier emetteur de l'installation parente. */
