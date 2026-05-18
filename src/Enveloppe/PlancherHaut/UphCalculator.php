@@ -125,7 +125,11 @@ final class UphCalculator implements CalculatorInterface
             return $uph0;
         }
 
-        $config = $this->configFromAdjacence($accessor->getIntOrNull('./enum_type_adjacence_id', $entree));
+        $config = $this->resolveConfig(
+            $accessor->getIntOrNull('./enum_type_adjacence_id', $entree),
+            $accessor->getIntOrNull('./enum_type_plancher_haut_id', $entree),
+            $accessor->getStringOrNull('./description', $entree),
+        );
         $table  = $context->tables->load('enveloppe/tv_uph_tab');
         $value  = $table[$config][$zone][$energie][$periode] ?? null;
         if ($value === null) {
@@ -135,14 +139,41 @@ final class UphCalculator implements CalculatorInterface
     }
 
     /**
-     * Sélectionne la sous-table 'combles' ou 'terrasse' selon l'adjacence (§3.2.3.1 p.21).
-     * Par défaut : 'terrasse' (cas conservateur cf. note "local au-dessus est non chauffé").
+     * Types de plafond typiques de SOUS combles (avec solives bois/métal, plafonds
+     * légers, combles aménagés). Tout autre type → toiture-terrasse par défaut.
      */
-    private function configFromAdjacence(?int $adjacence): string
+    private const TYPE_PH_COMBLES = [2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14];
+
+    /**
+     * Sélectionne la sous-table 'combles' ou 'terrasse' (§3.2.3.1 p.21).
+     *
+     * La spec donne la règle par adjacence mais LICIEL discrimine en pratique
+     * via le libellé `description` quand l'adjacence est ambiguë (extérieur) :
+     *
+     *   • adjacence = comble (11/12/13)                            → 'combles'
+     *   • adjacence = locaux non chauffés non accessibles (7)       → 'terrasse'
+     *   • adjacence = extérieur (1) :
+     *       description mentionne « terrasse »                       → 'terrasse'
+     *       description mentionne « comble »                          → 'combles'
+     *       sinon type_plancher_haut ∈ TYPE_PH_COMBLES                → 'combles'
+     *       sinon                                                     → 'terrasse'
+     *   • toute autre adjacence (local non chauffé adjacent)        → 'combles'
+     */
+    private function resolveConfig(?int $adjacence, ?int $typePlancherHaut, ?string $description): string
     {
-        return match ($adjacence) {
-            11, 12, 13 => 'combles',
-            default    => 'terrasse',
+        $desc = $description !== null ? mb_strtolower($description) : '';
+        $hasTerrasse = $desc !== '' && str_contains($desc, 'terrasse');
+        $hasComble   = $desc !== '' && str_contains($desc, 'comble');
+
+        return match (true) {
+            in_array($adjacence, [11, 12, 13], true)              => 'combles',
+            $adjacence === 7                                       => 'terrasse',
+            $adjacence === 1 && $hasTerrasse                       => 'terrasse',
+            $adjacence === 1 && $hasComble                         => 'combles',
+            $adjacence === 1 && in_array($typePlancherHaut, self::TYPE_PH_COMBLES, true) => 'combles',
+            $adjacence === 1                                       => 'terrasse',
+            $adjacence === null                                    => 'terrasse',
+            default                                                 => 'combles',
         };
     }
 }
