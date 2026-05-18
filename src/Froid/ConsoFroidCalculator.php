@@ -64,8 +64,10 @@ final class ConsoFroidCalculator implements CalculatorInterface
         // ── EER depuis tv_seer_id ou SEER direct ──────────────────────────────
         $eer = $this->resolveEer($node, $context, $accessor);
 
-        // ── Surface refroidie vs surface habitable ────────────────────────────
-        $shLogement     = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node) ?? 0.0;
+        // ── Surface refroidie vs surface habitable (logement ou immeuble) ─────
+        $shLogement     = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node)
+            ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $node)
+            ?? 0.0;
         $surfaceRatio   = $this->resolveRefroidieRatio($node, $accessor, $shLogement);
 
         // ── Cfr = 0,9 × Bfr / EER × ratio ────────────────────────────────────
@@ -92,7 +94,7 @@ final class ConsoFroidCalculator implements CalculatorInterface
             }
         }
 
-        // Sinon: tv_seer_id
+        // Sinon: tv_seer_id explicit
         foreach ($node->getElementsByTagName('climatisation') as $clim) {
             if (!$clim instanceof DOMElement) {
                 continue;
@@ -106,21 +108,46 @@ final class ConsoFroidCalculator implements CalculatorInterface
             }
         }
 
+        // Sinon : déduit du couple (zone climatique × période installation) §10.3.
+        // Open3cl tv.js seer : H1/H2 = zones 1-7, H3 = zone 8.
+        $zoneId = $context->zoneClimatique !== null ? (int)$context->zoneClimatique : 1;
+        $isH3   = $zoneId === 8;
+        foreach ($node->getElementsByTagName('climatisation') as $clim) {
+            if (!$clim instanceof DOMElement) {
+                continue;
+            }
+            $periodId = $accessor->getIntOrNull('./donnee_entree/enum_periode_installation_fr_id', $clim);
+            if ($periodId === null) {
+                continue;
+            }
+            // tv_seer_id : 1-3 (H1/H2 × periodes 1/2/3), 4-6 (H3 × periodes 1/2/3)
+            $seerId = $isH3 ? (3 + $periodId) : $periodId;
+            $tvSeer = $context->tables->load('froid/tv_seer');
+            if (isset($tvSeer[$seerId])) {
+                return (float)$tvSeer[$seerId]['eer'];
+            }
+        }
+
         // Valeur par défaut (zone H1/H2, installation récente)
         return 0.95 * 6.7;
     }
 
     private function resolveRefroidieRatio(DOMElement $node, NodeAccessor $accessor, float $shLogement): float
     {
+        // Somme des surfaces climatisées sur toutes les installations
+        $surfTotal = 0.0;
         foreach ($node->getElementsByTagName('climatisation') as $clim) {
             if (!$clim instanceof DOMElement) {
                 continue;
             }
-            $surfRefroidie = $accessor->getFloatOrNull('./donnee_entree/surface_refroidie', $clim)
-                ?? $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $clim);
-            if ($surfRefroidie !== null && $surfRefroidie > 0.0 && $shLogement > 0.0) {
-                return min(1.0, $surfRefroidie / $shLogement);
-            }
+            $surf = $accessor->getFloatOrNull('./donnee_entree/surface_clim', $clim)
+                ?? $accessor->getFloatOrNull('./donnee_entree/surface_refroidie', $clim)
+                ?? $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $clim)
+                ?? 0.0;
+            $surfTotal += $surf;
+        }
+        if ($surfTotal > 0.0 && $shLogement > 0.0) {
+            return min(1.0, $surfTotal / $shLogement);
         }
         return 1.0;
     }
@@ -136,6 +163,30 @@ final class ConsoFroidCalculator implements CalculatorInterface
         $apportEtBesoin = $this->ensureChild($node->ownerDocument, $sortie, 'apport_et_besoin');
         if ($eer > 0.0) {
             $accessor->setChildValue($apportEtBesoin, 'eer', $eer);
+        }
+
+        // Per-climatisation : répartition de conso_fr au prorata de surface_clim
+        // (Σ_clim(per_clim) = ef_conso/conso_fr = cfr déjà calculé à l'échelle de la part climatisée)
+        $climNodes = [];
+        $totalSurfClim = 0.0;
+        foreach ($node->getElementsByTagName('climatisation') as $clim) {
+            if (!$clim instanceof DOMElement) {
+                continue;
+            }
+            $surf = $accessor->getFloatOrNull('./donnee_entree/surface_clim', $clim)
+                ?? $accessor->getFloatOrNull('./donnee_entree/surface_refroidie', $clim)
+                ?? 0.0;
+            $climNodes[] = [$clim, $surf];
+            $totalSurfClim += $surf;
+        }
+        foreach ($climNodes as [$clim, $surf]) {
+            $part = ($totalSurfClim > 0.0) ? ($surf / $totalSurfClim) : (1.0 / max(1, count($climNodes)));
+            $di = $accessor->ensureDonneeIntermediaire($clim);
+            if ($eer > 0.0) {
+                $accessor->setChildValue($di, 'eer', $eer);
+            }
+            $accessor->setChildValue($di, 'conso_fr',           $cfr    * $part);
+            $accessor->setChildValue($di, 'conso_fr_depensier', $cfrDep * $part);
         }
     }
 

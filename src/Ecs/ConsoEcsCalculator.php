@@ -79,6 +79,11 @@ final class ConsoEcsCalculator implements CalculatorInterface
             return;
         }
 
+        // Facteur de couverture solaire (§18.4) — réduit le besoin de la part fournie par le solaire.
+        // Résolu en amont par FacteurCouvertureSolaireEcsCalculator (clé `fecs` dans donnee_intermediaire).
+        $fecs = $accessor->getFloatOrNull('./donnee_intermediaire/fecs', $node) ?? 0.0;
+        $solarFactor = max(0.0, 1.0 - $fecs);
+
         $totalConso    = 0.0;
         $totalConsoDep = 0.0;
 
@@ -96,8 +101,8 @@ final class ConsoEcsCalculator implements CalculatorInterface
             $rsDep = $this->computeRsDep($rsConv, $becsConv, $becsDep, $genType);
             $rgDep = $this->computeRgDep($rgConv, $rpn, $becsConv, $becsDep);
 
-            $conso    = $becsConv > 0.0 ? $becsConv / ($rsConv * $rd * $rgConv) : 0.0;
-            $consoDep = $becsDep  > 0.0 ? $becsDep  / ($rsDep  * $rd * $rgDep)  : 0.0;
+            $conso    = $becsConv > 0.0 ? ($becsConv * $solarFactor) / ($rsConv * $rd * $rgConv) : 0.0;
+            $consoDep = $becsDep  > 0.0 ? ($becsDep  * $solarFactor) / ($rsDep  * $rd * $rgDep)  : 0.0;
 
             $di = $this->ensureDi($context->document, $gen);
             $accessor->setChildValue($di, 'conso_ecs',           $conso);

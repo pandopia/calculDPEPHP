@@ -90,9 +90,9 @@ final class AuxDistributionCalculator implements CalculatorInterface
         // Radiateurs bitube (IDs 32-39) → ΔPem=10
         32 => 'radiateur', 33 => 'radiateur', 34 => 'radiateur', 35 => 'radiateur',
         36 => 'radiateur', 37 => 'radiateur', 38 => 'radiateur', 39 => 'radiateur',
-        // Plancher PAC (IDs 43-44)
-        43 => 'plancher', 44 => 'plancher',
-        // Ventiloconvecteur (IDs 46-49) → Autres cas → ΔPem=35
+        // Fluide frigorigène (PAC à détente directe, IDs 42-45) → pas de circulateur eau
+        42 => 'none', 43 => 'none', 44 => 'none', 45 => 'none',
+        // Ventiloconvecteur sur eau chaude (IDs 46-49) → Autres cas → ΔPem=35
         46 => 'autre', 47 => 'autre', 48 => 'autre', 49 => 'autre',
     ];
 
@@ -174,15 +174,29 @@ final class AuxDistributionCalculator implements CalculatorInterface
         $totalCaux = 0.0;
         $cle       = 1.0;
 
+        // Surface habitable de référence pour Lem/shFactor (= bâtiment complet pour immeuble, sinon logement)
+        $shRef = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement)
+            ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement',   $logement)
+            ?? 0.0;
+
         foreach ($collection->childNodes as $install) {
             if (!$install instanceof DOMElement || $install->nodeName !== 'installation_chauffage') {
                 continue;
             }
 
-            $sh  = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $install) ?? 0.0;
-            $niv = $accessor->getFloatOrNull('./donnee_entree/nombre_niveau_installation_ch', $install) ?? 1.0;
+            $surfChauffee = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $install) ?? 0.0;
+            $niv          = $accessor->getFloatOrNull('./donnee_entree/nombre_niveau_installation_ch', $install) ?? 1.0;
+            $shCalc       = $shRef > 0.0 ? $shRef : $surfChauffee;
 
-            if ($sh <= 0.0 || $niv <= 0.0) {
+            if ($shCalc <= 0.0 || $niv <= 0.0) {
+                continue;
+            }
+
+            // Installation collective multi-bâtiment (enum_type_installation_id=3, ex.
+            // réseau de chauffage urbain modélisé en multi-bâtiment §17.3) :
+            // pas de circulateur local — distribution centralisée par le réseau.
+            $typeInstall = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $install);
+            if ($typeInstall === 3) {
                 continue;
             }
 
@@ -194,12 +208,17 @@ final class AuxDistributionCalculator implements CalculatorInterface
                 continue;
             }
 
-            $lem       = 5.0 * $fcot * ($niv + sqrt($sh / $niv));
+            // Spec §15.2.1 / open3cl 15_conso_aux.js : Lem et shFactor à l'échelle bâtiment
+            $lem       = 5.0 * $fcot * ($niv + sqrt($shCalc / $niv));
             $deltaPnom = 0.15 * $lem + $deltaP;
 
-            $qvem = $dtDim > 0.0 ? ($pnc / (1.163 * $dtDim)) : 0.0;
+            // Ratio de surface couverte par l'installation : surface_chauffee / Sh_bâtiment
+            // (= 1.0 pour maison/appartement individuel ; < 1 pour immeuble multi-installations)
+            $ratioSurf = ($surfChauffee > 0.0 && $shCalc > 0.0) ? min(1.0, $surfChauffee / $shCalc) : 1.0;
 
-            $shFactor  = max(1.0, $sh / 400.0);
+            $qvem = $dtDim > 0.0 ? ($pnc * $ratioSurf / (1.163 * $dtDim)) : 0.0;
+
+            $shFactor  = max(1.0, $shCalc / 400.0);
             $inner     = ($shFactor > 0.0) ? ($deltaPnom * $qvem / $shFactor) : 0.0;
             $pcircem   = max(self::PCIRCEM_MIN, 6.44 * (($inner > 0.0) ? ($inner ** 0.676) : 0.0) * $shFactor);
 
@@ -337,6 +356,26 @@ final class AuxDistributionCalculator implements CalculatorInterface
      * @spec-formula §15.2.1 p.98-99
      * @return array{float, float, float}
      */
+    /**
+     * Détecte si l'installation est connectée à un réseau de chaleur urbain
+     * (enum_type_energie_id=8 sur au moins un générateur). Dans ce cas la
+     * distribution se fait par le réseau et il n'y a pas de circulateur côté
+     * utilisateur — pas de conso d'aux distribution chauffage.
+     */
+    private function isReseauChaleurUrbain(NodeAccessor $accessor, DOMElement $install): bool
+    {
+        foreach ($install->getElementsByTagName('generateur_chauffage') as $gen) {
+            if (!$gen instanceof DOMElement) {
+                continue;
+            }
+            $energieId = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $gen);
+            if ($energieId === 8) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private function emetteurParams(NodeAccessor $accessor, DOMElement $install): array
     {
         $emCollection = $this->getChild($install, 'emetteur_chauffage_collection');

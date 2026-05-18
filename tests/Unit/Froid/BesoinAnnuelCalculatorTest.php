@@ -102,10 +102,10 @@ XML;
     }
 
     /**
-     * Avec climatisation mais sans données DH28 (colonne absente) → besoin_fr = 0.
-     * (La table tv_sollicitations n'a pas encore de colonne DH28 — TASK-A05)
+     * Avec climatisation et données DH28/Nref28 (tv_sollicitations_froid digitalisé)
+     * → besoin_fr > 0 sur saison de froid.
      */
-    public function testWithCoolingSystemButNoDH28DataOutputsZero(): void
+    public function testWithCoolingSystemAndDataOutputsNonZero(): void
     {
         [$doc, $node] = $this->buildLogement('<climatisation><donnee_entree/></climatisation>');
         $ctx = $this->makeContext($doc, [
@@ -113,13 +113,13 @@ XML;
             'enveloppe.dp_pont_thermique' => 0.0,
             'ventilation.hvent'           => 0.0,
             'ventilation.hperm'           => 0.0,
+            'apport.nadeq'                => 2.0,
         ]);
 
         (new BesoinAnnuelCalculator())->calculate($node, $ctx);
 
         $bfr = (float)$doc->getElementsByTagName('besoin_fr')->item(0)->textContent;
-        // DH28 = null in current tv_sollicitations → besoin = 0
-        $this->assertEqualsWithDelta(0.0, $bfr, self::TOL);
+        $this->assertGreaterThan(0.0, $bfr, 'Avec DH28 digitalisé, besoin_fr doit être > 0 quand un système de climatisation est présent');
     }
 
     /**

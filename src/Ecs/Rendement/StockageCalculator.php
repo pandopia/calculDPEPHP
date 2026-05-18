@@ -68,17 +68,14 @@ final class StockageCalculator implements CalculatorInterface
         $vs        = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $node) ?? 0.0;
         $energieId = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $node);
         $typeGenId = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $node);
-
-        // CET → Rs hors scope ici
-        if ($typeGenId !== null && in_array($typeGenId, self::CET_IDS, true)) {
-            return;
-        }
+        $isCet     = ($typeGenId !== null && in_array($typeGenId, self::CET_IDS, true));
 
         $rs  = 1.0;
         $qgw = 0.0;
 
         if ($vs > 0.0) {
-            $isElectric = ($energieId === 1);
+            // CET (1-12) sont aussi électriques → utilisent la formule électrique pour Qgw.
+            $isElectric = ($energieId === 1) || $isCet;
             $rd         = $this->resolveRd($node, $accessor, $context);
             $becsWh     = $this->resolveBecsWh($node, $accessor, $context);
 
@@ -97,8 +94,11 @@ final class StockageCalculator implements CalculatorInterface
         }
 
         $di = $this->ensureDi($context->document, $node);
-        $accessor->setChildValue($di, 'rendement_stockage', $rs);
-        // Qgw stored for besoin_ch heat recovery (§9.1.1 pertes_stockage_ecs_recup)
+        // CET : rendement_stockage géré par CetAccumulationCalculator (= COP).
+        // On écrit Qgw seulement pour permettre la récupération des pertes (§9.1.1).
+        if (!$isCet) {
+            $accessor->setChildValue($di, 'rendement_stockage', $rs);
+        }
         $accessor->setChildValue($di, 'Qgw', $qgw);
 
         $ref = $accessor->getStringOrNull('./donnee_entree/reference', $node) ?? '';

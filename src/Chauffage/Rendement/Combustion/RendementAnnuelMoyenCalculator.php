@@ -317,7 +317,22 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
      */
     private function resolveGvBuilding(DOMElement $node, NodeAccessor $accessor, CalculationContext $context): float
     {
-        return (float)($context->get('chauffage.gv') ?? 0.0);
+        $gv = (float)($context->get('chauffage.gv') ?? 0.0);
+        if ($gv <= 0.0) {
+            return 0.0;
+        }
+
+        // Immeuble avec chauffage individuel (§17.1.4.2) : Cdimref doit être calculé
+        // à l'échelle de l'appartement moyen. Le générateur n'alimente qu'un seul
+        // appartement, donc GV utile = GV_immeuble / Nblgt.
+        $modeApp = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
+        if ($modeApp !== null && in_array($modeApp, [6, 8, 10, 12], true)) {
+            $nblgt = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement');
+            if ($nblgt !== null && $nblgt > 1) {
+                return $gv / $nblgt;
+            }
+        }
+        return $gv;
     }
 
     private function resolveTbase(CalculationContext $context, NodeAccessor $accessor): float

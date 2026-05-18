@@ -60,6 +60,7 @@ final class DefaultDpeEngineFactory
         $pipeline->add(new \CalculDpePHP\Froid\BesoinAnnuelCalculator());
         $pipeline->add(new \CalculDpePHP\Froid\ConsoFroidCalculator());
         $pipeline->add(new \CalculDpePHP\Ecs\BesoinEcsCalculator());
+        $pipeline->add(new \CalculDpePHP\Ecs\FacteurCouvertureSolaireEcsCalculator());
         $pipeline->add(new \CalculDpePHP\Ecs\Rendement\DistributionCalculator());
         $pipeline->add(new \CalculDpePHP\Ecs\Rendement\StockageCalculator());
         $pipeline->add(new \CalculDpePHP\Ecs\Rendement\CombustionCalculator());

@@ -69,6 +69,7 @@ final class AuxGenerationCalculatorTest extends TestCase
                 <generateur_chauffage>
                     <donnee_entree>
                         <enum_type_energie_id>2</enum_type_energie_id>
+                        <enum_type_generateur_ch_id>96</enum_type_generateur_ch_id>
                         <tv_generateur_combustion_id>13</tv_generateur_combustion_id>
                     </donnee_entree>
                     <donnee_intermediaire>
@@ -90,6 +91,7 @@ final class AuxGenerationCalculatorTest extends TestCase
             <generateur_ecs>
                 <donnee_entree>
                     <enum_type_energie_id>2</enum_type_energie_id>
+                    <enum_type_generateur_ecs_id>52</enum_type_generateur_ecs_id>
                     <tv_generateur_combustion_id>13</tv_generateur_combustion_id>
                 </donnee_entree>
                 <donnee_intermediaire>

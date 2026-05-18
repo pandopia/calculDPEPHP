@@ -111,26 +111,25 @@ XML;
     }
 
     /**
-     * Installation INDIVIDUELLE dans immeuble collectif →
-     * Nadeq pour 1 logement : Shmoy = Sh_immeuble/Nblgt, formule §11.1 p.70-71.
+     * Installation individuelle dans immeuble collectif avec rdim=1 →
+     * besoin_ecs install = besoin_ecs total (pas de division par Nblgt).
+     * Le ratio open3cl 11_ecs.js est 1/rdim (et non 1/Nblgt) pour une install unique.
      *
-     * Shmoy = 9543 / 127 = 75.14 → Nmax = 0.035 × 75.14 = 2.630
-     * Nadeq_lgt = 1.75 + 0.3 × (2.630 − 1.75) = 2.014
-     * Becs ≈ 1.163 × 2.014 × 56 × Σ(40−Tefs)×njj / 1000
+     * Quand rdim=Nblgt (1 install par apt-moyen), ratio = 1/Nblgt.
+     * Quand rdim=1 (install unique couvre tout), ratio = 1 → besoin = becs_immeuble.
      */
     public function testIndividuelImmeubleBesoinEcsPerLogement(): void
     {
-        // Shmoy = 9543 / 127 = 75.14
+        // Shmoy = 9543 / 127 = 75.14, immeuble entier
         [$doc, $node] = $this->buildIndividuelLogement(75.14, 9543.0, 127);
-        $ctx = $this->makeContext($doc, ['apport.nadeq' => 255.776]); // total bâtiment (ignoré)
+        $ctx = $this->makeContext($doc, ['apport.nadeq' => 255.776]);
 
         (new BesoinEcsCalculator())->calculate($node, $ctx);
 
         $becs = (float)$doc->getElementsByTagName('besoin_ecs')->item(0)->textContent;
-        // Nadeq_lgt = 2.014, doit être << apport.nadeq basé
-        $this->assertGreaterThan(1000.0, $becs);
-        $this->assertLessThan(5000.0, $becs);
-        // Besoin doit être ~79/56 fois plus grand pour dépensier
+        // Avec rdim=1 par défaut, besoin install = besoin immeuble (≈ becsTotal)
+        $this->assertGreaterThan(100000.0, $becs, 'besoin_ecs install doit refléter le bâtiment entier quand rdim=1');
+        // Le rapport dépensier / conventionnel = V40_dep/V40_conv = 79/56
         $becsDep = (float)$doc->getElementsByTagName('besoin_ecs_depensier')->item(0)->textContent;
         $this->assertEqualsWithDelta(79.0 / 56.0, $becsDep / $becs, 0.001);
     }
@@ -294,5 +293,97 @@ XML;
         $this->assertGreaterThan(0.0, $pertesRecup);
         $this->assertLessThan(1503.70, $pertesRecup); // must be less than collective
         $this->assertGreaterThan(0.0, $pertesRecupDep);
+    }
+
+    /**
+     * Ratio besoin_ecs par installation suit la règle open3cl :
+     *   - 1 installation, rdim=N → besoin_install = besoin_immeuble / N
+     *
+     * Cas du diag utilisateur (mode 6 immeuble individuel, 78 apts, rdim=78).
+     */
+    public function testRdimDividesBesoinEcsPerInstallation(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale>
+        <surface_habitable_immeuble>4896</surface_habitable_immeuble>
+        <nombre_appartement>78</nombre_appartement>
+        <enum_methode_application_dpe_log_id>6</enum_methode_application_dpe_log_id>
+    </caracteristique_generale>
+    <installation_ecs_collection>
+        <installation_ecs>
+            <donnee_entree>
+                <enum_type_installation_id>1</enum_type_installation_id>
+                <rdim>78</rdim>
+            </donnee_entree>
+        </installation_ecs>
+    </installation_ecs_collection>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $node = $doc->getElementsByTagName('logement')->item(0);
+        $ctx = $this->makeContext($doc, ['apport.nadeq' => 146.958]);
+
+        (new BesoinEcsCalculator())->calculate($node, $ctx);
+
+        // Sortie : becs total = 96204 (calc complet sur 78 apts moyens)
+        $becsTotal = (float)$ctx->get('ecs.besoin_ecs', 0.0);
+        $this->assertGreaterThan(50000.0, $becsTotal);
+
+        // Per-installation : becsTotal / rdim
+        $inst = $doc->getElementsByTagName('installation_ecs')->item(0);
+        $di   = $inst->getElementsByTagName('donnee_intermediaire')->item(0);
+        $becsInst = (float)$di->getElementsByTagName('besoin_ecs')->item(0)->textContent;
+        $this->assertEqualsWithDelta($becsTotal / 78.0, $becsInst, 0.01);
+    }
+
+    /**
+     * Immeuble avec PLUSIEURS installations ECS individuelles →
+     * ratio = 1/nombre_appartement (chaque install ≃ 1 apt-moyen).
+     */
+    public function testImmeubleMultiInstallationsEcsIndividuels(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale>
+        <surface_habitable_immeuble>9543</surface_habitable_immeuble>
+        <nombre_appartement>127</nombre_appartement>
+        <enum_methode_application_dpe_log_id>6</enum_methode_application_dpe_log_id>
+    </caracteristique_generale>
+    <installation_ecs_collection>
+        <installation_ecs>
+            <donnee_entree>
+                <enum_type_installation_id>1</enum_type_installation_id>
+                <rdim>12.7</rdim>
+            </donnee_entree>
+        </installation_ecs>
+        <installation_ecs>
+            <donnee_entree>
+                <enum_type_installation_id>1</enum_type_installation_id>
+                <rdim>12.7</rdim>
+            </donnee_entree>
+        </installation_ecs>
+    </installation_ecs_collection>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $node = $doc->getElementsByTagName('logement')->item(0);
+        $ctx = $this->makeContext($doc, ['apport.nadeq' => 255.776]);
+
+        (new BesoinEcsCalculator())->calculate($node, $ctx);
+
+        $becsTotal = (float)$ctx->get('ecs.besoin_ecs', 0.0);
+        // Avec 2 installs type=1 et nbApt>1 → ratio = 1/127
+        $expectedPerInst = $becsTotal / 127.0;
+
+        foreach ($doc->getElementsByTagName('installation_ecs') as $inst) {
+            $di = $inst->getElementsByTagName('donnee_intermediaire')->item(0);
+            $becsInst = (float)$di->getElementsByTagName('besoin_ecs')->item(0)->textContent;
+            $this->assertEqualsWithDelta($expectedPerInst, $becsInst, 0.1);
+        }
     }
 }

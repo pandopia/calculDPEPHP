@@ -55,6 +55,14 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
     /** Pn cap (W) for gas/oil boilers — IDs 75-97, 127-139, 148-151, 160-161 */
     private const PN_CAP_GAZ_FIOUL = 400000.0;
 
+    /**
+     * Modes "immeuble collectif avec chauffage individuel" (§17.1.4.2)
+     * et "DPE appartement généré à partir des données immeuble" avec chauffage individuel.
+     * Dans ces modes, Pch est calculé à l'échelle de l'appartement moyen :
+     *   Pch = 1.2 × (GV / Nblgt) × (19 − Tbase) / 0.95³
+     */
+    private const MODES_IMMEUBLE_INDIVIDUEL = [6, 8, 10, 12];
+
     public function id(): string
     {
         return self::class;
@@ -113,9 +121,31 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         $ratioVirt = $this->getRatioVirtualisation($node, $accessor);
 
         // Puissance nominale : depuis donnee_entree si saisie, sinon calculée depuis GV
-        $pnW = $accessor->getFloatOrNull('./donnee_entree/pn', $node);
+        $pnSaisi = $accessor->getFloatOrNull('./donnee_entree/pn', $node);
+        $pnW = $pnSaisi;
         if ($pnW === null || $pnW <= 0.0) {
-            $pnW = $this->computePnFromGv($context, $ratioVirt, $genId);
+            // §13.2.2.4 : Pch (kW) au scale approprié
+            $modeApp = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
+            $nblgt   = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement') ?? 1;
+            $isImmeubleIndividuel = $modeApp !== null
+                && in_array($modeApp, self::MODES_IMMEUBLE_INDIVIDUEL, true)
+                && $nblgt > 1;
+
+            $pchW = $this->computePnFromGv($context, $ratioVirt, $genId);
+            if ($isImmeubleIndividuel) {
+                // Pch à l'échelle de l'appartement moyen (§13.2.2.4, §17.1.4.2)
+                $pchW = $pchW / $nblgt;
+            }
+
+            // Pour les chaudières mixtes, Pdim = max(Pch, Pecs) puis Pn lue dans la table §13.2.2.4
+            $pecsW = $this->computePecsForMixte($node, $accessor);
+            if ($pecsW > 0.0) {
+                $pdimKw = max($pchW, $pecsW) / 1000.0;
+                $pnW    = $this->lookupPnFromPdim($pdimKw, $node, $accessor) * 1000.0;
+            } else {
+                // Chaudière non-mixte : Pn ≈ Pch (formule directe §13.2.2.4)
+                $pnW = $pchW;
+            }
         }
         $pnKw = $pnW / 1000.0;
 
@@ -181,12 +211,119 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
 
         $pnBuilding = (1.2 * $gvEffectif * (19.0 - $tbase)) / (0.95 ** 3);
 
-        // Plafonnement Pn selon type de générateur (chaudières gaz/fioul : 400 kW)
-        if ($ratioVirt < 1.0 && $genId !== null) {
+        // Plafonnement Pn §13.2.2.4 p.92 : 400 kW pour chaudières gaz/fioul, quel
+        // que soit le ratio_virtualisation. LICIEL applique ce cap pour tout immeuble.
+        if ($genId !== null) {
             $pnBuilding = min($pnBuilding, $this->getPnCap($genId));
         }
 
         return $pnBuilding;
+    }
+
+    /**
+     * Pecs (W) pour les chaudières mixtes (chauffage + ECS) selon §13.2.2.4 :
+     *   Vs = 0                 → Pecs = 21 kW (instantanée)
+     *   0 < Vs ≤ 20            → Pecs = 21 − 0.8 × Vs
+     *   20 < Vs ≤ 150          → Pecs = 5 − 1.751 × (Vs − 20) / 65
+     *   150 < Vs               → Pecs = (7.14 × Vs + 428) / 1000
+     *
+     * Retourne 0 si la chaudière n'est pas mixte (pas de reference_generateur_mixte).
+     *
+     * @spec-section 13.2.2.4
+     * @spec-pages   91-92
+     */
+    private function computePecsForMixte(DOMElement $genNode, NodeAccessor $accessor): float
+    {
+        $refMixte = $accessor->getStringOrNull('./donnee_entree/reference_generateur_mixte', $genNode);
+        if ($refMixte === null || $refMixte === '') {
+            return 0.0;
+        }
+
+        // Trouver le générateur ECS dont reference_generateur_mixte pointe vers nous
+        $myRef = $accessor->getStringOrNull('./donnee_entree/reference', $genNode);
+        $doc   = $genNode->ownerDocument;
+        if ($doc === null || $myRef === null) {
+            return 0.0;
+        }
+
+        $xpath = new \DOMXPath($doc);
+        $matches = $xpath->query(
+            sprintf(
+                '//generateur_ecs[donnee_entree/reference_generateur_mixte="%s"]',
+                addslashes($myRef)
+            )
+        );
+        if ($matches === false || $matches->length === 0) {
+            return 0.0;
+        }
+
+        $ecsNode = $matches->item(0);
+        if (!$ecsNode instanceof DOMElement) {
+            return 0.0;
+        }
+
+        $vs = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $ecsNode) ?? 0.0;
+
+        if ($vs <= 0.0) {
+            return 21000.0; // Instantanée
+        }
+        if ($vs <= 20.0) {
+            return (21.0 - 0.8 * $vs) * 1000.0;
+        }
+        if ($vs <= 150.0) {
+            return (5.0 - 1.751 * ($vs - 20.0) / 65.0) * 1000.0; // Semi-accumulation
+        }
+        return (7.14 * $vs + 428.0); // Accumulation : déjà en W
+    }
+
+    /**
+     * Pn (kW) lue dans la table §13.2.2.4 à partir de Pdim (kW) et de l'âge de la chaudière.
+     *
+     * Détection murale/post-2006 :
+     *   - data_complementaires[data-chaudiere-murale="1"] + data-annee-installation ≥ 2006
+     *     → colonne "post-2006" (autorise Pn = 5/10/13 kW pour faibles Pdim)
+     *   - sinon                                  → colonne "avant 2005 ou sur sol" (minimum 18 kW)
+     */
+    private function lookupPnFromPdim(float $pdimKw, DOMElement $genNode, NodeAccessor $accessor): float
+    {
+        $isPost2006 = $this->isChaudierePost2006($genNode, $accessor);
+
+        // Table §13.2.2.4 p.92
+        // Colonne 1 : chaudières murales avant 2005 OU chaudières sur sol
+        // Colonne 2 : chaudières murales à partir de 2006
+        if ($pdimKw <= 5.0)       return $isPost2006 ? 5.0  : 18.0;
+        if ($pdimKw <= 10.0)      return $isPost2006 ? 10.0 : 18.0;
+        if ($pdimKw <= 13.0)      return $isPost2006 ? 13.0 : 18.0;
+        if ($pdimKw <= 18.0)      return 18.0;
+        if ($pdimKw <= 24.0)      return 24.0;
+        if ($pdimKw <= 28.0)      return 28.0;
+        if ($pdimKw <= 32.0)      return 32.0;
+        if ($pdimKw <= 40.0)      return 40.0;
+        // Pdim > 40 : (partie entière(Pdim/5) + 1) × 5
+        return ((int)floor($pdimKw / 5.0) + 1) * 5.0;
+    }
+
+    /**
+     * Détecte une chaudière murale installée à partir de 2006 via data_complementaires.
+     */
+    private function isChaudierePost2006(DOMElement $genNode, NodeAccessor $accessor): bool
+    {
+        $doc = $genNode->ownerDocument;
+        if ($doc === null) {
+            return false;
+        }
+        $xpath = new \DOMXPath($doc);
+        $nodes = $xpath->query('./donnee_entree/data_complementaires', $genNode);
+        if ($nodes === false || $nodes->length === 0) {
+            return false;
+        }
+        $dc = $nodes->item(0);
+        if (!$dc instanceof DOMElement) {
+            return false;
+        }
+        $murale = $dc->getAttribute('data-chaudiere-murale');
+        $annee  = $dc->getAttribute('data-annee-installation');
+        return $murale === '1' && $annee !== '' && (int)$annee >= 2006;
     }
 
     /**

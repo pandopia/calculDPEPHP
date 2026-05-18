@@ -60,13 +60,15 @@ XML;
         return $doc;
     }
 
+    // Mapping XSD ADEME : 1=très lourde, 2=lourde, 3=moyenne, 4=légère.
+
     public function testTresLourd(): void
     {
         $doc = $this->buildDoc('1', '1', '1');
         $logement = $doc->getElementsByTagName('logement')->item(0);
         $ctx = $this->makeContext($doc);
         (new InertieCalculator())->calculate($logement, $ctx);
-        $this->assertSame(4, $ctx->get('inertie.classe_id'));
+        $this->assertSame(1, $ctx->get('inertie.classe_id'));
     }
 
     public function testLourd_PbPh(): void
@@ -75,7 +77,7 @@ XML;
         $logement = $doc->getElementsByTagName('logement')->item(0);
         $ctx = $this->makeContext($doc);
         (new InertieCalculator())->calculate($logement, $ctx);
-        $this->assertSame(3, $ctx->get('inertie.classe_id'));
+        $this->assertSame(2, $ctx->get('inertie.classe_id'));
     }
 
     public function testLourd_PhPv(): void
@@ -84,7 +86,7 @@ XML;
         $logement = $doc->getElementsByTagName('logement')->item(0);
         $ctx = $this->makeContext($doc);
         (new InertieCalculator())->calculate($logement, $ctx);
-        $this->assertSame(3, $ctx->get('inertie.classe_id'));
+        $this->assertSame(2, $ctx->get('inertie.classe_id'));
     }
 
     public function testMoyenne_SeulementPv(): void
@@ -93,7 +95,7 @@ XML;
         $logement = $doc->getElementsByTagName('logement')->item(0);
         $ctx = $this->makeContext($doc);
         (new InertieCalculator())->calculate($logement, $ctx);
-        $this->assertSame(2, $ctx->get('inertie.classe_id'));
+        $this->assertSame(3, $ctx->get('inertie.classe_id'));
     }
 
     public function testMoyenne_SeulementPh(): void
@@ -102,7 +104,7 @@ XML;
         $logement = $doc->getElementsByTagName('logement')->item(0);
         $ctx = $this->makeContext($doc);
         (new InertieCalculator())->calculate($logement, $ctx);
-        $this->assertSame(2, $ctx->get('inertie.classe_id'));
+        $this->assertSame(3, $ctx->get('inertie.classe_id'));
     }
 
     public function testMoyenne_SeulementPb(): void
@@ -111,7 +113,7 @@ XML;
         $logement = $doc->getElementsByTagName('logement')->item(0);
         $ctx = $this->makeContext($doc);
         (new InertieCalculator())->calculate($logement, $ctx);
-        $this->assertSame(2, $ctx->get('inertie.classe_id'));
+        $this->assertSame(3, $ctx->get('inertie.classe_id'));
     }
 
     public function testLegere(): void
@@ -120,7 +122,7 @@ XML;
         $logement = $doc->getElementsByTagName('logement')->item(0);
         $ctx = $this->makeContext($doc);
         (new InertieCalculator())->calculate($logement, $ctx);
-        $this->assertSame(1, $ctx->get('inertie.classe_id'));
+        $this->assertSame(4, $ctx->get('inertie.classe_id'));
     }
 
     public function testWritesXmlTag(): void
@@ -133,7 +135,7 @@ XML;
         $this->assertNotNull($di);
         $tag = $di->getElementsByTagName('enum_classe_inertie_id')->item(0);
         $this->assertNotNull($tag);
-        $this->assertSame('4', $tag->textContent);
+        $this->assertSame('1', $tag->textContent);
     }
 
     public function testDefaultPbLourd_WhenAbsent(): void
@@ -160,8 +162,8 @@ XML;
         $logement = $doc->getElementsByTagName('logement')->item(0);
         $ctx = $this->makeContext($doc);
         (new InertieCalculator())->calculate($logement, $ctx);
-        // PB lourd, PH absent (défaut légère), PV absent (défaut légère) → classe 2 (moyenne: seul PB lourd)
-        $this->assertSame(2, $ctx->get('inertie.classe_id'));
+        // PB lourd, PH absent (défaut légère), PV absent (défaut légère) → classe 3 (moyenne XSD : seul PB lourd)
+        $this->assertSame(3, $ctx->get('inertie.classe_id'));
     }
 
     public function testSurfaceMajoritaire(): void
@@ -185,7 +187,7 @@ XML;
         $logement = $doc->getElementsByTagName('logement')->item(0);
         $ctx = $this->makeContext($doc);
         (new InertieCalculator())->calculate($logement, $ctx);
-        // PV non lourd (60>50%), PH absent=léger, PB absent=lourd → seul PB lourd → classe 2
-        $this->assertSame(2, $ctx->get('inertie.classe_id'));
+        // PV non lourd (60>50%), PH absent=léger, PB absent=lourd → seul PB lourd → classe 3 (moyenne XSD)
+        $this->assertSame(3, $ctx->get('inertie.classe_id'));
     }
 }

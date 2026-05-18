@@ -106,6 +106,7 @@ final class BesoinChauffageCalculator implements CalculatorInterface
         $pertesDistribRecupDep  = (float)$context->get('ecs.pertes_distribution_recup_dep',  0.0);
         $pertesStockageRecup    = $this->computePertesStockageRecup($node, $context, $tvS, false);
         $pertesStockageRecupDep = $this->computePertesStockageRecup($node, $context, $tvS, true);
+
         $pertesGenRecup         = (float)$context->get('ch.pertes_generateur_recup',         0.0);
         $pertesGenRecupDep      = (float)$context->get('ch.pertes_generateur_recup_dep',     0.0);
 

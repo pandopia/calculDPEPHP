@@ -36,14 +36,20 @@ final class FCalculator implements CalculatorInterface
 {
     /**
      * Exponent n for Fj formula indexed by enum_classe_inertie_id.
-     * LICIEL convention (differs from XSD appinfo): 1=légère, 2=moyenne, 3=lourde, 4=très lourde.
-     * Validated against reference verif files.
+     *
+     * Mapping per XSD appinfo (`ademe_DPE.xsd`) and open3cl `9_besoin_ch.js` calc_Fj :
+     *   1 = très lourde → n=3.6
+     *   2 = lourde      → n=3.6
+     *   3 = moyenne     → n=2.9
+     *   4 = légère      → n=2.5
+     *
+     * @spec-section 6.1
      */
     private const INERTIE_N = [
-        1 => 2.5, // légère (LICIEL)
-        2 => 2.9, // moyenne (LICIEL)
-        3 => 3.6, // lourde (LICIEL)
-        4 => 3.6, // très lourde (LICIEL)
+        1 => 3.6, // très lourde
+        2 => 3.6, // lourde
+        3 => 2.9, // moyenne
+        4 => 2.5, // légère
     ];
 
     public function id(): string
@@ -222,23 +228,28 @@ final class FCalculator implements CalculatorInterface
     }
 
     /**
-     * §6.1 : Fj = (Xj − Xj^n) / (1 − Xj^n), vaut 1 si Xj ≥ 1.
-     * §6.1 : Si Xj ≤ 0 la fraction vaut 0 (pas d'apports).
+     * §6.1 : Fj = (Xj − Xj^n) / (1 − Xj^n).
+     *
+     * La formule est définie sur tout Xj > 0 et donne toujours Fj < 1 :
+     *   - Pour Xj < 1   : Fj < 1 (num < denom positifs)
+     *   - Pour Xj > 1   : Fj < 1 (num < denom négatifs ; limite Fj → 1 quand Xj → ∞)
+     *   - À Xj = 1      : limite (n-1)/n (continuité)
+     *
+     * Source : open3cl `9_besoin_ch.js::calc_Fj` — pas de clamping.
+     *
+     * @spec-section 6.1
      */
     private function computeF(float $x, float $n): float
     {
         if ($x <= 0.0) {
             return 0.0;
         }
-        if ($x >= 1.0) {
-            return 1.0;
+        // Continuité en X=1 : (n-1)/n (limite L'Hôpital)
+        if (abs($x - 1.0) < 1e-9) {
+            return ($n - 1.0) / $n;
         }
         $xn = $x ** $n;
-        $denom = 1.0 - $xn;
-        if ($denom === 0.0) {
-            return 1.0;
-        }
-        return ($x - $xn) / $denom;
+        return ($x - $xn) / (1.0 - $xn);
     }
 
     /**

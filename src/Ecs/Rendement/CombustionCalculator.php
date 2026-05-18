@@ -80,6 +80,7 @@ final class CombustionCalculator implements CalculatorInterface
             '\CalculDpePHP\Ecs\BesoinEcsCalculator',
             '\CalculDpePHP\Enveloppe\EnveloppeAggregator',
             '\CalculDpePHP\Ventilation\VentilationAggregator',
+            '\CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator',
         ];
     }
 
@@ -98,8 +99,15 @@ final class CombustionCalculator implements CalculatorInterface
             return;
         }
 
-        // Générateurs électriques → Rg = 1
+        // Générateurs électriques : Rg = 1 SAUF pour les CET / PAC ECS (IDs 1-12)
+        // qui sont traités par CetAccumulationCalculator (Rg = COP > 1).
         if ($energieId === self::ENERGIE_ELEC) {
+            $typeEcsId = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $node);
+            // CET sur air ambiant/extérieur/extrait (1-9) et PAC double service (10-12) :
+            // rendement déjà écrit par CetAccumulationCalculator — ne pas écraser.
+            if ($typeEcsId !== null && $typeEcsId >= 1 && $typeEcsId <= 12) {
+                return;
+            }
             $di = $this->ensureDi($context->document, $node);
             $accessor->setChildValue($di, 'rendement_generation', 1.0);
             $this->storeContext($node, $accessor, $context, 1.0);
@@ -110,7 +118,16 @@ final class CombustionCalculator implements CalculatorInterface
         $typeEcsId = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $node);
         $methode   = $accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node) ?? 1;
 
-        [$pn, $rpn, $qp0, $pveil] = $this->resolveCarac($node, $accessor, $context, $typeEcsId, $methode);
+        // Chaudière mixte (chauffage + ECS) : Pn déjà calculé côté chauffage selon §13.2.2.4
+        // (Pdim = max(Pch, Pecs), Pn lue dans la table d'âge). On le réutilise pour éviter
+        // une re-dérivation à partir du GV bâtiment qui donne une Pn aberrante en immeuble
+        // avec chauffage individuel.
+        $mixteCarac = $this->getMixteChauffageCarac($node, $accessor);
+        if ($mixteCarac !== null) {
+            [$pn, $rpn, $qp0, $pveil] = $mixteCarac;
+        } else {
+            [$pn, $rpn, $qp0, $pveil] = $this->resolveCarac($node, $accessor, $context, $typeEcsId, $methode);
+        }
 
         // Becs en Wh depuis installation parente
         $becsWh = $this->resolveBecsWh($node, $accessor, $context);
@@ -373,6 +390,49 @@ final class CombustionCalculator implements CalculatorInterface
         // Fallback : présence de pveilleuse dans donnee_entree du générateur
         $pveil = $accessor->getIntOrNull('./donnee_entree/presence_veilleuse', $node);
         return $pveil === 1;
+    }
+
+    /**
+     * Pour les chaudières mixtes (reference_generateur_mixte présent), retourne
+     * (pn, rpn, qp0, pveil) lus depuis le générateur de chauffage correspondant
+     * (déjà calculés par ChaudiereDefautCalculator selon §13.2.2.4).
+     *
+     * @return array{float, float, float, float}|null
+     */
+    private function getMixteChauffageCarac(DOMElement $genEcsNode, NodeAccessor $accessor): ?array
+    {
+        $refMixte = $accessor->getStringOrNull('./donnee_entree/reference_generateur_mixte', $genEcsNode);
+        if ($refMixte === null || $refMixte === '') {
+            return null;
+        }
+        $doc = $genEcsNode->ownerDocument;
+        if ($doc === null) {
+            return null;
+        }
+        $xpath = new \DOMXPath($doc);
+        $matches = $xpath->query(
+            sprintf(
+                '//generateur_chauffage[donnee_entree/reference="%s"]',
+                addslashes($refMixte)
+            )
+        );
+        if ($matches === false || $matches->length === 0) {
+            return null;
+        }
+        $chNode = $matches->item(0);
+        if (!$chNode instanceof DOMElement) {
+            return null;
+        }
+
+        $pn  = $accessor->getFloatOrNull('./donnee_intermediaire/pn',  $chNode);
+        $rpn = $accessor->getFloatOrNull('./donnee_intermediaire/rpn', $chNode);
+        if ($pn === null || $rpn === null) {
+            return null;
+        }
+        $qp0   = $accessor->getFloatOrNull('./donnee_intermediaire/qp0',   $chNode) ?? 0.0;
+        $pveil = $accessor->getFloatOrNull('./donnee_intermediaire/pveil', $chNode) ?? 0.0;
+
+        return [$pn, $rpn, $qp0, $pveil];
     }
 
     private function resolveBecsWh(DOMElement $genNode, NodeAccessor $accessor, CalculationContext $context): float

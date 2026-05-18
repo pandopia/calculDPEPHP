@@ -155,20 +155,20 @@ final class InertieCalculator implements CalculatorInterface
     }
 
     /**
-     * Table §7.4.
-     * Retourne l'ID enum_classe_inertie_id : 1=légère, 2=moyenne, 3=lourde, 4=très lourde.
+     * Table §7.4 ; mapping XSD ADEME :
+     *   1 = très lourde, 2 = lourde, 3 = moyenne, 4 = légère.
      */
     private function classeInertie(bool $pb, bool $ph, bool $pv): int
     {
         return match (true) {
-            $pb && $ph && $pv   => 4, // très lourde
-            $ph && $pv          => 3, // lourde
-            $pb && $pv          => 3,
-            $pb && $ph          => 3,
-            $pv                 => 2, // moyenne
-            $ph                 => 2,
-            $pb                 => 2,
-            default             => 1, // légère
+            $pb && $ph && $pv   => 1, // très lourde
+            $ph && $pv          => 2, // lourde
+            $pb && $pv          => 2,
+            $pb && $ph          => 2,
+            $pv                 => 3, // moyenne
+            $ph                 => 3,
+            $pb                 => 3,
+            default             => 4, // légère
         };
     }
 }
