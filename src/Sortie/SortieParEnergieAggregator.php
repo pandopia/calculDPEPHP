@@ -128,15 +128,20 @@ final class SortieParEnergieAggregator implements CalculatorInterface
         $consoFr     = $efNode ? ($accessor->getFloatOrNull('./conso_fr',                $efNode) ?? 0.0) : 0.0;
         $consoFrDep  = $efNode ? ($accessor->getFloatOrNull('./conso_fr_depensier',      $efNode) ?? 0.0) : 0.0;
 
+        // Mode ZONE (DPE appartement) : les consos par énergie doivent être ramenées
+        // au logement (rdim échantillon × cle_repartition), comme dans EfConsoCalculator.
+        $isZone   = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node) !== null;
+        $nbreAppt = $accessor->getFloatOrNull('./caracteristique_generale/nombre_appartement', $node) ?? 1.0;
+
         // ── 2. Collecter les consos par energie depuis les générateurs CH ──────
         /** @var array<int, float[]> */
         $chByEnergie  = []; // energieId → [conso, consoDep]
-        $this->collectGenConso($accessor, $node, 'installation_chauffage', 'generateur_chauffage', 'conso_ch', $chByEnergie);
+        $this->collectGenConso($accessor, $node, 'installation_chauffage', 'generateur_chauffage', 'conso_ch', $chByEnergie, $isZone, $nbreAppt);
 
         // ── 3. Collecter les consos par energie depuis les générateurs ECS ─────
         /** @var array<int, float[]> */
         $ecsByEnergie = []; // energieId → [conso, consoDep]
-        $this->collectGenConso($accessor, $node, 'installation_ecs', 'generateur_ecs', 'conso_ecs', $ecsByEnergie);
+        $this->collectGenConso($accessor, $node, 'installation_ecs', 'generateur_ecs', 'conso_ecs', $ecsByEnergie, $isZone, $nbreAppt);
 
         // ── 4. Union des types d'énergie + toujours électricité (id=1) ─────────
         $energieIds = array_unique(array_merge(
@@ -217,10 +222,9 @@ final class SortieParEnergieAggregator implements CalculatorInterface
      * @param array<int, float[]> $byEnergie
      */
     /**
-     * Pour les DPE bâtiment collectif (methode=1, rdim>1), chaque installation
-     * représente un logement-type avec rdim copies → multiplier les consos par rdim.
-     * Pour les DPE zone (methode=4, cle_repartition), les consos sont déjà au niveau
-     * du logement (non multipliées ici).
+     * Mise à l'échelle identique à EfConsoCalculator (§17) :
+     *   BAT  : conso × rdimEff (rdim, ou nbApt×ratio_virt/Σéchantillon pour ZONE individuel)
+     *   ZONE : le total est ensuite ramené au logement via cle_repartition_ch/ecs.
      */
     private function collectGenConso(
         NodeAccessor $accessor,
@@ -228,26 +232,59 @@ final class SortieParEnergieAggregator implements CalculatorInterface
         string $installTag,
         string $genTag,
         string $consoField,
-        array &$byEnergie
+        array &$byEnergie,
+        bool $isZone,
+        float $nbreAppt
     ): void {
         $consoDepField = $consoField . '_depensier';
-        $collTag = $installTag . '_collection';
+        $collTag  = $installTag . '_collection';
+        $isCh     = $installTag === 'installation_chauffage';
+        $sumField = $isCh ? 'nombre_logement_echantillon' : 'nombre_logement';
+        $cleField = $isCh ? 'cle_repartition_ch' : 'cle_repartition_ecs';
 
         foreach ($logement->childNodes as $child) {
             if (!$child instanceof DOMElement || $child->nodeName !== $collTag) {
                 continue;
             }
+
+            // Σ(nombre_logement[_echantillon]) pour le rdim effectif ZONE individuel
+            $sumEchantillon = 0.0;
+            foreach ($child->childNodes as $install) {
+                if ($install instanceof DOMElement && $install->nodeName === $installTag) {
+                    $sumEchantillon += $accessor->getFloatOrNull('./donnee_entree/' . $sumField, $install) ?? 0.0;
+                }
+            }
+            if ($sumEchantillon <= 0.0) {
+                $sumEchantillon = 1.0;
+            }
+
             foreach ($child->childNodes as $install) {
                 if (!$install instanceof DOMElement || $install->nodeName !== $installTag) {
                     continue;
                 }
 
-                // §17 : DPE bâtiment methode=1 → appliquer rdim pour passer
-                //       du logement-représentatif au bâtiment entier.
-                $methode = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $install) ?? 1;
-                $rdim    = $methode === 1
-                    ? ($accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0)
-                    : 1.0;
+                $methode     = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $install) ?? 1;
+                $typeInstall = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id',    $install) ?? 1;
+                $rdim        = $accessor->getFloatOrNull('./donnee_entree/rdim',                       $install) ?? 1.0;
+                $ratioVirt   = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation',       $install) ?? 1.0;
+
+                if ($methode === 1) {
+                    $rdimEff = $rdim;
+                } elseif ($typeInstall === 1) {
+                    $rdimEff = $nbreAppt * $ratioVirt / $sumEchantillon;
+                } else {
+                    $rdimEff = $rdim;
+                }
+                $rdimEff = max(1e-9, $rdimEff);
+
+                // ZONE : ramener du bâtiment au logement via la clé de répartition
+                $scale = $rdimEff;
+                if ($isZone) {
+                    $cle = $accessor->getFloatOrNull('./donnee_entree/' . $cleField, $install);
+                    if ($cle !== null && $cle > 0.0) {
+                        $scale *= $cle;
+                    }
+                }
 
                 foreach ($install->childNodes as $genColl) {
                     if (!$genColl instanceof DOMElement) {
@@ -258,8 +295,8 @@ final class SortieParEnergieAggregator implements CalculatorInterface
                             continue;
                         }
                         $eId      = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $gen) ?? 1;
-                        $conso    = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoField,    $gen) ?? 0.0) * $rdim;
-                        $consoDep = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoDepField, $gen) ?? 0.0) * $rdim;
+                        $conso    = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoField,    $gen) ?? 0.0) * $scale;
+                        $consoDep = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoDepField, $gen) ?? 0.0) * $scale;
                         if (!isset($byEnergie[$eId])) {
                             $byEnergie[$eId] = [0.0, 0.0];
                         }

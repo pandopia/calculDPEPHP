@@ -134,29 +134,26 @@ final class UmurCalculator implements CalculatorInterface
             return $umurNu;
         }
 
-        // Période d'isolation : méthode 7 → lire enum_periode_isolation_id ;
-        // méthode 8 → enum_periode_construction_id avec règle ≤74 → 3 ;
-        // méthode 2 → enum_periode_isolation_id si présent, sinon enum_periode_construction_id.
-        // Pour méthode 7 : on lit enum_periode_isolation_id (l'année d'isolation est connue).
-        // Pour méthode 8 : on utilise la periode_construction_id directement — les logiciels
-        //   diagnostiqueurs ADEME (LICIEL bug_for_bug_compat) ne remappent PAS les périodes
-        //   ≤74 vers 75-77 pour le plancher bas/mur ; on reste sur la période de construction.
-        // Pour méthode 2 (isolation inconnue) : préférer enum_periode_isolation_id.
+        // Période d'isolation (open3cl 3.2.1_mur.js) :
+        //   méthode 7 → enum_periode_isolation_id (année d'isolation connue) ;
+        //   méthode 8 → enum_periode_isolation_id SI SAISI (LICIEL le renseigne souvent
+        //     même en méthode 8), sinon periode_construction avec la règle spec p.13
+        //     « année construction ≤74 → année isolation = 75-77 » ;
+        //   méthode 2 → enum_periode_isolation_id si présent, sinon periode_construction
+        //     avec remappage ≤74 → 75-77.
+        $periodeIsolationSaisie = $accessor->getIntOrNull('./enum_periode_isolation_id', $entree);
         $periodeId = match ($methode) {
-            7 => $accessor->getIntOrNull('./enum_periode_isolation_id', $entree),
-            8 => $context->periodeConstructionId,      // ADEME: pas de remappage ≤74→75-77
-            default => $accessor->getIntOrNull('./enum_periode_isolation_id', $entree)
-                     ?? $context->periodeConstructionId,
+            7 => $periodeIsolationSaisie,
+            default => $periodeIsolationSaisie ?? $context->periodeConstructionId,
         };
 
         if ($periodeId === null) {
             return $umurNu;
         }
 
-        // Méthode 2 seulement : si période ≤74, convention 75-77 (période 3).
-        // Méthode 7 (isolation period explicite) et 8 (ADEME bug_for_bug_compat) :
-        //   pas de remappage — open3cl utilise la période saisie directement.
-        if ($methode === 2 && $periodeId <= 2) {
+        // Sans période d'isolation explicite : si période construction ≤74,
+        // convention année d'isolation = 75-77 (période 3) — spec §3.2.1.1 p.13.
+        if ($methode !== 7 && $periodeIsolationSaisie === null && $periodeId <= 2) {
             $periodeId = 3;
         }
 
