@@ -75,14 +75,14 @@ final class EfConsoCalculator implements CalculatorInterface
 
         // ── 2. Chauffage ──────────────────────────────────────────────────────
         [$buildingConsoChTotal, $buildingConsoChDepTotal, $cleRepartitionCh] =
-            $this->aggregateChauffage($accessor, $node, $nbreAppt);
+            $this->aggregateChauffage($accessor, $node, $nbreAppt, $shImmeuble);
 
         $consoChEf    = $isZone ? $buildingConsoChTotal    * $cleRepartitionCh : $buildingConsoChTotal;
         $consoChDepEf = $isZone ? $buildingConsoChDepTotal * $cleRepartitionCh : $buildingConsoChDepTotal;
 
         // ── 3. ECS ────────────────────────────────────────────────────────────
         [$buildingConsoEcsTotal, $buildingConsoEcsDepTotal, $cleRepartitionEcs] =
-            $this->aggregateEcs($accessor, $node, $nbreAppt);
+            $this->aggregateEcs($accessor, $node, $nbreAppt, $shImmeuble);
 
         $consoEcsEf    = $isZone ? $buildingConsoEcsTotal    * $cleRepartitionEcs : $buildingConsoEcsTotal;
         $consoEcsDepEf = $isZone ? $buildingConsoEcsDepTotal * $cleRepartitionEcs : $buildingConsoEcsDepTotal;
@@ -137,7 +137,7 @@ final class EfConsoCalculator implements CalculatorInterface
      *
      * @return array{float, float, float} [building_total, building_total_dep, cle_repartition_ch]
      */
-    private function aggregateChauffage(NodeAccessor $accessor, DOMElement $logement, float $nbreAppt): array
+    private function aggregateChauffage(NodeAccessor $accessor, DOMElement $logement, float $nbreAppt, float $shImmeuble): array
     {
         $collection = $this->getChild($logement, 'installation_chauffage_collection');
         if ($collection === null) {
@@ -166,7 +166,7 @@ final class EfConsoCalculator implements CalculatorInterface
                 continue;
             }
 
-            $rdimEff = $this->computeRdimChauffage($accessor, $install, $nbreAppt, $sumEchantillon);
+            $rdimEff = $this->computeRdimChauffage($accessor, $install, $nbreAppt, $sumEchantillon, $shImmeuble);
 
             $conso    = $accessor->getFloatOrNull('./donnee_intermediaire/conso_ch',           $install) ?? 0.0;
             $consoDep = $accessor->getFloatOrNull('./donnee_intermediaire/conso_ch_depensier', $install) ?? 0.0;
@@ -188,7 +188,7 @@ final class EfConsoCalculator implements CalculatorInterface
      *
      * @return array{float, float, float} [building_total, building_total_dep, cle_repartition_ecs]
      */
-    private function aggregateEcs(NodeAccessor $accessor, DOMElement $logement, float $nbreAppt): array
+    private function aggregateEcs(NodeAccessor $accessor, DOMElement $logement, float $nbreAppt, float $shImmeuble): array
     {
         $collection = $this->getChild($logement, 'installation_ecs_collection');
         if ($collection === null) {
@@ -217,7 +217,7 @@ final class EfConsoCalculator implements CalculatorInterface
                 continue;
             }
 
-            $rdimEff = $this->computeRdimEcs($accessor, $install, $nbreAppt, $sumLogement);
+            $rdimEff = $this->computeRdimEcs($accessor, $install, $nbreAppt, $sumLogement, $shImmeuble);
 
             $installConso    = 0.0;
             $installConsoDep = 0.0;
@@ -246,6 +246,7 @@ final class EfConsoCalculator implements CalculatorInterface
         DOMElement $install,
         float $nbreAppt,
         float $sumEchantillon,
+        float $shImmeuble = 0.0,
     ): float {
         $methode     = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $install) ?? 1;
         $typeInstall = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id',    $install) ?? 1;
@@ -256,6 +257,13 @@ final class EfConsoCalculator implements CalculatorInterface
             $rdimEff = $rdim;
         } elseif ($typeInstall === 1) {
             $rdimEff = $nbreAppt * $ratioVirt / $sumEchantillon;
+            // L'extrapolation échantillon → bâtiment est bornée par la couverture
+            // surfacique : une install dont surface_chauffee = surface_immeuble
+            // représente déjà tout le bâtiment (rdimEff = 1).
+            $surfInst = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $install);
+            if ($surfInst !== null && $surfInst > 0.0 && $shImmeuble > 0.0) {
+                $rdimEff = min($rdimEff, $shImmeuble / $surfInst);
+            }
         } else {
             $rdimEff = $rdim;
         }
@@ -268,6 +276,7 @@ final class EfConsoCalculator implements CalculatorInterface
         DOMElement $install,
         float $nbreAppt,
         float $sumLogement,
+        float $shImmeuble = 0.0,
     ): float {
         $methode     = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $install) ?? 1;
         $typeInstall = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id',    $install) ?? 1;
@@ -278,6 +287,12 @@ final class EfConsoCalculator implements CalculatorInterface
             $rdimEff = $rdim;
         } elseif ($typeInstall === 1) {
             $rdimEff = $nbreAppt * $ratioVirt / $sumLogement;
+            // Même borne surfacique que pour le chauffage (install couvrant tout
+            // l'immeuble → rdimEff = 1).
+            $surfInst = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $install);
+            if ($surfInst !== null && $surfInst > 0.0 && $shImmeuble > 0.0) {
+                $rdimEff = min($rdimEff, $shImmeuble / $surfInst);
+            }
         } else {
             $rdimEff = $rdim;
         }

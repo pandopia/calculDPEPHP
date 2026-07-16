@@ -133,8 +133,14 @@ final class InstallationClassique implements CalculatorInterface
             // BAT : rdim fourni directement
             $rdimEffective = $rdim;
         } elseif ($typeInstall === 1) {
-            // ZONE individuel : extrapolation échantillon → immeuble
+            // ZONE individuel : extrapolation échantillon → immeuble.
+            // Borne surfacique : une install dont surface_chauffee = surface_immeuble
+            // représente déjà tout le bâtiment (rdim effectif = 1) — le calcul se fait
+            // alors directement à l'échelle immeuble (cf. DPE mode 10 mono-install).
             $rdimEffective = $nbreAppt * $ratioVirt / $sumEchantillon;
+            if ($de > 0.0 && $shImmeuble > 0.0) {
+                $rdimEffective = min($rdimEffective, $shImmeuble / $de);
+            }
         } else {
             // ZONE collectif : un unique système collectif, rdim=1
             $rdimEffective = $rdim;

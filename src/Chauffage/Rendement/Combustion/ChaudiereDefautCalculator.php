@@ -135,15 +135,19 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             if ($isImmeubleIndividuel) {
                 // §17.1.4.2 : pour un DPE immeuble chauffage individuel, Pch reflète
                 // la portion d'immeuble servie par cette installation.
-                //   • Si l'installation déclare sa surface (surface_chauffee / surface_habitable) :
-                //     on partitionne Pch au prorata (LICIEL).
-                //   • Sinon : on retombe sur l'« appartement moyen » (Pch / nblgt).
+                //   • Modes 10/12 (appartement généré depuis immeuble) : Pch au prorata
+                //     de la surface de l'installation, y compris ratio = 1 quand elle
+                //     couvre tout l'immeuble (LICIEL dimensionne alors à l'échelle
+                //     immeuble, plaffonné à 400 kW).
+                //   • Modes 6/8 (DPE immeuble) : prorata si l'installation ne couvre
+                //     qu'une partie de l'immeuble, sinon « appartement moyen » /nblgt.
                 $shImmeuble = $accessor->getFloatOrNull('//caracteristique_generale/surface_habitable_immeuble', $node);
                 $shInstall  = $this->getSurfaceInstallation($node, $accessor);
-                if ($shImmeuble !== null && $shImmeuble > 0.0
-                    && $shInstall !== null && $shInstall > 0.0
-                    && $shInstall < $shImmeuble) {
-                    $pchW = $pchW * ($shInstall / $shImmeuble);
+                $isGeneratedFromImmeuble = in_array($modeApp, [10, 12], true);
+                $hasSurfaces = $shImmeuble !== null && $shImmeuble > 0.0
+                    && $shInstall !== null && $shInstall > 0.0;
+                if ($hasSurfaces && ($isGeneratedFromImmeuble || $shInstall < $shImmeuble)) {
+                    $pchW = $pchW * min(1.0, $shInstall / $shImmeuble);
                 } else {
                     $pchW = $pchW / $nblgt;
                 }

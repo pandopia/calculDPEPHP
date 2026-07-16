@@ -159,11 +159,13 @@ final class AuxGenerationCalculator implements CalculatorInterface
             $besoinDep = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ch_depensier', $install) ?? 0.0;
             $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation',       $install) ?? 1.0;
 
-            // surface_chauffee / surface_habitable ratio for CH — open3cl §15.1
+            // surface_chauffee / surface_habitable ratio for CH — open3cl §15.1.
+            // Référence = surface totale desservie (immeuble si présent : en modes 6-13
+            // les installations et leur besoin sont à l'échelle immeuble). Borné à 1.
             $surfCh = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $install);
-            $sh     = $accessor->getFloatOrNull('../caracteristique_generale/surface_habitable_logement', $logement)
-                   ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement',   $logement);
-            $ratioSurface = ($surfCh !== null && $sh !== null && $sh > 0.0) ? ($surfCh / $sh) : 1.0;
+            $sh     = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement)
+                   ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement',  $logement);
+            $ratioSurface = ($surfCh !== null && $sh !== null && $sh > 0.0) ? min(1.0, $surfCh / $sh) : 1.0;
 
             $genCollection = $this->getChild($install, 'generateur_chauffage_collection');
             if ($genCollection === null) {

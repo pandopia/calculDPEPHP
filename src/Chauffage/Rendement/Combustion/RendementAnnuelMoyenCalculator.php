@@ -332,10 +332,15 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         if ($modeApp !== null && in_array($modeApp, [6, 8, 10, 12], true)) {
             $shImmeuble = $accessor->getFloatOrNull('//caracteristique_generale/surface_habitable_immeuble');
             $shInstall  = $this->getSurfaceInstallation($node, $accessor);
-            if ($shImmeuble !== null && $shImmeuble > 0.0
-                && $shInstall !== null && $shInstall > 0.0
-                && $shInstall < $shImmeuble) {
-                return $gv * ($shInstall / $shImmeuble);
+            // Même règle d'échelle que ChaudiereDefautCalculator (Pn) : en mode généré
+            // depuis immeuble (10/12), prorata surface même quand il vaut 1 (install
+            // couvrant tout l'immeuble) ; en mode immeuble (6/8), prorata seulement
+            // partiel, sinon appartement moyen /Nblgt.
+            $isGeneratedFromImmeuble = in_array($modeApp, [10, 12], true);
+            $hasSurfaces = $shImmeuble !== null && $shImmeuble > 0.0
+                && $shInstall !== null && $shInstall > 0.0;
+            if ($hasSurfaces && ($isGeneratedFromImmeuble || $shInstall < $shImmeuble)) {
+                return $gv * min(1.0, $shInstall / $shImmeuble);
             }
             $nblgt = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement');
             if ($nblgt !== null && $nblgt > 1) {
