@@ -694,6 +694,78 @@ php bin/diff-report --filter=2242E --tags=k  # ciblé
 
 ---
 
+## Phase I — Trous de mapping identifiés par audit croisé open3cl (juillet 2026)
+
+Audit systématique des 41 tables `tv_*` d'open3cl (`src/tv.js`) contre nos
+`resources/tables/**` et tables inline des Calculators. Verdict global : 36/41
+mappings couverts et conformes (valeurs vérifiées identiques pour scop CH 1-19,
+scop ECS/CET, rendement_generation 20-47/98-112, temp_fonc, deltar→tv_ujn,
+uvue→tv_b, pertes_stockage, uw/ug/ujn/sw/umur0, coef_reduction_deperdition 283/283,
+debits_ventilation 38/38…). Restent 5 trous, tous sur les générateurs CH
+d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
+
+### TASK-I01 — Chaudières GPL/propane/butane (enum CH 127-139)
+
+- [ ] Owner: __  | Phase: I  | Estimation: 4h  | Priorité: haute
+- Symptôme : tout DPE avec chaudière GPL (enum 127-139) n'a AUCUN rendement de
+  génération : hors plage 20-97 de `ChaudiereDefautCalculator`,
+  `ChaudiereProfilChargeCalculator` et `RendementAnnuelMoyenCalculator`.
+- open3cl : mêmes formules que les chaudières gaz — groupes temp_fonc_30 :
+  condensation 136-139, BT 133-135, classique ≤1990 127-129, standard ≥1991 130-132.
+  K_PCS/PCI GPL = 1.09 (déjà dans notre table via enum_type_energie 9/10).
+- Action : étendre les plages/groupes des 3 calculators + entrées
+  `tv_generateur_combustion` correspondantes (rpn/rpint/qp0 identiques aux gaz
+  de même période, cf. open3cl generateur_combustion).
+- Cible : `src/Chauffage/Rendement/Combustion/*.php`, `resources/tables/chauffage/tv_generateur_combustion.php`
+
+### TASK-I02 — tv_generateur_combustion CH : ids 25-68 manquants (bois, charbon, fioul récent)
+
+- [ ] Owner: __  | Phase: I  | Estimation: 6h  | Priorité: haute
+- Symptôme : notre `tv_generateur_combustion` (CH) n'a que 25 des 93 ids —
+  trous 25-68 = chaudières fioul condensation ≥2015 (25-27), bois bûche/plaquette
+  toutes périodes (28-49), bois granulés (50-68). Une chaudière bois CH en
+  méthode forfaitaire → lookup null → pas de pn/rpn/rpint → pas de rendement.
+  (Le pendant ECS `tv_generateur_combustion_ecs` est complet, lui.)
+- Action : digitaliser les ids 25-68 depuis §13.2.2.2 p.88-90 (contrôler contre
+  open3cl `generateur_combustion` ids 25-68). Y ajouter les chaudières charbon
+  (enum 120-126, mêmes lignes que bois selon open3cl).
+- Cible : `resources/tables/chauffage/tv_generateur_combustion.php`
+
+### TASK-I03 — PAC hybrides (enum CH 143-170) non gérées
+
+- [ ] Owner: __  | Phase: I  | Estimation: 8h  | Priorité: moyenne
+- Symptôme : les 28 enums « pompe à chaleur hybride » sont invisibles du moteur :
+  - partie PAC (143, 145-147, 162-170) : pas de SCOP (la table open3cl `scop`
+    les mappe sur les mêmes valeurs que les PAC 4-19 correspondantes) ;
+  - partie chaudière (144, 148-161) : hors plage combustion 20-97 (les tables
+    open3cl les mappent sur les chaudières condensation/bois équivalentes) ;
+  - répartition conventionnelle besoin PAC/chaudière §9.1.4.3 : H1 80/20,
+    H2 83/17, H3 88/12 (mentionnée dans `MultiGenerateurs` mais non implémentée).
+- Cible : `GenerationNonCombustionCalculator` (SCOP_TABLE alias 143-170),
+  `ChaudiereDefautCalculator`/`ProfilCharge`/`RendementAnnuelMoyen` (aliases
+  148-161), nouvelle stratégie §9.1.4.3.
+
+### TASK-I04 — Réseaux de chaleur enum 142 et 171 absents de RESEAU_IDS
+
+- [ ] Owner: __  | Phase: I  | Estimation: 15min  | Priorité: basse
+- Symptôme : `GenerationNonCombustionCalculator::RESEAU_IDS = [106..112]` ;
+  open3cl mappe aussi 142 (réseau de chaleur non répertorié ou inconnu) et
+  171 (chaudière(s) charbon multi-bâtiment modélisée comme réseau) → rg = 0.97.
+- Cible : `src/Chauffage/Rendement/GenerationNonCombustionCalculator.php`
+
+### TASK-I05 — « Autre système » CH 113-118 / ECS 78-83 : remap vers équivalents
+
+- [ ] Owner: __  | Phase: I  | Estimation: 3h  | Priorité: basse
+- Symptôme : enums « autre système à combustion » (CH 113-116, ECS 78-81) et
+  « autre système thermodynamique » (CH 117-118, ECS 82-83) non gérés.
+- open3cl : `13.2_generateur_combustion_chaudiere.js` remappe 113-116 vers la
+  chaudière standard équivalente selon l'année d'installation (lue en fiche
+  technique) ; les thermodynamiques vers les PAC par défaut.
+- Cible : pré-traitement dans `ChaudiereDefautCalculator` (ou Calculator dédié
+  de normalisation des enums en tête de pipeline).
+
+---
+
 ## Validation par phase (gate)
 
 On ne passe à la phase suivante que quand le harness `tests/EndToEndTest.php` valide les balises produites par la phase courante sur les 4 fichiers de `resources/XML/input/` (tolérance 1e-3, exceptions dans `tests/tolerances.php`) :
