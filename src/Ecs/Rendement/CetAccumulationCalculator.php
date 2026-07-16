@@ -72,6 +72,18 @@ final class CetAccumulationCalculator implements CalculatorInterface
         $accessor = new NodeAccessor($context->document);
         $typeId   = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $node);
 
+        // « Autre système thermodynamique électrique » (82) → PAC double service
+        // selon la période d'installation (open3cl 13.2_generateur_pac.js).
+        if ($typeId === 82) {
+            $periode = $accessor->getIntOrNull('./donnee_entree/enum_periode_installation_ecs_thermo_id', $node);
+            $typeId  = match ($periode) {
+                1       => 10,
+                2       => 11,
+                3       => 12,
+                default => 10, // période inconnue → la plus pénalisante
+            };
+        }
+
         if ($typeId === null || $typeId < 1 || $typeId > 12) {
             return;
         }

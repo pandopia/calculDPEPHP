@@ -706,7 +706,7 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-I01 — Chaudières GPL/propane/butane (enum CH 127-139)
 
-- [ ] Owner: __  | Phase: I  | Estimation: 4h  | Priorité: haute
+- [x] Owner: AI   | Phase: I  | Estimation: 4h  | Priorité: haute
 - Symptôme : tout DPE avec chaudière GPL (enum 127-139) n'a AUCUN rendement de
   génération : hors plage 20-97 de `ChaudiereDefautCalculator`,
   `ChaudiereProfilChargeCalculator` et `RendementAnnuelMoyenCalculator`.
@@ -720,7 +720,7 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-I02 — tv_generateur_combustion CH : ids 25-68 manquants (bois, charbon, fioul récent)
 
-- [ ] Owner: __  | Phase: I  | Estimation: 6h  | Priorité: haute
+- [x] Owner: AI   | Phase: I  | Estimation: 6h  | Priorité: haute
 - Symptôme : notre `tv_generateur_combustion` (CH) n'a que 25 des 93 ids —
   trous 25-68 = chaudières fioul condensation ≥2015 (25-27), bois bûche/plaquette
   toutes périodes (28-49), bois granulés (50-68). Une chaudière bois CH en
@@ -733,7 +733,7 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-I03 — PAC hybrides (enum CH 143-170) non gérées
 
-- [ ] Owner: __  | Phase: I  | Estimation: 8h  | Priorité: moyenne
+- [x] Owner: AI   | Phase: I  | Estimation: 8h  | Priorité: moyenne
 - Symptôme : les 28 enums « pompe à chaleur hybride » sont invisibles du moteur :
   - partie PAC (143, 145-147, 162-170) : pas de SCOP (la table open3cl `scop`
     les mappe sur les mêmes valeurs que les PAC 4-19 correspondantes) ;
@@ -747,7 +747,7 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-I04 — Réseaux de chaleur enum 142 et 171 absents de RESEAU_IDS
 
-- [ ] Owner: __  | Phase: I  | Estimation: 15min  | Priorité: basse
+- [x] Owner: AI   | Phase: I  | Estimation: 15min  | Priorité: basse
 - Symptôme : `GenerationNonCombustionCalculator::RESEAU_IDS = [106..112]` ;
   open3cl mappe aussi 142 (réseau de chaleur non répertorié ou inconnu) et
   171 (chaudière(s) charbon multi-bâtiment modélisée comme réseau) → rg = 0.97.
@@ -755,7 +755,7 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-I05 — « Autre système » CH 113-118 / ECS 78-83 : remap vers équivalents
 
-- [ ] Owner: __  | Phase: I  | Estimation: 3h  | Priorité: basse
+- [x] Owner: AI   | Phase: I  | Estimation: 3h  | Priorité: basse
 - Symptôme : enums « autre système à combustion » (CH 113-116, ECS 78-81) et
   « autre système thermodynamique » (CH 117-118, ECS 82-83) non gérés.
 - open3cl : `13.2_generateur_combustion_chaudiere.js` remappe 113-116 vers la

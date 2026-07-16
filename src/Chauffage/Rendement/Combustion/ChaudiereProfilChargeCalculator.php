@@ -122,7 +122,11 @@ final class ChaudiereProfilChargeCalculator implements CalculatorInterface
     public function calculate(DOMElement $node, CalculationContext $context): void
     {
         $accessor = new NodeAccessor($context->document);
-        $genId    = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $node);
+        // Normalisation GPL/charbon/hybride-chaudière → générateur équivalent (§13.2.1.5)
+        $genId    = \CalculDpePHP\Chauffage\GenerateurChAlias::normalizeNode(
+            $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $node),
+            $node,
+        );
 
         // Seules les chaudières gaz/fioul (55-97) sont couvertes
         if ($genId === null || $genId < 55 || $genId > 97) {

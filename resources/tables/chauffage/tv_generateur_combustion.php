@@ -31,8 +31,10 @@ declare(strict_types=1);
  * @spec-pages   86-92
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
  * @generated-on 2026-04-30
- * @status       partial — IDs 1-24 et 69 implémentés (gaz classique/standard/condensation, fioul, air chaud)
- *               IDs 25-68, 70-93 restent à digitaliser dans TASK-A07.
+ * @status       partial — IDs 1-69 implémentés (gaz, fioul, bois bûche/plaquette/granulés,
+ *               charbon via alias GenerateurChAlias, air chaud id 69).
+ *               IDs 70-93 (air chaud 2006+, radiateurs gaz, accumulateurs/chauffe-eau
+ *               gaz — usage principalement ECS) restent à digitaliser dans TASK-A07.
  */
 
 // ─── Helpers de formules ──────────────────────────────────────────────────────
@@ -398,6 +400,492 @@ return [
         ];
     },
 
-    // Entrées 25-68, 70-93 : à digitaliser dans TASK-A07
+    // ID 25 : Chaudière fioul à condensation après 2015 — Pn≤70 — rpn=91+3*log10(Pn), rpint=98+3*log10(Pn), qp0=0.50%
+    25 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (91 + 3 * log10($pnKw)) / 100.0,
+            'rpint' => (98 + 3 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.005 * $pnW,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 26 : Chaudière fioul à condensation après 2015 — 70<Pn≤400 — rpn=94+log10(Pn), rpint=100+log10(Pn), qp0=0.60%
+    26 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (94 + log10($pnKw)) / 100.0,
+            'rpint' => (100 + log10($pnKw)) / 100.0,
+            'qp0'   => 0.006 * $pnW,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 27 : Chaudière fioul à condensation après 2015 — Pn>400 — rpn=96.6, rpint=102.6, qp0=0.30%
+    27 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.966,
+            'rpint' => 1.026,
+            'qp0'   => 0.003 * $pnW,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 28 : Chaudière bois bûche ou plaquette <1978 — Pn≤70 — rpn=47+6*log10(Pn), rpint=48+6*log10(Pn), qp0=0.08*Pn*(Pn)^-0.27
+    28 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (47 + 6 * log10($pnKw)) / 100.0,
+            'rpint' => (48 + 6 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.08 * ($pnKw ** 0.73) * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 29 : Chaudière bois bûche ou plaquette <1978 — 70<Pn≤400 — rpn=58, rpint=59, qp0=1.8
+    29 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.58,
+            'rpint' => 0.59,
+            'qp0'   => 1.8 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 30 : Chaudière bois bûche ou plaquette <1978 — Pn>400 — rpn=58, rpint=59, qp0=1.1
+    30 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.58,
+            'rpint' => 0.59,
+            'qp0'   => 1.1 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 31 : Chaudière bois bûche ou plaquette 1978-1994 — Pn≤70 — rpn=47+6*log10(Pn), rpint=48+6*log10(Pn), qp0=0.07*Pn*(Pn)^-0.3
+    31 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (47 + 6 * log10($pnKw)) / 100.0,
+            'rpint' => (48 + 6 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.07 * ($pnKw ** 0.70) * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 32 : Chaudière bois bûche ou plaquette 1978-1994 — 70<Pn≤400 — rpn=58, rpint=59, qp0=1.4
+    32 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.58,
+            'rpint' => 0.59,
+            'qp0'   => 1.4 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 33 : Chaudière bois bûche ou plaquette 1978-1994 — Pn>400 — rpn=58, rpint=59, qp0=0.8
+    33 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.58,
+            'rpint' => 0.59,
+            'qp0'   => 0.8 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 34 : Chaudière bois bûche ou plaquette 1995-2003 — Pn≤70 — rpn=47+6*log10(Pn), rpint=48+6*log10(Pn), qp0=0.085*Pn*(Pn)^-0.4
+    34 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (47 + 6 * log10($pnKw)) / 100.0,
+            'rpint' => (48 + 6 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.085 * ($pnKw ** 0.60) * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 35 : Chaudière bois bûche ou plaquette 1995-2003 — 70<Pn≤400 — rpn=58, rpint=59, qp0=1.1
+    35 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.58,
+            'rpint' => 0.59,
+            'qp0'   => 1.1 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 36 : Chaudière bois bûche ou plaquette 1995-2003 — Pn>400 — rpn=58, rpint=59, qp0=0.5
+    36 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.58,
+            'rpint' => 0.59,
+            'qp0'   => 0.5 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 37 : Chaudière bois bûche ou plaquette 2004-2012 — Pn≤70 — rpn=57+6*log10(Pn), rpint=58+6*log10(Pn), qp0=0.085*Pn*(Pn)^-0.4
+    37 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (57 + 6 * log10($pnKw)) / 100.0,
+            'rpint' => (58 + 6 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.085 * ($pnKw ** 0.60) * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 38 : Chaudière bois bûche ou plaquette 2004-2012 — 70<Pn≤400 — rpn=68, rpint=69, qp0=1.1
+    38 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.68,
+            'rpint' => 0.69,
+            'qp0'   => 1.1 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 39 : Chaudière bois bûche ou plaquette 2004-2012 — Pn>400 — rpn=68, rpint=69, qp0=0.5
+    39 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.68,
+            'rpint' => 0.69,
+            'qp0'   => 0.5 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 40 : Chaudière bois bûche ou plaquette 2013-2017 — Pn≤70 — rpn=67+6*log10(Pn), rpint=68+6*log10(Pn), qp0=0.085*Pn*(Pn)^-0.4
+    40 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (67 + 6 * log10($pnKw)) / 100.0,
+            'rpint' => (68 + 6 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.085 * ($pnKw ** 0.60) * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 41 : Chaudière bois bûche ou plaquette 2013-2017 — 70<Pn≤400 — rpn=78, rpint=79, qp0=1.1
+    41 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.78,
+            'rpint' => 0.79,
+            'qp0'   => 1.1 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 42 : Chaudière bois bûche ou plaquette 2013-2017 — Pn>400 — rpn=78, rpint=79, qp0=0.5
+    42 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.78,
+            'rpint' => 0.79,
+            'qp0'   => 0.5 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 43 : Chaudière bois bûche ou plaquette 2018-2019 — Pn≤70 — rpn=80+2*log10(Pn), rpint=77+3*log10(Pn), qp0=0.085*Pn*(Pn)^-0.4
+    43 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (80 + 2 * log10($pnKw)) / 100.0,
+            'rpint' => (77 + 3 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.085 * ($pnKw ** 0.60) * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 44 : Chaudière bois bûche ou plaquette 2018-2019 — 70<Pn≤400 — rpn=84, rpint=83, qp0=1.1
+    44 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.84,
+            'rpint' => 0.83,
+            'qp0'   => 1.1 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 45 : Chaudière bois bûche ou plaquette 2018-2019 — Pn>400 — rpn=84, rpint=83, qp0=0.5
+    45 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.84,
+            'rpint' => 0.83,
+            'qp0'   => 0.5 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 46 : Chaudière bois bûche ou plaquette >2019 — Pn≤20 — rpn=89+2*log10(Pn), rpint=84+2*log10(Pn), qp0=0.085*Pn*(Pn)^-0.4
+    46 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (89 + 2 * log10($pnKw)) / 100.0,
+            'rpint' => (84 + 2 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.085 * ($pnKw ** 0.60) * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 47 : Chaudière bois bûche ou plaquette >2019 — 20<Pn≤70 — rpn=90+2*log10(Pn), rpint=85+2*log10(Pn), qp0=0.085*Pn*(Pn)^-0.4
+    47 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (90 + 2 * log10($pnKw)) / 100.0,
+            'rpint' => (85 + 2 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.085 * ($pnKw ** 0.60) * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 48 : Chaudière bois bûche ou plaquette >2019 — 70<Pn≤400 — rpn=94, rpint=89, qp0=1.1
+    48 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.94,
+            'rpint' => 0.89,
+            'qp0'   => 1.1 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 49 : Chaudière bois bûche ou plaquette >2019 — Pn>400 — rpn=94, rpint=89, qp0=0.5
+    49 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.94,
+            'rpint' => 0.89,
+            'qp0'   => 0.5 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 50 : Chaudière bois granulés <1978 — Pn≤70 — rpn=47+6*log10(Pn), rpint=48+6*log10(Pn), qp0=0.08*Pn*(Pn)^-0.27
+    50 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (47 + 6 * log10($pnKw)) / 100.0,
+            'rpint' => (48 + 6 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.08 * ($pnKw ** 0.73) * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 51 : Chaudière bois granulés <1978 — 70<Pn≤400 — rpn=58, rpint=59, qp0=1.8
+    51 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.58,
+            'rpint' => 0.59,
+            'qp0'   => 1.8 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 52 : Chaudière bois granulés <1978 — Pn>400 — rpn=58, rpint=59, qp0=1.1
+    52 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.58,
+            'rpint' => 0.59,
+            'qp0'   => 1.1 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 53 : Chaudière bois granulés 1978-1994 — Pn≤70 — rpn=47+6*log10(Pn), rpint=48+6*log10(Pn), qp0=0.08*Pn*(Pn)^-0.3
+    53 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (47 + 6 * log10($pnKw)) / 100.0,
+            'rpint' => (48 + 6 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.08 * ($pnKw ** 0.70) * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 54 : Chaudière bois granulés 1978-1994 — 70<Pn≤400 — rpn=58, rpint=59, qp0=1.4
+    54 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.58,
+            'rpint' => 0.59,
+            'qp0'   => 1.4 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 55 : Chaudière bois granulés 1978-1994 — Pn>400 — rpn=58, rpint=59, qp0=0.8
+    55 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.58,
+            'rpint' => 0.59,
+            'qp0'   => 0.8 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 56 : Chaudière bois granulés 1995-2003 — Pn≤70 — rpn=57+6*log10(Pn), rpint=58+6*log10(Pn), qp0=0.085*Pn*(Pn)^-0.4
+    56 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (57 + 6 * log10($pnKw)) / 100.0,
+            'rpint' => (58 + 6 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.085 * ($pnKw ** 0.60) * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 57 : Chaudière bois granulés 1995-2003 — 70<Pn≤400 — rpn=68, rpint=69, qp0=1.1
+    57 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.68,
+            'rpint' => 0.69,
+            'qp0'   => 1.1 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 58 : Chaudière bois granulés 1995-2003 — Pn>400 — rpn=68, rpint=69, qp0=0.5
+    58 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.68,
+            'rpint' => 0.69,
+            'qp0'   => 0.5 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 59 : Chaudière bois granulés 2004-2012 — Pn≤70 — rpn=67+6*log10(Pn), rpint=68+6*log10(Pn), qp0=0.085*Pn*(Pn)^-0.4
+    59 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (67 + 6 * log10($pnKw)) / 100.0,
+            'rpint' => (68 + 6 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.085 * ($pnKw ** 0.60) * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 60 : Chaudière bois granulés 2004-2012 — 70<Pn≤400 — rpn=78, rpint=79, qp0=1.1
+    60 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.78,
+            'rpint' => 0.79,
+            'qp0'   => 1.1 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 61 : Chaudière bois granulés 2004-2012 — Pn>400 — rpn=78, rpint=79, qp0=0.5
+    61 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.78,
+            'rpint' => 0.79,
+            'qp0'   => 0.5 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 62 : Chaudière bois granulés 2013-2019 — Pn≤70 — rpn=80+2*log10(Pn), rpint=77+3*log10(Pn), qp0=0.085*Pn*(Pn)^-0.4
+    62 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (80 + 2 * log10($pnKw)) / 100.0,
+            'rpint' => (77 + 3 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.085 * ($pnKw ** 0.60) * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 63 : Chaudière bois granulés 2013-2019 — 70<Pn≤400 — rpn=84, rpint=83, qp0=1.1
+    63 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.84,
+            'rpint' => 0.83,
+            'qp0'   => 1.1 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 64 : Chaudière bois granulés 2013-2019 — Pn>400 — rpn=84, rpint=83, qp0=0.5
+    64 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.84,
+            'rpint' => 0.83,
+            'qp0'   => 0.5 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 65 : Chaudière bois granulés >2019 — Pn≤20 — rpn=91+2*log10(Pn), rpint=88+2*log10(Pn), qp0=0.085*Pn*(Pn)^-0.4
+    65 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (91 + 2 * log10($pnKw)) / 100.0,
+            'rpint' => (88 + 2 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.085 * ($pnKw ** 0.60) * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 66 : Chaudière bois granulés >2019 — 20<Pn≤70 — rpn=92+2*log10(Pn), rpint=89+2*log10(Pn), qp0=0.085*Pn*(Pn)^-0.4
+    66 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => (92 + 2 * log10($pnKw)) / 100.0,
+            'rpint' => (89 + 2 * log10($pnKw)) / 100.0,
+            'qp0'   => 0.085 * ($pnKw ** 0.60) * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 67 : Chaudière bois granulés >2019 — 70<Pn≤400 — rpn=96, rpint=93, qp0=1.1
+    67 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.96,
+            'rpint' => 0.93,
+            'qp0'   => 1.1 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+    // ID 68 : Chaudière bois granulés >2019 — Pn>400 — rpn=96, rpint=93, qp0=0.5
+    68 => static function (float $pnKw, float $e, float $f): array {
+        $pnW = $pnKw * 1000.0;
+        return [
+            'pn'    => $pnW,
+            'rpn'   => 0.96,
+            'rpint' => 0.93,
+            'qp0'   => 0.5 * 1000.0,
+            'pveil' => 0.0,
+        ];
+    },
+
+    // Entrées 70-93 (générateurs air chaud, radiateurs gaz, accumulateurs et
+    // chauffe-eau gaz — usage ECS/air chaud) : restent à digitaliser (TASK-A07).
     // Ne pas lever d'exception ici — l'appelant doit gérer null gracieusement.
 ];

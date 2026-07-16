@@ -41,7 +41,12 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
     private const JOULE_DIRECT = [98, 99, 100, 101, 102, 103, 104, 105];
 
     /** IDs chaudière électrique / réseau de chaleur → Rg = 0.97  (§12.4.1) */
-    private const RESEAU_IDS = [106, 107, 108, 109, 110, 111, 112];
+    /**
+     * 106 chaudière électrique, 107-112 réseaux de chaleur,
+     * 142 réseau de chaleur non répertorié ou inconnu,
+     * 171 chaudière(s) charbon multi-bâtiment modélisée comme un réseau de chaleur.
+     */
+    private const RESEAU_IDS = [106, 107, 108, 109, 110, 111, 112, 142, 171];
 
     /** IDs PAC (1-19) — SCOP en fonction de la zone et du type */
     private const PAC_RANGE = [1, 19];
@@ -115,6 +120,11 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
             $this->writeRg($node, $accessor, $context, 0.97);
             return;
         }
+
+        // PAC hybride partie PAC (143, 145-147, 162-170) → SCOP de la PAC équivalente
+        $genId = \CalculDpePHP\Chauffage\GenerateurChAlias::isHybridePac($genId)
+            ? \CalculDpePHP\Chauffage\GenerateurChAlias::normalize($genId)
+            : $genId;
 
         if ($genId >= self::PAC_RANGE[0] && $genId <= self::PAC_RANGE[1]) {
             $scop = $this->resolvePacScop($node, $accessor, $context, $genId);

@@ -84,7 +84,11 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
     public function calculate(DOMElement $node, CalculationContext $context): void
     {
         $accessor = new NodeAccessor($context->document);
-        $genId    = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $node);
+        // Normalisation GPL/charbon/hybride-chaudière → générateur équivalent (§13.2.2)
+        $genId    = \CalculDpePHP\Chauffage\GenerateurChAlias::normalizeNode(
+            $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $node),
+            $node,
+        );
 
         if ($genId === null || $genId < self::COMBUSTION_MIN || $genId > self::COMBUSTION_MAX) {
             return;

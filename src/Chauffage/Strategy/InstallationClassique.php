@@ -169,20 +169,49 @@ final class InstallationClassique implements CalculatorInterface
         $rr = $this->weightedEmetteurFloat($accessor, $node, 'rendement_regulation') ?? 1.0;
         $rg = $this->weightedGenerateurFloat($accessor, $node, 'rendement_generation') ?? 1.0;
 
-        // ── 10. Consommation de l'appartement moyen ───────────────────────────
+        // ── 10-12. Consommation et écriture ────────────────────────────────────
+        // PAC hybride (§9.1.4.3) : répartition forfaitaire du besoin entre la
+        // partie PAC et la partie chaudière (H1 80/20, H2 83/17, H3 88/12),
+        // chaque partie utilisant son propre rendement de génération.
+        $genCollection = $this->getChild($node, 'generateur_chauffage_collection');
+        $hybrideGens   = $this->collectHybrideGenerateurs($accessor, $genCollection);
+
+        if ($hybrideGens !== null) {
+            $zoneGroupe = \CalculDpePHP\Engine\CalculationContext::zoneGroupeFromId($context->zoneClimatique) ?? 'H1';
+            $prorata    = \CalculDpePHP\Chauffage\GenerateurChAlias::prorataHybride($zoneGroupe);
+
+            $consoCh    = 0.0;
+            $consoChDep = 0.0;
+            foreach ($hybrideGens as [$gen, $isPac, $rgGen]) {
+                $part      = $isPac ? $prorata['pac'] : $prorata['chaudiere'];
+                $denomGen  = max(1e-9, $rgGen * $re * $rd * $rr);
+                $cGen      = $besoinMoy    * $part * $int / $denomGen;
+                $cGenDep   = $besoinMoyDep * $part * $int / $denomGen;
+                $genDi     = $accessor->ensureDonneeIntermediaire($gen);
+                $accessor->setChildValue($genDi, 'conso_ch',           $cGen);
+                $accessor->setChildValue($genDi, 'conso_ch_depensier', $cGenDep);
+                $consoCh    += $cGen;
+                $consoChDep += $cGenDep;
+            }
+
+            $di = $accessor->ensureDonneeIntermediaire($node);
+            $accessor->setChildValue($di, 'besoin_ch',           $besoinInstall);
+            $accessor->setChildValue($di, 'besoin_ch_depensier', $besoinInstallDep);
+            $accessor->setChildValue($di, 'conso_ch',            $consoCh);
+            $accessor->setChildValue($di, 'conso_ch_depensier',  $consoChDep);
+            return;
+        }
+
         $denom      = max(1e-9, $rg * $re * $rd * $rr);
         $consoCh    = $besoinMoy    * $int / $denom;
         $consoChDep = $besoinMoyDep * $int / $denom;
 
-        // ── 11. Écriture dans installation.donnee_intermediaire ───────────────
         $di = $accessor->ensureDonneeIntermediaire($node);
         $accessor->setChildValue($di, 'besoin_ch',          $besoinInstall);
         $accessor->setChildValue($di, 'besoin_ch_depensier', $besoinInstallDep);
         $accessor->setChildValue($di, 'conso_ch',           $consoCh);
         $accessor->setChildValue($di, 'conso_ch_depensier', $consoChDep);
 
-        // ── 12. Écriture dans chaque generateur.donnee_intermediaire ──────────
-        $genCollection = $this->getChild($node, 'generateur_chauffage_collection');
         if ($genCollection !== null) {
             foreach ($genCollection->childNodes as $gen) {
                 if (!($gen instanceof DOMElement) || $gen->nodeName !== 'generateur_chauffage') {
@@ -193,6 +222,34 @@ final class InstallationClassique implements CalculatorInterface
                 $accessor->setChildValue($genDi, 'conso_ch_depensier', $consoChDep);
             }
         }
+    }
+
+    /**
+     * Détecte une installation PAC hybride (§9.1.4.3) : au moins un générateur
+     * avec enum_type_generateur_ch_id 143-170. Retourne la liste
+     * [générateur, is_partie_pac, rendement_generation] ou null si non hybride.
+     *
+     * @return list<array{DOMElement, bool, float}>|null
+     */
+    private function collectHybrideGenerateurs(NodeAccessor $accessor, ?DOMElement $genCollection): ?array
+    {
+        if ($genCollection === null) {
+            return null;
+        }
+        $gens = [];
+        $hasHybride = false;
+        foreach ($genCollection->childNodes as $gen) {
+            if (!($gen instanceof DOMElement) || $gen->nodeName !== 'generateur_chauffage') {
+                continue;
+            }
+            $genId = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $gen);
+            if (\CalculDpePHP\Chauffage\GenerateurChAlias::isHybride($genId)) {
+                $hasHybride = true;
+            }
+            $rgGen = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen) ?? 1.0;
+            $gens[] = [$gen, \CalculDpePHP\Chauffage\GenerateurChAlias::isHybridePac($genId), $rgGen];
+        }
+        return ($hasHybride && count($gens) >= 2) ? $gens : null;
     }
 
     /**
