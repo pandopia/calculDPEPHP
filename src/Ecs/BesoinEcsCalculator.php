@@ -131,12 +131,15 @@ final class BesoinEcsCalculator implements CalculatorInterface
         //   • N installs partitionnant l'immeuble par surface (chacune rdim=1)
         //     → ratio = surface_install/surface_immeuble                (besoin proportionnel)
         $nbApt        = $accessor->getIntOrNull('./caracteristique_generale/nombre_appartement', $node) ?? 1;
-        // Surface de référence : surface_habitable_immeuble pour un DPE immeuble,
-        // sinon surface_habitable_logement (DPE appartement / zone, modes 2-5, 10-13)
-        // où le besoin_total est déjà à l'échelle apt.
+        // Surface de référence pour la partition :
+        //   • Modes appartement DÉCRIT à son échelle (2-5, 31-32, 35-37) : les installs
+        //     portent des surfaces logement → référence = surface_habitable_logement.
+        //   • Modes appartement GÉNÉRÉ depuis les données immeuble (10-13, 33-40) et
+        //     DPE immeuble : les installs décrivent l'immeuble/échantillon → référence
+        //     = surface_habitable_immeuble.
         $modeAppId   = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $node);
-        $isZoneDpe   = $modeAppId !== null && in_array($modeAppId, [2, 3, 4, 5, 10, 11, 12, 13, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40], true);
-        $surfImmeuble = $isZoneDpe
+        $isApartmentScaleDpe = $modeAppId !== null && in_array($modeAppId, [2, 3, 4, 5, 31, 32, 35, 36, 37], true);
+        $surfImmeuble = $isApartmentScaleDpe
             ? ($accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node)
                 ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $node))
             : ($accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $node)

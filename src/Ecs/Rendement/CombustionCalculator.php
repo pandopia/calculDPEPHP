@@ -116,6 +116,15 @@ final class CombustionCalculator implements CalculatorInterface
 
         // Caractéristiques combustion via enum_type_generateur_ecs_id (priorité open3cl)
         $typeEcsId = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $node);
+        // « Autre système à combustion » ECS (78 gaz, 79 fioul, 80 bois, 81 autres
+        // fossiles) → générateur équivalent le plus ancien (pénalisant), comme
+        // open3cl updateGenerateurChaudieres sans fiche technique d'année.
+        $typeEcsId = match ($typeEcsId) {
+            78      => 45,  // chaudière gaz classique avant 1981
+            79, 81  => 35,  // chaudière fioul classique avant 1970
+            80      => 15,  // chaudière bois bûche avant 1978
+            default => $typeEcsId,
+        };
         $methode   = $accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node) ?? 1;
 
         // Chaudière mixte (chauffage + ECS) : Pn déjà calculé côté chauffage selon §13.2.2.4

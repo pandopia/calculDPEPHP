@@ -272,6 +272,16 @@ final class SortieParEnergieAggregator implements CalculatorInterface
                     $rdimEff = $rdim;
                 } elseif ($typeInstall === 1) {
                     $rdimEff = $nbreAppt * $ratioVirt / $sumEchantillon;
+                    // Borne surfacique : une install couvrant toute la surface immeuble
+                    // représente déjà tout le bâtiment (rdimEff = 1).
+                    $shImm    = $accessor->getFloatOrNull('//caracteristique_generale/surface_habitable_immeuble');
+                    $surfInst = $accessor->getFloatOrNull(
+                        './donnee_entree/' . ($isCh ? 'surface_chauffee' : 'surface_habitable'),
+                        $install,
+                    );
+                    if ($surfInst !== null && $surfInst > 0.0 && $shImm !== null && $shImm > 0.0) {
+                        $rdimEff = min($rdimEff, $shImm / $surfInst);
+                    }
                 } else {
                     $rdimEff = $rdim;
                 }
