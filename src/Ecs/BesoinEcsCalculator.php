@@ -155,12 +155,22 @@ final class BesoinEcsCalculator implements CalculatorInterface
         }
         $isImmeubleEcsIndividuels = count($instalNodes) > 1 && $allIndividual && $nbApt > 1;
 
+        // Modes 10-13 / 33-40 : DPE appartement GÉNÉRÉ à partir des données immeuble.
+        // Les installations décrivent l'échantillon immeuble (leur surface_habitable est
+        // une surface d'échantillon, pas une part du logement) — le besoin par install
+        // est celui de l'appartement moyen (total / nbApt), cf. §17.2 / verif LICIEL.
+        $isGeneratedFromImmeuble = $modeAppId !== null
+            && in_array($modeAppId, [10, 11, 12, 13, 33, 34, 38, 39, 40], true);
+
         foreach ($instalNodes as $inst) {
             $rdim     = $accessor->getFloatOrNull('./donnee_entree/rdim',              $inst) ?? 1.0;
             $rdim     = $rdim > 0.0 ? $rdim : 1.0;
             $surfInst = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $inst);
 
-            if ($surfInst !== null && $surfInst > 0.0 && $surfImmeuble !== null && $surfImmeuble > 0.0) {
+            if ($isGeneratedFromImmeuble && $isImmeubleEcsIndividuels) {
+                // Appartement moyen : besoin_install = besoin_total / nombre_appartement
+                $ratio = 1.0 / $nbApt;
+            } elseif ($surfInst !== null && $surfInst > 0.0 && $surfImmeuble !== null && $surfImmeuble > 0.0) {
                 // Partition par surface : besoin_install = besoin × surface_install / (surface_immeuble × rdim)
                 $ratio = $surfInst / ($surfImmeuble * $rdim);
             } elseif ($isImmeubleEcsIndividuels) {
