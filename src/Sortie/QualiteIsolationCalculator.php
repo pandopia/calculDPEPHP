@@ -94,7 +94,9 @@ final class QualiteIsolationCalculator implements CalculatorInterface
 
         // Qualité par paroi : Umoy = Σ(S×U) / ΣS, filtrés adj≠22 (+ b>0 pour murs/bv/portes)
         [$umurSU,   $sMur]   = $this->sumQualite($xpath, $node, 'mur',          'umur',         'surface_paroi_opaque', filterBGt0: true,  excludeAdj22: true);
-        [$upbSU,    $sPB]    = $this->sumQualite($xpath, $node, 'plancher_bas',  'upb_final',    'surface_paroi_opaque', filterBGt0: false, excludeAdj22: true);
+        // plancher_bas : open3cl/LICIEL utilisent upb (pas upb_final/Ue) pour la
+        // qualité d'isolation ; upb_final en secours si upb absent
+        [$upbSU,    $sPB]    = $this->sumQualite($xpath, $node, 'plancher_bas',  ['upb', 'upb_final'], 'surface_paroi_opaque', filterBGt0: false, excludeAdj22: true);
         [$ubvSU,    $sBV]    = $this->sumQualite($xpath, $node, 'baie_vitree',   'u_menuiserie', 'surface_totale_baie',  filterBGt0: true,  excludeAdj22: false);
         [$uPorteSU, $sPorte] = $this->sumQualite($xpath, $node, 'porte',         'uporte',       'surface_porte',        filterBGt0: true,  excludeAdj22: false);
 
@@ -147,11 +149,12 @@ final class QualiteIsolationCalculator implements CalculatorInterface
      *
      * @return array{0: float, 1: float}  [sumSU, sumS]
      */
+    /** @param string|list<string> $uTag balise U (ou liste par ordre de priorité) */
     private function sumQualite(
         DOMXPath $xpath,
         DOMElement $logement,
         string $tag,
-        string $uTag,
+        string|array $uTag,
         string $surfaceTag,
         bool $filterBGt0,
         bool $excludeAdj22,
@@ -190,7 +193,13 @@ final class QualiteIsolationCalculator implements CalculatorInterface
                     continue;
                 }
             }
-            $u = $this->childFloat($n, 'donnee_intermediaire', $uTag);
+            $u = null;
+            foreach ((array)$uTag as $candidate) {
+                $u = $this->childFloat($n, 'donnee_intermediaire', $candidate);
+                if ($u !== null) {
+                    break;
+                }
+            }
             $s = $this->childFloat($n, 'donnee_entree', $surfaceTag);
             if ($u === null || $s === null) {
                 continue;

@@ -222,7 +222,7 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         return match ($boilerCat) {
             'condensation' => $this->qpxCondensation($rpn_pcs, $rpint_pcs, $tfonc100, $tfonc30, $qp0_kw, $pn_kw, $tchDim, $regulation),
             'bt'           => $this->qpxBt($rpn_pcs, $rpint_pcs, $tfonc100, $tfonc30, $qp0_kw, $pn_kw, $tchDim, $regulation),
-            default        => $this->qpxStandard($rpn_pcs, $rpint_pcs, $qp0_kw, $pn_kw, $tchDim, $regulation),
+            default        => $this->qpxStandard($rpn_pcs, $rpint_pcs, $tfonc100, $tfonc30, $qp0_kw, $pn_kw, $tchDim, $regulation),
         };
     }
 
@@ -288,15 +288,20 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
 
     /** QPx chaudière standard — point w=30% (§13.2.1.6) */
     private function qpxStandard(
-        float $rp_n, float $rp_int, float $qp0, float $pn, float $x, bool $reg,
+        float $rp_n, float $rp_int, float $tf100, float $tf30,
+        float $qp0, float $pn, float $x, bool $reg,
     ): float {
-        // QP30 avec Tfonc référence: 50°C (standard)
-        $numQp30  = 100.0 - ($rp_int * 100.0 + 0.1 * (50.0 - 52.5)); // Tfonc_30 standard
-        $denQp30  = $rp_int * 100.0 + 0.1 * (50.0 - 52.5);
+        // Standard §13.2.1.6 : QP30 avec coefficient 0.1 × (50 − Tfonc)
+        //   Tfonc = Tfonc_30 s'il y a une régulation de combustion, Tfonc_100 sinon
+        //   (mêmes températures réelles que BT/condensation — open3cl QPx, vérifié
+        //   sur 2662E2147774H : rg = 0.776571 avec tf100 = 80 °C).
+        $tfRef    = $reg ? $tf30 : $tf100;
+        $numQp30  = 100.0 - ($rp_int * 100.0 + 0.1 * (50.0 - $tfRef));
+        $denQp30  = $rp_int * 100.0 + 0.1 * (50.0 - $tfRef);
         $qp30     = ($denQp30 > 0.0) ? 0.3 * $pn * $numQp30 / $denQp30 : 0.0;
 
-        $numQp100 = 100.0 - ($rp_n * 100.0 + 0.1 * (70.0 - 70.0));
-        $denQp100 = $rp_n * 100.0 + 0.1 * (70.0 - 70.0);
+        $numQp100 = 100.0 - ($rp_n * 100.0 + 0.1 * (70.0 - $tf100));
+        $denQp100 = $rp_n * 100.0 + 0.1 * (70.0 - $tf100);
         $qp100    = ($denQp100 > 0.0) ? $pn * $numQp100 / $denQp100 : 0.0;
 
         if ($x <= 0.30) {

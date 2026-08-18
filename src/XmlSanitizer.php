@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace CalculDpePHP;
 
 use DOMDocument;
-use DOMElement;
-use DOMNode;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -37,10 +35,9 @@ final class XmlSanitizer
             throw new RuntimeException(sprintf('Impossible de charger le XML: %s', $inputFilePath));
         }
 
-        $removedCount = 0;
-        foreach (['donnee_intermediaire', 'sortie'] as $tagName) {
-            $removedCount += $this->removeElementsByTagName($document, $tagName);
-        }
+        // Préserve les caractéristiques saisies (pn, rpn… selon
+        // enum_methode_saisie_carac_sys_id) — voir Xml\OutputPurger.
+        $removedCount = \CalculDpePHP\Xml\OutputPurger::purge($document);
 
         if ($document->save($sanitizedPath) === false) {
             throw new RuntimeException(sprintf('Impossible d\'enregistrer le fichier nettoye vers %s', $sanitizedPath));
@@ -65,23 +62,4 @@ final class XmlSanitizer
         }
     }
 
-    private function removeElementsByTagName(DOMDocument $document, string $tagName): int
-    {
-        $nodes = [];
-
-        foreach ($document->getElementsByTagName($tagName) as $node) {
-            if ($node instanceof DOMElement) {
-                $nodes[] = $node;
-            }
-        }
-
-        foreach ($nodes as $node) {
-            $parent = $node->parentNode;
-            if ($parent instanceof DOMNode) {
-                $parent->removeChild($node);
-            }
-        }
-
-        return count($nodes);
-    }
 }

@@ -140,6 +140,8 @@ final class FCalculator implements CalculatorInterface
         $denominateur19    = 0.0;
         $numerateur21      = 0.0;
         $denominateur21    = 0.0;
+        $fjMensuel19       = array_fill(1, 12, 0.0);
+        $fjMensuel21       = array_fill(1, 12, 0.0);
 
         $aiBase = 3.52 * $sh + 90.0 * (132.0 / 168.0) * $nadeq;
 
@@ -173,6 +175,7 @@ final class FCalculator implements CalculatorInterface
                 $Fj19 = $this->computeF($Xj19, $n);
                 $numerateur19   += $Fj19 * $gv * $DH19j;
                 $denominateur19 += $gv * $DH19j;
+                $fjMensuel19[$j] = $Fj19;
             }
 
             // Fraction 21°C (dépensier)
@@ -181,6 +184,7 @@ final class FCalculator implements CalculatorInterface
                 $Fj21 = $this->computeF($Xj21, $n);
                 $numerateur21   += $Fj21 * $gv * $DH21j;
                 $denominateur21 += $gv * $DH21j;
+                $fjMensuel21[$j] = $Fj21;
             }
         }
 
@@ -207,6 +211,10 @@ final class FCalculator implements CalculatorInterface
         $context->set('apport.fraction_ch',         $fractionCh);
         $context->set('apport.fraction_ch_depensier', $fractionChDepensier);
         $context->set('apport.nadeq',               $nadeq);
+        // Fj mensuels — utilisés par BesoinChauffageCalculator pour les pertes
+        // récupérées des générateurs (Bch_hp_j = GV × (1−Fj) × DHj)
+        $context->set('apport.fj_mensuel',     $fjMensuel19);
+        $context->set('apport.fj_mensuel_dep', $fjMensuel21);
     }
 
     /**

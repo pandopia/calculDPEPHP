@@ -97,17 +97,10 @@ final class DpeEngine
 
     private function purgeOutputs(DOMDocument $document): void
     {
-        foreach (['donnee_intermediaire', 'sortie'] as $tag) {
-            $nodes = [];
-            foreach ($document->getElementsByTagName($tag) as $n) {
-                $nodes[] = $n;
-            }
-            foreach ($nodes as $n) {
-                if ($n->parentNode !== null) {
-                    $n->parentNode->removeChild($n);
-                }
-            }
-        }
+        // Préserve les caractéristiques saisies (pn, rpn… selon
+        // enum_methode_saisie_carac_sys_id) qui sont des entrées stockées
+        // en donnee_intermediaire — voir OutputPurger.
+        \CalculDpePHP\Xml\OutputPurger::purge($document);
     }
 
     private function buildContext(DOMDocument $document): CalculationContext

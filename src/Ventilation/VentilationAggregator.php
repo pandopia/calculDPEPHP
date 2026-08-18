@@ -79,7 +79,12 @@ final class VentilationAggregator implements CalculatorInterface
             }
             $hvent += $accessor->getFloatOrNull('./hvent', $di) ?? 0.0;
             $hperm += $accessor->getFloatOrNull('./hperm', $di) ?? 0.0;
-            $caux  += $accessor->getFloatOrNull('./conso_auxiliaire_ventilation', $di) ?? 0.0;
+            // La copie DI de conso_auxiliaire_ventilation est arrondie à l'entier
+            // (convention LICIEL) : recalcul pleine précision depuis pvent_moy.
+            $pventMoy = $accessor->getFloatOrNull('./pvent_moy', $di);
+            $caux  += $pventMoy !== null
+                ? 8760.0 * $pventMoy / 1000.0
+                : ($accessor->getFloatOrNull('./conso_auxiliaire_ventilation', $di) ?? 0.0);
             if ($de !== null && $surfaceVentile === null) {
                 $surfaceVentile = $accessor->getFloatOrNull('./surface_ventile', $de);
             }

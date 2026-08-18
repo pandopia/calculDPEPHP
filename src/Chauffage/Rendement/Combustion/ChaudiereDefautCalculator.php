@@ -17,8 +17,9 @@ use DOMElement;
  * La puissance nominale Pn est calculée depuis GV si absente de donnee_entree :
  *   Pn = 1.2 × GV × (19 − Tbase) / 0.95³   (§13.2.2 p.87, open3cl 13.2_generateur_combustion.js)
  *
- * Si `enum_methode_saisie_carac_sys_id = 2` (valeurs réelles connues), les champs
- * pn / rpn / rpint / qp0 / pveil sont supposés présents en donnee_entree et recopiés.
+ * Si `enum_methode_saisie_carac_sys_id ≥ 2`, seuls les champs déclarés saisis par la
+ * méthode le sont réellement (2 → pn ; 3 → pn,rpn,rpint ; 4/5 → pn,rpn,rpint,qp0) :
+ * ils sont lus en donnee_entree quand présents, les autres restent forfaitaires.
  *
  * Ne s'applique qu'aux générateurs à combustion (IDs 20-97 excl. PAC et électrique).
  *
@@ -98,34 +99,49 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
 
         $di = $accessor->ensureDonneeIntermediaire($node);
 
-        if ($methode === 2) {
-            // Caractéristiques réelles saisies par le diagnostiqueur — recopier depuis donnee_entree
-            foreach (['pn', 'rpn', 'rpint', 'qp0', 'pveil'] as $field) {
-                $val = $accessor->getFloatOrNull("./donnee_entree/$field", $node);
-                if ($val !== null) {
-                    $accessor->setChildValue($di, $field, $val);
-                }
+        // Champs saisis par le diagnostiqueur selon la méthode (XSD enum_methode_saisie_carac_sys) :
+        //   1 → aucun (tout forfaitaire) ; 2 → pn ; 3 → pn,rpn,rpint ;
+        //   4 → pn,rpn,rpint,qp0 ; 5 → pn,rpn,rpint,qp0 (+temp_fonc).
+        // Les champs NON saisis restent forfaitaires (table tv_generateur_combustion).
+        $saisieFields = match (true) {
+            $methode >= 4  => ['pn', 'rpn', 'rpint', 'qp0', 'pveil'],
+            $methode === 3 => ['pn', 'rpn', 'rpint'],
+            $methode === 2 => ['pn'],
+            default        => [],
+        };
+        // Les logiciels diagnostiqueurs (LICIEL…) stockent les valeurs saisies en
+        // donnee_intermediaire plutôt qu'en donnee_entree : elles y sont préservées
+        // par OutputPurger. On lit donc les deux emplacements.
+        $saisie = [];
+        foreach ($saisieFields as $field) {
+            $val = $accessor->getFloatOrNull("./donnee_entree/$field", $node)
+                ?? $accessor->getFloatOrNull("./donnee_intermediaire/$field", $node);
+            if ($val !== null) {
+                $saisie[$field] = $val;
+            }
+        }
+
+        // Lecture de la table tv_generateur_combustion pour les champs forfaitaires
+        $tvId = $accessor->getIntOrNull('./donnee_entree/tv_generateur_combustion_id', $node);
+        $entry = null;
+        if ($tvId !== null) {
+            $table = $context->tables->load('chauffage/tv_generateur_combustion');
+            $entry = $table[$tvId] ?? null;
+        }
+        if ($entry === null) {
+            // ID non encore digitalisé (TASK-A07) ou absent : recopier les champs saisis
+            foreach ($saisie as $field => $val) {
+                $accessor->setChildValue($di, $field, $val);
             }
             return;
-        }
-
-        // methode=1 : lecture de la table tv_generateur_combustion
-        $tvId = $accessor->getIntOrNull('./donnee_entree/tv_generateur_combustion_id', $node);
-        if ($tvId === null) {
-            return;
-        }
-
-        $table = $context->tables->load('chauffage/tv_generateur_combustion');
-        $entry = $table[$tvId] ?? null;
-        if ($entry === null) {
-            return; // ID non encore digitalisé — TASK-A07
         }
 
         // Ratio de virtualisation pour installations collectives (§17.2)
         $ratioVirt = $this->getRatioVirtualisation($node, $accessor);
 
-        // Puissance nominale : depuis donnee_entree si saisie, sinon calculée depuis GV
-        $pnSaisi = $accessor->getFloatOrNull('./donnee_entree/pn', $node);
+        // Puissance nominale : depuis donnee_entree/donnee_intermediaire si saisie,
+        // sinon calculée depuis GV
+        $pnSaisi = $saisie['pn'] ?? $accessor->getFloatOrNull('./donnee_entree/pn', $node);
         $pnW = $pnSaisi;
         if ($pnW === null || $pnW <= 0.0) {
             // §13.2.2.4 : Pch (kW) au scale approprié
@@ -181,7 +197,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             // Pour pn saisi (non calculé), pas de virtualisation (ratio=1 implicite).
             $pnBuildingKw = $pnKw;
             $pnApartmentW = $pnW;
-            if ($ratioVirt > 0.0 && $ratioVirt < 1.0 && ($accessor->getFloatOrNull('./donnee_entree/pn', $node) === null)) {
+            if ($ratioVirt > 0.0 && $ratioVirt < 1.0 && $pnSaisi === null) {
                 // pnW ici = pn_bâtiment (déjà plaffonné dans computePnFromGv)
                 $pnBuildingKw = $pnW / 1000.0;
                 $pnApartmentW = $pnW * $ratioVirt;
@@ -195,11 +211,11 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             $row = $entry;
         }
 
-        $accessor->setChildValue($di, 'pn',    (float)($row['pn']    ?? $pnW));
-        $accessor->setChildValue($di, 'rpn',   (float)($row['rpn']   ?? 0.0));
-        $accessor->setChildValue($di, 'rpint', (float)($row['rpint'] ?? 0.0));
-        $accessor->setChildValue($di, 'qp0',   (float)($row['qp0']   ?? 0.0));
-        $accessor->setChildValue($di, 'pveil', (float)($row['pveil'] ?? 0.0));
+        $accessor->setChildValue($di, 'pn',    $saisie['pn']    ?? (float)($row['pn']    ?? $pnW));
+        $accessor->setChildValue($di, 'rpn',   $saisie['rpn']   ?? (float)($row['rpn']   ?? 0.0));
+        $accessor->setChildValue($di, 'rpint', $saisie['rpint'] ?? (float)($row['rpint'] ?? 0.0));
+        $accessor->setChildValue($di, 'qp0',   $saisie['qp0']   ?? (float)($row['qp0']   ?? 0.0));
+        $accessor->setChildValue($di, 'pveil', $saisie['pveil'] ?? (float)($row['pveil'] ?? 0.0));
     }
 
     /**
