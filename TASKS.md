@@ -692,6 +692,22 @@ php bin/diff-report --filter=2242E --tags=k  # ciblé
 - Spec : §17.1 p.108-115
 - Cible : `src/Collectif/ImmeubleMethodeCalculator.php` (nouveau) + `DpeEngine.php`
 
+### TASK-H11 — DPE neuf (RT2012/RE2020) : erreur explicite au lieu d'un faux succès
+
+- [~CLF] Owner: AI  | Phase: H  | Estimation: 2h  | Priorité: haute
+- Symptôme : sur un XML ADEME de DPE neuf (`administratif/enum_modele_dpe_id` = 2
+  « dpe neuf logement : rt2012 » ou 3 « re2020 », structure `<logement_neuf>` sans
+  `donnee_entree`), le moteur purge la `<sortie>` existante via `XmlSanitizer`/purge,
+  ne calcule rien (aucun Calculator ne matche), écrit un `.calculated.xml` SANS
+  `<sortie>` et `bin/calcul-dpe` affiche quand même « ✓ DPE calculé ».
+  Reproduit avec le DPE ADEME 2247N2468596F.
+- Action : détecter `enum_modele_dpe_id` ∉ {1} (ou l'absence de balise `<logement>`)
+  AVANT la purge d'idempotence, et lever une exception explicite du type
+  « DPE neuf (RT2012/RE2020) : non calculable par la méthode 3CL ». `bin/calcul-dpe`
+  doit sortir en erreur sans écrire de fichier de sortie. Ajouter un test unitaire.
+- Cible : `src/Engine/DpeEngine.php`, `src/Engine/UnsupportedDpeModelException.php`
+  (nouveau), `bin/calcul-dpe`, `tests/Unit/Engine/DpeEngineTest.php` (nouveau)
+
 ---
 
 ## Phase I — Trous de mapping identifiés par audit croisé open3cl (juillet 2026)
