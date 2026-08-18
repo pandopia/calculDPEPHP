@@ -694,7 +694,7 @@ php bin/diff-report --filter=2242E --tags=k  # ciblé
 
 ### TASK-H11 — DPE neuf (RT2012/RE2020) : erreur explicite au lieu d'un faux succès
 
-- [~CLF] Owner: AI  | Phase: H  | Estimation: 2h  | Priorité: haute
+- [x] Owner: AI  | Phase: H  | Estimation: 2h  | Priorité: haute
 - Symptôme : sur un XML ADEME de DPE neuf (`administratif/enum_modele_dpe_id` = 2
   « dpe neuf logement : rt2012 » ou 3 « re2020 », structure `<logement_neuf>` sans
   `donnee_entree`), le moteur purge la `<sortie>` existante via `XmlSanitizer`/purge,
