@@ -52,6 +52,9 @@ final class ConsoAuxiliaireVentilationCalculator implements CalculatorInterface
 
         $pventMoy = $accessor->getFloatOrNull('./pvent_moy', $intermediaire) ?? 0.0;
         $caux = 8760.0 * $pventMoy / 1000.0;
-        $accessor->setChildValue($intermediaire, 'conso_auxiliaire_ventilation', $caux);
+        // LICIEL arrondit la copie donnee_intermediaire à l'entier (la valeur
+        // pleine précision va dans sortie/ef_conso via VentilationAggregator,
+        // qui recalcule depuis pvent_moy).
+        $accessor->setChildValue($intermediaire, 'conso_auxiliaire_ventilation', round($caux));
     }
 }

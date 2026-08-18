@@ -24,7 +24,7 @@ use DOMElement;
  * Pertes récupérées :
  *   − pertes_distribution_ecs_recup  : calculées par EcsDistributionRecupCalculator (TASK-E26+)
  *   − pertes_stockage_ecs_recup      : calculées par EcsStockageRecupCalculator
- *   − pertes_generateur_ch_recup     : calculées par RendementCombustionCalculator
+ *   − pertes_generateur_ch_recup     : calculées ici (computePertesGenerateurRecup)
  *   Si non encore calculées, valeur dans contexte = 0.
  *
  * @spec-section 9.1.1
@@ -50,6 +50,7 @@ final class BesoinChauffageCalculator implements CalculatorInterface
             '\CalculDpePHP\Ventilation\VentilationAggregator',
             '\CalculDpePHP\Ecs\BesoinEcsCalculator',
             '\CalculDpePHP\Ecs\Rendement\StockageCalculator', // writes Qgw to DOM
+            '\CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator', // writes qp0/pn
         ];
     }
 
@@ -107,8 +108,10 @@ final class BesoinChauffageCalculator implements CalculatorInterface
         $pertesStockageRecup    = $this->computePertesStockageRecup($node, $context, $tvS, false);
         $pertesStockageRecupDep = $this->computePertesStockageRecup($node, $context, $tvS, true);
 
-        $pertesGenRecup         = (float)$context->get('ch.pertes_generateur_recup',         0.0);
-        $pertesGenRecupDep      = (float)$context->get('ch.pertes_generateur_recup_dep',     0.0);
+        $pertesGenRecup         = $this->computePertesGenerateurRecup($context, $tvS, $gv, false);
+        $pertesGenRecupDep      = $this->computePertesGenerateurRecup($context, $tvS, $gv, true);
+        $context->set('ch.pertes_generateur_recup',     $pertesGenRecup);
+        $context->set('ch.pertes_generateur_recup_dep', $pertesGenRecupDep);
 
         $besoinCh         = max(0.0, $bchBrut19 - $pertesDistribRecup - $pertesStockageRecup    - $pertesGenRecup);
         $besoinChDepensier = max(0.0, $bchBrut21 - $pertesDistribRecupDep - $pertesStockageRecupDep - $pertesGenRecupDep);
@@ -124,6 +127,98 @@ final class BesoinChauffageCalculator implements CalculatorInterface
         $context->set('chauffage.besoin_ch_depensier', $besoinChDepensier);
         $context->set('chauffage.gv',                 $gv);
         $context->set('ecs.pertes_stockage_recup',    $pertesStockageRecup);
+    }
+
+    /**
+     * §9.1.1 — Pertes récupérées des générateurs de chauffage à combustion
+     * situés en volume chauffé (kWh « échelle LICIEL »).
+     *
+     * Formule mensuelle (open3cl 9_generateur_ch.js::calc_Qrec_gen_j) :
+     *   Qrec_gen_j = 0,48 × Cper × QP0 × Dper_j
+     *   Cper  = 0,75 si ventouse, 0,5 sinon
+     *   Dper_j (chauffage)   = min(Nref_j ; 1,3 × Bch_hp_j / (0,3 × Pn))
+     *   Dper_j (ecs)         = Nref_j × 1790 / 8760
+     *   Dper_j (mixte)       = min(Nref_j ; somme des deux)
+     *   Bch_hp_j = GV × (1 − Fj) × DH_j   [Wh]
+     *
+     * Échelle : LICIEL divise le résultat (Wh) par 10⁶ (bug historique reproduit
+     * par open3cl via ratio=1000 en bug_for_bug_compat, puis conversion kWh) —
+     * vérifié sur 2662E2147774H : 334 913 Wh → sortie 0.33491343…
+     * L'impact sur besoin_ch est donc négligeable mais la balise doit être remplie.
+     *
+     * @spec-source resources/specsplitted/09-conso-chauffage/01-installation-seule/01-conso.md
+     */
+    private function computePertesGenerateurRecup(
+        CalculationContext $context,
+        ?array $tvS,
+        float $gv,
+        bool $depensier
+    ): float {
+        if ($tvS === null || $gv <= 0.0) {
+            return 0.0;
+        }
+
+        $accessor = new NodeAccessor($context->document);
+
+        // Générateurs à combustion en volume chauffé avec QP0 calculé
+        $gens = [];
+        foreach ($context->document->getElementsByTagName('generateur_chauffage') as $gen) {
+            $qp0 = $accessor->getFloatOrNull('./donnee_intermediaire/qp0', $gen);
+            if ($qp0 === null || $qp0 <= 0.0) {
+                continue;
+            }
+            $posVol = $accessor->getIntOrNull('./donnee_entree/position_volume_chauffe', $gen) ?? 0;
+            if ($posVol === 0) {
+                continue;
+            }
+            $genId = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $gen);
+            if ($genId !== null && $genId >= 50 && $genId <= 52) {
+                continue; // générateurs à air chaud exclus (open3cl)
+            }
+            $pn = $accessor->getFloatOrNull('./donnee_intermediaire/pn', $gen) ?? 0.0;
+            if ($pn <= 0.0) {
+                continue;
+            }
+            $ventouse = $accessor->getIntOrNull('./donnee_entree/presence_ventouse', $gen) ?? 0;
+            $usage    = $accessor->getIntOrNull('./donnee_entree/enum_usage_generateur_id', $gen) ?? 1;
+            $gens[] = [
+                'qp0'   => $qp0,
+                'pn'    => $pn,
+                'cper'  => $ventouse === 1 ? 0.75 : 0.5,
+                'usage' => $usage, // 1=chauffage, 2=ecs, 3=chauffage+ecs
+            ];
+        }
+        if ($gens === []) {
+            return 0.0;
+        }
+
+        $fjKey   = $depensier ? 'apport.fj_mensuel_dep' : 'apport.fj_mensuel';
+        $fj      = (array)$context->get($fjKey, array_fill(1, 12, 0.0));
+        $dhKey   = $depensier ? 'DH21' : 'DH19';
+        $nrefKey = $depensier ? 'Nref21' : 'Nref19';
+
+        $totalWh = 0.0;
+        for ($j = 1; $j <= 12; $j++) {
+            $row  = $tvS[$j] ?? null;
+            $dhj  = $row !== null ? (float)($row[$dhKey]   ?? 0.0) : 0.0;
+            $nref = $row !== null ? (float)($row[$nrefKey] ?? 0.0) : 0.0;
+            if ($dhj <= 0.0 || $nref <= 0.0) {
+                continue;
+            }
+            $bchHpJ = $gv * (1.0 - (float)($fj[$j] ?? 0.0)) * $dhj; // Wh
+
+            foreach ($gens as $g) {
+                $dper = match ($g['usage']) {
+                    2       => $nref * 1790.0 / 8760.0,
+                    3       => min($nref, 1.3 * $bchHpJ / (0.3 * $g['pn']) + $nref * 1790.0 / 8760.0),
+                    default => min($nref, 1.3 * $bchHpJ / (0.3 * $g['pn'])),
+                };
+                $totalWh += 0.48 * $g['cper'] * $g['qp0'] * $dper;
+            }
+        }
+
+        // Échelle LICIEL : Wh / 10⁶ (cf. doc-block)
+        return $totalWh / 1e6;
     }
 
     /**
