@@ -153,24 +153,11 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
 
             $pchW = $this->computePnFromGv($context, $ratioVirt, $genId);
             if ($isImmeubleIndividuel) {
-                // §17.1.4.2 : pour un DPE immeuble chauffage individuel, Pch reflète
-                // la portion d'immeuble servie par cette installation.
-                //   • Modes 10/12 (appartement généré depuis immeuble) : Pch au prorata
-                //     de la surface de l'installation, y compris ratio = 1 quand elle
-                //     couvre tout l'immeuble (LICIEL dimensionne alors à l'échelle
-                //     immeuble, plaffonné à 400 kW).
-                //   • Modes 6/8 (DPE immeuble) : prorata si l'installation ne couvre
-                //     qu'une partie de l'immeuble, sinon « appartement moyen » /nblgt.
-                $shImmeuble = $accessor->getFloatOrNull('//caracteristique_generale/surface_habitable_immeuble', $node);
-                $shInstall  = $this->getSurfaceInstallation($node, $accessor);
-                $isGeneratedFromImmeuble = in_array($modeApp, [10, 12], true);
-                $hasSurfaces = $shImmeuble !== null && $shImmeuble > 0.0
-                    && $shInstall !== null && $shInstall > 0.0;
-                if ($hasSurfaces && ($isGeneratedFromImmeuble || $shInstall < $shImmeuble)) {
-                    $pchW = $pchW * min(1.0, $shInstall / $shImmeuble);
-                } else {
-                    $pchW = $pchW / $nblgt;
-                }
+                // §17.1.4.2 : a DPE generated from an apartment building still
+                // models individual heating at the average-apartment scale. The
+                // installation's declared surface can cover a sampling group and
+                // must not size every individual boiler at that group scale.
+                $pchW = $pchW / $nblgt;
             }
 
             // Pour les chaudières mixtes, Pdim = max(Pch, Pecs) puis Pn lue dans la table §13.2.2.4
@@ -179,8 +166,10 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
                 $pdimKw = max($pchW, $pecsW) / 1000.0;
                 $pnW    = $this->lookupPnFromPdim($pdimKw, $node, $accessor) * 1000.0;
             } else {
-                // Chaudière non-mixte : Pn ≈ Pch (formule directe §13.2.2.4)
-                $pnW = $pchW;
+                // §13.2.2.4 : a non-mixed boiler uses Pch as Pdim, then Pn is
+                // selected from the nominal-power table (rather than left at an
+                // arbitrary calculated value between two nominal ranges).
+                $pnW = $this->lookupPnFromPdim($pchW / 1000.0, $node, $accessor) * 1000.0;
             }
         }
         $pnKw = $pnW / 1000.0;

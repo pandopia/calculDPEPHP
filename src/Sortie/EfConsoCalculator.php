@@ -257,13 +257,6 @@ final class EfConsoCalculator implements CalculatorInterface
             $rdimEff = $rdim;
         } elseif ($typeInstall === 1) {
             $rdimEff = $nbreAppt * $ratioVirt / $sumEchantillon;
-            // L'extrapolation échantillon → bâtiment est bornée par la couverture
-            // surfacique : une install dont surface_chauffee = surface_immeuble
-            // représente déjà tout le bâtiment (rdimEff = 1).
-            $surfInst = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $install);
-            if ($surfInst !== null && $surfInst > 0.0 && $shImmeuble > 0.0) {
-                $rdimEff = min($rdimEff, $shImmeuble / $surfInst);
-            }
         } else {
             $rdimEff = $rdim;
         }
@@ -287,12 +280,6 @@ final class EfConsoCalculator implements CalculatorInterface
             $rdimEff = $rdim;
         } elseif ($typeInstall === 1) {
             $rdimEff = $nbreAppt * $ratioVirt / $sumLogement;
-            // Même borne surfacique que pour le chauffage (install couvrant tout
-            // l'immeuble → rdimEff = 1).
-            $surfInst = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $install);
-            if ($surfInst !== null && $surfInst > 0.0 && $shImmeuble > 0.0) {
-                $rdimEff = min($rdimEff, $shImmeuble / $surfInst);
-            }
         } else {
             $rdimEff = $rdim;
         }

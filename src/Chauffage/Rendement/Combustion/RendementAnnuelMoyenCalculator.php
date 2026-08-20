@@ -333,24 +333,11 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
             return 0.0;
         }
 
-        // Immeuble avec chauffage individuel (§17.1.4.2) : Cdimref doit être calculé
-        // à l'échelle servie par l'installation.
-        //   • Si l'installation déclare sa surface : GV utile = GV × sh_install/sh_immeuble.
-        //   • Sinon : GV utile = GV_immeuble / Nblgt (« appartement moyen »).
+        // Immeuble avec chauffage individuel (§17.1.4.2) : Cdimref est calculé
+        // à l'échelle de l'appartement moyen. Une surface d'installation peut
+        // représenter un groupe d'échantillonnage, pas la chaudière individuelle.
         $modeApp = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
         if ($modeApp !== null && in_array($modeApp, [6, 8, 10, 12], true)) {
-            $shImmeuble = $accessor->getFloatOrNull('//caracteristique_generale/surface_habitable_immeuble');
-            $shInstall  = $this->getSurfaceInstallation($node, $accessor);
-            // Même règle d'échelle que ChaudiereDefautCalculator (Pn) : en mode généré
-            // depuis immeuble (10/12), prorata surface même quand il vaut 1 (install
-            // couvrant tout l'immeuble) ; en mode immeuble (6/8), prorata seulement
-            // partiel, sinon appartement moyen /Nblgt.
-            $isGeneratedFromImmeuble = in_array($modeApp, [10, 12], true);
-            $hasSurfaces = $shImmeuble !== null && $shImmeuble > 0.0
-                && $shInstall !== null && $shInstall > 0.0;
-            if ($hasSurfaces && ($isGeneratedFromImmeuble || $shInstall < $shImmeuble)) {
-                return $gv * min(1.0, $shInstall / $shImmeuble);
-            }
             $nblgt = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement');
             if ($nblgt !== null && $nblgt > 1) {
                 return $gv / $nblgt;

@@ -120,14 +120,28 @@ final class SurfaceSudEquivalenteCalculatorTest extends TestCase
         $this->assertEqualsWithDelta(43.2, $val, self::TOL);
     }
 
+    /** A bay facing an ETS is accounted for exclusively by §6.3. */
+    public function testSkipsBaieFacingSolarBufferSpace(): void
+    {
+        $baies = [[10.0, 1, 3, 0.5, 1.0, 1.0, 10]];
+        $doc = $this->buildDoc($baies);
+        $logement = $doc->getElementsByTagName('logement')->item(0);
+        $ctx = $this->makeContext($doc, '1');
+
+        (new SurfaceSudEquivalenteCalculator())->calculate($logement, $ctx);
+
+        $this->assertEqualsWithDelta(0.0, (float)$ctx->get('apport.sse_annuel'), self::TOL);
+    }
+
     /**
-     * @param list<array{0: float, 1: int, 2: int, 3: float|null, 4: float, 5: float}> $baies
+     * @param list<array{0: float, 1: int, 2: int, 3: float|null, 4: float, 5: float, 6?: int}> $baies
      */
     private function buildDoc(array $baies): DOMDocument
     {
         $baiesXml = '';
         foreach ($baies as $b) {
             [$surface, $orient, $incl, $sw, $fe1, $fe2] = $b;
+            $adjacenceXml = isset($b[6]) ? "<enum_type_adjacence_id>{$b[6]}</enum_type_adjacence_id>" : '';
             $swXml = $sw !== null ? "<sw>{$sw}</sw>" : '';
             $baiesXml .= <<<XML
     <baie_vitree>
@@ -135,6 +149,7 @@ final class SurfaceSudEquivalenteCalculatorTest extends TestCase
         <surface_totale_baie>{$surface}</surface_totale_baie>
         <enum_orientation_id>{$orient}</enum_orientation_id>
         <enum_inclinaison_vitrage_id>{$incl}</enum_inclinaison_vitrage_id>
+        {$adjacenceXml}
       </donnee_entree>
       <donnee_intermediaire>
         {$swXml}

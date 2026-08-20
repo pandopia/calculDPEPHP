@@ -42,7 +42,7 @@ function isNumAdemeValid(string $n): bool
 
 function fetchXml(string $numAdeme, array $accounts): string
 {
-    $apiBase = 'https://prd-x-ademe-externe-api.de-c1.eu1.cloudhub.io/api/v1/pub/';
+    $apiBase = 'https://api-externe.ademe.fr/api/v1/pub/';
     $url     = $apiBase . 'dpe/' . $numAdeme . '/xml';
 
     $account = $accounts[array_rand($accounts)];

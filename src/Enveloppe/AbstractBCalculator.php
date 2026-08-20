@@ -33,6 +33,20 @@ use RuntimeException;
  */
 abstract class AbstractBCalculator implements CalculatorInterface
 {
+    /**
+     * XSD `enum_cfg_isolation_lnc_id` encodes both the insulation of the
+     * heated space and the orientation of a solar buffer space.  The
+     * orientation of the individual opening is not the veranda orientation.
+     */
+    private const VERANDA_CFG_MAP = [
+        6  => ['nord', 'isole'],
+        7  => ['sud', 'isole'],
+        8  => ['est_ouest', 'isole'],
+        9  => ['nord', 'non_isole'],
+        10 => ['sud', 'non_isole'],
+        11 => ['est_ouest', 'non_isole'],
+    ];
+
     public function dependencies(): array
     {
         return [];
@@ -152,8 +166,16 @@ abstract class AbstractBCalculator implements CalculatorInterface
     private function resolveVeranda(DOMElement $entree, NodeAccessor $accessor, CalculationContext $context, array $tableVeranda): float
     {
         $zone = $context->zoneGroupe ?? 'H1';
-        $orientation = $accessor->getIntOrNull('./enum_orientation_id', $entree);
         $cfg = $accessor->getIntOrNull('./enum_cfg_isolation_lnc_id', $entree);
+
+        if ($cfg !== null && isset(self::VERANDA_CFG_MAP[$cfg])) {
+            [$orientKey, $isolKey] = self::VERANDA_CFG_MAP[$cfg];
+
+            return (float)($tableVeranda[$zone][$orientKey][$isolKey] ?? 0.5);
+        }
+
+        // Fallback for incomplete legacy inputs where the configuration is absent.
+        $orientation = $accessor->getIntOrNull('./enum_orientation_id', $entree);
 
         // Orientation : 1=sud, 2=nord, 3=est, 4=ouest, 5=horizontal
         $orientKey = match ($orientation) {
@@ -163,12 +185,7 @@ abstract class AbstractBCalculator implements CalculatorInterface
             default => 'sud',
         };
 
-        // Isolation lc : 6,7,8 = lc isolé ; 9,10,11 = lc non isolé
-        $isolKey = match ($cfg) {
-            6, 7, 8    => 'isole',
-            9, 10, 11  => 'non_isole',
-            default    => 'isole',
-        };
+        $isolKey = 'isole';
 
         return (float)($tableVeranda[$zone][$orientKey][$isolKey] ?? 0.5);
     }

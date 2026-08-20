@@ -171,4 +171,45 @@ XML;
         $this->assertEqualsWithDelta(35000.0, (float)$pn->textContent, 1.0);
         $this->assertNull($di->getElementsByTagName('rpn')->item(0));
     }
+
+    /** A sampled installation in a method-10 DPE is sized as one average apartment. */
+    public function testGeneratedApartmentBuildingUsesAverageApartmentPower(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale>
+        <enum_methode_application_dpe_log_id>10</enum_methode_application_dpe_log_id>
+        <surface_habitable_immeuble>2088</surface_habitable_immeuble>
+        <nombre_appartement>32</nombre_appartement>
+    </caracteristique_generale>
+    <meteo><enum_zone_climatique_id>6</enum_zone_climatique_id><enum_classe_altitude_id>1</enum_classe_altitude_id></meteo>
+    <installation_chauffage>
+        <donnee_entree><surface_chauffee>522</surface_chauffee></donnee_entree>
+        <generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+            <enum_type_generateur_ch_id>92</enum_type_generateur_ch_id>
+            <tv_generateur_combustion_id>8</tv_generateur_combustion_id>
+            <enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id>
+            <presence_ventouse>1</presence_ventouse>
+            <data_complementaires data-annee-installation="2015" data-chaudiere-murale="1"/>
+        </donnee_entree></generateur_chauffage></generateur_chauffage_collection>
+    </installation_chauffage>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $context = new CalculationContext(
+            document: $doc,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+            zoneClimatique: '6',
+            classeAltitude: '1',
+        );
+        $context->set('enveloppe.dp_parois', 3675.8);
+        $context->set('enveloppe.dp_pont_thermique', 0.0);
+        $context->set('ventilation.hvent', 0.0);
+        $context->set('ventilation.hperm', 0.0);
+        (new ChaudiereDefautCalculator())->calculate($doc->getElementsByTagName('generateur_chauffage')->item(0), $context);
+
+        $this->assertEqualsWithDelta(5000.0, (float)$doc->getElementsByTagName('pn')->item(0)->textContent, 0.1);
+    }
 }
