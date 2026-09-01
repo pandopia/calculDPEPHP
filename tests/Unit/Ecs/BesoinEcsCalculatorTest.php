@@ -386,4 +386,31 @@ XML;
             $this->assertEqualsWithDelta($expectedPerInst, $becsInst, 0.1);
         }
     }
+
+    public function testGeneratedApartmentWithSingleSampledIndividualInstallationUsesMeanApartment(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<logement>
+  <caracteristique_generale>
+    <enum_methode_application_dpe_log_id>10</enum_methode_application_dpe_log_id>
+    <surface_habitable_logement>54</surface_habitable_logement>
+    <surface_habitable_immeuble>1545</surface_habitable_immeuble>
+    <nombre_appartement>21</nombre_appartement>
+  </caracteristique_generale>
+  <installation_ecs_collection><installation_ecs><donnee_entree>
+    <enum_type_installation_id>1</enum_type_installation_id>
+    <surface_habitable>1545</surface_habitable><rdim>1</rdim>
+  </donnee_entree></installation_ecs></installation_ecs_collection>
+</logement>
+XML);
+        $ctx = $this->makeContext($doc, ['apport.nadeq' => 41.9475]);
+
+        (new BesoinEcsCalculator())->calculate($doc->documentElement, $ctx);
+
+        $total = (float)$ctx->get('ecs.besoin_ecs', 0.0);
+        $installValue = (float)$doc->getElementsByTagName('installation_ecs')->item(0)
+            ->getElementsByTagName('besoin_ecs')->item(0)->textContent;
+        $this->assertEqualsWithDelta($total / 21.0, $installValue, 1e-6);
+    }
 }

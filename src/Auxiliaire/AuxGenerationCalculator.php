@@ -237,8 +237,7 @@ final class AuxGenerationCalculator implements CalculatorInterface
             $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation',        $install) ?? 1.0;
             // rdim : nombre d'unités (appartements) représentées par cette installation.
             // Comme pour conso_ecs, la conso d'aux est agrégée à l'échelle bâtiment au niveau sortie.
-            $rdim      = $accessor->getFloatOrNull('./donnee_entree/rdim',                        $install) ?? 1.0;
-            $rdim      = $rdim > 0.0 ? $rdim : 1.0;
+            $rdim      = $this->ecsInstallationMultiplicity($accessor, $logement, $install);
 
             foreach ($install->getElementsByTagName('generateur_ecs') as $gen) {
                 if (!$gen instanceof DOMElement) {
@@ -278,6 +277,33 @@ final class AuxGenerationCalculator implements CalculatorInterface
         }
 
         return [$totalQ, $totalQDep, $cle];
+    }
+
+    /**
+     * §17.2 — multiplicateur effectif d'une installation ECS individuelle échantillonnée.
+     *
+     * @spec-formula F-17.2-rdim-effective
+     */
+    private function ecsInstallationMultiplicity(
+        NodeAccessor $accessor,
+        DOMElement $logement,
+        DOMElement $install,
+    ): float {
+        $rdim = $accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0;
+        $methode = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $install) ?? 1;
+        $type = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $install) ?? 1;
+        if ($methode === 1 || $type !== 1) {
+            return max(1e-9, $rdim);
+        }
+
+        $nbApt = $accessor->getFloatOrNull('./caracteristique_generale/nombre_appartement', $logement) ?? 1.0;
+        $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation', $install) ?? 1.0;
+        $sumSample = 0.0;
+        foreach ($logement->getElementsByTagName('installation_ecs') as $candidate) {
+            $sumSample += $accessor->getFloatOrNull('./donnee_entree/nombre_logement', $candidate) ?? 0.0;
+        }
+
+        return max(1e-9, $nbApt * $ratioVirt / max(1.0, $sumSample));
     }
 
     /**

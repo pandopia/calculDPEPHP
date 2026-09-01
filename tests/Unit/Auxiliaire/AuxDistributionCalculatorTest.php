@@ -188,8 +188,7 @@ XML;
 
     public function testNoBouclageInstallationReturnsZero(): void
     {
-        // enum_bouclage_reseau_ecs_id missing → no bouclage → should still compute minimum pump
-        // but the installation type=2 will still trigger the calculation
+        // Sans enum_bouclage_reseau_ecs_id, aucun circulateur de boucle ECS.
         $xml = <<<XML
 <?xml version="1.0"?>
 <logement>
@@ -213,9 +212,8 @@ XML;
         $ctx = $this->buildCtx($doc, ['ecs.besoin_ecs_mensuel' => []]);
         (new AuxDistributionCalculator())->calculate($doc->documentElement, $ctx);
 
-        // With empty monthly Becs, should sum up the minimum pump contribution
         $val = $this->efValue($doc, 'conso_auxiliaire_distribution_ecs');
-        $this->assertGreaterThan(0.0, $val); // at least 20W × hours
+        $this->assertEqualsWithDelta(0.0, $val, 1e-9);
     }
 
     public function testZoneModeScalesResult(): void
@@ -389,5 +387,32 @@ XML;
         $val = $this->efValue($doc, 'conso_auxiliaire_distribution_ch');
         $this->assertSame(0.0, $val,
             'Réseau de chauffage multi-bâtiment (type_install=3) ne consomme pas de circulateur local');
+    }
+
+    public function testSampledIndividualHeatingUsesEffectiveMultiplicity(): void
+    {
+        $xml = <<<'XML'
+<logement><caracteristique_generale><surface_habitable_logement>54</surface_habitable_logement>
+<surface_habitable_immeuble>1545</surface_habitable_immeuble><nombre_appartement>21</nombre_appartement></caracteristique_generale>
+<installation_chauffage_collection><installation_chauffage><donnee_entree>
+<surface_chauffee>1545</surface_chauffee><nombre_niveau_installation_ch>4</nombre_niveau_installation_ch>
+<enum_type_installation_id>1</enum_type_installation_id><enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id>
+<nombre_logement_echantillon>1</nombre_logement_echantillon><ratio_virtualisation>1</ratio_virtualisation>
+<cle_repartition_ch>0.045645445323585047</cle_repartition_ch></donnee_entree>
+<emetteur_chauffage_collection><emetteur_chauffage><donnee_entree>
+<enum_type_emission_distribution_id>35</enum_type_emission_distribution_id><enum_temp_distribution_ch_id>3</enum_temp_distribution_ch_id>
+</donnee_entree></emetteur_chauffage></emetteur_chauffage_collection></installation_chauffage></installation_chauffage_collection>
+<installation_ecs_collection/><sortie/></logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $ctx = $this->buildCtx($doc, [
+            'enveloppe.dp_parois' => 1000.0,
+            'ventilation.hvent' => 100.0,
+        ]);
+
+        (new AuxDistributionCalculator())->calculate($doc->documentElement, $ctx);
+
+        $this->assertEqualsWithDelta(166.5584, $this->efValue($doc, 'conso_auxiliaire_distribution_ch'), 0.001);
     }
 }

@@ -770,7 +770,7 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-J01 — ECS mixte et échantillonnage des installations individuelles
 
-- [~AI] Owner: AI  | Phase: J  | Estimation: 4h  | Priorité: haute
+- [x] Owner: AI  | Phase: J  | Estimation: 4h  | Priorité: haute
 - DPE 2571E1547842H : inclure `Qgw` dans le rendement combiné chaudière mixte,
   récupérer les pertes de stockage en volume chauffé pour l'installation collective,
   et ne calculer l'auxiliaire ECS que pour un réseau réellement bouclé.

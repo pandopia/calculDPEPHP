@@ -132,6 +132,9 @@ final class CombustionCalculator implements CalculatorInterface
         // une re-dérivation à partir du GV bâtiment qui donne une Pn aberrante en immeuble
         // avec chauffage individuel.
         $mixteCarac = $this->getMixteChauffageCarac($node, $accessor);
+        $isMixedBoiler = $mixteCarac !== null;
+        $qgw = $accessor->getFloatOrNull('./donnee_intermediaire/Qgw', $node) ?? 0.0;
+        $usesCombinedYield = $isMixedBoiler && $qgw > 0.0;
         if ($mixteCarac !== null) {
             [$pn, $rpn, $qp0, $pveil] = $mixteCarac;
         } else {
@@ -163,10 +166,11 @@ final class CombustionCalculator implements CalculatorInterface
                 );
                 $qp0 = $qp0Acc;
             } else {
-                // §14.1.2 Chaudière : 1790×QP0/Becs + 0.5×6970×Pveil/Becs (Qgw≈0 pour ECS seul)
+                // §14.1.2 p.94 — chaudière mixte : le rendement publié est le
+                // produit Rg×Rs et Qgw doit donc être intégré au même dénominateur.
                 $rg = 1.0 / (
                     1.0 / $rpn
-                    + self::H_ECS * $qp0 / $becsWh
+                    + (self::H_ECS * $qp0 + ($isMixedBoiler ? $qgw : 0.0)) / $becsWh
                     + 0.5 * $pveilActif / (self::H_VEIL * $becsWh)
                 );
             }
@@ -178,7 +182,13 @@ final class CombustionCalculator implements CalculatorInterface
             $accessor->setChildValue($di, 'qp0', $qp0);
             $accessor->setChildValue($di, 'rpn', $rpn);
         }
-        $accessor->setChildValue($di, 'rendement_generation', $rg);
+        if ($usesCombinedYield) {
+            $this->removeChild($di, 'rendement_stockage');
+            $this->removeChild($di, 'rendement_generation');
+            $accessor->setChildValue($di, 'rendement_generation_stockage', $rg);
+        } else {
+            $accessor->setChildValue($di, 'rendement_generation', $rg);
+        }
 
         $this->storeContext($node, $accessor, $context, $rg);
     }
@@ -485,5 +495,14 @@ final class CombustionCalculator implements CalculatorInterface
         $el = $doc->createElement('donnee_intermediaire');
         $parent->appendChild($el);
         return $el;
+    }
+
+    private function removeChild(DOMElement $parent, string $name): void
+    {
+        foreach (iterator_to_array($parent->childNodes) as $child) {
+            if ($child instanceof DOMElement && $child->nodeName === $name) {
+                $parent->removeChild($child);
+            }
+        }
     }
 }

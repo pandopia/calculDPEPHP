@@ -216,7 +216,7 @@ final class AuxDistributionCalculator implements CalculatorInterface
             //     chaque appartement a son propre circulateur → on calcule à l'échelle
             //     d'un appartement « moyen » (Sh/rdim, GV/rdim) puis on multiplie par rdim
             //     pour obtenir le total bâtiment. Le plancher de 30 W joue par circulateur.
-            $rdimInstall = $accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0;
+            $rdimInstall = $this->heatingInstallationMultiplicity($accessor, $logement, $install);
             $rdimInstall = $rdimInstall > 0.0 ? $rdimInstall : 1.0;
             $isIndividuelMultiplie = ($typeInstall === 1 && $rdimInstall > 1.0);
 
@@ -292,6 +292,13 @@ final class AuxDistributionCalculator implements CalculatorInterface
                 continue;
             }
 
+            // §15.2.3 ne prévoit un circulateur que pour un réseau bouclé.
+            // XSD : 1=non bouclé, 2=bouclé, 3=traceur chauffant.
+            $bouclage = $accessor->getIntOrNull('./donnee_entree/enum_bouclage_reseau_ecs_id', $install);
+            if ($bouclage !== 2) {
+                continue;
+            }
+
             $sh       = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $install) ?? 0.0;
             $niv      = $accessor->getFloatOrNull('./donnee_entree/nombre_niveau_installation_ecs', $install) ?? 1.0;
             $isolated = (int)($accessor->getFloatOrNull('./donnee_entree/reseau_distribution_isole', $install) ?? 0);
@@ -313,6 +320,33 @@ final class AuxDistributionCalculator implements CalculatorInterface
         }
 
         return [$totalCaux, $cle];
+    }
+
+    /**
+     * §17.2 — multiplicateur effectif d'une installation CH individuelle échantillonnée.
+     *
+     * @spec-formula F-17.2-rdim-effective
+     */
+    private function heatingInstallationMultiplicity(
+        NodeAccessor $accessor,
+        DOMElement $logement,
+        DOMElement $install,
+    ): float {
+        $rdim = $accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0;
+        $methode = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $install) ?? 1;
+        $type = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $install) ?? 1;
+        if ($methode === 1 || $type !== 1) {
+            return max(1e-9, $rdim);
+        }
+
+        $nbApt = $accessor->getFloatOrNull('./caracteristique_generale/nombre_appartement', $logement) ?? 1.0;
+        $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation', $install) ?? 1.0;
+        $sumSample = 0.0;
+        foreach ($logement->getElementsByTagName('installation_chauffage') as $candidate) {
+            $sumSample += $accessor->getFloatOrNull('./donnee_entree/nombre_logement_echantillon', $candidate) ?? 0.0;
+        }
+
+        return max(1e-9, $nbApt * $ratioVirt / max(1.0, $sumSample));
     }
 
     /**

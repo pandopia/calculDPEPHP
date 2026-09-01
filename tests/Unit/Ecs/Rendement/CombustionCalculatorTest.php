@@ -266,4 +266,35 @@ XML;
         $rg = (float)$doc->getElementsByTagName('rendement_generation')->item(0)->textContent;
         $this->assertEqualsWithDelta(1.0, $rg, self::TOL);
     }
+
+    public function testMixedBoilerWithStorageIncludesQgwInCombinedYield(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<logement>
+  <installation_ecs><donnee_intermediaire><besoin_ecs>6206.35419852</besoin_ecs></donnee_intermediaire>
+    <generateur_ecs_collection><generateur_ecs>
+      <donnee_entree><enum_type_energie_id>2</enum_type_energie_id><enum_type_generateur_ecs_id>56</enum_type_generateur_ecs_id>
+        <reference_generateur_mixte>mixed-ch</reference_generateur_mixte></donnee_entree>
+      <donnee_intermediaire><rendement_stockage>0.954</rendement_stockage><Qgw>1064620.987191</Qgw></donnee_intermediaire>
+    </generateur_ecs></generateur_ecs_collection>
+  </installation_ecs>
+  <installation_chauffage><generateur_chauffage_collection><generateur_chauffage>
+    <donnee_entree><reference>mixed-ch</reference></donnee_entree>
+    <donnee_intermediaire><pn>18000</pn><qp0>180</qp0><rpn>0.922553</rpn></donnee_intermediaire>
+  </generateur_chauffage></generateur_chauffage_collection></installation_chauffage>
+</logement>
+XML);
+        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+
+        (new CombustionCalculator())->calculate($gen, $this->makeContext($doc));
+
+        $this->assertEqualsWithDelta(
+            0.7648766444,
+            (float)$gen->getElementsByTagName('rendement_generation_stockage')->item(0)->textContent,
+            1e-9,
+        );
+        $this->assertSame(0, $gen->getElementsByTagName('rendement_stockage')->length);
+        $this->assertSame(0, $gen->getElementsByTagName('rendement_generation')->length);
+    }
 }

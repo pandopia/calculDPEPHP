@@ -33,7 +33,7 @@ use DOMElement;
  * @spec-pages   72-73
  * @spec-source  resources/specsplitted/11-conso-ecs/02-conso-ecs.md
  * @xml-input    installation_ecs.donnee_intermediaire.{besoin_ecs, besoin_ecs_depensier, rendement_distribution}
- * @xml-input    generateur_ecs.donnee_intermediaire.{rendement_stockage, rendement_generation, rpn}
+ * @xml-input    generateur_ecs.donnee_intermediaire.{rendement_stockage, rendement_generation, rendement_generation_stockage, rpn}
  * @xml-output   generateur_ecs.donnee_intermediaire.{conso_ecs, conso_ecs_depensier}
  * @depends-on   \CalculDpePHP\Ecs\BesoinEcsCalculator
  * @depends-on   \CalculDpePHP\Ecs\Rendement\DistributionCalculator
@@ -92,8 +92,13 @@ final class ConsoEcsCalculator implements CalculatorInterface
                 continue;
             }
 
-            $rsConv  = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_stockage',   $gen) ?? 1.0;
-            $rgConv  = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen) ?? 1.0;
+            $rgsConv = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation_stockage', $gen);
+            $rsConv  = $rgsConv !== null
+                ? 1.0
+                : ($accessor->getFloatOrNull('./donnee_intermediaire/rendement_stockage', $gen) ?? 1.0);
+            $rgConv  = $rgsConv
+                ?? $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen)
+                ?? 1.0;
             $rpn     = $accessor->getFloatOrNull('./donnee_intermediaire/rpn',                  $gen);
             $genType = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id',   $gen);
 
