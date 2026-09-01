@@ -89,6 +89,16 @@ final class InertieCalculator implements CalculatorInterface
         }
 
         if ($inertieNode !== null) {
+            // §7.4 / XSD ADEME : lorsque la classe synthétique est fournie,
+            // elle est déjà le résultat de la combinaison des trois parois.
+            // Elle prime sur une nouvelle déduction depuis les seuls drapeaux,
+            // qui peut perdre les règles de majorité appliquées au diagnostic.
+            $classeDeclaree = $accessor->getIntOrNull('./enum_classe_inertie_id', $inertieNode);
+            if ($classeDeclaree !== null && $classeDeclaree >= 1 && $classeDeclaree <= 4) {
+                $this->writeResult($node, $context, $accessor, $classeDeclaree);
+                return;
+            }
+
             $pbLourd = $accessor->getIntOrNull('./inertie_plancher_bas_lourd',     $inertieNode) === 1;
             $phLourd = $accessor->getIntOrNull('./inertie_plancher_haut_lourd',    $inertieNode) === 1;
             $pvLourd = $accessor->getIntOrNull('./inertie_paroi_verticale_lourd',  $inertieNode) === 1;
@@ -101,8 +111,16 @@ final class InertieCalculator implements CalculatorInterface
 
         $classeId = $this->classeInertie($pbLourd, $phLourd, $pvLourd);
 
-        $context->set('inertie.classe_id', $classeId);
+        $this->writeResult($node, $context, $accessor, $classeId);
+    }
 
+    private function writeResult(
+        DOMElement $node,
+        CalculationContext $context,
+        NodeAccessor $accessor,
+        int $classeId,
+    ): void {
+        $context->set('inertie.classe_id', $classeId);
         $intermediaire = $accessor->ensureDonneeIntermediaire($node);
         $accessor->setChildValue($intermediaire, 'enum_classe_inertie_id', $classeId);
     }

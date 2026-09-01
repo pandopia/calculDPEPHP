@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CalculDpePHP\Apport;
 
 use CalculDpePHP\Common\IntermediateEnergyUnit;
+use CalculDpePHP\Common\ClimaticSolicitations;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -130,8 +131,8 @@ final class FCalculator implements CalculatorInterface
         // ── 5. Données climatiques ──────────────────────────────────────────────
         $zoneId = $context->zoneClimatique !== null ? (int)$context->zoneClimatique : null;
         $altId  = $context->classeAltitude  !== null ? (int)$context->classeAltitude  : null;
-        $tvS    = ($zoneId !== null && $altId !== null)
-            ? ($context->tables->load('reference/tv_sollicitations')[$zoneId][$altId] ?? null)
+        $tvS = ($zoneId !== null && $altId !== null)
+            ? ClimaticSolicitations::heating($context, $zoneId, $altId)
             : null;
 
         // ── 6. Boucle mensuelle ─────────────────────────────────────────────────

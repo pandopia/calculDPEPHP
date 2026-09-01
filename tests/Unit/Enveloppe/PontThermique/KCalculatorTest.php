@@ -109,4 +109,45 @@ XML);
 
         self::assertSame('0.25', $document->getElementsByTagName('k')->item(0)?->textContent);
     }
+
+    /** @return iterable<string, array{string, string, string}> */
+    public static function paroiWeightCases(): iterable
+    {
+        yield 'deux parois légères' => ['0', '0', '0'];
+        yield 'plancher léger et mur lourd' => ['0', '1', '0.31'];
+        yield 'plancher lourd et mur léger' => ['1', '0', '0.31'];
+        yield 'nature du mur inconnue conservée' => ['1', '', '0.31'];
+    }
+
+    #[DataProvider('paroiWeightCases')]
+    public function testNeglectsJunctionOnlyWhenBothOpaqueParoisAreExplicitlyLightweight(
+        string $plancherLourd,
+        string $murLourd,
+        string $expected,
+    ): void {
+        $document = new DOMDocument();
+        $document->loadXML(sprintf(<<<'XML'
+<logement><enveloppe>
+  <plancher_bas><donnee_entree><reference>pb</reference><paroi_lourde>%s</paroi_lourde></donnee_entree></plancher_bas>
+  <mur><donnee_entree><reference>mur</reference><paroi_lourde>%s</paroi_lourde></donnee_entree></mur>
+  <pont_thermique><donnee_entree>
+    <reference_1>pb</reference_1><reference_2>mur</reference_2>
+    <tv_pont_thermique_id>5</tv_pont_thermique_id>
+    <enum_methode_saisie_pont_thermique_id>1</enum_methode_saisie_pont_thermique_id>
+    <enum_type_liaison_id>1</enum_type_liaison_id>
+  </donnee_entree></pont_thermique>
+</enveloppe></logement>
+XML, $plancherLourd, $murLourd));
+
+        $context = new CalculationContext(
+            document: $document,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        );
+        $pont = $document->getElementsByTagName('pont_thermique')->item(0);
+        self::assertInstanceOf(DOMElement::class, $pont);
+
+        (new KCalculator())->calculate($pont, $context);
+
+        self::assertSame($expected, $document->getElementsByTagName('k')->item(0)?->textContent);
+    }
 }

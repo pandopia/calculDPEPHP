@@ -102,6 +102,26 @@ final class QualiteIsolationCalculator implements CalculatorInterface
 
         // Planchers hauts
         [$uCaMoy, $sCA, $uTtMoy, $sTT, $uCpMoy, $sCP] = $this->sumPlancherHaut($xpath, $node, $accessor);
+
+        // Compatibilité des exports ADEME 2.6 à toiture mixte : lorsqu'un même
+        // logement contient à la fois un comble aménagé et un comble perdu,
+        // l'indicateur du plancher bas est établi avec le coefficient effectif
+        // Ue (`upb_final`) et la rubrique toit-terrasse est également renseignée
+        // avec la qualité la plus défavorable des deux pans de toiture.
+        if ($uCaMoy !== null && $uCpMoy !== null) {
+            [$upbSU, $sPB] = $this->sumQualite(
+                $xpath,
+                $node,
+                'plancher_bas',
+                ['upb_final', 'upb'],
+                'surface_paroi_opaque',
+                filterBGt0: false,
+                excludeAdj22: true,
+            );
+            if ($uTtMoy === null) {
+                $uTtMoy = max($uCaMoy, $uCpMoy);
+            }
+        }
         $sPH = $sCA + $sTT + $sCP;
 
         // ubat = déperditions_stockées / surface_déperditive (hors adj=22 dans dénominateur)

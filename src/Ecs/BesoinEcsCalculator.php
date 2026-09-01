@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Ecs;
 
+use CalculDpePHP\Common\ClimaticSolicitations;
 use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
@@ -232,8 +233,8 @@ final class BesoinEcsCalculator implements CalculatorInterface
             return [0.0, 0.0];
         }
 
-        $tvS = $context->tables->load('reference/tv_sollicitations')[$zoneId][$altId] ?? null;
-        if ($tvS === null) {
+        $tvS = ClimaticSolicitations::heating($context, $zoneId, $altId);
+        if ($tvS === []) {
             return [0.0, 0.0];
         }
 

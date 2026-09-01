@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CalculDpePHP\Chauffage;
 
 use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
+use CalculDpePHP\Common\ClimaticSolicitations;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -78,8 +79,8 @@ final class BesoinChauffageCalculator implements CalculatorInterface
         // ── 3. Σ(DH19j) et Σ(DH21j) sur la saison de chauffe ─────────────────
         $zoneId = $context->zoneClimatique !== null ? (int)$context->zoneClimatique : null;
         $altId  = $context->classeAltitude  !== null ? (int)$context->classeAltitude  : null;
-        $tvS    = ($zoneId !== null && $altId !== null)
-            ? ($context->tables->load('reference/tv_sollicitations')[$zoneId][$altId] ?? null)
+        $tvS = ($zoneId !== null && $altId !== null)
+            ? ClimaticSolicitations::heating($context, $zoneId, $altId)
             : null;
 
         $sumDH19 = 0.0;

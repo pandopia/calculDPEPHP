@@ -75,6 +75,11 @@ final class KCalculator implements CalculatorInterface
             return;
         }
 
+        if ($this->isBetweenTwoLightweightParois($entree, $accessor, $context->document)) {
+            $this->writeK($node, $accessor, 0.0);
+            return;
+        }
+
         // Forfait (méthode=1) : lookup direct par tv_pont_thermique_id (comme open3cl)
         if ($methode === 1 || $methode === null) {
             $tvId = $accessor->getIntOrNull('./tv_pont_thermique_id', $entree);
@@ -136,6 +141,57 @@ final class KCalculator implements CalculatorInterface
         }
 
         return false;
+    }
+
+    /**
+     * §3.4 p.32 : seuls les ponts thermiques entre parois lourdes, ou entre
+     * une paroi et une menuiserie, sont conservés. Dans les fichiers ADEME,
+     * une liaison opaque dont les deux parois portent explicitement
+     * `paroi_lourde = 0` est donc négligée. Une valeur absente reste
+     * conservée afin de ne pas inventer la nature constructive de la paroi.
+     *
+     * @spec-formula F-3.4-negligence-parois-legeres
+     */
+    private function isBetweenTwoLightweightParois(
+        DOMElement $entree,
+        NodeAccessor $accessor,
+        DOMDocument $document,
+    ): bool {
+        if ($accessor->getIntOrNull('./enum_type_liaison_id', $entree) === 5) {
+            return false;
+        }
+
+        $xpath = new DOMXPath($document);
+        $heavyFlags = [];
+        foreach (['reference_1', 'reference_2'] as $field) {
+            $reference = $accessor->getStringOrNull('./' . $field, $entree);
+            if ($reference === null) {
+                return false;
+            }
+
+            $paroi = $this->findParoiByReference($xpath, $reference);
+            if ($paroi === null) {
+                return false;
+            }
+            $heavyFlags[] = $this->readHeavyFlagOfParoi($paroi);
+        }
+
+        return $heavyFlags === [0, 0];
+    }
+
+    private function readHeavyFlagOfParoi(DOMElement $paroi): ?int
+    {
+        $entree = $paroi->getElementsByTagName('donnee_entree')->item(0);
+        if (!$entree instanceof DOMElement) {
+            return null;
+        }
+        foreach ($entree->childNodes as $child) {
+            if ($child instanceof DOMElement && $child->nodeName === 'paroi_lourde') {
+                $value = trim($child->textContent ?? '');
+                return is_numeric($value) ? (int)$value : null;
+            }
+        }
+        return null;
     }
 
     private function computeFromSpec(DOMElement $entree, NodeAccessor $accessor, CalculationContext $context): float

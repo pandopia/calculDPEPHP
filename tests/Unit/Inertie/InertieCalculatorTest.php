@@ -190,4 +190,25 @@ XML;
         // PV non lourd (60>50%), PH absent=léger, PB absent=lourd → seul PB lourd → classe 3 (moyenne XSD)
         $this->assertSame(3, $ctx->get('inertie.classe_id'));
     }
+
+    public function testDeclaredSyntheticClassTakesPriorityOverFlags(): void
+    {
+        $xml = <<<'XML'
+<logement><enveloppe><inertie>
+<inertie_plancher_bas_lourd>0</inertie_plancher_bas_lourd>
+<inertie_plancher_haut_lourd>0</inertie_plancher_haut_lourd>
+<inertie_paroi_verticale_lourd>1</inertie_paroi_verticale_lourd>
+<enum_classe_inertie_id>2</enum_classe_inertie_id>
+</inertie></enveloppe></logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $context = $this->makeContext($doc);
+
+        (new InertieCalculator())->calculate($doc->documentElement, $context);
+
+        $this->assertSame(2, $context->get('inertie.classe_id'));
+        $this->assertSame('2', $doc->getElementsByTagName('donnee_intermediaire')->item(0)
+            ->getElementsByTagName('enum_classe_inertie_id')->item(0)->textContent);
+    }
 }

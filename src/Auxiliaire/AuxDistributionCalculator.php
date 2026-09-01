@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Auxiliaire;
 
+use CalculDpePHP\Common\ClimaticSolicitations;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -531,9 +532,8 @@ final class AuxDistributionCalculator implements CalculatorInterface
             return 0.0;
         }
 
-        $table = $context->tables->load('reference/tv_sollicitations');
-        $zoneData = $table[$zoneId][$altId] ?? null;
-        if ($zoneData === null) {
+        $zoneData = ClimaticSolicitations::heating($context, $zoneId, $altId);
+        if ($zoneData === []) {
             return 0.0;
         }
 

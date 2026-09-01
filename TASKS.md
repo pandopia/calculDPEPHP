@@ -945,7 +945,7 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-J13 — Correction du DPE 2662E2158901G
 
-- [~AI] Owner: AI  | Phase: J  | Estimation: 3h  | Priorité: haute
+- [x] Owner: AI  | Phase: J  | Estimation: 3h  | Priorité: haute
 - DPE 2662E2158901G : identifier les écarts avec la sortie ADEME et corriger
   leurs causes racines conformément à la spécification 3CL.
 - Action : analyser les valeurs intermédiaires, appliquer le correctif minimal
