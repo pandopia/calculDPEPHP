@@ -1149,7 +1149,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K06 — Génération ECS : balises supplémentaires et rendements
 
-- [ ] Owner: __  | Phase: K  | Estimation: 5h  | Priorité: moyenne
+- [~AI2] Owner: AI2  | Phase: K  | Estimation: 5h  | Priorité: moyenne
 - 558 balises supplémentaires (dont `rendement_stockage` 203,
   `rendement_generation` côté ECS), 276 hors tolérance (`conso_ecs` 134,
   `conso_ecs_depensier` 100) et 14 manquantes
