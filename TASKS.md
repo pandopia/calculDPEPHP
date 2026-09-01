@@ -1103,7 +1103,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K04 — Consommations de chauffage : `conso_ch` / `conso_ch_depensier`
 
-- [ ] Owner: __  | Phase: K  | Estimation: 8h  | Priorité: haute
+- [~AI2] Owner: AI2  | Phase: K  | Estimation: 8h  | Priorité: haute
 - 871 valeurs hors tolérance (517 `conso_ch_depensier`, 354 `conso_ch`),
   écart maximal 110 %. C'est le premier poste après les coûts, et il cascade
   sur `emission_ges_ch` (264), `ep_conso_ch` (166), `conso_5_usages` (266),
