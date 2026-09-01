@@ -144,18 +144,66 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         // Températures de fonctionnement (°C) — déjà en PCS (pas de conversion)
         // (Tfonc sont des températures physiques, indépendantes de PCI/PCS)
 
-        // Cdimref = 1000 × Pngen_kW / (GV_building × (Tcons - Tbase))
+        // Cdimref = 1000 × Pngen_kW / (GV_building × (Tcons - Tbase)).
+        // Le profil conventionnel utilise 19 °C et le profil dépensier 21 °C.
         $gvBuilding = $this->resolveGvBuilding($node, $accessor, $context);
         $tbase      = $this->resolveTbase($context, $accessor);
-        $tcons      = 19.0;
-        $cdimref    = ($gvBuilding > 0.0) ? (1000.0 * $pn_kw) / ($gvBuilding * ($tcons - $tbase)) : 1.0;
 
         // Calcul QPx selon le type de chaudière
         $boilerCat = $this->boilerCategory($genId);
         $regulation = $accessor->getIntOrNull('./donnee_entree/presence_regulation_combustion', $node) === 1;
 
-        // Puissances moyennes
-        $pmFou  = 0.0;
+        $rgPci = $this->computeAnnualYield(
+            19.0, $tbase, $gvBuilding, $pn_kw, $boilerCat, $rpn_pcs,
+            $rpint_pcs, $tfonc100, $tfonc30, $qp0_pcs, $pveil_pcs, $k, $regulation,
+        );
+        $rgPciDepensier = $this->computeAnnualYield(
+            21.0, $tbase, $gvBuilding, $pn_kw, $boilerCat, $rpn_pcs,
+            $rpint_pcs, $tfonc100, $tfonc30, $qp0_pcs, $pveil_pcs, $k, $regulation,
+        );
+
+        if ($rgPci === null || $rgPciDepensier === null) {
+            return;
+        }
+
+        $di = $accessor->ensureDonneeIntermediaire($node);
+        $accessor->setChildValue($di, 'rendement_generation', $rgPci);
+
+        // Le XSD ne possède pas de balise rendement_generation_depensier : la
+        // valeur reste interne au pipeline et est indexée par la référence du
+        // générateur.
+        $depensierByReference = (array)$context->get('chauffage.rendement_generation_depensier', []);
+        $reference = $accessor->getStringOrNull('./donnee_entree/reference', $node);
+        $key = $reference ?? '#' . count($depensierByReference);
+        $depensierByReference[$key] = $rgPciDepensier;
+        $context->set('chauffage.rendement_generation_depensier', $depensierByReference);
+    }
+
+    /**
+     * §13.2.3-13.2.4 p.92 : rendement annuel moyen pour une température
+     * conventionnelle donnée (19 °C ou 21 °C).
+     *
+     * @spec-formula F-13.2.3-rg-annuel
+     */
+    private function computeAnnualYield(
+        float $tcons,
+        float $tbase,
+        float $gvBuilding,
+        float $pnKw,
+        string $boilerCat,
+        float $rpnPcs,
+        float $rpintPcs,
+        float $tfonc100,
+        float $tfonc30,
+        float $qp0Pcs,
+        float $pveilPcs,
+        float $k,
+        bool $regulation,
+    ): ?float {
+        $cdimref = $gvBuilding > 0.0
+            ? (1000.0 * $pnKw) / ($gvBuilding * ($tcons - $tbase))
+            : 1.0;
+        $pmFou = 0.0;
         $pmCons = 0.0;
 
         foreach (self::LOAD_POINTS as $i => $x) {
@@ -163,37 +211,26 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
             if ($weight <= 0.0) {
                 continue;
             }
-
-            // Tchx_dim : Tch95 a une règle spéciale (toujours = Tch95)
-            $tchDim = ($x >= 0.95) ? $x : min($x / max($cdimref, 1e-6), 1.0);
-
-            $px_kw = $pn_kw * $tchDim; // kW
-            if ($px_kw <= 0.0) {
+            $tchDim = $x >= 0.95 ? $x : min($x / max($cdimref, 1e-6), 1.0);
+            $pxKw = $pnKw * $tchDim;
+            if ($pxKw <= 0.0) {
                 continue;
             }
-
-            $qpx_kw = $this->computeQpx($boilerCat, $rpn_pcs, $rpint_pcs, $tfonc100, $tfonc30, $qp0_pcs, $pn_kw, $tchDim, $regulation);
-
-            $pfou  = $px_kw * $weight;
-            $pcons = $pfou * ($px_kw + $qpx_kw) / $px_kw;
-
-            $pmFou  += $pfou;
-            $pmCons += $pcons;
+            $qpxKw = $this->computeQpx(
+                $boilerCat, $rpnPcs, $rpintPcs, $tfonc100, $tfonc30,
+                $qp0Pcs, $pnKw, $tchDim, $regulation,
+            );
+            $pfou = $pxKw * $weight;
+            $pmFou += $pfou;
+            $pmCons += $pfou * ($pxKw + $qpxKw) / $pxKw;
         }
 
         if ($pmFou <= 0.0 || $pmCons <= 0.0) {
-            return;
+            return null;
         }
 
-        // QP0 et Pveil en kW
-        $qp0_kw   = $qp0_pcs  / 1000.0;
-        $pveil_kw = $pveil_pcs / 1000.0;
-
-        $rgPcs = $pmFou / ($pmCons + 0.45 * $qp0_kw + $pveil_kw);
-        $rgPci = $k * $rgPcs;
-
-        $di = $accessor->ensureDonneeIntermediaire($node);
-        $accessor->setChildValue($di, 'rendement_generation', $rgPci);
+        $rgPcs = $pmFou / ($pmCons + 0.45 * ($qp0Pcs / 1000.0) + ($pveilPcs / 1000.0));
+        return $k * $rgPcs;
     }
 
     /**

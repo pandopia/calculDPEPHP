@@ -163,6 +163,7 @@ final class InstallationClassique implements CalculatorInterface
         $rd = $this->weightedEmetteurFloat($accessor, $node, 'rendement_distribution') ?? 1.0;
         $rr = $this->weightedEmetteurFloat($accessor, $node, 'rendement_regulation') ?? 1.0;
         $rg = $this->weightedGenerateurFloat($accessor, $node, 'rendement_generation') ?? 1.0;
+        $rgDep = $this->weightedDepensierGenerationYield($accessor, $node, $context) ?? $rg;
 
         // ── 10-12. Consommation et écriture ────────────────────────────────────
         // PAC hybride (§9.1.4.3) : répartition forfaitaire du besoin entre la
@@ -198,8 +199,9 @@ final class InstallationClassique implements CalculatorInterface
         }
 
         $denom      = max(1e-9, $rg * $re * $rd * $rr);
+        $denomDep   = max(1e-9, $rgDep * $re * $rd * $rr);
         $consoCh    = $besoinMoy    * $int / $denom;
-        $consoChDep = $besoinMoyDep * $int / $denom;
+        $consoChDep = $besoinMoyDep * $int / $denomDep;
 
         $di = $accessor->ensureDonneeIntermediaire($node);
         $accessor->setChildValue($di, 'besoin_ch',          $besoinInstall);
@@ -303,6 +305,41 @@ final class InstallationClassique implements CalculatorInterface
         }
 
         return $count > 0 ? $sum / $count : null;
+    }
+
+    private function weightedDepensierGenerationYield(
+        NodeAccessor $accessor,
+        DOMElement $installNode,
+        CalculationContext $context,
+    ): ?float {
+        $values = (array)$context->get('chauffage.rendement_generation_depensier', []);
+        if ($values === []) {
+            return null;
+        }
+        $genCollection = $this->getChild($installNode, 'generateur_chauffage_collection');
+        if ($genCollection === null) {
+            return null;
+        }
+
+        $matched = [];
+        $generatorCount = 0;
+        foreach ($genCollection->childNodes as $gen) {
+            if (!$gen instanceof DOMElement || $gen->nodeName !== 'generateur_chauffage') {
+                continue;
+            }
+            $generatorCount++;
+            $reference = $accessor->getStringOrNull('./donnee_entree/reference', $gen);
+            if ($reference !== null && isset($values[$reference])) {
+                $matched[] = (float)$values[$reference];
+            }
+        }
+        if ($matched !== []) {
+            return array_sum($matched) / count($matched);
+        }
+        if ($generatorCount === 1 && count($values) === 1) {
+            return (float)reset($values);
+        }
+        return null;
     }
 
     private function getChild(DOMElement $parent, string $tag): ?DOMElement

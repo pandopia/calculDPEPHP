@@ -887,7 +887,7 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-J09 — Rendement chaudière sur le scénario chauffage dépensier
 
-- [~AI] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- [x] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
 - DPE 2618E2138973C : `conso_ch_depensier` vaut 6189,62 kWh au lieu de
   6110,89 kWh, car `InstallationClassique` réutilise le rendement annuel moyen
   du profil conventionnel pour le besoin à 21 °C.
