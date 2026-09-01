@@ -1121,7 +1121,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K04 — Consommations de chauffage : `conso_ch` / `conso_ch_depensier`
 
-- [~AI2] Owner: AI2  | Phase: K  | Estimation: 8h  | Priorité: haute
+- [ ] Owner: __  | Phase: K  | Estimation: 8h  | Priorité: haute
 - **Avancement** : la cause amont est identifiée et une première correction est
   livrée. `rendement_generation` est fautif dans **63 des 72 cas** où `conso_ch`
   l'est ; dans 37 de ces 63, `pn` et `qp0` le sont aussi. La chaîne à remonter
@@ -1139,20 +1139,55 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
   sur 73 cas — notre Pn est systématiquement ~9 % trop haut sur les chaudières
   collectives. Exemple net, reproduit à l'identique sur 17 fichiers du groupe
   2400E03338xx : attendu **370 000 W**, obtenu **405 000 W**.
-- Ce que l'on sait de ce cas (2400E0333876N) : installation collective
-  (`enum_type_installation_id = 2`), `rdim = 1`,
-  `ratio_virtualisation = 1`, `enum_methode_saisie_carac_sys_id = 1` (tout
-  forfaitaire), GV immeuble 10 907,8 W/K, zone H1a, altitude 400-800 m
-  (Tbase −11,5 °C).
-  Aucune variante testée de `Pdim = 1,2 × GV × (19 − Tbase) / 0,95^n` ne donne
-  370 kW : n = 3 → 465,6 kW, n = 2 → 442,4, n = 1 → 420,2, n = 0 → 399,2. Le
-  palier de §13.2.2.4 pour Pdim > 40 kW étant
-  `(partie entière(Pdim/5) + 1) × 5`, 370 kW suppose un Pdim entre 365 et
-  370 kW. La formule de dimensionnement utilisée par la référence reste donc
-  à identifier — c'est le nœud de la tâche.
+#### Ce qui a été établi sur `pn` (investigation menée, à ne pas refaire)
+
+**La formule de §13.2.2.4 est bien celle qu'on applique** :
+`Pch = 1,2 × GV × (19 − Tbase) / (1000 × 0,95³)`, `Pdim = max(Pch ; Pecs)`,
+puis lecture du palier de puissance nominale. La spec donne aussi les
+variantes appartement/installation collective (`GV_immeuble = GV_appartement ×
+Sh_immeuble / Sh_appartement`) et appartement issu de l'immeuble
+(`GV / N`, N = nombre de logements).
+
+**Ce n'est pas une cause unique mais au moins trois**, séparées par
+l'observation des 73 cas où `pn` diverge :
+
+1. *Grosses chaudières collectives* — cluster de 18 cas (immeuble
+   2400E03338xx) : attendu 370 kW, obtenu 405 kW. Le Rpn publié
+   (0,913523) confirme Pn = 370 kW au chiffre près, via la ligne « basse
+   température » `(87,5 + 1,5 log Pn)/100`. Or **aucune variante de GV ne
+   donne 370 kW** : GV total 10 907,8 → 465,6 kW ; hors renouvellement d'air
+   (8 973,4) → 383,1 ; le palier `(⌊Pdim/5⌋ + 1) × 5` suppose un Pdim entre
+   365 et 370 kW, soit un GV entre 8 549 et 8 666 W/K, qui ne correspond à
+   aucune grandeur publiée. La formule de dimensionnement de la référence
+   reste à identifier sur ce cluster.
+
+2. *Petites chaudières* — le palier de §13.2.2.4 a **deux colonnes** :
+   « chaudières murales installées avant 2005 ou chaudières sur sol » et
+   « chaudières murales installées à partir de 2006 ». Le choix change Pn du
+   simple au triple (5 kW contre 18 kW). **Or la distinction murale / sur sol
+   n'est portée par aucune balise du XSD** : `enum_type_generateur_ch_id`
+   n'encode que l'ancienneté. Le corpus le montre : le type 97 (gaz
+   condensation après 2015) reçoit Pn = 5 000 W sur 5 cas et 18 000 W sur un
+   autre. Seul l'attribut propriétaire `data_complementaires/@data-chaudiere-murale`
+   la porte, et il n'est présent que sur 2 des 11 cas concernés. Sans autre
+   source, ce choix n'est pas dérivable des données standard — à traiter comme
+   les autres cas non reproductibles (cf. TASK-K16) plutôt qu'à deviner.
+
+3. *Installations multi-générateurs* — les cas à 6 ou 7 générateurs
+   (2400E0575636Z, 2400E0636882P, 2400E0669425G, 2400E0669495Y) répartissent
+   la puissance par surface desservie (§13.2.2.4, prorata `Sh_i / Sh_tot`).
+   Les écarts y sont grands et de sens variable ; c'est une troisième
+   mécanique, à traiter séparément.
+
 - Le plafond de 400 kW (`getPnCap`) n'est appliqué que si
-  `ratio_virtualisation < 1` : il ne joue pas ici, alors que notre 405 kW le
-  dépasse. À réexaminer en même temps.
+  `ratio_virtualisation < 1` : il ne joue pas sur le cluster 1, alors que
+  notre 405 kW le dépasse. À réexaminer avec le point 1.
+- `besoin_ch` est aussi multi-cause : sur 49 cas, 15 ont
+  `pertes_distribution_ecs_recup` faux en amont, 12 n'ont **aucun** amont
+  fautif (donc la formule §9 elle-même), les autres se répartissent entre
+  `ubat`, `fraction_apport_gratuit_ch` et `surface_sud_equivalente`.
+- **Ordre suggéré** : cluster 1 (18 cas, signature nette), puis les 12 cas de
+  `besoin_ch` sans amont fautif, puis le multi-générateurs.
 - 871 valeurs hors tolérance (517 `conso_ch_depensier`, 354 `conso_ch`),
   écart maximal 110 %. C'est le premier poste après les coûts, et il cascade
   sur `emission_ges_ch` (264), `ep_conso_ch` (166), `conso_5_usages` (266),
