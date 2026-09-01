@@ -1186,7 +1186,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K07 — Classes DPE et GES divergentes
 
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- [~AI2] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: moyenne
 - 39 écarts non numériques : 15 sur `classe_bilan_dpe`, 24 sur
   `classe_emission_ges`. Ce sont les deux valeurs les plus visibles d'un DPE.
 - À traiter **après** K02 et K04 : une classe fausse est presque toujours la
