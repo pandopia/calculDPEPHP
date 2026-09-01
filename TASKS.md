@@ -1033,15 +1033,33 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K01 — Corpus stratifié sur les 4 périmètres CSTB
 
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: haute
+- [x] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: haute
 - Le corpus actuel est à 92 % de l'immeuble collectif : maison individuelle
   (4 cas) et appartement individuel (6 cas) ne sont pas représentés, alors que
   ce sont deux des quatre périmètres évalués par le CSTB.
-- Action : `php bin/fetch-official-corpus --build=ademe-2026-09 --per-stratum=15`
-  puis vérifier la répartition réelle avec
-  `php bin/official-test-report --corpus=ademe-2026-09`.
-- Nécessite un accès réseau sortant vers `api-externe.ademe.fr`.
-- Validation : au moins 20 cas par périmètre, manifeste committé.
+- **Fait** : jeu `ademe-2026-09`, 120 cas, **30 par périmètre**, moitié
+  pre-2026 / moitié post-2026. Manifeste et provenance suivis en git ; les XML
+  se retéléchargent avec
+  `php bin/fetch-official-corpus --manifest=resources/XML/official/ademe-2026-09/metadata/manifest.json`.
+- **Le déséquilibre du corpus historique flattait bien le chiffre.** Sur le jeu
+  équilibré, la conformité tombe à **84,10 %** contre 91,13 % sur
+  `ademe-observatoire-local` (92 % d'immeubles collectifs) :
+
+  | Périmètre | Cas | Conformité |
+  |---|---:|---:|
+  | immeuble collectif | 30 | 87,89 % |
+  | appartement individuel | 30 | 87,04 % |
+  | maison individuelle | 30 | 84,58 % |
+  | appartement issu de l'immeuble | 30 | **76,12 %** |
+
+- Familles qui s'effondrent hors immeuble collectif : Génération ECS 63,4 %
+  (contre 91,6 %), Besoin chauffage 71,9 % (93,6 %), Froid 86,4 % (97,5 %),
+  Coûts 31,3 %.
+- **Biais résiduel à connaître** : l'échantillonnage a pris les DPE pre-2026
+  parmi les plus anciens numéros, tous produits par `3cl_tribu_1.4.25.1`, et
+  les post-2026 par `BBS_Slama_2025.11.1.0`. Régime réglementaire et moteur
+  éditeur sont donc confondus dans ce jeu — ne pas conclure de l'un sur
+  l'autre. À corriger en diversifiant `modele_dpe`/éditeur au tirage.
 
 ### TASK-K02 — Tarifs annuels des énergies indexés sur la date du DPE
 
