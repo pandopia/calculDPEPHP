@@ -1,7 +1,7 @@
 # Conformité du moteur — jeux de tests DPE 3CL
 
-_Généré le 2026-09-01T13:57:22+00:00 — profil de tolérance : `strict`_
-_Révision mesurée : `495b030` — arbre de travail modifié : 3 fichier(s) src/ non commités_
+_Généré le 2026-09-01T14:02:10+00:00 — profil de tolérance : `strict`_
+_Révision mesurée : `f49c93f` — arbre de travail modifié : 4 fichier(s) src/ non commités_
 
 Comparaison balise à balise de la totalité de `<donnee_intermediaire>` et
 `<sortie>` entre la sortie du moteur et la référence du cas. Aucune balise
@@ -26,6 +26,8 @@ Balises supplémentaires  : 1 779
 
 Conformité               : 90,57 %
 ```
+
+Sur ces écarts, **619 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **91,43 %**. Détail plus bas.
 
 ## Écarts par famille fonctionnelle
 
@@ -127,6 +129,21 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 | 38 | Auxiliaires | `conso_auxiliaire_generation_ch` | 52 | 52 | 99,8 % | hors-tol×52 |
 | 39 | Auxiliaires | `conso_auxiliaire_generation_ch_depensier` | 52 | 52 | 99,8 % | hors-tol×52 |
 | 40 | Auxiliaires | `emission_ges_auxiliaire_generation_ch` | 52 | 52 | 99,8 % | hors-tol×52 |
+
+## Écarts imputables à la référence
+
+Écarts démontrables depuis le fichier de référence seul, sans invoquer
+notre calcul. Ils restent comptés dans le taux de conformité — la mesure
+brute ne se maquille pas — mais **ne doivent pas être « corrigés »** :
+reproduire le défaut d'un logiciel tiers éloignerait le moteur de la méthode.
+
+| Balise | Occurrences | Motif |
+|---|---:|---|
+| `cout_fr_depensier` | 3 | la référence recopie cout_fr dans cout_fr_depensier alors que les consommations diffèrent (51 vs 129 kWh) |
+| `cout_ecs_depensier` | 184 | la référence recopie cout_ecs dans cout_ecs_depensier alors que les consommations diffèrent (2217 vs 2879 kWh) |
+| `cout_ch_depensier` | 184 | la référence recopie cout_ch dans cout_ch_depensier alors que les consommations diffèrent (4934 vs 6434 kWh) |
+| `cout_auxiliaire_generation_ecs_depensier` | 114 | la référence recopie cout_auxiliaire_generation_ecs dans cout_auxiliaire_generation_ecs_depensier alors que les consommations diffèrent (7 vs 10 kWh) |
+| `cout_auxiliaire_generation_ch_depensier` | 134 | la référence recopie cout_auxiliaire_generation_ch dans cout_auxiliaire_generation_ch_depensier alors que les consommations diffèrent (39 vs 87 kWh) |
 
 ## Conformité structurelle du XML produit
 

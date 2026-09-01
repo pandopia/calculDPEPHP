@@ -148,7 +148,12 @@ printf("Hors tolérance          : %s\n", $fmt($s[ComparisonStatus::OUT]));
 printf("Balises manquantes      : %s\n", $fmt($s[ComparisonStatus::MISSING]));
 printf("Balises supplémentaires : %s\n", $fmt($s[ComparisonStatus::EXTRA]));
 printf("Écarts non numériques   : %s\n\n", $fmt($s[ComparisonStatus::MISMATCH]));
-printf("Conformité              : %s %%\n\n", $s['conformity_percent'] === null ? 'n/a' : number_format((float) $s['conformity_percent'], 2, ',', ' '));
+printf("Conformité              : %s %%\n", $s['conformity_percent'] === null ? 'n/a' : number_format((float) $s['conformity_percent'], 2, ',', ' '));
+if ((int) ($s['reference_suspect'] ?? 0) > 0) {
+    printf("  dont imputables à la référence : %s\n", $fmt($s['reference_suspect']));
+    printf("  plafond atteignable sur ce corpus : %s %%\n", number_format((float) $s['reachable_percent'], 2, ',', ' '));
+}
+echo "\n";
 
 echo "Par famille fonctionnelle :\n";
 foreach ($data['by_famille'] as $f) {

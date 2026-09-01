@@ -32,7 +32,7 @@ final class CaseComparator
      *     status: string, error: ?string, metadata: array<string, mixed>,
      *     deltas: list<array<string, mixed>>, counts: array<string, int>,
      *     famille_exact: array<string, int>, unknown_elements: list<string>,
-     *     duration_ms: float
+     *     reference_suspect: int, duration_ms: float
      * }
      */
     public function run(string $corpus, string $name, string $inputPath, string $expectedPath): array
@@ -51,6 +51,7 @@ final class CaseComparator
             'counts' => array_fill_keys(ComparisonStatus::ALL, 0),
             'famille_exact' => [],
             'unknown_elements' => [],
+            'reference_suspect' => 0,
             'duration_ms' => 0.0,
         ];
 
@@ -92,8 +93,16 @@ final class CaseComparator
             $result['unknown_elements'] = XsdVocabulary::unknownElements($actualValues, $this->xsdPath, $expectedValues);
         }
 
+        // Écarts dont la référence est responsable : signalés, jamais retirés
+        // du décompte (voir ReferenceDefects).
+        $suspects = ReferenceDefects::detect($expectedValues);
+
         foreach ($this->compareValues($expectedValues, $actualValues) as $delta) {
             $result['counts'][$delta['status']]++;
+            if (isset($suspects[$delta['tag']]) && in_array($delta['status'], ComparisonStatus::FAILING, true)) {
+                $delta['reference_suspect'] = $suspects[$delta['tag']];
+                $result['reference_suspect']++;
+            }
             if ($delta['status'] === ComparisonStatus::EXACT) {
                 // Les valeurs exactes ne sont pas détaillées (volume), mais
                 // restent comptées par famille pour le taux de conformité.

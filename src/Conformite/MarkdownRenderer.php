@@ -56,6 +56,17 @@ final class MarkdownRenderer
         $out[] = sprintf('Conformité               : %s %%', $s['conformity_percent'] === null ? 'n/a' : number_format((float) $s['conformity_percent'], 2, ',', ' '));
         $out[] = '```';
         $out[] = '';
+        if ((int) ($s['reference_suspect'] ?? 0) > 0) {
+            $out[] = sprintf(
+                'Sur ces écarts, **%s sont imputables à la référence** et non au moteur : '
+                . 'le corpus n\'est pas la vérité réglementaire, ce sont les sorties d\'autres '
+                . 'logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement '
+                . 'atteignable sur ce corpus : **%s %%**. Détail plus bas.',
+                number_format((float) $s['reference_suspect'], 0, ',', ' '),
+                $s['reachable_percent'] === null ? 'n/a' : number_format((float) $s['reachable_percent'], 2, ',', ' '),
+            );
+            $out[] = '';
+        }
 
         // ── Familles ──────────────────────────────────────────────────────
         $out[] = '## Écarts par famille fonctionnelle';
@@ -123,6 +134,32 @@ final class MarkdownRenderer
             );
         }
         $out[] = '';
+
+        // ── Défauts de la référence ───────────────────────────────────────
+        $motifs = [];
+        foreach ($report['cases'] as $case) {
+            foreach ($case['deltas'] as $delta) {
+                if (isset($delta['reference_suspect'])) {
+                    $motifs[$delta['tag']] = ['motif' => $delta['reference_suspect'], 'n' => ($motifs[$delta['tag']]['n'] ?? 0) + 1];
+                }
+            }
+        }
+        if ($motifs !== []) {
+            $out[] = '## Écarts imputables à la référence';
+            $out[] = '';
+            $out[] = 'Écarts démontrables depuis le fichier de référence seul, sans invoquer';
+            $out[] = 'notre calcul. Ils restent comptés dans le taux de conformité — la mesure';
+            $out[] = 'brute ne se maquille pas — mais **ne doivent pas être « corrigés »** :';
+            $out[] = 'reproduire le défaut d\'un logiciel tiers éloignerait le moteur de la méthode.';
+            $out[] = '';
+            $out[] = '| Balise | Occurrences | Motif |';
+            $out[] = '|---|---:|---|';
+            arsort($motifs);
+            foreach ($motifs as $tag => $info) {
+                $out[] = sprintf('| `%s` | %d | %s |', $tag, $info['n'], $info['motif']);
+            }
+            $out[] = '';
+        }
 
         // ── Conformité structurelle ───────────────────────────────────────
         $out[] = '## Conformité structurelle du XML produit';

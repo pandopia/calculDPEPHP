@@ -1239,6 +1239,28 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 - Validation : source citée dans le doc-block, ou règle corrigée et gain
   mesuré en A/B.
 
+### TASK-K12 — Coût dépensier : défaut de la référence, ne pas reproduire
+
+- [x] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: haute
+- 184 références sur 229 écrivent `cout_ch_depensier = cout_ch` et
+  `cout_ecs_depensier = cout_ecs`, alors que `conso_ch_depensier` et
+  `conso_ch` diffèrent. Idem pour les auxiliaires de génération. Cela
+  représente **619 des écarts hors tolérance**, soit 12,5 % du total.
+- **C'est la référence qui a tort**, et son propre schéma le dit :
+  `cout_ch_depensier` y est documenté comme le « coût de chauffage pour le
+  scénario dépensier ». Deux consommations différentes ne peuvent pas coûter
+  exactement la même chose. Le défaut est concentré sur un éditeur
+  (BBS_Slama : 171/209) mais pas exclusif.
+- Les 45 références qui calculent bien un coût dépensier distinct sont en
+  accord avec notre modèle : les écarts qui y subsistent viennent tous d'un
+  `conso_ch_depensier` déjà faux en amont (TASK-K04), pas de la tarification.
+- **Ne pas « corriger » ce poste.** Reproduire le défaut ferait gagner
+  619 écarts au compteur tout en éloignant le moteur de la méthode.
+- Fait : `src/Conformite/ReferenceDefects.php` détecte ces cas depuis le seul
+  fichier de référence et les signale dans une section dédiée du rapport. Ils
+  restent comptés dans le taux — la mesure brute ne se maquille pas — et le
+  rapport affiche en regard le **plafond atteignable** sur ce corpus.
+
 ---
 
 ## Validation par phase (gate)
