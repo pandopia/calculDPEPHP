@@ -1339,7 +1339,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K13 — Cdimref : diviseur du GV sur un DPE immeuble
 
-- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
+- [x] Owner: AI2  | Phase: K  | Estimation: 3h  | Priorité: basse
 - Cdimref rapporte la puissance installée au GV desservi. Sur un DPE immeuble,
   le moteur divise le GV par `nombre_appartement` ; open3cl
   (`9_chauffage.js::tauxChargeForGenerator`) divise par le `rdim` de
@@ -1354,9 +1354,21 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
   reproduit **exactement** le Cdimref de la référence là où
   `nombre_appartement` en est loin — la bonne règle est probablement
   conditionnelle, et aucun des deux diviseurs n'est correct partout.
-- Action : établir le diviseur depuis §13.2.1.2 et §17.1.4.2 plutôt que par
-  départage empirique, en distinguant chauffage individuel et collectif.
-- Validation : gain mesuré en A/B, et règle citée depuis la spec.
+- **Résolu par la spec : l'implémentation actuelle est la bonne.**
+  - §13.2.1.2 définit `GV` comme « les déperditions **totales du bâtiment**
+    (W/K) » et donne, pour N générateurs,
+    `Cdimref = 1000 × (Pngen1 + … + PngenN) / (GV × (Tcons − Tbase))`.
+  - §17.1.4.2 précise que si le chauffage d'un immeuble est **individuel**,
+    « le calcul des consommations de chauffage est effectué sur la base d'un
+    appartement "moyen" […] ce qui revient à diviser le besoin de chauffage
+    Bch de l'immeuble par le nombre de logements de l'immeuble **Nblgt** ». Le
+    générateur individuel se compare donc au GV d'un logement moyen.
+  - Chauffage **collectif** : le calcul reste à l'échelle de l'immeuble, GV
+    entier — c'est aussi ce que fait le moteur.
+- `rdim` n'apparaît nulle part dans cette règle : le départage empirique et la
+  spec concordent. Le cas 2467E3590684Y où `GV / rdim` tombait juste est une
+  coïncidence.
+- Doc-block de `RendementAnnuelMoyenCalculator` mis à jour avec les citations.
 
 ### TASK-K14 — `enum_classe_inertie_id` écrit hors de son emplacement au schéma
 

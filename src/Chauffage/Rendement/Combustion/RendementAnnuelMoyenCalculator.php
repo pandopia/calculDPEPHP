@@ -378,11 +378,20 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
      * Immeuble avec chauffage individuel (§17.1.4.2) : Cdimref est calculé à
      * l'échelle de l'appartement moyen.
      *
-     * Le diviseur `rdim` de l'installation, utilisé par open3cl
-     * (`9_chauffage.js::tauxChargeForGenerator`), a été testé : il reproduit
-     * exactement le Cdimref de la référence sur 2467E3590684Y (rdim = 3 pour
-     * 12 logements), mais dégrade l'ensemble du corpus (+30 écarts hors
-     * tolérance). `nombre_appartement` est donc conservé. Voir TASK-K13.
+     * §17.1.4.2 : quand le chauffage d'un immeuble est individuel, « le calcul
+     * des consommations de chauffage est effectué sur la base d'un appartement
+     * "moyen", à partir du besoin de chauffage de l'appartement "moyen"
+     * (obtenu en multipliant le besoin de chauffage de l'immeuble Bch par le
+     * rapport de la surface habitable de l'appartement "moyen" à celle de
+     * l'immeuble, ce qui revient à diviser le besoin de chauffage Bch de
+     * l'immeuble par le nombre de logements de l'immeuble Nblgt) ». Le
+     * générateur individuel se compare donc au GV d'un logement moyen, soit
+     * `GV / Nblgt`. Chauffage collectif : le calcul reste à l'immeuble, GV
+     * entier.
+     *
+     * Le diviseur `rdim` d'open3cl (`9_chauffage.js::tauxChargeForGenerator`)
+     * a été testé et écarté : il dégrade l'ensemble du corpus (+30 écarts hors
+     * tolérance) et ne correspond pas au Nblgt de la spec.
      */
     private function resolveGvBuilding(DOMElement $node, NodeAccessor $accessor, CalculationContext $context): float
     {
