@@ -1298,6 +1298,22 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
   départage empirique, en distinguant chauffage individuel et collectif.
 - Validation : gain mesuré en A/B, et règle citée depuis la spec.
 
+### TASK-K14 — `enum_classe_inertie_id` écrit hors de son emplacement au schéma
+
+- [~AI2] Owner: AI2  | Phase: K  | Estimation: 1h  | Priorité: haute
+- Le moteur écrit `enum_classe_inertie_id` dans
+  `logement/donnee_intermediaire`, sur **229 cas sur 229**. Le schéma ne
+  déclare cette balise qu'à un seul endroit :
+  `dpe/logement/enveloppe/inertie/enum_classe_inertie_id`, où c'est une
+  **donnée d'entrée**. Aucune référence ne la produit en sortie.
+- Le contrôle de vocabulaire de TASK-K03 ne l'a pas vue : il vérifie les noms
+  de balises, pas leur emplacement.
+- La classe est déjà publiée dans le contexte (`inertie.classe_id`) ; deux
+  consommateurs la relisent inutilement depuis le DOM.
+- Action : cesser d'écrire la balise, faire lire le contexte à
+  `ConfortEteCalculator` et `CollectifBaseAppoint`.
+- Validation : 229 balises supplémentaires en moins, aucune valeur changée.
+
 ---
 
 ## Validation par phase (gate)
