@@ -852,6 +852,20 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 - Validation : les ponts concernés de `2618E2138973C` valent zéro, les autres
   restent à 0,71 et la suite PHPUnit complète reste verte.
 
+### TASK-J07 — Unités Wh des besoins ECS et pertes/apports récupérés
+
+- [~AI] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2618E2138973C : les besoins ECS de chaque installation, les apports de
+  chauffage et les pertes récupérées sont écrits en kWh alors que les balises
+  intermédiaires ADEME et les formules §9.1/§11.1 les expriment en Wh.
+- Action : sérialiser ces balises en Wh tout en conservant les calculs de
+  consommation et les besoins récapitulatifs en kWh ; adapter les lecteurs DOM
+  internes pour éviter toute modification des résultats énergétiques.
+- Cibles : `src/Ecs/`, `src/Apport/FCalculator.php`,
+  `src/Sortie/ApportEtBesoinCalculator.php`, `src/Auxiliaire/` et tests dédiés.
+- Validation : disparition de tous les deltas exactement égaux à un facteur
+  1000 sur `2618E2138973C`, sans régression sur les DPE J01-J06.
+
 ---
 
 ## Validation par phase (gate)
