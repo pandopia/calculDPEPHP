@@ -1104,6 +1104,17 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 ### TASK-K04 — Consommations de chauffage : `conso_ch` / `conso_ch_depensier`
 
 - [~AI2] Owner: AI2  | Phase: K  | Estimation: 8h  | Priorité: haute
+- **Avancement** : la cause amont est identifiée et une première correction est
+  livrée. `rendement_generation` est fautif dans **63 des 72 cas** où `conso_ch`
+  l'est ; dans 37 de ces 63, `pn` et `qp0` le sont aussi. La chaîne à remonter
+  est donc `pn`/`qp0` → `rendement_generation` → `conso_ch`, pas l'inverse.
+- Corrigé : §13.2.1.2 impose que le taux de charge se juge sur la **puissance
+  installée totale** des générateurs à combustion, pas sur celle du seul
+  générateur courant. Cdimref utilise désormais la puissance cumulée
+  (−20 écarts hors tolérance, conformité 90,57 % → 90,60 %).
+- Reste à traiter : les 23 cas où seul `rendement_generation` diverge alors que
+  `pn`, `qp0`, `rpn` et `rpint` sont exacts (écarts de 0,7 à 8,4 %), et les 37
+  cas où `pn`/`qp0` divergent eux-mêmes.
 - 871 valeurs hors tolérance (517 `conso_ch_depensier`, 354 `conso_ch`),
   écart maximal 110 %. C'est le premier poste après les coûts, et il cascade
   sur `emission_ges_ch` (264), `ep_conso_ch` (166), `conso_5_usages` (266),
@@ -1260,6 +1271,27 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
   fichier de référence et les signale dans une section dédiée du rapport. Ils
   restent comptés dans le taux — la mesure brute ne se maquille pas — et le
   rapport affiche en regard le **plafond atteignable** sur ce corpus.
+
+### TASK-K13 — Cdimref : diviseur du GV sur un DPE immeuble
+
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
+- Cdimref rapporte la puissance installée au GV desservi. Sur un DPE immeuble,
+  le moteur divise le GV par `nombre_appartement` ; open3cl
+  (`9_chauffage.js::tauxChargeForGenerator`) divise par le `rdim` de
+  l'installation.
+- Les deux ont été mesurés en A/B sur les 229 cas, profil strict :
+  `nombre_appartement` **4 942** écarts hors tolérance · `rdim` **4 972**
+  (+30) · `rdim` combiné à la puissance cumulée **4 952** (+10) · puissance
+  cumulée seule **4 922** (−20, retenue).
+- `nombre_appartement` est donc conservé faute de mieux, alors qu'il n'a pas
+  de justification dans la spec : ce n'est pas le GV desservi par
+  l'installation. Sur 2467E3590684Y (rdim = 3 pour 12 logements), `GV / rdim`
+  reproduit **exactement** le Cdimref de la référence là où
+  `nombre_appartement` en est loin — la bonne règle est probablement
+  conditionnelle, et aucun des deux diviseurs n'est correct partout.
+- Action : établir le diviseur depuis §13.2.1.2 et §17.1.4.2 plutôt que par
+  départage empirique, en distinguant chauffage individuel et collectif.
+- Validation : gain mesuré en A/B, et règle citée depuis la spec.
 
 ---
 
