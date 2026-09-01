@@ -963,6 +963,16 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 - Validation : `php bin/diff-report --filter=2659E2047646C` → 0 delta, sans
   régression sur les DPE J01-J13.
 
+### TASK-J15 — Correction du DPE 2659E2170095R
+
+- [~AI] Owner: AI  | Phase: J  | Estimation: 3h  | Priorité: haute
+- DPE 2659E2170095R : identifier les écarts avec la sortie ADEME et corriger
+  leurs causes racines conformément à la spécification 3CL.
+- Action : analyser les valeurs intermédiaires, appliquer le correctif minimal
+  traçable et ajouter les tests unitaires couvrant les branches concernées.
+- Validation : `php bin/diff-report --filter=2659E2170095R` → 0 delta, sans
+  régression sur les DPE J01-J14.
+
 ---
 
 ## Phase K — Conformité jeux de tests d'évaluation
