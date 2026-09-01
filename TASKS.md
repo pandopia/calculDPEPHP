@@ -1034,7 +1034,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K03 — Balises hors vocabulaire ADEME : `Qgw` et `pveil`
 
-- [ ] Owner: __  | Phase: K  | Estimation: 1h  | Priorité: haute
+- [~AI2] Owner: AI2  | Phase: K  | Estimation: 1h  | Priorité: haute
 - Le moteur écrit deux balises qui n'existent dans aucun XML de l'observatoire
   ni dans `resources/ademe_DPE.xsd` : `Qgw` (224 cas) et `pveil` (163 cas).
   Le schéma déclare `pveilleuse`, pas `pveil` ; `Qgw` n'existe pas du tout.
