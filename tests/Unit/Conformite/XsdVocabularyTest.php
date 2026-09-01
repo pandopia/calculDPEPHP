@@ -13,10 +13,34 @@ final class XsdVocabularyTest extends TestCase
 
     public function testLeVocabulaireEstCharge(): void
     {
-        $names = XsdVocabulary::load(self::XSD);
+        $paths = XsdVocabulary::load(self::XSD);
 
-        self::assertArrayHasKey('conso_5_usages', $names);
-        self::assertArrayHasKey('donnee_intermediaire', $names);
+        self::assertArrayHasKey('dpe/logement/sortie/ef_conso/conso_5_usages', $paths);
+        self::assertArrayHasKey('dpe/logement/enveloppe/inertie/enum_classe_inertie_id', $paths);
+    }
+
+    /**
+     * Le contrôle porte sur le chemin, pas sur le seul nom : une balise réelle
+     * écrite au mauvais endroit doit être signalée (cf. TASK-K14).
+     */
+    public function testUneBaliseReelleAuMauvaisEndroitEstSignalee(): void
+    {
+        $unknown = XsdVocabulary::unknownElements(
+            ['dpe/logement/donnee_intermediaire/enum_classe_inertie_id' => '3'],
+            self::XSD,
+        );
+
+        self::assertSame(['dpe/logement/donnee_intermediaire/enum_classe_inertie_id'], $unknown);
+    }
+
+    public function testLeMemeNomAuBonEndroitEstAccepte(): void
+    {
+        $unknown = XsdVocabulary::unknownElements(
+            ['dpe/logement/enveloppe/inertie/enum_classe_inertie_id' => '3'],
+            self::XSD,
+        );
+
+        self::assertSame([], $unknown);
     }
 
     /**
@@ -26,7 +50,7 @@ final class XsdVocabularyTest extends TestCase
      */
     public function testUneBaliseAbsenteDuXsdMaisPresenteDansLaReferenceEstAcceptee(): void
     {
-        self::assertArrayNotHasKey('numero_dpe', XsdVocabulary::load(self::XSD));
+        self::assertArrayNotHasKey('dpe/numero_dpe', XsdVocabulary::load(self::XSD));
 
         $unknown = XsdVocabulary::unknownElements(
             ['dpe/numero_dpe' => '2650E0036638H'],
@@ -41,13 +65,16 @@ final class XsdVocabularyTest extends TestCase
     {
         $unknown = XsdVocabulary::unknownElements([
             'dpe/logement/sortie/ef_conso/conso_5_usages' => '1',
-            'dpe/logement/installation_ecs_collection/installation_ecs/donnee_intermediaire/Qgw' => '0',
+            'dpe/logement/installation_ecs_collection/installation_ecs/generateur_ecs_collection/generateur_ecs/donnee_intermediaire/Qgw' => '0',
         ], self::XSD);
 
-        self::assertSame(['Qgw'], $unknown);
+        self::assertSame(
+            ['dpe/logement/installation_ecs_collection/installation_ecs/generateur_ecs_collection/generateur_ecs/donnee_intermediaire/Qgw'],
+            $unknown,
+        );
     }
 
-    public function testLesIndexPositionnelsSontIgnores(): void
+    public function testLesIndexPositionnelsEtSemantiquesSontIgnores(): void
     {
         $unknown = XsdVocabulary::unknownElements([
             'dpe/logement/enveloppe/mur_collection/mur[3]/donnee_intermediaire/umur' => '1',

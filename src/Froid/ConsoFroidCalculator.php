@@ -160,10 +160,9 @@ final class ConsoFroidCalculator implements CalculatorInterface
         $accessor->setChildValue($efConso, 'conso_fr',          $cfr);
         $accessor->setChildValue($efConso, 'conso_fr_depensier', $cfrDep);
 
-        $apportEtBesoin = $this->ensureChild($node->ownerDocument, $sortie, 'apport_et_besoin');
-        if ($eer > 0.0) {
-            $accessor->setChildValue($apportEtBesoin, 'eer', $eer);
-        }
+        // L'EER se publie sur le générateur de froid, seul emplacement déclaré
+        // par le schéma (`climatisation/donnee_intermediaire/eer`) ; l'écrire
+        // aussi sous `sortie/apport_et_besoin` produisait un chemin inexistant.
 
         // Per-climatisation : répartition de conso_fr au prorata de surface_clim
         // (Σ_clim(per_clim) = ef_conso/conso_fr = cfr déjà calculé à l'échelle de la part climatisée)

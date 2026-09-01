@@ -1,7 +1,7 @@
 # Conformité du moteur — jeux de tests DPE 3CL
 
-_Généré le 2026-09-01T14:17:19+00:00 — profil de tolérance : `strict`_
-_Révision mesurée : `c7b6933` — arbre de travail modifié : 3 fichier(s) src/ non commités_
+_Généré le 2026-09-01T14:21:19+00:00 — profil de tolérance : `strict`_
+_Révision mesurée : `6bd03e3` — arbre de travail modifié : 3 fichier(s) src/ non commités_
 
 Comparaison balise à balise de la totalité de `<donnee_intermediaire>` et
 `<sortie>` entre la sortie du moteur et la référence du cas. Aucune balise
@@ -16,18 +16,18 @@ Crash                    : 0
 Totalement conformes     : 0
 Partiellement conformes  : 229
 
-Valeurs comparées        : 71 877
+Valeurs comparées        : 71 874
 Exactes                  : 55 081
 Dans tolérance           : 10 245
 Hors tolérance           : 4 922
 Balises manquantes       : 40
-Balises supplémentaires  : 1 550
+Balises supplémentaires  : 1 547
 Écarts non numériques    : 39
 
 Conformité               : 90,89 %
 ```
 
-Sur ces écarts, **1 873 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **93,49 %**. Détail plus bas.
+Sur ces écarts, **1 873 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **93,50 %**. Détail plus bas.
 
 ## Écarts par famille fonctionnelle
 
@@ -41,7 +41,7 @@ Sur ces écarts, **1 873 sont imputables à la référence** et non au moteur : 
 | Génération chauffage | 4003 | 1595 | 1565 | 833 | 6 | 4 | 78,94 % |
 | Génération ECS | 3604 | 2572 | 556 | 276 | 1 | 199 | 86,79 % |
 | Auxiliaires | 7786 | 4569 | 1887 | 1330 | 0 | 0 | 82,92 % |
-| Froid | 2791 | 2718 | 0 | 42 | 28 | 3 | 97,38 % |
+| Froid | 2788 | 2718 | 0 | 42 | 28 | 0 | 97,49 % |
 | PV | 1609 | 1600 | 0 | 9 | 0 | 0 | 99,44 % |
 | Sorties énergie finale | 1553 | 839 | 480 | 234 | 0 | 0 | 84,93 % |
 | Sorties énergie primaire | 1832 | 881 | 599 | 337 | 0 | 0 | 80,79 % |
@@ -57,8 +57,8 @@ Périmètres du règlement d'évaluation CSTB §1.1, déduits de
 
 | Périmètre | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| immeuble_collectif | 206 | 65314 | 50322 | 9312 | 4156 | 14 | 91,02 % |
-| appartement_issu_immeuble | 8 | 2719 | 2040 | 306 | 314 | 1 | 86,03 % |
+| immeuble_collectif | 206 | 65312 | 50322 | 9312 | 4156 | 14 | 91,02 % |
+| appartement_issu_immeuble | 8 | 2718 | 2040 | 306 | 314 | 1 | 86,06 % |
 | appartement_individuel | 9 | 2098 | 1406 | 341 | 321 | 17 | 82,91 % |
 | maison_individuelle | 6 | 1746 | 1313 | 286 | 131 | 8 | 91,27 % |
 
@@ -66,8 +66,8 @@ Périmètres du règlement d'évaluation CSTB §1.1, déduits de
 
 | Régime | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| post_2026 | 212 | 66270 | 50918 | 9687 | 4138 | 16 | 91,16 % |
-| pre_2026 | 17 | 5607 | 4163 | 558 | 784 | 24 | 83,94 % |
+| post_2026 | 212 | 66268 | 50918 | 9687 | 4138 | 16 | 91,16 % |
+| pre_2026 | 17 | 5606 | 4163 | 558 | 784 | 24 | 83,96 % |
 
 ## Écarts par moteur de calcul de la référence
 
@@ -76,9 +76,9 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 
 | Moteur | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| BBS_Slama_2025.11.1.0 | 209 | 65493 | 50425 | 9478 | 4077 | 4 | 91,17 % |
+| BBS_Slama_2025.11.1.0 | 209 | 65491 | 50425 | 9478 | 4077 | 4 | 91,18 % |
 | 3cl_tribu_2024.6.1.0 | 7 | 2714 | 2064 | 242 | 374 | 0 | 84,75 % |
-| 3cl_tribu_1.4.25.1 | 4 | 1329 | 1018 | 118 | 155 | 8 | 85,22 % |
+| 3cl_tribu_1.4.25.1 | 4 | 1328 | 1018 | 118 | 155 | 8 | 85,29 % |
 | 3cl-2024.6.1.0 | 3 | 644 | 440 | 81 | 106 | 12 | 80,53 % |
 | BBS_Slama_2024.6.1.0 | 2 | 641 | 457 | 83 | 100 | 0 | 83,98 % |
 | inconnu | 2 | 522 | 349 | 131 | 33 | 8 | 91,60 % |
@@ -153,7 +153,7 @@ reproduire le défaut d'un logiciel tiers éloignerait le moteur de la méthode.
 
 ## Conformité structurelle du XML produit
 
-Aucune balise produite hors du vocabulaire de `resources/ademe_DPE.xsd`.
+Aucun chemin produit hors de ceux déclarés par `resources/ademe_DPE.xsd`.
 
 ## Cas les plus dégradés
 
@@ -162,7 +162,7 @@ Aucune balise produite hors du vocabulaire de `resources/ademe_DPE.xsd`.
 | `zone_pre2026coefelec_diag1793608.xml` | appartement_issu_immeuble | pre_2026 | 722 | 153 | 78,81 % |
 | `2659E0412858Q.xml` | immeuble_collectif | post_2026 | 521 | 121 | 76,78 % |
 | `2675E0942311V.xml` | immeuble_collectif | post_2026 | 411 | 90 | 78,10 % |
-| `2688E0016745Q.xml` | appartement_issu_immeuble | post_2026 | 423 | 85 | 79,91 % |
+| `2688E0016745Q.xml` | appartement_issu_immeuble | post_2026 | 422 | 84 | 80,09 % |
 | `2675E0021756W.xml` | immeuble_collectif | post_2026 | 357 | 83 | 76,75 % |
 | `2675E0022506S.xml` | immeuble_collectif | post_2026 | 324 | 83 | 74,38 % |
 | `2612E0854137C.xml` | immeuble_collectif | post_2026 | 275 | 81 | 70,55 % |
@@ -172,10 +172,10 @@ Aucune balise produite hors du vocabulaire de `resources/ademe_DPE.xsd`.
 | `2682E0040242D.xml` | immeuble_collectif | post_2026 | 255 | 81 | 68,24 % |
 | `2594E0486196Q.xml` | immeuble_collectif | pre_2026 | 263 | 80 | 69,58 % |
 | `2675E0069484O.xml` | immeuble_collectif | post_2026 | 296 | 80 | 72,97 % |
-| `2467E3590684Y.xml` | immeuble_collectif | pre_2026 | 463 | 77 | 83,37 % |
 | `2659E1259773H.xml` | immeuble_collectif | post_2026 | 299 | 77 | 74,25 % |
 | `2675E0023041H.xml` | immeuble_collectif | post_2026 | 332 | 77 | 76,81 % |
 | `2675E0023980K.xml` | immeuble_collectif | post_2026 | 340 | 77 | 77,35 % |
+| `2467E3590684Y.xml` | immeuble_collectif | pre_2026 | 462 | 76 | 83,55 % |
 | `2659E1260921L.xml` | immeuble_collectif | post_2026 | 270 | 76 | 71,85 % |
 | `2675E0022293N.xml` | immeuble_collectif | post_2026 | 362 | 76 | 79,01 % |
 | `2675E0018503T.xml` | immeuble_collectif | post_2026 | 403 | 75 | 81,39 % |

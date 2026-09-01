@@ -1320,8 +1320,8 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K15 — Contrôle structurel sensible au chemin
 
-- [~AI2] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: moyenne
-- `XsdVocabulary` ne vérifie que les **noms** de balises. TASK-K14 a montré la
+- [x] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- `XsdVocabulary` ne vérifiait que les **noms** de balises. TASK-K14 a montré la
   limite : `enum_classe_inertie_id` existait bien au schéma, mais sous
   `<enveloppe><inertie>`, et le moteur l'écrivait dans
   `<logement><donnee_intermediaire>` sur 229 cas sur 229 sans que le rapport
@@ -1330,7 +1330,15 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
   contrôle peut donc être rendu sensible au chemin sans travail d'inférence.
 - Comme aujourd'hui, il faudra unir le vocabulaire du XSD (périmé) aux chemins
   réellement observés dans la référence du cas, pour éviter les faux positifs.
-- Validation : le contrôle rejoue TASK-K14 et signale la balise mal placée.
+- **Fait** : le contrôle porte désormais sur les chemins complets, lus dans
+  les `<xs:appinfo source>` du schéma (885 chemins déclarés), unis aux chemins
+  observés dans la référence du cas. Il signale bien la balise de TASK-K14.
+- Il a immédiatement trouvé un second défaut du même type : `eer` écrit sous
+  `sortie/apport_et_besoin` (3 cas) alors que le schéma ne le déclare que sous
+  `climatisation/donnee_intermediaire`, où le moteur l'écrivait déjà
+  correctement. L'écriture en double a été supprimée.
+- La section « Conformité structurelle du XML produit » du rapport est
+  désormais **vide** : plus aucun chemin produit hors schéma.
 
 ---
 

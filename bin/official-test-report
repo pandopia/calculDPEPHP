@@ -199,9 +199,9 @@ if (isset($options['famille'])) {
 }
 
 if (($data['unknown_elements'] ?? []) !== []) {
-    echo "\nBalises produites hors vocabulaire ADEME (XML rejeté par l'observatoire) :\n";
+    echo "\nChemins produits hors du schéma ADEME (XML rejeté par l'observatoire) :\n";
     foreach ($data['unknown_elements'] as $name => $n) {
-        echo '  ' . $pad($name, 40) . $padLeft((string) $n, 5) . " cas\n";
+        echo '  ' . $pad($name, 78) . $padLeft((string) $n, 5) . " cas\n";
     }
 }
 

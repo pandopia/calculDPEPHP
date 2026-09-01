@@ -165,12 +165,14 @@ final class MarkdownRenderer
         $out[] = '## Conformité structurelle du XML produit';
         $out[] = '';
         if (($report['unknown_elements'] ?? []) === []) {
-            $out[] = 'Aucune balise produite hors du vocabulaire de `resources/ademe_DPE.xsd`.';
+            $out[] = 'Aucun chemin produit hors de ceux déclarés par `resources/ademe_DPE.xsd`.';
         } else {
-            $out[] = 'Balises écrites par le moteur mais absentes du schéma ADEME — un fichier';
-            $out[] = 'les contenant serait rejeté par l\'observatoire :';
+            $out[] = 'Chemins écrits par le moteur qu\'aucun `<xs:appinfo source>` du schéma';
+            $out[] = 'ADEME ne déclare, et que la référence ne contient pas non plus — balise';
+            $out[] = 'inventée, ou balise réelle placée au mauvais endroit. Un fichier les';
+            $out[] = 'contenant serait rejeté par l\'observatoire :';
             $out[] = '';
-            $out[] = '| Balise | Cas concernés |';
+            $out[] = '| Chemin | Cas concernés |';
             $out[] = '|---|---:|';
             foreach ($report['unknown_elements'] as $name => $n) {
                 $out[] = sprintf('| `%s` | %d |', $name, $n);
