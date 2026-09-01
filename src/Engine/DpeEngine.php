@@ -46,6 +46,10 @@ final class DpeEngine
 
     public function calculateDocument(DOMDocument $document): DOMDocument
     {
+        // Garde-fou AVANT toute purge : un DPE hors méthode 3CL logement ne doit
+        // pas perdre sa <sortie> existante ni produire un faux succès.
+        $this->assertCalculable($document);
+
         // Idempotence : on retire d'abord toute donnée intermédiaire / sortie pré-existante
         $this->purgeOutputs($document);
 
@@ -54,6 +58,41 @@ final class DpeEngine
         $this->pipeline->run($document, $context);
 
         return $document;
+    }
+
+    /**
+     * La méthode 3CL-2021 ne couvre que les logements existants :
+     * administratif/enum_modele_dpe_id = 1 « dpe 3cl 2021 méthode logement ».
+     * Les DPE neufs (2 : RT2012, 3 : RE2020) et tertiaires (4) portent une
+     * structure <logement_neuf> sans <donnee_entree> — aucun Calculator ne
+     * s'applique, il faut refuser le fichier plutôt que d'écrire un résultat vide.
+     *
+     * @throws UnsupportedDpeModelException
+     */
+    private function assertCalculable(DOMDocument $document): void
+    {
+        $accessor = new NodeAccessor($document);
+        $modeleId = $accessor->getIntOrNull('//administratif/enum_modele_dpe_id');
+
+        if ($modeleId !== null && $modeleId !== 1) {
+            $libelle = match ($modeleId) {
+                2       => 'DPE neuf (RT2012)',
+                3       => 'DPE neuf (RE2020)',
+                4       => 'DPE 2006 tertiaire et ERP',
+                default => "modèle de DPE inconnu (enum_modele_dpe_id=$modeleId)",
+            };
+            throw new UnsupportedDpeModelException(
+                "$libelle : non calculable par la méthode 3CL. " .
+                "Seul enum_modele_dpe_id=1 (« dpe 3cl 2021 méthode logement ») est supporté."
+            );
+        }
+
+        if ($document->getElementsByTagName('logement')->length === 0) {
+            $detail = $document->getElementsByTagName('logement_neuf')->length > 0
+                ? 'structure <logement_neuf> détectée — DPE neuf (RT2012/RE2020) : non calculable par la méthode 3CL'
+                : 'balise <logement> absente : non calculable par la méthode 3CL';
+            throw new UnsupportedDpeModelException($detail . '.');
+        }
     }
 
     private function purgeOutputs(DOMDocument $document): void

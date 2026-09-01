@@ -4,6 +4,7 @@
 declare(strict_types=1);
 
 use CalculDpePHP\Engine\DefaultDpeEngineFactory;
+use CalculDpePHP\Engine\UnsupportedDpeModelException;
 
 require __DIR__ . '/../vendor/autoload.php';
 
@@ -25,6 +26,9 @@ try {
     $engine = DefaultDpeEngineFactory::create(dirname(__DIR__));
     $engine->run($input, $output);
     fwrite(STDOUT, "✓ DPE calculé : $output\n");
+} catch (UnsupportedDpeModelException $e) {
+    fwrite(STDERR, "Erreur : " . $e->getMessage() . "\n");
+    exit(2);
 } catch (Throwable $t) {
     fwrite(STDERR, "Erreur : " . $t->getMessage() . "\n");
     fwrite(STDERR, $t->getTraceAsString() . "\n");
