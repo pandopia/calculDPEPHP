@@ -869,6 +869,19 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 - Validation : disparition de tous les deltas exactement égaux à un facteur
   1000 sur `2618E2138973C`, sans régression sur les DPE J01-J06.
 
+### TASK-J08 — Sorties dépensier et ordre par énergie du format ADEME natif
+
+- [~AI] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2618E2138973C : le format natif 0.1.0 attend les consommations et GES
+  dépensier réels, tandis que les exports historiques version 2 répètent les
+  valeurs conventionnelles ; sa collection par énergie est en ordre croissant
+  (électricité puis gaz) et reprend les totaux d'installation.
+- Action : appliquer ces conventions selon la version XML sans modifier les
+  exports LICIEL, et couvrir les deux branches par des tests unitaires.
+- Cibles : `src/Sortie/{EpConsoCalculator,EmissionGesCalculator,SortieParEnergieAggregator}.php`.
+- Validation : disparition des 14 deltas d'agrégation restants sur le DPE cible,
+  sans régression sur les DPE J01-J07.
+
 ---
 
 ## Phase K — Conformité jeux de tests d'évaluation
