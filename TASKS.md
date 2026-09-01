@@ -900,7 +900,7 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-J10 — Sentinelles ventilation natives et configuration Uph d'un LC
 
-- [~AI] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- [x] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
 - DPE 2618E2138973C : le format natif 0.1.0 écrit `pvent_moy=0` et
   `conso_auxiliaire_ventilation=1` dans la ventilation tout en conservant
   413,640 kWh dans la sortie globale ; le plancher haut de type 8 adjacent à un
