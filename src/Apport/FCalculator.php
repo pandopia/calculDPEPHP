@@ -201,7 +201,7 @@ final class FCalculator implements CalculatorInterface
             array_sum($sseMensuel) + array_sum($sseEtsMensuel));
         $accessor->setChildValue($apportEtBesoin, 'apport_solaire_fr',      0);
         $accessor->setChildValue($apportEtBesoin, 'apport_interne_fr',      0);
-        $xmlPerKwh = IntermediateEnergyUnit::xmlPerKwh($context->document);
+        $xmlPerKwh = IntermediateEnergyUnit::apportXmlPerKwh($context->document);
         $accessor->setChildValue($apportEtBesoin, 'apport_solaire_ch',      $apportSolaireCh * $xmlPerKwh);
         $accessor->setChildValue($apportEtBesoin, 'apport_interne_ch',      $apportInterneCh * $xmlPerKwh);
         $accessor->setChildValue($apportEtBesoin, 'fraction_apport_gratuit_ch',           $fractionCh);

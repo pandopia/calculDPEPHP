@@ -94,7 +94,7 @@ final class EmissionGesCalculator implements CalculatorInterface
     public function calculate(DOMElement $node, CalculationContext $context): void
     {
         $accessor = new NodeAccessor($context->document);
-        $nativeAdeme = IntermediateEnergyUnit::isNativeAdeme($context->document);
+        $nativeAdeme = IntermediateEnergyUnit::usesDepensierOutputs($context->document);
 
         // ── 1. Paramètres ────────────────────────────────────────────────────
         $shLogement = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node);
@@ -161,6 +161,9 @@ final class EmissionGesCalculator implements CalculatorInterface
         // ── 6. 5 usages GES ─────────────────────────────────────────────────
         $ges5   = $gesConsoChEf + $gesConsoEcsEf + $gesConsoFr + $gesConsoEcl + $gesCauxTotal;
         $ges5m2 = $surface > 0.0 ? (int)floor($ges5 / $surface) : 0;
+        if (IntermediateEnergyUnit::usesRoundedGesTotal($context->document) && $surface > 0.0) {
+            $ges5 = $ges5m2 * $surface;
+        }
 
         $classeGes = $this->classeGes($ges5m2);
 

@@ -17,14 +17,14 @@ use DOMElement;
  *   - installation isolée  : Rs × Rg = 0.9
  *   - sinon (non isolée)   : Rs × Rg = 0.75
  *
- * On stocke le produit Rs × Rg dans `rendement_generation` et on laisse
- * `rendement_stockage` à 1.0 (défaut de ConsoEcsCalculator).
+ * On stocke directement le produit dans `rendement_generation_stockage`,
+ * conformément au vocabulaire XML ADEME.
  *
  * @spec-section 14.3
  * @spec-pages   95
  * @spec-source  resources/specsplitted/14-rendement-ecs-generateurs/03-reseau-chaleur.md
  * @xml-input    generateur_ecs.donnee_entree.enum_type_generateur_ecs_id
- * @xml-output   generateur_ecs.donnee_intermediaire.rendement_generation
+ * @xml-output   generateur_ecs.donnee_intermediaire.rendement_generation_stockage
  * @depends-on   aucun
  * @tables       (aucune — deux valeurs directement de la spec p.95)
  */
@@ -36,6 +36,7 @@ final class ReseauChaleurCalculator implements CalculatorInterface
         73  => 0.90,  // réseau de chaleur isolé (logement existant)
         107 => 0.75,  // réseau de chaleur non isolé (logement neuf)
         108 => 0.90,  // réseau de chaleur isolé (logement neuf)
+        119 => 0.75,  // réseau de chaleur non répertorié ou inconnu (XSD 2.6)
     ];
 
     public function id(): string
@@ -64,6 +65,6 @@ final class ReseauChaleurCalculator implements CalculatorInterface
 
         $rg = self::RG_BY_TYPE[$typeId];
         $di = $accessor->ensureDonneeIntermediaire($node);
-        $accessor->setChildValue($di, 'rendement_generation', $rg);
+        $accessor->setChildValue($di, 'rendement_generation_stockage', $rg);
     }
 }

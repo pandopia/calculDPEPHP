@@ -30,4 +30,15 @@ final class IntermediateEnergyUnitTest extends TestCase
 
         self::assertSame($expected, IntermediateEnergyUnit::xmlPerKwh($document));
     }
+
+    public function testDpewinUsesWhOnlyForApportsAndAscendingEnergyOrder(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML('<dpe version="9.2.2"/>');
+
+        self::assertSame(1.0, IntermediateEnergyUnit::xmlPerKwh($document));
+        self::assertSame(1000.0, IntermediateEnergyUnit::apportXmlPerKwh($document));
+        self::assertTrue(IntermediateEnergyUnit::usesAscendingEnergyOrder($document));
+        self::assertTrue(IntermediateEnergyUnit::usesRoundedGesTotal($document));
+    }
 }

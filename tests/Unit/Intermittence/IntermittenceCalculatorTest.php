@@ -242,4 +242,23 @@ XML;
         $i0 = (float)$emetteur->getElementsByTagName('i0')->item(0)->textContent;
         $this->assertEqualsWithDelta(1.03, $i0, self::TOL);
     }
+
+    public function testMixedHeatingModeUsesIndividualMeteringConvention(): void
+    {
+        $xml = <<<'XML'
+<logement><caracteristique_generale><enum_methode_application_dpe_log_id>31</enum_methode_application_dpe_log_id></caracteristique_generale>
+<installation_chauffage><donnee_entree><enum_type_installation_id>2</enum_type_installation_id></donnee_entree>
+<emetteur_chauffage_collection><emetteur_chauffage><donnee_entree>
+<enum_type_chauffage_id>2</enum_type_chauffage_id><enum_type_regulation_id>2</enum_type_regulation_id>
+<enum_equipement_intermittence_id>1</enum_equipement_intermittence_id><enum_type_emission_distribution_id>37</enum_type_emission_distribution_id>
+</donnee_entree></emetteur_chauffage></emetteur_chauffage_collection></installation_chauffage></logement>
+XML;
+        $document = new DOMDocument();
+        $document->loadXML($xml);
+        $emitter = $document->getElementsByTagName('emetteur_chauffage')->item(0);
+
+        (new IntermittenceCalculator())->calculate($emitter, $this->makeContext($document, 2, 31));
+
+        self::assertEqualsWithDelta(0.95, (float)$emitter->getElementsByTagName('i0')->item(0)?->textContent, self::TOL);
+    }
 }

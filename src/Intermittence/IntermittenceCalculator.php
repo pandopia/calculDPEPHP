@@ -188,8 +188,13 @@ final class IntermittenceCalculator implements CalculatorInterface
             return (string)$cached;
         }
 
-        $key = 'absent';
         $xpath = new \DOMXPath($context->document);
+        $mode = (int)$xpath->evaluate('string(//caracteristique_generale/enum_methode_application_dpe_log_id)');
+        // Dans les méthodes mixtes, la part collective est nécessairement
+        // individualisée pour être répartie avec ratio_virtualisation (§17.2).
+        $key = in_array($mode, [26, 27, 28, 31, 32, 33, 34, 35, 38], true)
+            ? 'present'
+            : 'absent';
         $nodes = $xpath->query(
             '//fiche_technique[enum_categorie_fiche_technique_id="7"]'
             . '//sous_fiche_technique[contains(translate(description, "PRÉSENCEC", "présencec"), "comptage")]/valeur'

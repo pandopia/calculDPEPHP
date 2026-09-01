@@ -151,9 +151,12 @@ final class UmurCalculator implements CalculatorInterface
             return $umurNu;
         }
 
-        // Sans période d'isolation explicite : si période construction ≤74,
-        // convention année d'isolation = 75-77 (période 3) — spec §3.2.1.1 p.13.
-        if ($methode !== 7 && $periodeIsolationSaisie === null && $periodeId <= 2) {
+        // La convention « construction ≤74 → isolation 75-77 » ne concerne
+        // que le parcours où l'isolation est avérée et son année inconnue
+        // (méthode 8). Pour une présence d'isolation elle-même inconnue
+        // (méthode 2), la table conserve la période de construction : le cas
+        // avant 1975 vaut alors Umur_nu (2,5), conformément à l'arbre p.13.
+        if ($methode === 8 && $periodeIsolationSaisie === null && $periodeId <= 2) {
             $periodeId = 3;
         }
 

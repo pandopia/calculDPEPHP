@@ -955,7 +955,7 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-J14 — Correction du DPE 2659E2047646C
 
-- [~AI] Owner: AI  | Phase: J  | Estimation: 3h  | Priorité: haute
+- [x] Owner: AI  | Phase: J  | Estimation: 3h  | Priorité: haute
 - DPE 2659E2047646C : identifier les écarts avec la sortie ADEME et corriger
   leurs causes racines conformément à la spécification 3CL.
 - Action : analyser les valeurs intermédiaires, appliquer le correctif minimal

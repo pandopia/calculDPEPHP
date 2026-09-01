@@ -155,7 +155,7 @@ final class SortieParEnergieAggregator implements CalculatorInterface
             array_keys($chByEnergie),
             array_keys($ecsByEnergie),
         ));
-        if (IntermediateEnergyUnit::isNativeAdeme($context->document)) {
+        if (IntermediateEnergyUnit::usesAscendingEnergyOrder($context->document)) {
             sort($energieIds);
         } else {
             rsort($energieIds); // exports historiques : non-électrique d'abord

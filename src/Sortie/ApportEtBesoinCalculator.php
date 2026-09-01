@@ -60,7 +60,7 @@ final class ApportEtBesoinCalculator implements CalculatorInterface
     public function calculate(DOMElement $node, CalculationContext $context): void
     {
         $accessor = new NodeAccessor($context->document);
-        $xmlPerKwh = IntermediateEnergyUnit::xmlPerKwh($context->document);
+        $xmlPerKwh = IntermediateEnergyUnit::apportXmlPerKwh($context->document);
 
         $values = [
             'surface_sud_equivalente'                    => (float)($context->get('apport.sse_annuel') ?? 0.0),

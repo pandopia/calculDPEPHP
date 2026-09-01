@@ -261,4 +261,29 @@ XML;
         self::assertEqualsWithDelta(0.012 * 400000.0 * 0.02933, (float)$doc->getElementsByTagName('qp0')->item(0)->textContent, 1e-6);
         self::assertNull($doc->getElementsByTagName('pveilleuse')->item(0));
     }
+
+    public function testMixedHeatingKeepsApartmentPowerAndEvaluatesCharacteristicsAtBuildingScale(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<logement><caracteristique_generale><enum_methode_application_dpe_log_id>31</enum_methode_application_dpe_log_id></caracteristique_generale>
+<installation_chauffage><donnee_entree><enum_type_installation_id>2</enum_type_installation_id><ratio_virtualisation>0.0489907</ratio_virtualisation></donnee_entree>
+<generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+<enum_type_generateur_ch_id>85</enum_type_generateur_ch_id><tv_generateur_combustion_id>1</tv_generateur_combustion_id>
+<enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id><presence_ventouse>0</presence_ventouse>
+</donnee_entree></generateur_chauffage></generateur_chauffage_collection></installation_chauffage></logement>
+XML);
+        $context = $this->makeContext($document);
+        $context->set('enveloppe.dp_parois', 109.634);
+        $context->set('enveloppe.dp_pont_thermique', 30.036);
+        $context->set('ventilation.hvent', 70.55);
+        $context->set('ventilation.hperm', 8.379);
+
+        (new ChaudiereDefautCalculator())->calculate($document->getElementsByTagName('generateur_chauffage')->item(0), $context);
+
+        $pn = (float)$document->getElementsByTagName('pn')->item(0)?->textContent;
+        self::assertEqualsWithDelta(8719.7, $pn, 1.0);
+        self::assertEqualsWithDelta((84 + 2 * log10($pn / 0.0489907 / 1000)) / 100, (float)$document->getElementsByTagName('rpn')->item(0)?->textContent, 1e-9);
+        self::assertEqualsWithDelta(0.04 * $pn, (float)$document->getElementsByTagName('qp0')->item(0)?->textContent, 1e-6);
+    }
 }

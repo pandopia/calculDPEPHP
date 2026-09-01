@@ -126,6 +126,13 @@ final class KCalculator implements CalculatorInterface
             return false;
         }
 
+        // DPEWIN 9.x conserve les liaisons de plancher haut dans le calcul
+        // même lorsque ce plancher borde un local chauffé non déperditif.
+        $formatVersion = $document->documentElement?->getAttribute('version') ?? '';
+        if ($liaison === 3 && str_starts_with($formatVersion, '9.')) {
+            return false;
+        }
+
         $xpath = new DOMXPath($document);
         foreach (['reference_1', 'reference_2'] as $field) {
             $reference = $accessor->getStringOrNull('./' . $field, $entree);
@@ -157,7 +164,10 @@ final class KCalculator implements CalculatorInterface
         NodeAccessor $accessor,
         DOMDocument $document,
     ): bool {
-        if ($accessor->getIntOrNull('./enum_type_liaison_id', $entree) === 5) {
+        // Le cas observé par la convention ADEME ne concerne que la liaison
+        // plancher bas / mur. Les liaisons de plancher haut, intermédiaire et
+        // refend restent comptées même lorsque les indicateurs de masse valent 0.
+        if ($accessor->getIntOrNull('./enum_type_liaison_id', $entree) !== 1) {
             return false;
         }
 

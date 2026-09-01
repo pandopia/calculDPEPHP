@@ -176,9 +176,13 @@ final class AuxDistributionCalculator implements CalculatorInterface
         $cle       = 1.0;
 
         // Surface habitable de référence pour Lem/shFactor (= bâtiment complet pour immeuble, sinon logement)
-        $shRef = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement)
-            ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement',   $logement)
-            ?? 0.0;
+        $modeApp = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $logement);
+        $isAppartementMixte = $modeApp !== null && in_array($modeApp, [31, 32, 35], true);
+        $shRef = $isAppartementMixte
+            ? ($accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement) ?? 0.0)
+            : ($accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement)
+                ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement)
+                ?? 0.0);
 
         foreach ($collection->childNodes as $install) {
             if (!$install instanceof DOMElement || $install->nodeName !== 'installation_chauffage') {

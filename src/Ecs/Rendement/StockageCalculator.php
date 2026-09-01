@@ -47,6 +47,9 @@ final class StockageCalculator implements CalculatorInterface
     /** Identifiants CET — §14.2 traite leur Rs différemment */
     private const CET_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
+    /** Réseaux de chaleur : Rs × Rg est traité globalement au §14.3. */
+    private const RESEAU_CHALEUR_IDS = [72, 73, 107, 108, 119];
+
     public function id(): string
     {
         return self::class;
@@ -104,7 +107,7 @@ final class StockageCalculator implements CalculatorInterface
 
         $di = $this->ensureDi($context->document, $node);
         // CET : rendement_stockage géré par CetAccumulationCalculator (= COP).
-        if (!$isCet) {
+        if (!$isCet && !in_array($typeGenId, self::RESEAU_CHALEUR_IDS, true)) {
             $accessor->setChildValue($di, 'rendement_stockage', $rs);
         }
 

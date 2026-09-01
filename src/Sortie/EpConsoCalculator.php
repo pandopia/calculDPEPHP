@@ -65,7 +65,7 @@ final class EpConsoCalculator implements CalculatorInterface
     public function calculate(DOMElement $node, CalculationContext $context): void
     {
         $accessor = new NodeAccessor($context->document);
-        $nativeAdeme = IntermediateEnergyUnit::isNativeAdeme($context->document);
+        $nativeAdeme = IntermediateEnergyUnit::usesDepensierOutputs($context->document);
 
         // ── 1. Paramètres du bâtiment ─────────────────────────────────────────
         $shLogement = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node);

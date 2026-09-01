@@ -150,4 +150,29 @@ XML, $plancherLourd, $murLourd));
 
         self::assertSame($expected, $document->getElementsByTagName('k')->item(0)?->textContent);
     }
+
+    public function testKeepsHighFloorJunctionBetweenLightweightParois(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<logement><enveloppe>
+  <plancher_haut><donnee_entree><reference>ph</reference><paroi_lourde>0</paroi_lourde></donnee_entree></plancher_haut>
+  <mur><donnee_entree><reference>mur</reference><paroi_lourde>0</paroi_lourde></donnee_entree></mur>
+  <pont_thermique><donnee_entree><reference_1>ph</reference_1><reference_2>mur</reference_2>
+    <tv_pont_thermique_id>36</tv_pont_thermique_id><enum_methode_saisie_pont_thermique_id>1</enum_methode_saisie_pont_thermique_id>
+    <enum_type_liaison_id>3</enum_type_liaison_id>
+  </donnee_entree></pont_thermique>
+</enveloppe></logement>
+XML);
+        $context = new CalculationContext(
+            document: $document,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        );
+        $pont = $document->getElementsByTagName('pont_thermique')->item(0);
+        self::assertInstanceOf(DOMElement::class, $pont);
+
+        (new KCalculator())->calculate($pont, $context);
+
+        self::assertSame('0.3', $document->getElementsByTagName('k')->item(0)?->textContent);
+    }
 }

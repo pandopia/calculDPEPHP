@@ -106,6 +106,33 @@ XML;
         $this->assertEqualsWithDelta(0.0, $this->efValue($doc, 'conso_auxiliaire_distribution_ecs'), 0.001);
     }
 
+    public function testMixedApartmentSizesHeatingPumpAtApartmentScale(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<logement><caracteristique_generale>
+<enum_methode_application_dpe_log_id>31</enum_methode_application_dpe_log_id>
+<surface_habitable_logement>105.33</surface_habitable_logement><surface_habitable_immeuble>2150</surface_habitable_immeuble>
+</caracteristique_generale><installation_chauffage_collection><installation_chauffage><donnee_entree>
+<surface_chauffee>105.33</surface_chauffee><nombre_niveau_installation_ch>2</nombre_niveau_installation_ch><enum_type_installation_id>2</enum_type_installation_id>
+</donnee_entree><emetteur_chauffage_collection><emetteur_chauffage><donnee_entree>
+<enum_type_emission_distribution_id>37</enum_type_emission_distribution_id><enum_temp_distribution_ch_id>3</enum_temp_distribution_ch_id>
+</donnee_entree></emetteur_chauffage></emetteur_chauffage_collection></installation_chauffage></installation_chauffage_collection>
+<installation_ecs_collection/><sortie/></logement>
+XML);
+        $context = $this->buildCtx($document, [
+            'enveloppe.dp_parois' => 109.634,
+            'enveloppe.dp_pont_thermique' => 30.036,
+            'ventilation.hvent' => 70.55,
+            'ventilation.hperm' => 8.379,
+            'ecs.besoin_ecs_mensuel' => [],
+        ]);
+
+        (new AuxDistributionCalculator())->calculate($document->documentElement, $context);
+
+        self::assertEqualsWithDelta(194.533, $this->efValue($document, 'conso_auxiliaire_distribution_ch'), 0.1);
+    }
+
     /**
      * Verify ECS bouclage against bat_post2026 reference: expected ≈ 204.38 kWh.
      * Parameters: sh=1034.74, niv=6, isolated=1, enum_bouclage_reseau_ecs_id=2

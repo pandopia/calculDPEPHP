@@ -30,4 +30,38 @@ final class IntermediateEnergyUnit
     {
         return $document->documentElement?->getAttribute('version') === '0.1.0';
     }
+
+    /**
+     * Facteur de sérialisation des apports et pertes récupérés.
+     *
+     * Les exports DPEWIN 9.x conservent ces seules grandeurs intermédiaires
+     * en Wh, tout en sérialisant les besoins et consommations en kWh.
+     */
+    public static function apportXmlPerKwh(DOMDocument $document): float
+    {
+        $version = $document->documentElement?->getAttribute('version');
+        return $version === '0.1.0' || str_starts_with((string)$version, '9.')
+            ? 1000.0
+            : 1.0;
+    }
+
+    /** Les formats ADEME/DPEWIN ordonnent les sorties par ID énergie croissant. */
+    public static function usesAscendingEnergyOrder(DOMDocument $document): bool
+    {
+        $version = $document->documentElement?->getAttribute('version');
+        return $version === '0.1.0' || str_starts_with((string)$version, '9.');
+    }
+
+    /** Formats qui publient réellement les agrégats du scénario dépensier. */
+    public static function usesDepensierOutputs(DOMDocument $document): bool
+    {
+        return self::usesAscendingEnergyOrder($document);
+    }
+
+    /** DPEWIN 9.x reconstruit le total GES depuis l'intensité entière. */
+    public static function usesRoundedGesTotal(DOMDocument $document): bool
+    {
+        $version = $document->documentElement?->getAttribute('version');
+        return str_starts_with((string)$version, '9.');
+    }
 }

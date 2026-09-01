@@ -138,6 +138,12 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
 
         // Ratio de virtualisation pour installations collectives (§17.2)
         $ratioVirt = $this->getRatioVirtualisation($node, $accessor);
+        $modeApp = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
+        $mixedHeatingMode = $modeApp !== null && in_array($modeApp, [26, 27, 28, 31, 32, 33, 34, 35, 38], true);
+        // En chauffage mixte, ratio_virtualisation est une clé de couverture
+        // entre parts collective et individuelle, pas un changement d'échelle
+        // du générateur décrit pour le logement.
+        $ratioForCharacteristics = $ratioVirt;
 
         // Puissance nominale : depuis donnee_entree/donnee_intermediaire si saisie,
         // sinon calculée depuis GV
@@ -145,13 +151,12 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         $pnW = $pnSaisi;
         if ($pnW === null || $pnW <= 0.0) {
             // §13.2.2.4 : Pch (kW) au scale approprié
-            $modeApp = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
             $nblgt   = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement') ?? 1;
             $isImmeubleIndividuel = $modeApp !== null
                 && in_array($modeApp, self::MODES_IMMEUBLE_INDIVIDUEL, true)
                 && $nblgt > 1;
 
-            $pchW = $this->computePnFromGv($context, $ratioVirt, $genId);
+            $pchW = $this->computePnFromGv($context, $mixedHeatingMode ? 1.0 : $ratioVirt, $genId);
             if ($isImmeubleIndividuel) {
                 // §17.1.4.2 : a DPE generated from an apartment building still
                 // models individual heating at the average-apartment scale. The
@@ -165,7 +170,9 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             // 400 kW, puis ramenée au logement via ratio_virtualisation.
             // Les exports de référence portent donc pn = 400000 × ratio.
             $pnCap = $this->getPnCap($genId);
-            if ($ratioVirt > 0.0 && $ratioVirt < 1.0
+            if ($mixedHeatingMode) {
+                $pnW = $pchW;
+            } elseif ($ratioVirt > 0.0 && $ratioVirt < 1.0
                 && $pnCap < PHP_FLOAT_MAX
                 && $this->isCollectiveInstallation($node, $accessor)) {
                 $pnW = $pnCap;
@@ -197,16 +204,20 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             // Pour pn saisi (non calculé), pas de virtualisation (ratio=1 implicite).
             $pnBuildingKw = $pnKw;
             $pnApartmentW = $pnW;
-            if ($ratioVirt > 0.0 && $ratioVirt < 1.0 && $pnSaisi === null) {
+            if ($ratioForCharacteristics > 0.0 && $ratioForCharacteristics < 1.0 && $pnSaisi === null) {
                 // pnW ici = pn_bâtiment (déjà plaffonné dans computePnFromGv)
-                $pnBuildingKw = $pnW / 1000.0;
-                $pnApartmentW = $pnW * $ratioVirt;
+                $pnBuildingKw = $mixedHeatingMode
+                    ? $pnW / $ratioForCharacteristics / 1000.0
+                    : $pnW / 1000.0;
+                $pnApartmentW = $mixedHeatingMode
+                    ? $pnW
+                    : $pnW * $ratioForCharacteristics;
             }
             $row = $entry($pnBuildingKw, $e, $f);
             // pn stocké = part du logement ; qp0/pveilleuse proportionnels si collectif
             $row['pn']    = $pnApartmentW;
-            $row['qp0']   = ($row['qp0']   ?? 0.0) * ($ratioVirt < 1.0 ? $ratioVirt : 1.0);
-            $row['pveil'] = ($row['pveil']  ?? 0.0) * ($ratioVirt < 1.0 ? $ratioVirt : 1.0);
+            $row['qp0']   = ($row['qp0']   ?? 0.0) * ($ratioForCharacteristics < 1.0 ? $ratioForCharacteristics : 1.0);
+            $row['pveil'] = ($row['pveil']  ?? 0.0) * ($ratioForCharacteristics < 1.0 ? $ratioForCharacteristics : 1.0);
         } else {
             $row = $entry;
         }
