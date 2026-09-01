@@ -1179,9 +1179,25 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
   Mesure A/B : balises supplémentaires **1 547 → 1 356 (−191)**, famille
   « Génération ECS » 476 → 287 écarts, conformité **90,89 % → 91,13 %**.
   Deux cas de type 53 renseignent Rs sans volume et passent en « manquante ».
-- Reste : `conso_ecs` (134 écarts sur 28 cas) et `conso_ecs_depensier` (100
-  sur 26). Concentrés sur peu de cas — donc probablement une configuration
-  d'installation précise, à isoler avant de toucher au calcul.
+- **Second correctif** : dès `enum_methode_saisie_carac_sys_id = 2`, Pn est
+  une donnée d'entrée. Les logiciels diagnostiqueurs l'écrivent en
+  `donnee_intermediaire` — c'est là que `OutputPurger` la préserve — alors que
+  le moteur ne la lisait qu'en `donnee_entree`. Il dérivait donc un Pn du GV,
+  faussant du même coup QP0 qui en est un pourcentage.
+  Vérifié sur 2600E0033082P : Pn saisi 20 kW, §13.2.2 donne
+  Rpn = (91 + 3 log Pn)/100 et QP0 = 0,5 % de Pn ; le moteur reproduit
+  désormais `pn`, `qp0`, `rpn`, `rendement_generation` et `conso_ecs` au
+  chiffre près.
+  Mesure A/B : hors tolérance **10 789 → 10 718 (−71)**, toutes les familles
+  concernées baissent.
+- **Reste à traiter** — analyse faite, causes non encore isolées :
+  - 33 cas où `rendement_generation` côté ECS diverge, de 0,1 % à 91,7 % :
+    plusieurs causes distinctes, pas une règle unique. Les extrêmes
+    (2600E0660731Y, 2400E0669425G, 2400E0669495Y) sont des immeubles à
+    installations ECS multiples et hétérogènes.
+  - `conso_ecs` reste faux sur 70 cas ; l'amont fautif est
+    `rendement_generation` (33 cas), `rendement_stockage` (33 cas, dont
+    l'essentiel relève de TASK-K16) ou le `cop` (3 cas).
 - Validation : famille « Génération ECS » au-dessus de 92 %.
 
 ### TASK-K07 — Classes DPE et GES divergentes

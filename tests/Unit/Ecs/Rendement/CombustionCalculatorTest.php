@@ -302,4 +302,48 @@ XML);
         $this->assertSame(0, $gen->getElementsByTagName('rendement_stockage')->length);
         $this->assertSame(0, $gen->getElementsByTagName('rendement_generation')->length);
     }
+
+    /**
+     * Dès `enum_methode_saisie_carac_sys_id = 2`, Pn est une donnée d'entrée.
+     * Les logiciels diagnostiqueurs l'écrivent en `donnee_intermediaire` — c'est
+     * là que `OutputPurger` la préserve — et non en `donnee_entree`. Ne lire que
+     * `donnee_entree` revenait à ignorer la saisie et à dériver un Pn du GV,
+     * faussant du même coup QP0 qui en est un pourcentage.
+     *
+     * Cas réel 2600E0033082P : chaudière gaz à condensation après 2015 (type
+     * 121), Pn saisi 20 kW, Becs 1 352,136 kWh. §13.2.2 donne
+     * Rpn = (91 + 3 log Pn)/100 et QP0 = 0,5 % de Pn, soit 100 W, d'où
+     * Rg = 1 / (1/0,949031 + 1790 × 100 / 1 352 136) = 0,843107.
+     */
+    public function testLaPuissanceSaisieEnDonneeIntermediaireEstUtilisee(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+        <logement>
+          <installation_ecs><donnee_intermediaire><besoin_ecs>1352.1362632</besoin_ecs></donnee_intermediaire>
+            <generateur_ecs_collection><generateur_ecs>
+              <donnee_entree>
+                <enum_type_generateur_ecs_id>121</enum_type_generateur_ecs_id>
+                <enum_type_energie_id>2</enum_type_energie_id>
+                <enum_methode_saisie_carac_sys_id>2</enum_methode_saisie_carac_sys_id>
+                <volume_stockage>0</volume_stockage>
+              </donnee_entree>
+              <donnee_intermediaire><pn>20000</pn></donnee_intermediaire>
+            </generateur_ecs></generateur_ecs_collection>
+          </installation_ecs>
+        </logement>
+        XML);
+
+        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        (new CombustionCalculator())->calculate($gen, $this->makeContext($doc));
+
+        $di = $gen->getElementsByTagName('donnee_intermediaire')->item(0);
+        self::assertEqualsWithDelta(20000.0, (float) $di->getElementsByTagName('pn')->item(0)->textContent, 1e-6);
+        self::assertEqualsWithDelta(100.0, (float) $di->getElementsByTagName('qp0')->item(0)->textContent, 1e-6);
+        self::assertEqualsWithDelta(
+            0.843107,
+            (float) $di->getElementsByTagName('rendement_generation')->item(0)->textContent,
+            1e-6,
+        );
+    }
 }

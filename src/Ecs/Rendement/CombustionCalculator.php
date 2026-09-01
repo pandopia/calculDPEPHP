@@ -276,7 +276,7 @@ final class CombustionCalculator implements CalculatorInterface
         }
 
         // Pour installations collectives (sans pn_forfait), ramener à la part du logement.
-        $hasPnSaisie   = $accessor->getFloatOrNull('./donnee_entree/pn', $node) !== null;
+        $hasPnSaisie   = self::pnSaisie($node, $accessor) !== null;
         $hasPnForfait  = isset($row['pn_forfait_kw']);
         $pnApartmentW  = ($hasPnForfait || $hasPnSaisie || $ratioVirt >= 1.0)
             ? $pnW
@@ -360,14 +360,36 @@ final class CombustionCalculator implements CalculatorInterface
      * Pour les installations collectives (ratio_virt < 1), retourne Pn_bâtiment (plaffonné).
      * La mise à l'échelle pn_logement = pn_bâtiment × ratio_virt est faite par l'appelant.
      */
+    /**
+     * Puissance nominale saisie par le diagnostiqueur, s'il y en a une.
+     *
+     * Dès `enum_methode_saisie_carac_sys_id = 2`, Pn est une donnée d'entrée et
+     * prime sur toute dérivation depuis le GV. Les logiciels diagnostiqueurs
+     * l'écrivent en `donnee_intermediaire` plutôt qu'en `donnee_entree` — c'est
+     * d'ailleurs là que `OutputPurger` la préserve. Ne lire que
+     * `donnee_entree` revenait à ignorer la saisie et à recalculer un Pn
+     * forfaitaire, faussant du même coup QP0 qui en est un pourcentage.
+     */
+    private static function pnSaisie(DOMElement $node, NodeAccessor $accessor): ?float
+    {
+        foreach (['./donnee_entree/pn', './donnee_intermediaire/pn'] as $path) {
+            $pn = $accessor->getFloatOrNull($path, $node);
+            if ($pn !== null && $pn > 0.0) {
+                return $pn;
+            }
+        }
+
+        return null;
+    }
+
     private function computePnW(
         DOMElement $node,
         NodeAccessor $accessor,
         CalculationContext $context,
         float $ratioVirt = 1.0
     ): float {
-        $pnEntry = $accessor->getFloatOrNull('./donnee_entree/pn', $node);
-        if ($pnEntry !== null && $pnEntry > 0.0) {
+        $pnEntry = self::pnSaisie($node, $accessor);
+        if ($pnEntry !== null) {
             return $pnEntry;
         }
 
