@@ -813,7 +813,7 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-J04 — Pondération ECS échantillonnée et pertes récupérées
 
-- [ ] Owner: —  | Phase: J  | Estimation: 2h  | Priorité: haute
+- [~AI] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
 - DPE 2657E1981571R : en méthode 4 individuelle, pondérer chaque installation
   par `surface_habitable / Shmoy` conformément au §17.1.3, puis extrapoler les
   pertes de stockage récupérées à l'échelle de l'immeuble.
