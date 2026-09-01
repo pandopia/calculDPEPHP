@@ -868,6 +868,181 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ---
 
+## Phase K — Conformité jeux de tests d'évaluation
+
+> Demandée sous le nom « Phase I — Conformité jeux officiels CSTB ». La lettre I
+> est déjà prise (audit croisé open3cl) : la phase est donc numérotée **K**, le
+> contenu est celui demandé.
+
+### Où en est-on des jeux officiels
+
+Les **autotests et cas tests de la procédure officielle d'évaluation ne sont pas
+publics** : le règlement (DHUP/ADEME/CSTB, v. 13/12/2022) les annonce
+téléchargeables, mais la seule voie d'accès est la plateforme éditeurs
+<https://app.rt-batiment.fr/evaluation_logiciel/>, protégée par authentification.
+Aucun miroir public identifiable n'existe. Le règlement ne publie pas non plus de
+seuil de tolérance chiffré. Détail de la recherche et des sources consultées :
+`resources/XML/official/README.md`.
+
+La conformité est donc mesurée contre le meilleur substitut public : les DPE
+opposables de l'**observatoire ADEME** (Licence Ouverte 2.0), produits par des
+logiciels évalués CSTB.
+
+### Outillage
+
+- `php bin/official-test-report` — compare **toutes** les balises de
+  `<donnee_intermediaire>` et `<sortie>`, sans liste de balises couvertes,
+  et écrit `reports/official-tests.{json,md}`.
+- `php bin/fetch-official-corpus --build=<jeu>` — construit un jeu stratifié
+  (4 périmètres CSTB × 2 régimes du coefficient EP électricité) depuis l'open
+  data ADEME, avec manifeste de provenance versionné.
+- Profils de tolérance : `strict` (0,1 %, défaut), `reglementaire` (1 %),
+  `repo` (reprend `tests/tolerances.php`).
+
+### Point de départ mesuré — 1er septembre 2026, profil `strict`
+
+Corpus `ademe-observatoire-local`, 224 cas.
+
+```
+Cas                     : 224      Valeurs comparées       : 71 304
+Exécutés                : 224      Exactes                 : 53 425
+Crash                   :   0      Dans tolérance          :  8 096
+Totalement conformes    :   0      Hors tolérance          :  7 419
+Partiellement conformes : 224      Balises manquantes      :     45
+                                   Balises supplémentaires :  2 280
+Conformité              : 86,28 %
+```
+
+Le corpus est déséquilibré (206 immeubles collectifs, 4 maisons individuelles) :
+c'est la première chose à corriger pour que le chiffre soit représentatif.
+
+### Tâches, par gain attendu décroissant
+
+### TASK-K01 — Corpus stratifié sur les 4 périmètres CSTB
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: haute
+- Le corpus actuel est à 92 % de l'immeuble collectif : maison individuelle
+  (4 cas) et appartement individuel (6 cas) ne sont pas représentés, alors que
+  ce sont deux des quatre périmètres évalués par le CSTB.
+- Action : `php bin/fetch-official-corpus --build=ademe-2026-09 --per-stratum=15`
+  puis vérifier la répartition réelle avec
+  `php bin/official-test-report --corpus=ademe-2026-09`.
+- Nécessite un accès réseau sortant vers `api-externe.ademe.fr`.
+- Validation : au moins 20 cas par périmètre, manifeste committé.
+
+### TASK-K02 — Tarifs annuels des énergies indexés sur la date du DPE
+
+- [ ] Owner: __  | Phase: K  | Estimation: 6h  | Priorité: haute
+- **47 % de tous les écarts hors tolérance** (3 495 sur 7 419) viennent des
+  coûts : `cout_5_usages`, `cout_ch`, `cout_ecs`, `cout_eclairage`,
+  `cout_auxiliaire_*`, `cout_total_auxiliaire`. `cout_5_usages` est faux sur
+  **223 cas sur 224**.
+- Cause : `src/Sortie/CoutCalculator.php` applique en dur les tarifs de
+  l'Annexe 7 au 31 mars 2021, alors que les tarifs sont réactualisés par arrêté
+  (arrêté du 24 mars 2024, arrêté du 13 août 2025 notamment) et que la
+  référence applique celui en vigueur à `date_etablissement_dpe`. Le doc-block
+  de la classe documente déjà l'écart.
+- Action : digitaliser les barèmes successifs dans
+  `resources/tables/reference/tv_prix_energie.php`, indexés par période de
+  validité et type d'énergie, en citant l'arrêté et la page ; sélectionner le
+  barème sur `administratif/date_etablissement_dpe`.
+- Ne pas caler les valeurs sur les fichiers de test : chaque tarif doit être
+  sourcé dans un texte publié.
+- Validation : `php bin/official-test-report` — familles « Coûts » et
+  « Auxiliaires » au-dessus de 95 %.
+
+### TASK-K03 — Balises hors vocabulaire ADEME : `Qgw` et `pveil`
+
+- [ ] Owner: __  | Phase: K  | Estimation: 1h  | Priorité: haute
+- Le moteur écrit deux balises qui n'existent dans aucun XML de l'observatoire
+  ni dans `resources/ademe_DPE.xsd` : `Qgw` (224 cas) et `pveil` (163 cas).
+  Le schéma déclare `pveilleuse`, pas `pveil` ; `Qgw` n'existe pas du tout.
+- Un XML les contenant serait rejeté à la transmission ADEME — c'est un défaut
+  de **conformité structurelle**, indépendamment des valeurs.
+- Action : renommer `pveil` → `pveilleuse` ; supprimer l'écriture de `Qgw`
+  (grandeur intermédiaire interne) ou la porter sur une balise déclarée.
+- Validation : `php bin/official-test-report` — section « Conformité
+  structurelle du XML produit » vide.
+
+### TASK-K04 — Consommations de chauffage : `conso_ch` / `conso_ch_depensier`
+
+- [ ] Owner: __  | Phase: K  | Estimation: 8h  | Priorité: haute
+- 871 valeurs hors tolérance (517 `conso_ch_depensier`, 354 `conso_ch`),
+  écart maximal 110 %. C'est le premier poste après les coûts, et il cascade
+  sur `emission_ges_ch` (264), `ep_conso_ch` (166), `conso_5_usages` (266),
+  `emission_ges_5_usages` (236), `ep_conso_5_usages` (157).
+- En amont, `rendement_generation` (76), `pn` (54) et `qp0` (54) divergent
+  aussi : remonter jusqu'au premier intermédiaire faux avant de toucher aux
+  agrégats.
+- Action : sur 3 à 5 cas représentatifs de
+  `php bin/official-test-report --famille="Génération chauffage" --top=40`,
+  remonter la chaîne §12 → §9 et comparer à la spec (et à open3cl en cas
+  d'ambiguïté).
+- Validation : famille « Génération chauffage » au-dessus de 90 %.
+
+### TASK-K05 — Bloc `<confort_ete>` produit alors que la référence ne le contient pas
+
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- 1 065 balises supplémentaires : le moteur écrit systématiquement le
+  sous-bloc `sortie/confort_ete` (`isolation_toiture`, `brasseur_air`,
+  `aspect_traversant`, `protection_solaire_exterieure`,
+  `enum_indicateur_confort_ete_id`), absent de 204 des 207 références de 2026.
+- **À qualifier avant de corriger** : ce n'est pas nécessairement une erreur —
+  il faut d'abord établir, à partir de l'arrêté et du XSD, si le sous-bloc est
+  obligatoire, conditionnel ou optionnel. Ne pas supprimer une sortie
+  réglementaire pour faire baisser un compteur.
+- Validation : décision tracée dans le doc-block de
+  `src/Sortie/ConfortEteCalculator.php`, avec la référence réglementaire.
+
+### TASK-K06 — Génération ECS : balises supplémentaires et rendements
+
+- [ ] Owner: __  | Phase: K  | Estimation: 5h  | Priorité: moyenne
+- 558 balises supplémentaires (dont `rendement_stockage` 203,
+  `rendement_generation` côté ECS), 276 hors tolérance (`conso_ecs` 134,
+  `conso_ecs_depensier` 100) et 14 manquantes
+  (`rendement_generation_stockage`).
+- Action : aligner la production de balises sur ce que la référence renseigne
+  selon le type de générateur (§11), en s'appuyant sur le XSD pour savoir
+  quelles balises sont attendues pour quel `enum_type_generateur_ecs_id`.
+- Validation : famille « Génération ECS » au-dessus de 92 %.
+
+### TASK-K07 — Classes DPE et GES divergentes
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- 39 écarts non numériques : 15 sur `classe_bilan_dpe`, 24 sur
+  `classe_emission_ges`. Ce sont les deux valeurs les plus visibles d'un DPE.
+- À traiter **après** K02 et K04 : une classe fausse est presque toujours la
+  conséquence d'une consommation fausse, pas d'un seuil faux. Vérifier
+  néanmoins les seuils (dont l'ajustement < 40 m² de l'arrêté du 24 mars 2024).
+- Validation : 0 écart sur `classe_bilan_dpe` et `classe_emission_ges`.
+
+### TASK-K08 — Balises manquantes du bloc froid
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
+- 20 balises manquantes côté froid, dont `conso_auxiliaire_distribution_fr`,
+  `ep_conso_auxiliaire_distribution_fr`,
+  `emission_ges_auxiliaire_distribution_fr`, `cout_auxiliaire_distribution_fr`,
+  attendues à 0 par la référence.
+- Action : écrire ces balises même à 0 quand une installation de
+  climatisation est présente.
+- Validation : famille « Froid » sans balise manquante.
+
+### TASK-K09 — Remplacer les exclusions du harness E2E par la mesure de conformité
+
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
+- `tests/EndToEndTest.php` porte une liste `TAGS_EXCLUDED_BY_FILE` et une liste
+  `$tagsCovered` qui masquent une partie des écarts, et son indexation de
+  chemin ignore les fratries homonymes : sur un logement à 30 murs, un seul
+  `umur` est réellement comparé.
+- Action : faire converger le harness E2E vers `CalculDpePHP\Conformite\*`
+  (chemins indexés, aucune balise exclue), en gardant un seuil de
+  non-régression sur le nombre de valeurs hors tolérance plutôt que des
+  exclusions nominatives.
+- Validation : suite verte, et le compte de valeurs hors tolérance du rapport
+  ne remonte pas.
+
+---
+
 ## Validation par phase (gate)
 
 On ne passe à la phase suivante que quand le harness `tests/EndToEndTest.php` valide les balises produites par la phase courante sur les 4 fichiers de `resources/XML/input/` (tolérance 1e-3, exceptions dans `tests/tolerances.php`) :

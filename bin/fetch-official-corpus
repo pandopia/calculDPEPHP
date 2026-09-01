@@ -1,0 +1,342 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use CalculDpePHP\Xml\OutputPurger;
+
+require __DIR__ . '/../vendor/autoload.php';
+
+/**
+ * Construit ou reconstitue un jeu de cas de test dans
+ * `resources/XML/official/<jeu>/`.
+ *
+ * Deux modes :
+ *
+ *   --build=<jeu>     échantillonne l'open data ADEME de façon stratifiée
+ *                     (périmètre × régime EP électricité × moteur éditeur),
+ *                     écrit le manifeste, puis télécharge les XML.
+ *
+ *   --manifest=<path> retélécharge à l'identique les cas d'un manifeste
+ *                     existant. C'est ce mode qui rend un jeu reproductible :
+ *                     seuls les manifestes sont versionnés, pas les XML.
+ *
+ * Voir resources/XML/official/README.md pour la provenance et la licence.
+ */
+
+const OPENDATA_DATASET = 'https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/lines';
+const XML_ENDPOINT = 'https://api-externe.ademe.fr/api/v1/pub/dpe/%s/xml';
+const PORTAL_URL = 'https://data.ademe.fr/datasets/dpe03existant';
+
+/**
+ * Strates visées : les quatre périmètres du règlement d'évaluation CSTB §1.1,
+ * chacun sur les deux régimes du coefficient EP de l'électricité (bascule au
+ * 1er janvier 2026). Le corpus historique du dépôt étant à 92 % de l'immeuble
+ * collectif post-2026, l'échantillonnage vise l'équilibre inverse.
+ */
+const STRATA = [
+    ['perimetre' => 'maison_individuelle',       'methode' => 'dpe maison individuelle',                                   'regime' => 'pre_2026'],
+    ['perimetre' => 'maison_individuelle',       'methode' => 'dpe maison individuelle',                                   'regime' => 'post_2026'],
+    ['perimetre' => 'appartement_individuel',    'methode' => 'dpe appartement individuel',                                'regime' => 'pre_2026'],
+    ['perimetre' => 'appartement_individuel',    'methode' => 'dpe appartement individuel',                                'regime' => 'post_2026'],
+    ['perimetre' => 'immeuble_collectif',        'methode' => 'dpe immeuble collectif',                                    'regime' => 'pre_2026'],
+    ['perimetre' => 'immeuble_collectif',        'methode' => 'dpe immeuble collectif',                                    'regime' => 'post_2026'],
+    ['perimetre' => 'appartement_issu_immeuble', 'methode' => 'dpe appartement généré à partir des données DPE immeuble', 'regime' => 'pre_2026'],
+    ['perimetre' => 'appartement_issu_immeuble', 'methode' => 'dpe appartement généré à partir des données DPE immeuble', 'regime' => 'post_2026'],
+];
+
+const REGIME_RANGE = [
+    'pre_2026' => ['2024-01-01', '2025-12-31'],
+    'post_2026' => ['2026-01-01', '2026-12-31'],
+];
+
+$options = getopt('h', ['build:', 'manifest:', 'per-stratum:', 'dry-run', 'help']);
+
+if (isset($options['h']) || isset($options['help']) || (!isset($options['build']) && !isset($options['manifest']))) {
+    fwrite(STDOUT, <<<TXT
+    Usage :
+      php bin/fetch-official-corpus --build=<jeu> [--per-stratum=10] [--dry-run]
+      php bin/fetch-official-corpus --manifest=<chemin/manifest.json>
+
+    Options :
+      --build=NOM        Crée resources/XML/official/NOM/ par échantillonnage
+                         stratifié de l'open data ADEME.
+      --per-stratum=N    Cas par strate (défaut 10). 8 strates → 8×N cas.
+      --manifest=CHEMIN  Retélécharge les cas listés dans un manifeste existant.
+      --dry-run          Écrit le manifeste sans télécharger les XML.
+
+    TXT);
+    exit(0);
+}
+
+$projectRoot = dirname(__DIR__);
+$dryRun = isset($options['dry-run']);
+
+if (isset($options['manifest'])) {
+    $manifestPath = (string) $options['manifest'];
+    $manifest = json_decode((string) file_get_contents($manifestPath), true);
+    if (!is_array($manifest)) {
+        fwrite(STDERR, "Manifeste illisible : $manifestPath\n");
+        exit(1);
+    }
+    $corpusDir = dirname($manifestPath, 2);
+} else {
+    $corpus = (string) $options['build'];
+    $perStratum = max(1, (int) ($options['per-stratum'] ?? 10));
+    $corpusDir = $projectRoot . '/resources/XML/official/' . $corpus;
+    $manifestPath = $corpusDir . '/metadata/manifest.json';
+
+    fwrite(STDOUT, "Échantillonnage stratifié de l'open data ADEME…\n");
+    $manifest = buildManifest($corpus, $perStratum);
+
+    ensureDir(dirname($manifestPath));
+    file_put_contents($manifestPath, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    file_put_contents(dirname($manifestPath) . '/provenance.md', renderProvenance($manifest));
+    fwrite(STDOUT, sprintf("Manifeste écrit : %s (%d cas)\n", $manifestPath, count($manifest['cases'])));
+}
+
+if ($dryRun) {
+    fwrite(STDOUT, "Mode --dry-run : aucun XML téléchargé.\n");
+    exit(0);
+}
+
+$inputDir = $corpusDir . '/input';
+$expectedDir = $corpusDir . '/expected';
+ensureDir($inputDir);
+ensureDir($expectedDir);
+
+$downloaded = 0;
+$skipped = 0;
+$failed = [];
+
+foreach ($manifest['cases'] as $case) {
+    $numero = $case['numero_dpe'];
+    $expectedPath = $expectedDir . '/' . $numero . '.xml';
+
+    if (is_file($expectedPath)) {
+        $skipped++;
+        continue;
+    }
+
+    fwrite(STDERR, sprintf("\r%-60s", 'Téléchargement ' . $numero));
+
+    try {
+        $xml = fetchXml($numero);
+    } catch (RuntimeException $e) {
+        $failed[$numero] = $e->getMessage();
+        continue;
+    }
+
+    // `expected/` conserve le fichier ADEME strictement inchangé.
+    file_put_contents($expectedPath, $xml);
+
+    // `input/` en est la version normalisée : sorties purgées, rien d'autre.
+    $doc = new DOMDocument('1.0', 'UTF-8');
+    $doc->preserveWhiteSpace = false;
+    $doc->formatOutput = true;
+    if (@$doc->loadXML($xml)) {
+        OutputPurger::purge($doc);
+        $doc->save($inputDir . '/' . $numero . '.xml');
+        $downloaded++;
+    } else {
+        $failed[$numero] = 'XML ADEME non parsable';
+        @unlink($expectedPath);
+    }
+}
+
+fwrite(STDERR, "\r" . str_repeat(' ', 60) . "\r");
+fwrite(STDOUT, sprintf("Téléchargés : %d — déjà présents : %d — échecs : %d\n", $downloaded, $skipped, count($failed)));
+foreach ($failed as $numero => $reason) {
+    fwrite(STDERR, "  ✗ $numero : $reason\n");
+}
+
+// ── Fonctions ──────────────────────────────────────────────────────────────
+
+/**
+ * @return array<string, mixed>
+ */
+function buildManifest(string $corpus, int $perStratum): array
+{
+    $cases = [];
+    $seen = [];
+
+    foreach (STRATA as $stratum) {
+        [$from, $to] = REGIME_RANGE[$stratum['regime']];
+        $qs = sprintf(
+            'methode_application_dpe:"%s" AND date_etablissement_dpe:[%s TO %s]',
+            $stratum['methode'],
+            $from,
+            $to,
+        );
+
+        $url = OPENDATA_DATASET . '?' . http_build_query([
+            'size' => $perStratum * 3,
+            'select' => 'numero_dpe,methode_application_dpe,version_dpe,date_etablissement_dpe,type_batiment,periode_construction,surface_habitable_logement',
+            'qs' => $qs,
+            'sort' => 'numero_dpe',
+        ]);
+
+        $rows = httpJson($url)['results'] ?? [];
+        $kept = 0;
+
+        foreach ($rows as $row) {
+            $numero = (string) ($row['numero_dpe'] ?? '');
+            if ($numero === '' || isset($seen[$numero]) || $kept >= $perStratum) {
+                continue;
+            }
+            $seen[$numero] = true;
+            $kept++;
+            $cases[] = [
+                'numero_dpe' => $numero,
+                'perimetre_cible' => $stratum['perimetre'],
+                'regime_coef_ep_elec' => $stratum['regime'],
+                'methode_application_dpe' => $row['methode_application_dpe'] ?? null,
+                'version_dpe' => $row['version_dpe'] ?? null,
+                'date_etablissement_dpe' => $row['date_etablissement_dpe'] ?? null,
+                'type_batiment' => $row['type_batiment'] ?? null,
+                'periode_construction' => $row['periode_construction'] ?? null,
+                'source_xml' => sprintf(XML_ENDPOINT, $numero),
+            ];
+        }
+
+        fwrite(STDOUT, sprintf("  %-30s %-10s %d cas\n", $stratum['perimetre'], $stratum['regime'], $kept));
+    }
+
+    return [
+        'corpus' => $corpus,
+        'organisme' => 'ADEME',
+        'jeu_de_donnees' => 'DPE Logements existants (depuis juillet 2021)',
+        'portail' => PORTAL_URL,
+        'api_selection' => OPENDATA_DATASET,
+        'api_xml' => XML_ENDPOINT,
+        'licence' => 'Licence Ouverte / Open Licence v2.0',
+        'statut' => "Substitut public — ce n'est PAS le jeu de cas tests officiel du CSTB, "
+            . 'qui n\'est pas diffusé publiquement (voir resources/XML/official/README.md).',
+        'echantillonnage' => 'Stratifié par périmètre CSTB §1.1 × régime du coefficient EP électricité, '
+            . 'tri déterministe par numero_dpe pour être reproductible.',
+        'genere_le' => date('c'),
+        'cases' => $cases,
+    ];
+}
+
+/** @param array<string, mixed> $manifest */
+function renderProvenance(array $manifest): string
+{
+    $lines = [
+        '# Provenance — ' . $manifest['corpus'],
+        '',
+        '| Champ | Valeur |',
+        '|---|---|',
+        '| Organisme | ' . $manifest['organisme'] . ' |',
+        '| Jeu de données | ' . $manifest['jeu_de_donnees'] . ' |',
+        '| Portail | <' . $manifest['portail'] . '> |',
+        '| Licence | ' . $manifest['licence'] . ' |',
+        '| Généré le | ' . $manifest['genere_le'] . ' |',
+        '| Nombre de cas | ' . count($manifest['cases']) . ' |',
+        '',
+        '**Statut** : ' . $manifest['statut'],
+        '',
+        '**Échantillonnage** : ' . $manifest['echantillonnage'],
+        '',
+        '## Répartition',
+        '',
+        '| Périmètre visé | Régime EP élec | Cas |',
+        '|---|---|---:|',
+    ];
+
+    $counts = [];
+    foreach ($manifest['cases'] as $case) {
+        $key = $case['perimetre_cible'] . '|' . $case['regime_coef_ep_elec'];
+        $counts[$key] = ($counts[$key] ?? 0) + 1;
+    }
+    ksort($counts);
+    foreach ($counts as $key => $n) {
+        [$perimetre, $regime] = explode('|', $key);
+        $lines[] = sprintf('| %s | %s | %d |', $perimetre, $regime, $n);
+    }
+
+    $lines[] = '';
+    $lines[] = 'Reconstituer ce jeu :';
+    $lines[] = '';
+    $lines[] = '```bash';
+    $lines[] = 'php bin/fetch-official-corpus --manifest=resources/XML/official/' . $manifest['corpus'] . '/metadata/manifest.json';
+    $lines[] = '```';
+    $lines[] = '';
+
+    return implode("\n", $lines);
+}
+
+/** @return array<string, mixed> */
+function httpJson(string $url): array
+{
+    $body = httpGet($url, []);
+    $json = json_decode($body, true);
+
+    return is_array($json) ? $json : [];
+}
+
+function fetchXml(string $numero): string
+{
+    // Identifiants publics de l'API ouverte de l'observatoire, identiques à
+    // ceux de bin/fetch-dpe.
+    $accounts = [
+        ['client_id' => '067d763742714d5fb9840e60c5aec6d1', 'client_secret' => '8791eDB68B0f4D76b654885b44949e62'],
+        ['client_id' => '16d119b9103c498ebcdb690b0e91099f', 'client_secret' => '8ed9E321ae6240299300e695fB55af99'],
+    ];
+
+    $lastError = 'inconnue';
+    foreach ($accounts as $account) {
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            try {
+                $body = httpGet(sprintf(XML_ENDPOINT, $numero), [
+                    'client_id: ' . $account['client_id'],
+                    'client_secret: ' . $account['client_secret'],
+                ]);
+            } catch (RuntimeException $e) {
+                $lastError = $e->getMessage();
+                continue;
+            }
+
+            if (str_contains($body, '<dpe')) {
+                return $body;
+            }
+            $lastError = 'réponse sans balise <dpe>';
+        }
+    }
+
+    throw new RuntimeException($lastError);
+}
+
+/** @param list<string> $headers */
+function httpGet(string $url, array $headers): string
+{
+    $curl = curl_init();
+    curl_setopt_array($curl, [
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT => 60,
+        CURLOPT_HTTPHEADER => $headers,
+    ]);
+    $body = curl_exec($curl);
+    $code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $error = curl_error($curl);
+    curl_close($curl);
+
+    if ($body === false) {
+        throw new RuntimeException('curl : ' . $error);
+    }
+    if ($code >= 400) {
+        throw new RuntimeException('HTTP ' . $code);
+    }
+
+    return (string) $body;
+}
+
+function ensureDir(string $dir): void
+{
+    if (!is_dir($dir) && !mkdir($dir, 0777, true) && !is_dir($dir)) {
+        fwrite(STDERR, "Impossible de créer $dir\n");
+        exit(1);
+    }
+}

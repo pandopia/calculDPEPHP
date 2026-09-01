@@ -7,8 +7,18 @@
 /.phpunit.cache/
 /coverage/
 
+# Rapports de conformité : le Markdown est suivi (baseline lisible en revue),
+# le JSON détaillé fait ~10 Mo et se régénère avec bin/official-test-report.
+/reports/*
+!/reports/*.md
+
 # Local tool state
 /.claude/
 
-# Potentially sensitive XML fixtures and outputs
-/resources/XML/
+# Potentially sensitive XML fixtures and outputs.
+# Exception : les jeux de `official/` sont documentés et reproductibles, on
+# suit leurs manifestes (metadata/, README) sans versionner les XML eux-mêmes.
+/resources/XML/*
+!/resources/XML/official/
+/resources/XML/official/*/input/
+/resources/XML/official/*/expected/
