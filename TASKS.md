@@ -1121,7 +1121,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K04 — Consommations de chauffage : `conso_ch` / `conso_ch_depensier`
 
-- [~AI2] Owner: AI2  | Phase: K  | Estimation: 8h  | Priorité: haute
+- [ ] Owner: __  | Phase: K  | Estimation: 8h  | Priorité: haute
 - **Avancement** : la cause amont est identifiée et une première correction est
   livrée. `rendement_generation` est fautif dans **63 des 72 cas** où `conso_ch`
   l'est ; dans 37 de ces 63, `pn` et `qp0` le sont aussi. La chaîne à remonter
@@ -1130,9 +1130,29 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
   installée totale** des générateurs à combustion, pas sur celle du seul
   générateur courant. Cdimref utilise désormais la puissance cumulée
   (−20 écarts hors tolérance, conformité 90,57 % → 90,60 %).
-- Reste à traiter : les 23 cas où seul `rendement_generation` diverge alors que
-  `pn`, `qp0`, `rpn` et `rpint` sont exacts (écarts de 0,7 à 8,4 %), et les 37
-  cas où `pn`/`qp0` divergent eux-mêmes.
+- **Reste à traiter — piste précise, sur le corpus élargi à 349 cas.**
+  `conso_ch` est faux sur 134 cas ; l'amont fautif est `pn` (132 cas) et
+  `qp0` (135), puis `temp_fonc_30`/`temp_fonc_100` (55) et `rpn` (71).
+  C'est donc **`pn` qu'il faut corriger en premier**, tout le reste en découle
+  (`qp0` en est un pourcentage, `rpn` une fonction de log(Pn)).
+- Signature de l'écart sur `pn` : rapport attendu/obtenu de **médiane 0,914**
+  sur 73 cas — notre Pn est systématiquement ~9 % trop haut sur les chaudières
+  collectives. Exemple net, reproduit à l'identique sur 17 fichiers du groupe
+  2400E03338xx : attendu **370 000 W**, obtenu **405 000 W**.
+- Ce que l'on sait de ce cas (2400E0333876N) : installation collective
+  (`enum_type_installation_id = 2`), `rdim = 1`,
+  `ratio_virtualisation = 1`, `enum_methode_saisie_carac_sys_id = 1` (tout
+  forfaitaire), GV immeuble 10 907,8 W/K, zone H1a, altitude 400-800 m
+  (Tbase −11,5 °C).
+  Aucune variante testée de `Pdim = 1,2 × GV × (19 − Tbase) / 0,95^n` ne donne
+  370 kW : n = 3 → 465,6 kW, n = 2 → 442,4, n = 1 → 420,2, n = 0 → 399,2. Le
+  palier de §13.2.2.4 pour Pdim > 40 kW étant
+  `(partie entière(Pdim/5) + 1) × 5`, 370 kW suppose un Pdim entre 365 et
+  370 kW. La formule de dimensionnement utilisée par la référence reste donc
+  à identifier — c'est le nœud de la tâche.
+- Le plafond de 400 kW (`getPnCap`) n'est appliqué que si
+  `ratio_virtualisation < 1` : il ne joue pas ici, alors que notre 405 kW le
+  dépasse. À réexaminer en même temps.
 - 871 valeurs hors tolérance (517 `conso_ch_depensier`, 354 `conso_ch`),
   écart maximal 110 %. C'est le premier poste après les coûts, et il cascade
   sur `emission_ges_ch` (264), `ep_conso_ch` (166), `conso_5_usages` (266),
@@ -1167,7 +1187,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K06 — Génération ECS : balises supplémentaires et rendements
 
-- [~AI2] Owner: AI2  | Phase: K  | Estimation: 5h  | Priorité: moyenne
+- [ ] Owner: __  | Phase: K  | Estimation: 5h  | Priorité: moyenne
 - 558 balises supplémentaires (dont `rendement_stockage` 203,
   `rendement_generation` côté ECS), 276 hors tolérance (`conso_ecs` 134,
   `conso_ecs_depensier` 100) et 14 manquantes

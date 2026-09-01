@@ -181,40 +181,58 @@ commités : si ce nombre change entre deux runs, la comparaison est invalide.
 
 ### Point de départ et acquis
 
+Deux corpus : `ademe-observatoire-local` (229 cas, historique, 92 % d'immeubles
+collectifs) et `ademe-2026-09` (120 cas, **stratifié 30 par périmètre CSTB**).
+Le rapport par défaut couvre les deux — 349 cas.
+
 | Étape | Hors tolérance | Suppl. | Conformité |
 |---|---:|---:|---:|
-| Baseline — 1er sept. 2026, 224 cas | 9 723 | 2 280 | 83,05 % |
+| Baseline — 224 cas, corpus historique seul | 9 723 | 2 280 | 83,05 % |
 | K02 — tarifs indexés sur la date du DPE | −1 099 | | 88,21 % |
 | K03 — balises hors schéma (`Qgw`, `pveil`) | | −337 | 88,57 % |
 | K10 — tranche tarifaire par abonnement | −914 | | 90,57 % |
 | K04 — taux de charge sur la puissance installée | −20 | | 90,60 % |
 | K14 — classe d'inertie hors emplacement | | −229 | 90,89 % |
 | K06 — rendement de stockage sans ballon | | −191 | 91,13 % |
-| **Actuel — 229 cas** | **4 922** | **1 356** | **91,13 %** |
+| **K01 — corpus stratifié ajouté** | | | **88,59 %** |
+| K07 — seuils des étiquettes DPE et GES | −45 écarts de classe | | 88,63 % |
+| K11 — usages collectifs d'un appartement | −57 | | 88,68 % |
+| K06 — puissance saisie du générateur ECS | −71 | | 88,75 % |
+| **Actuel — 349 cas** | **10 718** | **1 792** | **88,75 %** |
 
-Sur les écarts restants, **1 873 sont imputables à la référence** : le plafond
-réellement atteignable sur ce corpus est de **93,74 %**. Le rapport l'affiche.
+**Le corpus historique flattait le chiffre.** Sur le jeu stratifié seul, la
+conformité est de 84,1 % : immeuble collectif 87,9 %, appartement individuel
+87,0 %, maison individuelle 84,6 %, **appartement issu de l'immeuble 76,1 %**.
+Ne juge jamais une correction sur le seul corpus historique.
 
-Quatre leçons à retenir de ces corrections :
+Sur les écarts restants, **2 788 sont imputables à la référence** : le plafond
+atteignable sur ces corpus est de **91,24 %**. Le rapport l'affiche.
+
+Cinq leçons à retenir de ces corrections :
 
 1. **Le barème dépend de la date du DPE** (K02). Les tarifs des énergies sont
    réactualisés par arrêté ; la référence applique celui en vigueur à
-   `date_etablissement_dpe`. Table : `resources/tables/reference/tv_prix_energie.php`.
-2. **Une grandeur intermédiaire ne passe jamais par le XML** (K03, K14). Le
-   moteur écrivait `Qgw`, `pveil` et `enum_classe_inertie_id` dans des
+   `date_etablissement_dpe`. Idem pour les seuils d'étiquette (K07).
+2. **Une grandeur intermédiaire ne passe jamais par le XML** (K03, K14, K15).
+   `Qgw`, `pveil` et `enum_classe_inertie_id` étaient écrits dans des
    emplacements que le schéma ne déclare pas — un fichier les contenant serait
    rejeté par l'ADEME. Un canal entre Calculators passe par
-   `CalculationContext`. Le rapport contrôle ça en permanence (section
-   « Conformité structurelle du XML produit ») : garde-la vide.
-3. **La référence a ses propres défauts** (K05, K12). 1 873 écarts viennent de
-   fichiers qui contredisent leur propre schéma — coût dépensier recopié du
-   coût conventionnel, bloc `<confort_ete>` vide. `ReferenceDefects` les
-   détecte et les isole. **Ne les « corrige » pas** : reproduire le défaut d'un
-   logiciel tiers éloigne le moteur de la méthode.
-4. **Une hypothèse se départage sur le corpus entier, pas sur un cas** (K10,
-   K13). Un diviseur qui reproduit exactement un cas peut dégrader l'ensemble.
-   Mesure chaque variante en A/B et consigne les chiffres, y compris ceux des
-   variantes écartées, pour que personne ne refasse l'expérience.
+   `CalculationContext`. Le contrôle est automatique et porte sur les
+   **chemins**, pas les noms : garde la section « Conformité structurelle » du
+   rapport vide, le harness E2E échoue sinon.
+3. **La référence a ses propres défauts** (2788 écarts : K05, K12, K16). Coût
+   dépensier recopié du conventionnel, bloc `<confort_ete>` vide, rendements
+   de stockage non reproductibles depuis les données publiées.
+   `ReferenceDefects` les isole. **Ne les « corrige » pas.**
+4. **Une donnée saisie prime sur un forfait — et elle est en
+   `donnee_intermediaire`** (K06). Les logiciels diagnostiqueurs y écrivent
+   `pn`, `pveilleuse`, `qp0`… et c'est là que `OutputPurger` les préserve. Ne
+   lire que `donnee_entree` revient à ignorer la saisie.
+5. **Une hypothèse se départage sur le corpus entier, puis se source** (K10,
+   K11, K13). Un diviseur qui reproduit un cas peut dégrader l'ensemble ;
+   inversement, le texte officiel a fini par confirmer une règle inférée et
+   par en donner une seconde. Mesure, puis cherche la source — et consigne les
+   chiffres des variantes écartées.
 
 ### Ce qu'on attend d'une correction
 
