@@ -1049,16 +1049,27 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K03 — Balises hors vocabulaire ADEME : `Qgw` et `pveil`
 
-- [~AI2] Owner: AI2  | Phase: K  | Estimation: 1h  | Priorité: haute
+- [x] Owner: AI2  | Phase: K  | Estimation: 1h  | Priorité: haute
 - Le moteur écrit deux balises qui n'existent dans aucun XML de l'observatoire
   ni dans `resources/ademe_DPE.xsd` : `Qgw` (224 cas) et `pveil` (163 cas).
   Le schéma déclare `pveilleuse`, pas `pveil` ; `Qgw` n'existe pas du tout.
 - Un XML les contenant serait rejeté à la transmission ADEME — c'est un défaut
   de **conformité structurelle**, indépendamment des valeurs.
-- Action : renommer `pveil` → `pveilleuse` ; supprimer l'écriture de `Qgw`
-  (grandeur intermédiaire interne) ou la porter sur une balise déclarée.
-- Validation : `php bin/official-test-report` — section « Conformité
-  structurelle du XML produit » vide.
+- **Fait**.
+  - `pveil` → `pveilleuse`, le nom déclaré par le schéma, à l'écriture
+    (`ChaudiereDefautCalculator`) comme à la relecture
+    (`RendementAnnuelMoyenCalculator`, `Ecs\Rendement\CombustionCalculator`).
+    `OutputPurger` préservait déjà `pveilleuse` : les deux bouts de la chaîne
+    parlent enfin le même nom, et une valeur saisie par le diagnostiqueur est
+    désormais réellement reprise.
+  - `Qgw` n'existe dans aucun schéma : c'était un canal interne entre
+    `StockageCalculator` et ses deux lecteurs, qui passait par le XML. Il
+    transite maintenant par `CalculationContext`, via
+    `StockageCalculator::qgwKey()`.
+- Mesure A/B isolée, profil strict : balises supplémentaires
+  **2 286 → 1 949 (−337)**, conformité **88,15 % → 88,57 %**, section
+  « Conformité structurelle » vide. Aucun changement sur les valeurs
+  (exactes et hors tolérance identiques), 449 tests unitaires verts.
 
 ### TASK-K04 — Consommations de chauffage : `conso_ch` / `conso_ch_depensier`
 

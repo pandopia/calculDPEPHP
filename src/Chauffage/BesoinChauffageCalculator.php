@@ -50,7 +50,7 @@ final class BesoinChauffageCalculator implements CalculatorInterface
             '\CalculDpePHP\Enveloppe\EnveloppeAggregator',
             '\CalculDpePHP\Ventilation\VentilationAggregator',
             '\CalculDpePHP\Ecs\BesoinEcsCalculator',
-            '\CalculDpePHP\Ecs\Rendement\StockageCalculator', // writes Qgw to DOM
+            '\CalculDpePHP\Ecs\Rendement\StockageCalculator', // publie Qg,w dans le contexte
             '\CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator', // writes qp0/pn
         ];
     }
@@ -263,7 +263,7 @@ final class BesoinChauffageCalculator implements CalculatorInterface
                 if ($posStockage === 0) {
                     continue;
                 }
-                $qgwGen = $accessor->getFloatOrNull('./donnee_intermediaire/Qgw', $gen) ?? 0.0;
+                $qgwGen = (float) $context->get(\CalculDpePHP\Ecs\Rendement\StockageCalculator::qgwKey($gen), 0.0);
                 $qgwInstall += $qgwGen;
             }
 

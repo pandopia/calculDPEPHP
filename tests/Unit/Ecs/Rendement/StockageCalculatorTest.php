@@ -194,7 +194,8 @@ XML;
         $doc->loadXML($xml);
         $node = $doc->getElementsByTagName('generateur_ecs')->item(0);
 
-        (new StockageCalculator())->calculate($node, $this->makeContext($doc));
+        $ctx = $this->makeContext($doc);
+        (new StockageCalculator())->calculate($node, $ctx);
 
         $rawQgw = 8592.0 * 45.0 / 24.0 * 120.0 * 0.22;
         $sampleSurface = 71.0 + 60.0;
@@ -204,7 +205,7 @@ XML;
         $this->assertEqualsWithDelta($expected, $rs, self::TOL);
         $this->assertEqualsWithDelta(
             $rawQgw * (71.0 / $sampleSurface),
-            (float)$doc->getElementsByTagName('Qgw')->item(0)->textContent,
+            (float) $ctx->get(StockageCalculator::qgwKey($node)),
             self::TOL,
         );
     }
@@ -238,7 +239,8 @@ XML;
         $doc->loadXML($xml);
         $node = $doc->getElementsByTagName('generateur_ecs')->item(0);
 
-        (new StockageCalculator())->calculate($node, $this->makeContext($doc));
+        $ctx = $this->makeContext($doc);
+        (new StockageCalculator())->calculate($node, $ctx);
 
         $shMoy = 2204.0 / 34.0;
         $effectiveVolume = 120.0 * $shMoy / (3.0 * 71.0);
@@ -246,7 +248,7 @@ XML;
         $expectedRs = 1.0 / (1.0 + $qgw * 0.93 / (1264.715725 * 1000.0));
 
         $this->assertLessThan(100.0, $effectiveVolume);
-        $this->assertEqualsWithDelta($qgw, (float)$doc->getElementsByTagName('Qgw')->item(0)->textContent, self::TOL);
+        $this->assertEqualsWithDelta($qgw, (float) $ctx->get(StockageCalculator::qgwKey($node)), self::TOL);
         $this->assertEqualsWithDelta($expectedRs, (float)$doc->getElementsByTagName('rendement_stockage')->item(0)->textContent, self::TOL);
     }
 
@@ -334,5 +336,21 @@ XML;
         $rs1 = (float)$doc1->getElementsByTagName('rendement_stockage')->item(0)->textContent;
         $rs2 = (float)$doc2->getElementsByTagName('rendement_stockage')->item(0)->textContent;
         $this->assertGreaterThan($rs1, $rs2);
+    }
+
+    /**
+     * Qg,w ne doit pas être écrit dans le XML : le schéma ADEME ne déclare
+     * aucune balise `Qgw`, un fichier la contenant serait rejeté à la
+     * transmission. La grandeur transite par le contexte de calcul.
+     */
+    public function testQgwNestPasEcritDansLeXml(): void
+    {
+        [$doc, $node] = $this->buildGen(200.0);
+        $ctx = $this->makeContext($doc);
+
+        (new StockageCalculator())->calculate($node, $ctx);
+
+        self::assertSame(0, $doc->getElementsByTagName('Qgw')->length);
+        self::assertGreaterThan(0.0, (float) $ctx->get(StockageCalculator::qgwKey($node)));
     }
 }

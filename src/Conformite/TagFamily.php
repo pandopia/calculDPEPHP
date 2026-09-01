@@ -92,13 +92,13 @@ final class TagFamily
     private const GENERATION_CH_TAGS = [
         'rendement_generation', 'rendement_distribution', 'rendement_emission',
         'rendement_regulation', 'pn', 'qp0', 'rpn', 'rpint',
-        'temp_fonc_30', 'temp_fonc_100', 'cop', 'scop', 'pveil',
+        'temp_fonc_30', 'temp_fonc_100', 'cop', 'scop', 'pveilleuse',
         'conso_ch', 'conso_ch_depensier',
     ];
 
     private const GENERATION_ECS_TAGS = [
         'rendement_generation', 'rendement_distribution', 'rendement_stockage',
-        'rendement_generation_stockage', 'ratio_besoin_ecs', 'cop', 'Qgw',
+        'rendement_generation_stockage', 'ratio_besoin_ecs', 'cop', 'pveilleuse',
         'fecs', 'production_ecs_solaire',
         'conso_ecs', 'conso_ecs_depensier',
     ];

@@ -276,7 +276,7 @@ XML;
     <generateur_ecs_collection><generateur_ecs>
       <donnee_entree><enum_type_energie_id>2</enum_type_energie_id><enum_type_generateur_ecs_id>56</enum_type_generateur_ecs_id>
         <reference_generateur_mixte>mixed-ch</reference_generateur_mixte></donnee_entree>
-      <donnee_intermediaire><rendement_stockage>0.954</rendement_stockage><Qgw>1064620.987191</Qgw></donnee_intermediaire>
+      <donnee_intermediaire><rendement_stockage>0.954</rendement_stockage></donnee_intermediaire>
     </generateur_ecs></generateur_ecs_collection>
   </installation_ecs>
   <installation_chauffage><generateur_chauffage_collection><generateur_chauffage>
@@ -287,7 +287,12 @@ XML;
 XML);
         $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
 
-        (new CombustionCalculator())->calculate($gen, $this->makeContext($doc));
+        // Qg,w ne transite plus par le XML (le schéma ADEME ne déclare pas de
+        // balise `Qgw`) : StockageCalculator le publie dans le contexte.
+        $ctx = $this->makeContext($doc);
+        $ctx->set(\CalculDpePHP\Ecs\Rendement\StockageCalculator::qgwKey($gen), 1064620.987191);
+
+        (new CombustionCalculator())->calculate($gen, $ctx);
 
         $this->assertEqualsWithDelta(
             0.7648766444,

@@ -295,14 +295,22 @@ XML;
 <enum_type_installation_id>2</enum_type_installation_id><rdim>1</rdim></donnee_entree>
 <generateur_ecs_collection><generateur_ecs><donnee_entree>
 <position_volume_chauffe>1</position_volume_chauffe><position_volume_chauffe_stockage>1</position_volume_chauffe_stockage>
-</donnee_entree><donnee_intermediaire><Qgw>1064620.987191</Qgw></donnee_intermediaire>
-</generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection></logement>
+</donnee_entree></generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection></logement>
 XML);
         $ctx = $this->makeContext($doc, '1', '1', [
             'enveloppe.dp_parois' => 1000.0,
             'apport.fraction_ch' => 0.4,
             'apport.fraction_ch_depensier' => 0.35,
         ]);
+
+        // Qg,w ne transite plus par le XML (le schéma ADEME ne déclare pas de
+        // balise `Qgw`) : StockageCalculator le publie dans le contexte.
+        $ctx->set(
+            \CalculDpePHP\Ecs\Rendement\StockageCalculator::qgwKey(
+                $doc->getElementsByTagName('generateur_ecs')->item(0),
+            ),
+            1064620.987191,
+        );
 
         (new BesoinChauffageCalculator())->calculate($doc->documentElement, $ctx);
 
@@ -320,7 +328,7 @@ XML);
         $doc->loadXML(<<<'XML'
 <logement><installation_ecs_collection><installation_ecs><donnee_entree><rdim>1</rdim></donnee_entree>
 <generateur_ecs_collection><generateur_ecs><donnee_entree><position_volume_chauffe>0</position_volume_chauffe></donnee_entree>
-<donnee_intermediaire><Qgw>100000</Qgw></donnee_intermediaire></generateur_ecs></generateur_ecs_collection>
+</generateur_ecs></generateur_ecs_collection>
 </installation_ecs></installation_ecs_collection></logement>
 XML);
         $ctx = $this->makeContext($doc, '1', '1', [
@@ -328,6 +336,15 @@ XML);
             'apport.fraction_ch' => 0.4,
             'apport.fraction_ch_depensier' => 0.35,
         ]);
+
+        // Qg,w ne transite plus par le XML (le schéma ADEME ne déclare pas de
+        // balise `Qgw`) : StockageCalculator le publie dans le contexte.
+        $ctx->set(
+            \CalculDpePHP\Ecs\Rendement\StockageCalculator::qgwKey(
+                $doc->getElementsByTagName('generateur_ecs')->item(0),
+            ),
+            100000.0,
+        );
 
         (new BesoinChauffageCalculator())->calculate($doc->documentElement, $ctx);
 

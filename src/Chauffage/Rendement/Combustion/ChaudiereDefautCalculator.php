@@ -27,7 +27,7 @@ use DOMElement;
  * @spec-pages   86-92
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
  * @xml-input    generateur_chauffage.donnee_entree.{tv_generateur_combustion_id, enum_methode_saisie_carac_sys_id, pn, presence_ventouse}
- * @xml-output   generateur_chauffage.donnee_intermediaire.{pn, rpn, rpint, qp0, pveil}
+ * @xml-output   generateur_chauffage.donnee_intermediaire.{pn, rpn, rpint, qp0, pveilleuse}
  * @depends-on   \CalculDpePHP\Enveloppe\EnveloppeAggregator, \CalculDpePHP\Ventilation\VentilationAggregator
  * @tables       chauffage/tv_generateur_combustion
  */
@@ -104,7 +104,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         //   4 → pn,rpn,rpint,qp0 ; 5 → pn,rpn,rpint,qp0 (+temp_fonc).
         // Les champs NON saisis restent forfaitaires (table tv_generateur_combustion).
         $saisieFields = match (true) {
-            $methode >= 4  => ['pn', 'rpn', 'rpint', 'qp0', 'pveil'],
+            $methode >= 4  => ['pn', 'rpn', 'rpint', 'qp0', 'pveilleuse'],
             $methode === 3 => ['pn', 'rpn', 'rpint'],
             $methode === 2 => ['pn'],
             default        => [],
@@ -192,7 +192,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
                 $pnApartmentW = $pnW * $ratioVirt;
             }
             $row = $entry($pnBuildingKw, $e, $f);
-            // pn stocké = part du logement ; qp0/pveil proportionnels si collectif
+            // pn stocké = part du logement ; qp0/pveilleuse proportionnels si collectif
             $row['pn']    = $pnApartmentW;
             $row['qp0']   = ($row['qp0']   ?? 0.0) * ($ratioVirt < 1.0 ? $ratioVirt : 1.0);
             $row['pveil'] = ($row['pveil']  ?? 0.0) * ($ratioVirt < 1.0 ? $ratioVirt : 1.0);
@@ -204,7 +204,9 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         $accessor->setChildValue($di, 'rpn',   $saisie['rpn']   ?? (float)($row['rpn']   ?? 0.0));
         $accessor->setChildValue($di, 'rpint', $saisie['rpint'] ?? (float)($row['rpint'] ?? 0.0));
         $accessor->setChildValue($di, 'qp0',   $saisie['qp0']   ?? (float)($row['qp0']   ?? 0.0));
-        $accessor->setChildValue($di, 'pveil', $saisie['pveil'] ?? (float)($row['pveil'] ?? 0.0));
+        // Le schéma ADEME déclare `pveilleuse`, pas `pveil` : écrire `pveil`
+        // rendait le fichier irrecevable par l'observatoire.
+        $accessor->setChildValue($di, 'pveilleuse', $saisie['pveilleuse'] ?? (float)($row['pveil'] ?? 0.0));
     }
 
     /**

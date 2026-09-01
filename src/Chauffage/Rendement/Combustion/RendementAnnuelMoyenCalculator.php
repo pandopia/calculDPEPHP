@@ -25,7 +25,7 @@ use DOMElement;
  * @spec-section 13.2.3-13.2.4
  * @spec-pages   92
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/04-rendement-annuel-moyen.md
- * @xml-input    generateur_chauffage.donnee_intermediaire.{pn, rpn, rpint, qp0, pveil, temp_fonc_100, temp_fonc_30}
+ * @xml-input    generateur_chauffage.donnee_intermediaire.{pn, rpn, rpint, qp0, pveilleuse, temp_fonc_100, temp_fonc_30}
  * @xml-input    generateur_chauffage.donnee_entree.{enum_type_energie_id, presence_regulation_combustion}
  * @xml-output   generateur_chauffage.donnee_intermediaire.rendement_generation
  * @depends-on   \CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereProfilChargeCalculator
@@ -121,7 +121,7 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         $rpn    = $accessor->getFloatOrNull('./donnee_intermediaire/rpn',   $node);
         $rpint  = $accessor->getFloatOrNull('./donnee_intermediaire/rpint', $node);
         $qp0    = $accessor->getFloatOrNull('./donnee_intermediaire/qp0',   $node);
-        $pveil  = $accessor->getFloatOrNull('./donnee_intermediaire/pveil', $node) ?? 0.0;
+        $pveil  = $accessor->getFloatOrNull('./donnee_intermediaire/pveilleuse', $node) ?? 0.0;
 
         if ($pn === null || $rpn === null || $rpint === null || $qp0 === null) {
             return; // données manquantes — table partielle

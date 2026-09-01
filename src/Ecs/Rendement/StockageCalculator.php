@@ -104,14 +104,30 @@ final class StockageCalculator implements CalculatorInterface
 
         $di = $this->ensureDi($context->document, $node);
         // CET : rendement_stockage géré par CetAccumulationCalculator (= COP).
-        // On écrit Qgw seulement pour permettre la récupération des pertes (§9.1.1).
         if (!$isCet) {
             $accessor->setChildValue($di, 'rendement_stockage', $rs);
         }
-        $accessor->setChildValue($di, 'Qgw', $qgw);
+
+        // Qg,w sert à la récupération des pertes de stockage (§9.1.1) et au
+        // rendement des chaudières mixtes (§14.1.2). Il transite par le
+        // contexte et non par le XML : `Qgw` n'existe pas dans le schéma
+        // ADEME, et un fichier le contenant serait rejeté à la transmission.
+        $context->set(self::qgwKey($node), $qgw);
 
         $ref = $accessor->getStringOrNull('./donnee_entree/reference', $node) ?? '';
         $context->set('ecs.rendement_stockage.' . $ref, $rs);
+    }
+
+    /**
+     * Clé de partage de Qg,w pour un générateur ECS donné.
+     *
+     * Le chemin du nœud identifie le générateur de façon stable sur toute la
+     * durée d'un calcul : les Calculators n'ajoutent que des enfants
+     * `<donnee_intermediaire>`, jamais de fratrie aux générateurs.
+     */
+    public static function qgwKey(DOMElement $generateurEcs): string
+    {
+        return 'ecs.qgw.' . $generateurEcs->getNodePath();
     }
 
     /**

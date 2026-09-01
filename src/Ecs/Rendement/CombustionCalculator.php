@@ -82,6 +82,8 @@ final class CombustionCalculator implements CalculatorInterface
             '\CalculDpePHP\Enveloppe\EnveloppeAggregator',
             '\CalculDpePHP\Ventilation\VentilationAggregator',
             '\CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator',
+            // Qg,w transite par le contexte : le stockage doit être calculé avant.
+            StockageCalculator::class,
         ];
     }
 
@@ -134,7 +136,7 @@ final class CombustionCalculator implements CalculatorInterface
         // avec chauffage individuel.
         $mixteCarac = $this->getMixteChauffageCarac($node, $accessor);
         $isMixedBoiler = $mixteCarac !== null;
-        $qgw = $accessor->getFloatOrNull('./donnee_intermediaire/Qgw', $node) ?? 0.0;
+        $qgw = (float) $context->get(StockageCalculator::qgwKey($node), 0.0);
         $usesCombinedYield = $isMixedBoiler && $qgw > 0.0;
         if ($mixteCarac !== null) {
             [$pn, $rpn, $qp0, $pveil] = $mixteCarac;
@@ -450,7 +452,7 @@ final class CombustionCalculator implements CalculatorInterface
             return null;
         }
         $qp0   = $accessor->getFloatOrNull('./donnee_intermediaire/qp0',   $chNode) ?? 0.0;
-        $pveil = $accessor->getFloatOrNull('./donnee_intermediaire/pveil', $chNode) ?? 0.0;
+        $pveil = $accessor->getFloatOrNull('./donnee_intermediaire/pveilleuse', $chNode) ?? 0.0;
 
         return [$pn, $rpn, $qp0, $pveil];
     }
