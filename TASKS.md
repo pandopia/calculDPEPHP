@@ -782,6 +782,18 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 - Validation : les deltas structurants de ces deux DPE doivent disparaître et la
   suite PHPUnit complète doit rester verte.
 
+### TASK-J02 — Facteur GES 2025 des réseaux de chaleur
+
+- [~AI] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2657E1975665N : le réseau `5703C` daté du 25 avril 2026 attend un contenu
+  CO2 de 0,174 kgCO2e/kWh, alors que la table locale s'arrête à l'arrêté 2024 et
+  retombe sur 0,187.
+- Action : ajouter exhaustivement la table annuelle manquante depuis une source
+  traçable, puis l'utiliser dans les sorties GES globales et par énergie.
+- Cibles : `resources/tables/reference/tv_reseau_chaleur.php`, `src/Sortie/` et
+  tests unitaires dédiés.
+- Validation : `php bin/diff-report --filter=2657E1975665N` → 0 delta.
+
 ---
 
 ## Validation par phase (gate)
