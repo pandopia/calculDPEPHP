@@ -823,6 +823,20 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
   > NOTE-AI: `EpConsoCalculator` réagrège lui aussi les installations ECS ; il
   > doit donc consommer la même multiplicité surfacique pour éviter un écart EP.
 
+### TASK-J05 — Tranche de stockage et position du ballon échantillonné
+
+- [~AI] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2657E1989142W : lorsque les groupes ECS correspondent aux typologies des
+  logements visités, ramener d'abord le volume du ballon au logement moyen puis
+  sélectionner `Cr` sur ce volume effectif (§17.1.2 puis §11.6.2).
+- Pour les pertes récupérées, utiliser exclusivement
+  `position_volume_chauffe_stockage` : `position_volume_chauffe` décrit le
+  générateur et non le ballon selon le XSD.
+- Cibles : `src/Ecs/Rendement/StockageCalculator.php`,
+  `src/Chauffage/BesoinChauffageCalculator.php` et tests unitaires dédiés.
+- Validation : `php bin/diff-report --filter=2657E1989142W` → 0 delta, sans
+  régression sur 2657E1981571R.
+
 ---
 
 ## Validation par phase (gate)
