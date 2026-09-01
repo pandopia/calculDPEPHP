@@ -952,13 +952,19 @@ Corpus `ademe-observatoire-local`, 224 cas.
 
 ```
 Cas                     : 224      Valeurs comparées       : 71 304
-Exécutés                : 224      Exactes                 : 53 425
-Crash                   :   0      Dans tolérance          :  8 096
-Totalement conformes    :   0      Hors tolérance          :  7 419
+Exécutés                : 224      Exactes                 : 51 799
+Crash                   :   0      Dans tolérance          :  7 418
+Totalement conformes    :   0      Hors tolérance          :  9 723
 Partiellement conformes : 224      Balises manquantes      :     45
                                    Balises supplémentaires :  2 280
-Conformité              : 86,28 %
+Conformité              : 83,05 %
 ```
+
+> Plusieurs agents modifient le moteur en parallèle : le chiffre bouge d'une
+> heure à l'autre. Le rapport porte la révision et le nombre de fichiers `src/`
+> non commités au moment de la mesure ; un gain ne se mesure qu'en relançant
+> `bin/official-test-report` **avant et après** le seul changement évalué, sur
+> le même arbre.
 
 Le corpus est déséquilibré (206 immeubles collectifs, 4 maisons individuelles) :
 c'est la première chose à corriger pour que le chiffre soit représentatif.
@@ -979,8 +985,8 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K02 — Tarifs annuels des énergies indexés sur la date du DPE
 
-- [~AI2] Owner: AI2  | Phase: K  | Estimation: 6h  | Priorité: haute
-- **47 % de tous les écarts hors tolérance** (3 495 sur 7 419) viennent des
+- [x] Owner: AI2  | Phase: K  | Estimation: 6h  | Priorité: haute
+- **47 % de tous les écarts hors tolérance** viennent des
   coûts : `cout_5_usages`, `cout_ch`, `cout_ecs`, `cout_eclairage`,
   `cout_auxiliaire_*`, `cout_total_auxiliaire`. `cout_5_usages` est faux sur
   **223 cas sur 224**.
@@ -995,8 +1001,21 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
   barème sur `administratif/date_etablissement_dpe`.
 - Ne pas caler les valeurs sur les fichiers de test : chaque tarif doit être
   sourcé dans un texte publié.
-- Validation : `php bin/official-test-report` — familles « Coûts » et
-  « Auxiliaires » au-dessus de 95 %.
+- **Fait**. Trois défauts corrigés dans `src/Sortie/CoutCalculator.php` :
+  1. barème choisi sur `date_etablissement_dpe` — annexe 7 de l'arrêté du
+     31 mars 2021 jusqu'au 30 juin 2024, annexe 2 de l'arrêté du 25 mars 2024
+     ensuite (`resources/tables/reference/tv_prix_energie.php`) ;
+  2. la tranche porte sur le **total** de l'énergie, plus sur chaque usage —
+     l'ancien code facturait la part d'abonnement une fois par poste ;
+  3. la tranche s'apprécie **par logement** (`nombre_appartement`), la sortie
+     d'un DPE immeuble portant sur tout le bâtiment.
+- Mesure A/B isolée sur le même arbre, 224 cas, profil strict :
+  hors tolérance **7 143 → 6 044 (−1 099, −15,4 %)**, conformité
+  **86,67 % → 88,21 %**. Famille « Coûts » 2 218 → 1 714 écarts,
+  « Auxiliaires » 2 095 → 1 500. Aucun crash, aucune autre famille touchée,
+  suite E2E inchangée (136 échecs avant comme après).
+- Reste 43 cas sur 224 où le seul chemin tarifaire (`cout_eclairage`) diverge
+  encore : voir TASK-K10.
 
 ### TASK-K03 — Balises hors vocabulaire ADEME : `Qgw` et `pveil`
 
@@ -1087,6 +1106,29 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
   exclusions nominatives.
 - Validation : suite verte, et le compte de valeurs hors tolérance du rapport
   ne remonte pas.
+
+### TASK-K10 — Diviseur « par logement » des tranches tarifaires
+
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- TASK-K02 a établi que la tranche tarifaire de l'électricité et du gaz
+  s'apprécie sur la consommation **d'un logement**, et l'a implémentée en
+  divisant par `caracteristique_generale/nombre_appartement`. Vérifié exact
+  sur 181 cas sur 224.
+- Sur les 43 cas restants, `cout_eclairage` diverge alors que
+  `conso_eclairage` est juste : le diviseur n'est donc pas toujours
+  `nombre_appartement`. Les écarts vont dans les deux sens (tantôt la
+  référence applique une tranche plus haute, tantôt plus basse), ce qui exclut
+  une simple erreur de facteur.
+- Pistes : DPE appartement issu des données de l'immeuble (la sortie porte
+  peut-être déjà sur un seul logement) ; immeubles où `nombre_appartement`
+  diffère du nombre de logements desservis par l'énergie considérée ;
+  logements-types de l'échantillonnage §17.
+- Action : à partir de
+  `php bin/official-test-report --famille=Coûts --top=50`, isoler les 43 cas,
+  établir la règle depuis l'arrêté plutôt que par ajustement, puis l'appliquer.
+- Ne pas caler un diviseur sur les fichiers de test.
+- Validation : `cout_eclairage` conforme sur tous les cas dont
+  `conso_eclairage` l'est déjà.
 
 ---
 
