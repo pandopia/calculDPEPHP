@@ -928,6 +928,21 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 - Validation : `php bin/diff-report --filter=2662E2197010Z` → 0 delta, sans
   régression sur les DPE J01-J10.
 
+### TASK-J12 — Pont mur-refend et générateur mixte collectif
+
+- [~AI] Owner: AI  | Phase: J  | Estimation: 3h  | Priorité: haute
+- DPE 2659E2129582M : une liaison mur-refend (`enum_type_liaison_id=4`) est
+  annulée à tort lorsque le refend borde un local chauffé, puis les besoins et
+  consommations divergent ; le générateur collectif mixte CH/ECS requiert le
+  même dimensionnement et les mêmes pertes dans les deux usages.
+- Action : restreindre la négligence des ponts aux liaisons réellement hors
+  enveloppe, puis aligner si nécessaire le calcul du générateur mixte à partir
+  de ses paramètres directs, avec tests unitaires dédiés.
+- Cibles : `src/Enveloppe/PontThermique/KCalculator.php`, calculateurs du
+  générateur mixte strictement nécessaires et tests dédiés.
+- Validation : `php bin/diff-report --filter=2659E2129582M` → 0 delta, sans
+  régression sur les DPE J01-J11.
+
 ---
 
 ## Phase K — Conformité jeux de tests d'évaluation
