@@ -839,7 +839,10 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-J06 — Ponts thermiques des parois donnant sur un local non chauffé
 
-- [~AI] Owner: AI  | Phase: J  | Estimation: 1h  | Priorité: haute
+- [x] Owner: AI  | Phase: J  | Estimation: 1h  | Priorité: haute
+- NOTE-AI: la négligence s'applique aux jonctions entre parois opaques (liaisons
+  1 à 4) sur circulations communes 14-18 et local chauffé non déperditif 22 ;
+  une liaison menuiserie-mur de type 5 conserve sa valeur tabulée.
 - DPE 2618E2138973C : les liaisons rattachées à une paroi dont le coefficient
   de réduction `b` est inférieur à 1 doivent être négligées (`k = 0`) ; leur
   prise en compte ajoute à tort 23,295 W/K aux déperditions de l'enveloppe.

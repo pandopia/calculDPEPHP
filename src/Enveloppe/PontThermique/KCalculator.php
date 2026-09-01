@@ -70,11 +70,10 @@ final class KCalculator implements CalculatorInterface
             }
         }
 
-        // NB : on ne force PAS k=0 pour les murs sur circulations communes (adjacences
-        // 14-18, 22). La spec §3.4 dit de les négliger, mais LICIEL calcule les PT
-        // explicitement décrits dans le XML même sur ces adjacences (open3cl
-        // 3.4_pont_thermique.js:161-173 ne force k=0 que si le DPE porte déjà k=0).
-        // Les PT réellement négligés ne figurent simplement pas dans le fichier.
+        if ($this->isNegligibleByAdjacency($entree, $accessor, $context->document)) {
+            $this->writeK($node, $accessor, 0.0);
+            return;
+        }
 
         // Forfait (méthode=1) : lookup direct par tv_pont_thermique_id (comme open3cl)
         if ($methode === 1 || $methode === null) {
@@ -100,6 +99,42 @@ final class KCalculator implements CalculatorInterface
         $accessor->setChildValue($intermediaire, 'k', $k);
     }
 
+    /**
+     * §3.4 p.32 : les ponts thermiques des parois au niveau des circulations
+     * communes ne sont pas pris en compte. Une paroi donnant sur un local
+     * chauffé non déperditif (adjacence 22 dans le XSD) n'est pas non plus une
+     * limite de l'enveloppe thermique.
+     *
+     * @spec-formula F-3.4-negligence-adjacence
+     */
+    private function isNegligibleByAdjacency(
+        DOMElement $entree,
+        NodeAccessor $accessor,
+        DOMDocument $document,
+    ): bool {
+        // La règle vise les jonctions entre parois opaques. Les liaisons entre
+        // une menuiserie et un mur (type 5) conservent leur valeur tabulée.
+        if ($accessor->getIntOrNull('./enum_type_liaison_id', $entree) === 5) {
+            return false;
+        }
+
+        $xpath = new DOMXPath($document);
+        foreach (['reference_1', 'reference_2'] as $field) {
+            $reference = $accessor->getStringOrNull('./' . $field, $entree);
+            if ($reference === null) {
+                continue;
+            }
+
+            $paroi = $this->findParoiByReference($xpath, $reference);
+            $adjacence = $paroi !== null ? $this->readAdjacenceOfParoi($paroi) : null;
+            if ($adjacence !== null && (in_array($adjacence, [14, 15, 16, 17, 18], true) || $adjacence === 22)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function computeFromSpec(DOMElement $entree, NodeAccessor $accessor, CalculationContext $context): float
     {
         $liaison = $accessor->getIntOrNull('./enum_type_liaison_id', $entree);
@@ -109,13 +144,6 @@ final class KCalculator implements CalculatorInterface
 
         // Identifie l'isolation du mur (paroi opaque verticale). reference_1 ou _2 selon ordre saisi.
         [$isoMur, $autrePAroiNode, $murAdjacence] = $this->resolveIsolationAdjacencies($context->document, $liaison, $ref1, $ref2);
-
-        // §3.4 « les ponts thermiques des parois au niveau des circulations communes
-        // ne sont pas pris en compte » — MAIS LICIEL calcule quand même les PT dont
-        // il décrit un k>0 sur ces adjacences (open3cl 3.4_pont_thermique.js:161-173
-        // ne force k=0 que si le DPE lui-même porte k=0). Comme le diagnostiqueur a
-        // saisi le pont thermique explicitement dans le XML, on le calcule ; les PT
-        // réellement négligés ne sont simplement pas décrits dans le fichier.
 
         $isoMurKey = $this->isolationKey($isoMur);
 
