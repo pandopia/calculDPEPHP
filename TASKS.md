@@ -1194,16 +1194,25 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
   néanmoins les seuils (dont l'ajustement < 40 m² de l'arrêté du 24 mars 2024).
 - Validation : 0 écart sur `classe_bilan_dpe` et `classe_emission_ges`.
 
-### TASK-K08 — Balises manquantes du bloc froid
+### TASK-K08 — Balises manquantes du bloc froid : ne rien changer
 
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
-- 20 balises manquantes côté froid, dont `conso_auxiliaire_distribution_fr`,
+- [x] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: basse
+- 28 balises manquantes côté froid : `conso_auxiliaire_distribution_fr`,
   `ep_conso_auxiliaire_distribution_fr`,
-  `emission_ges_auxiliaire_distribution_fr`, `cout_auxiliaire_distribution_fr`,
-  attendues à 0 par la référence.
-- Action : écrire ces balises même à 0 quand une installation de
-  climatisation est présente.
-- Validation : famille « Froid » sans balise manquante.
+  `emission_ges_auxiliaire_distribution_fr`,
+  `cout_auxiliaire_distribution_fr`, attendues à 0 par la référence.
+- **Décision : ne pas les écrire.** Sur les 349 fichiers des deux corpus,
+  seuls **7** les portent, tous à 0, et tous produits par des moteurs
+  minoritaires (`3cl-2024.6.1.0`, `3cl_tribu_1.4.25.0`, `3cl_bbs_V2025.11.1.0`
+  et 2 fichiers sans moteur déclaré). Les trois moteurs dominants — 339
+  fichiers — ne les écrivent jamais.
+- La présence de la balise n'est même pas liée à celle d'une climatisation :
+  les 7 fichiers qui la portent n'ont **pas** de bloc `climatisation`, et les
+  19 fichiers qui en ont un ne la portent pas.
+- Les écrire systématiquement échangerait 28 balises manquantes contre environ
+  1 368 balises supplémentaires (342 fichiers × 4 balises). Le schéma les rend
+  facultatives : le silence est le comportement majoritaire et le moins
+  coûteux.
 
 ### TASK-K09 — Remplacer les exclusions du harness E2E par la mesure de conformité
 
