@@ -1291,7 +1291,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K11 — Confirmer la règle d'abonnement sur le texte officiel
 
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- [~AI2] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: moyenne
 - TASK-K10 a établi par l'observation que la tranche tarifaire s'apprécie par
   abonnement (un par installation collective d'immeuble, un par logement
   sinon). La règle est physiquement cohérente et reproduit la référence sur
