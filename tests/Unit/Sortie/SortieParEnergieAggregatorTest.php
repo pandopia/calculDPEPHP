@@ -31,6 +31,7 @@ final class SortieParEnergieAggregatorTest extends TestCase
 <logement>
     <installation_chauffage_collection>
         <installation_chauffage>
+            <donnee_intermediaire><conso_ch>{$consoChGen}</conso_ch><conso_ch_depensier>0</conso_ch_depensier></donnee_intermediaire>
             <generateur_chauffage_collection>
                 <generateur_chauffage>
                     <donnee_entree>
@@ -46,6 +47,7 @@ final class SortieParEnergieAggregatorTest extends TestCase
     </installation_chauffage_collection>
     <installation_ecs_collection>
         <installation_ecs>
+            <donnee_intermediaire><conso_ecs>{$consoEcsGen}</conso_ecs><conso_ecs_depensier>0</conso_ecs_depensier></donnee_intermediaire>
             <generateur_ecs_collection>
                 <generateur_ecs>
                     <donnee_entree>
@@ -108,6 +110,22 @@ XML;
         // Electricity row: conso_5 = eclairage + aux = 500
         $elecConso5 = $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=1]/conso_5_usages');
         $this->assertEqualsWithDelta(500.0, $elecConso5[0], self::TOL, 'elec conso_5 = ecl + aux');
+    }
+
+    public function testNativeAdemeOrdersElectricityBeforeGas(): void
+    {
+        $doc = $this->buildDoc(2, 2, 10000.0, 5000.0, 200.0, 300.0);
+        $doc->documentElement->setAttribute('version', '0.1.0');
+        $logement = $doc->getElementsByTagName('logement')->item(0);
+
+        (new SortieParEnergieAggregator())->calculate($logement, $this->makeContext($doc));
+
+        self::assertSame([1.0, 2.0], $this->getValues($doc, '//sortie_par_energie/enum_type_energie_id'));
+        self::assertEqualsWithDelta(
+            15000.0,
+            $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=2]/conso_5_usages')[0],
+            self::TOL,
+        );
     }
 
     /**

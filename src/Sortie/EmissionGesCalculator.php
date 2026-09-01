@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CalculDpePHP\Sortie;
 
 use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -87,6 +88,7 @@ final class EmissionGesCalculator implements CalculatorInterface
     public function calculate(DOMElement $node, CalculationContext $context): void
     {
         $accessor = new NodeAccessor($context->document);
+        $nativeAdeme = IntermediateEnergyUnit::isNativeAdeme($context->document);
 
         // ── 1. Paramètres ────────────────────────────────────────────────────
         $shLogement = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node);
@@ -102,15 +104,19 @@ final class EmissionGesCalculator implements CalculatorInterface
         $gesConsoChEf    = $isZone ? $gesChTotal * $cleRepartitionCh : $gesChTotal;
         // GES dépensier chauffage = GES conventionnel (même convention que l'EP :
         // le scénario dépensier ne change pas les émissions de référence pour l'étiquette).
-        $gesConsoChDepEf = $gesConsoChEf;
+        $gesConsoChDepEf = $nativeAdeme
+            ? ($isZone ? $gesChDepTotal * $cleRepartitionCh : $gesChDepTotal)
+            : $gesConsoChEf;
 
         // ── 3. ECS GES ───────────────────────────────────────────────────────
-        [$gesEcsTotal, , $cleRepartitionEcs] =
+        [$gesEcsTotal, $gesEcsDepTotal, $cleRepartitionEcs] =
             $this->aggregateEcsGes($accessor, $node, $nbreAppt, $context);
 
         $gesConsoEcsEf    = $isZone ? $gesEcsTotal * $cleRepartitionEcs : $gesEcsTotal;
         // GES dépensier ECS = GES conventionnel (même convention).
-        $gesConsoEcsDepEf = $gesConsoEcsEf;
+        $gesConsoEcsDepEf = $nativeAdeme
+            ? ($isZone ? $gesEcsDepTotal * $cleRepartitionEcs : $gesEcsDepTotal)
+            : $gesConsoEcsEf;
 
         // ── 4. ef_conso depuis le DOM ────────────────────────────────────────
         $sortie    = $accessor->ensureSortie($node);
@@ -138,10 +144,10 @@ final class EmissionGesCalculator implements CalculatorInterface
         $cauxVent      = $accessor->getFloatOrNull('./conso_auxiliaire_ventilation',                 $efConso) ?? 0.0;
 
         $gesCauxGenCh     = $cauxGenCh * self::GES_ELEC_AUX;
-        $gesCauxGenChDep  = $gesCauxGenCh;  // dépensier = conventionnel
+        $gesCauxGenChDep  = ($nativeAdeme ? $cauxGenChDep : $cauxGenCh) * self::GES_ELEC_AUX;
         $gesCauxDistCh    = $cauxDistCh    * self::GES_ELEC_AUX;
         $gesCauxGenEcs    = $cauxGenEcs    * self::GES_ELEC_AUX;
-        $gesCauxGenEcsDep = $gesCauxGenEcs;  // dépensier = conventionnel
+        $gesCauxGenEcsDep = ($nativeAdeme ? $cauxGenEcsDep : $cauxGenEcs) * self::GES_ELEC_AUX;
         $gesCauxDistEcs   = $cauxDistEcs   * self::GES_ELEC_AUX;
         $gesCauxVent      = $cauxVent      * self::GES_ELEC_AUX;
         $gesCauxTotal     = $gesCauxGenCh + $gesCauxDistCh + $gesCauxGenEcs + $gesCauxDistEcs + $gesCauxVent;

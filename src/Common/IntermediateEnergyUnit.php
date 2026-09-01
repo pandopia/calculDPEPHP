@@ -21,8 +21,13 @@ final class IntermediateEnergyUnit
 {
     public static function xmlPerKwh(DOMDocument $document): float
     {
-        return $document->documentElement?->getAttribute('version') === '0.1.0'
+        return self::isNativeAdeme($document)
             ? 1000.0
             : 1.0;
+    }
+
+    public static function isNativeAdeme(DOMDocument $document): bool
+    {
+        return $document->documentElement?->getAttribute('version') === '0.1.0';
     }
 }

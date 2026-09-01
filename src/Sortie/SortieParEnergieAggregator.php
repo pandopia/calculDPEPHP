@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CalculDpePHP\Sortie;
 
 use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -154,7 +155,11 @@ final class SortieParEnergieAggregator implements CalculatorInterface
             array_keys($chByEnergie),
             array_keys($ecsByEnergie),
         ));
-        rsort($energieIds); // non-électrique d'abord, électricité en dernier (idem verif)
+        if (IntermediateEnergyUnit::isNativeAdeme($context->document)) {
+            sort($energieIds);
+        } else {
+            rsort($energieIds); // exports historiques : non-électrique d'abord
+        }
 
         // ── 5. Construire le bloc par énergie ──────────────────────────────────
         $collection = $context->document->createElement('sortie_par_energie_collection');
@@ -294,6 +299,27 @@ final class SortieParEnergieAggregator implements CalculatorInterface
                     $cle = $accessor->getFloatOrNull('./donnee_entree/' . $cleField, $install);
                     if ($cle !== null && $cle > 0.0) {
                         $scale *= $cle;
+                    }
+                }
+
+                // Le format ADEME natif reprend le total de l'installation
+                // lorsqu'elle ne possède qu'un générateur. Cela évite les
+                // écarts de précision dus au rendement réécrit sur le générateur.
+                $generators = $install->getElementsByTagName($genTag);
+                if (IntermediateEnergyUnit::isNativeAdeme($context->document) && $generators->length === 1) {
+                    $gen = $generators->item(0);
+                    if ($gen instanceof DOMElement) {
+                        $eId = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $gen) ?? 1;
+                        $conso = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoField, $install) ?? 0.0) * $scale;
+                        $consoDep = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoDepField, $install) ?? 0.0) * $scale;
+                        $byEnergie[$eId] ??= [0.0, 0.0];
+                        $byEnergie[$eId][0] += $conso;
+                        $byEnergie[$eId][1] += $consoDep;
+                        if ($eId === 8) {
+                            $factor = ReseauChaleurFactorResolver::resolve($gen, $accessor, $context);
+                            $reseauGesByEnergie[$eId] = ($reseauGesByEnergie[$eId] ?? 0.0) + $conso * $factor;
+                        }
+                        continue;
                     }
                 }
 

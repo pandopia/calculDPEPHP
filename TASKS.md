@@ -871,7 +871,10 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-J08 — Sorties dépensier et ordre par énergie du format ADEME natif
 
-- [~AI] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- [x] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- NOTE-AI: 12 des 14 deltas ont disparu. Les deux écarts dépensier chauffage
+  restants proviennent de la consommation source calculée avec le rendement
+  nominal, et non de l'agrégation ; ils sont isolés dans TASK-J09.
 - DPE 2618E2138973C : le format natif 0.1.0 attend les consommations et GES
   dépensier réels, tandis que les exports historiques version 2 répètent les
   valeurs conventionnelles ; sa collection par énergie est en ordre croissant
@@ -881,6 +884,19 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 - Cibles : `src/Sortie/{EpConsoCalculator,EmissionGesCalculator,SortieParEnergieAggregator}.php`.
 - Validation : disparition des 14 deltas d'agrégation restants sur le DPE cible,
   sans régression sur les DPE J01-J07.
+
+### TASK-J09 — Rendement chaudière sur le scénario chauffage dépensier
+
+- [ ] Owner: __  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2618E2138973C : `conso_ch_depensier` vaut 6189,62 kWh au lieu de
+  6110,89 kWh, car `InstallationClassique` réutilise le rendement annuel moyen
+  du profil conventionnel pour le besoin à 21 °C.
+- Action : calculer le rendement annuel moyen au profil de charge dépensier
+  conformément au §13.2, puis l'utiliser uniquement pour `conso_ch_depensier`.
+- Cibles : `src/Chauffage/Rendement/Combustion/`,
+  `src/Chauffage/Strategy/InstallationClassique.php` et tests dédiés.
+- Validation : les sorties EP/GES dépensier du DPE cible correspondent à
+  l'ADEME, sans modifier les consommations conventionnelles.
 
 ---
 

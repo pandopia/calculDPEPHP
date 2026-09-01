@@ -141,6 +141,24 @@ XML;
         $this->assertEqualsWithDelta($efAux * 2.3, $epCauxT, 1.0, 'ep_conso_totale_auxiliaire');
     }
 
+    public function testNativeAdemeUsesDepensierGenerationAuxiliary(): void
+    {
+        [$doc, $node, $ctx] = $this->buildDocWithEfConso(
+            [
+                'conso_auxiliaire_generation_ch' => 10.0,
+                'conso_auxiliaire_generation_ch_depensier' => 25.0,
+            ],
+            shLogement: 100.0,
+            shImmeuble: 100.0,
+        );
+        $doc->documentElement->setAttribute('version', '0.1.0');
+
+        (new EpConsoCalculator())->calculate($node, $ctx);
+
+        $value = (float)$doc->getElementsByTagName('ep_conso_auxiliaire_generation_ch_depensier')->item(0)->textContent;
+        self::assertEqualsWithDelta(25.0 * 2.3, $value, 0.001);
+    }
+
     /**
      * Installation CH gaz (id=2), pré-2026 : EP coeff = 1.0.
      * ef_conso_ch = 1677.60 → ep_conso_ch = 1677.60 × 1.0 = 1677.60.

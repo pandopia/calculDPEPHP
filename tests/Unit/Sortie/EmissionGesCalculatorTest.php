@@ -111,6 +111,24 @@ XML;
         $this->assertEqualsWithDelta(500.0 * 0.064, $gesT, 0.001, 'GES aux_total');
     }
 
+    public function testNativeAdemeUsesDepensierGenerationAuxiliary(): void
+    {
+        [$doc, $node, $ctx] = $this->buildDocWithEfConso(
+            [
+                'conso_auxiliaire_generation_ecs' => 10.0,
+                'conso_auxiliaire_generation_ecs_depensier' => 30.0,
+            ],
+            shLogement: 100.0,
+            shImmeuble: 100.0,
+        );
+        $doc->documentElement->setAttribute('version', '0.1.0');
+
+        (new EmissionGesCalculator())->calculate($node, $ctx);
+
+        $value = (float)$doc->getElementsByTagName('emission_ges_auxiliaire_generation_ecs_depensier')->item(0)->textContent;
+        self::assertEqualsWithDelta(30.0 * 0.064, $value, 0.001);
+    }
+
     /**
      * Installation CH gaz (id=2) : ef_conso_ch × 0.227.
      */
