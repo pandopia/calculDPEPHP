@@ -46,7 +46,7 @@ XML;
     {
         [$doc, $node] = $this->buildNode(72);
         (new ReseauChaleurCalculator())->calculate($node, $this->makeContext($doc));
-        $rg = (float)$doc->getElementsByTagName('rendement_generation')->item(0)?->textContent;
+        $rg = (float)$doc->getElementsByTagName('rendement_generation_stockage')->item(0)?->textContent;
         $this->assertEqualsWithDelta(0.75, $rg, self::TOL);
     }
 
@@ -55,8 +55,17 @@ XML;
     {
         [$doc, $node] = $this->buildNode(73);
         (new ReseauChaleurCalculator())->calculate($node, $this->makeContext($doc));
-        $rg = (float)$doc->getElementsByTagName('rendement_generation')->item(0)?->textContent;
+        $rg = (float)$doc->getElementsByTagName('rendement_generation_stockage')->item(0)?->textContent;
         $this->assertEqualsWithDelta(0.90, $rg, self::TOL);
+    }
+
+    /** §14.3 — réseau non répertorié ou inconnu (ID 119) → hypothèse non isolée. */
+    public function testReseauInconnu(): void
+    {
+        [$doc, $node] = $this->buildNode(119);
+        (new ReseauChaleurCalculator())->calculate($node, $this->makeContext($doc));
+        $rg = (float)$doc->getElementsByTagName('rendement_generation_stockage')->item(0)?->textContent;
+        $this->assertEqualsWithDelta(0.75, $rg, self::TOL);
     }
 
     /** §14.3 — réseau non isolé logement neuf (ID 107) → Rg = 0.75 */
@@ -64,7 +73,7 @@ XML;
     {
         [$doc, $node] = $this->buildNode(107);
         (new ReseauChaleurCalculator())->calculate($node, $this->makeContext($doc));
-        $rg = (float)$doc->getElementsByTagName('rendement_generation')->item(0)?->textContent;
+        $rg = (float)$doc->getElementsByTagName('rendement_generation_stockage')->item(0)?->textContent;
         $this->assertEqualsWithDelta(0.75, $rg, self::TOL);
     }
 
@@ -73,7 +82,7 @@ XML;
     {
         [$doc, $node] = $this->buildNode(108);
         (new ReseauChaleurCalculator())->calculate($node, $this->makeContext($doc));
-        $rg = (float)$doc->getElementsByTagName('rendement_generation')->item(0)?->textContent;
+        $rg = (float)$doc->getElementsByTagName('rendement_generation_stockage')->item(0)?->textContent;
         $this->assertEqualsWithDelta(0.90, $rg, self::TOL);
     }
 

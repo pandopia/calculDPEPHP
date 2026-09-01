@@ -172,6 +172,8 @@ final class UphCalculator implements CalculatorInterface
             $adjacence === 1 && $hasComble                         => 'combles',
             $adjacence === 1 && in_array($typePlancherHaut, self::TYPE_PH_COMBLES, true) => 'combles',
             $adjacence === 1                                       => 'terrasse',
+            $adjacence === 22 && in_array($typePlancherHaut, self::TYPE_PH_COMBLES, true) => 'combles',
+            $adjacence === 22                                      => 'terrasse',
             $adjacence === null                                    => 'terrasse',
             default                                                 => 'combles',
         };

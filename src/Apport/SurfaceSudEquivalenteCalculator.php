@@ -31,7 +31,7 @@ use DOMElement;
  * @spec-section 6.2
  * @spec-pages   45
  * @spec-source  resources/specsplitted/06-apports-gratuits/02-surface-sud-equivalente/00-overview.md
- * @xml-input    logement.enveloppe.baie_vitree_collection.baie_vitree.donnee_entree.{surface_totale_baie, enum_orientation_id, enum_inclinaison_vitrage_id}
+ * @xml-input    logement.enveloppe.baie_vitree_collection.baie_vitree.donnee_entree.{surface_totale_baie, enum_type_adjacence_id, enum_orientation_id, enum_inclinaison_vitrage_id}
  * @xml-input    logement.enveloppe.baie_vitree_collection.baie_vitree.donnee_intermediaire.{sw, fe1, fe2}
  * @xml-output   context:apport.sse_annuel (annual sum), context:apport.sse_mensuel (monthly array)
  * @depends-on   \CalculDpePHP\Enveloppe\BaieVitree\SwCalculator, \CalculDpePHP\Enveloppe\BaieVitree\Fe1Calculator, \CalculDpePHP\Enveloppe\BaieVitree\Fe2Calculator
@@ -92,6 +92,12 @@ final class SurfaceSudEquivalenteCalculator implements CalculatorInterface
                 }
             }
             if ($de === null || $di === null) {
+                continue;
+            }
+
+            // §6.3 handles bays facing a solar buffer space separately. They do
+            // not transmit incident solar energy directly into the dwelling.
+            if ($accessor->getIntOrNull('./enum_type_adjacence_id', $de) === 10) {
                 continue;
             }
 

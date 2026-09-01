@@ -258,4 +258,96 @@ final class BesoinChauffageCalculatorTest extends TestCase
         $bch = (float)$doc->getElementsByTagName('besoin_ch')->item(0)->textContent;
         $this->assertEqualsWithDelta(0.0, $bch, self::TOL);
     }
+
+    public function testRecoveredGeneratorLossesUseSampleMultiplicity(): void
+    {
+        $xml = <<<'XML'
+<logement><caracteristique_generale><nombre_appartement>21</nombre_appartement></caracteristique_generale>
+<installation_chauffage_collection><installation_chauffage><donnee_entree>
+<enum_type_installation_id>1</enum_type_installation_id><enum_methode_calcul_conso_id>METHOD</enum_methode_calcul_conso_id>
+<nombre_logement_echantillon>1</nombre_logement_echantillon><ratio_virtualisation>1</ratio_virtualisation><rdim>1</rdim>
+</donnee_entree><generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+<position_volume_chauffe>1</position_volume_chauffe><presence_ventouse>1</presence_ventouse><enum_usage_generateur_id>3</enum_usage_generateur_id>
+</donnee_entree><donnee_intermediaire><pn>24000</pn><qp0>240</qp0></donnee_intermediaire>
+</generateur_chauffage></generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection></logement>
+XML;
+        $values = [];
+        foreach ([1, 4] as $method) {
+            $doc = new DOMDocument();
+            $doc->loadXML(str_replace('METHOD', (string)$method, $xml));
+            $ctx = $this->makeContext($doc, '1', '1', [
+                'enveloppe.dp_parois' => 1500.0,
+                'apport.fraction_ch' => 0.4,
+                'apport.fraction_ch_depensier' => 0.35,
+            ]);
+            (new BesoinChauffageCalculator())->calculate($doc->documentElement, $ctx);
+            $values[$method] = (float)$ctx->get('ch.pertes_generateur_recup', 0.0);
+        }
+
+        $this->assertEqualsWithDelta(21.0 * $values[1], $values[4], 1e-9);
+    }
+
+    public function testCollectiveStorageLossInsideHeatedVolumeIsRecovered(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<logement><installation_ecs_collection><installation_ecs><donnee_entree>
+<enum_type_installation_id>2</enum_type_installation_id><rdim>1</rdim></donnee_entree>
+<generateur_ecs_collection><generateur_ecs><donnee_entree>
+<position_volume_chauffe>1</position_volume_chauffe><position_volume_chauffe_stockage>1</position_volume_chauffe_stockage>
+</donnee_entree></generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection></logement>
+XML);
+        $ctx = $this->makeContext($doc, '1', '1', [
+            'enveloppe.dp_parois' => 1000.0,
+            'apport.fraction_ch' => 0.4,
+            'apport.fraction_ch_depensier' => 0.35,
+        ]);
+
+        // Qg,w ne transite plus par le XML (le schéma ADEME ne déclare pas de
+        // balise `Qgw`) : StockageCalculator le publie dans le contexte.
+        $ctx->set(
+            \CalculDpePHP\Ecs\Rendement\StockageCalculator::qgwKey(
+                $doc->getElementsByTagName('generateur_ecs')->item(0),
+            ),
+            1064620.987191,
+        );
+
+        (new BesoinChauffageCalculator())->calculate($doc->documentElement, $ctx);
+
+        $this->assertGreaterThan(0.0, (float)$ctx->get('ecs.pertes_stockage_recup', 0.0));
+    }
+
+    /**
+     * Le XSD distingue la position du générateur de celle du ballon : une
+     * position générateur=0 ne doit pas annuler les pertes du stockage lorsque
+     * position_volume_chauffe_stockage est absente (défaut conventionnel=1).
+     */
+    public function testStoragePositionDoesNotUseGeneratorPosition(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<logement><installation_ecs_collection><installation_ecs><donnee_entree><rdim>1</rdim></donnee_entree>
+<generateur_ecs_collection><generateur_ecs><donnee_entree><position_volume_chauffe>0</position_volume_chauffe></donnee_entree>
+</generateur_ecs></generateur_ecs_collection>
+</installation_ecs></installation_ecs_collection></logement>
+XML);
+        $ctx = $this->makeContext($doc, '1', '1', [
+            'enveloppe.dp_parois' => 1000.0,
+            'apport.fraction_ch' => 0.4,
+            'apport.fraction_ch_depensier' => 0.35,
+        ]);
+
+        // Qg,w ne transite plus par le XML (le schéma ADEME ne déclare pas de
+        // balise `Qgw`) : StockageCalculator le publie dans le contexte.
+        $ctx->set(
+            \CalculDpePHP\Ecs\Rendement\StockageCalculator::qgwKey(
+                $doc->getElementsByTagName('generateur_ecs')->item(0),
+            ),
+            100000.0,
+        );
+
+        (new BesoinChauffageCalculator())->calculate($doc->documentElement, $ctx);
+
+        $this->assertGreaterThan(0.0, (float)$ctx->get('ecs.pertes_stockage_recup', 0.0));
+    }
 }

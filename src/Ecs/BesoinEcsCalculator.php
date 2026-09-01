@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Ecs;
 
+use CalculDpePHP\Common\ClimaticSolicitations;
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -170,7 +172,7 @@ final class BesoinEcsCalculator implements CalculatorInterface
             $rdim     = $rdim > 0.0 ? $rdim : 1.0;
             $surfInst = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $inst);
 
-            if ($isGeneratedFromImmeuble && $isImmeubleEcsIndividuels) {
+            if ($isGeneratedFromImmeuble && $allIndividual && $nbApt > 1) {
                 // Appartement moyen : besoin_install = besoin_total / nombre_appartement
                 $ratio = 1.0 / $nbApt;
             } elseif ($surfInst !== null && $surfInst > 0.0 && $surfImmeuble !== null && $surfImmeuble > 0.0) {
@@ -187,8 +189,9 @@ final class BesoinEcsCalculator implements CalculatorInterface
             $becsForInstDep = $becsTotalDep * $ratio;
 
             $di = $this->ensureChild($context->document, $inst, 'donnee_intermediaire');
-            $accessor->setChildValue($di, 'besoin_ecs',           $becsForInst);
-            $accessor->setChildValue($di, 'besoin_ecs_depensier', $becsForInstDep);
+            $xmlPerKwh = IntermediateEnergyUnit::xmlPerKwh($context->document);
+            $accessor->setChildValue($di, 'besoin_ecs',           $becsForInst * $xmlPerKwh);
+            $accessor->setChildValue($di, 'besoin_ecs_depensier', $becsForInstDep * $xmlPerKwh);
         }
 
         // ── 9. Contexte pour ConsoEcsCalculator ────────────────────────────────
@@ -230,8 +233,8 @@ final class BesoinEcsCalculator implements CalculatorInterface
             return [0.0, 0.0];
         }
 
-        $tvS = $context->tables->load('reference/tv_sollicitations')[$zoneId][$altId] ?? null;
-        if ($tvS === null) {
+        $tvS = ClimaticSolicitations::heating($context, $zoneId, $altId);
+        if ($tvS === []) {
             return [0.0, 0.0];
         }
 

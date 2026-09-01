@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Sortie;
 
+use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Common\Period;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Engine\CalculationContext;
@@ -63,6 +65,7 @@ final class EpConsoCalculator implements CalculatorInterface
     public function calculate(DOMElement $node, CalculationContext $context): void
     {
         $accessor = new NodeAccessor($context->document);
+        $nativeAdeme = IntermediateEnergyUnit::usesDepensierOutputs($context->document);
 
         // ── 1. Paramètres du bâtiment ─────────────────────────────────────────
         $shLogement = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node);
@@ -81,15 +84,19 @@ final class EpConsoCalculator implements CalculatorInterface
         // EP dépensier chauffage = EP conventionnel (la méthode 3CL utilise toujours
         // le scénario conventionnel pour le calcul d'énergie primaire — le scénario
         // dépensier ne s'applique qu'aux coûts et émissions GES).
-        $epConsoChDepEf = $epConsoChEf;
+        $epConsoChDepEf = $nativeAdeme
+            ? ($isZone ? $epChDepTotal * $cleRepartitionCh : $epChDepTotal)
+            : $epConsoChEf;
 
         // ── 3. ECS EP ────────────────────────────────────────────────────────
-        [$epEcsTotal, , $cleRepartitionEcs] =
+        [$epEcsTotal, $epEcsDepTotal, $cleRepartitionEcs] =
             $this->aggregateEcsEp($accessor, $node, $nbreAppt, $epElec);
 
         $epConsoEcsEf    = $isZone ? $epEcsTotal * $cleRepartitionEcs : $epEcsTotal;
         // EP dépensier ECS = EP conventionnel (même convention que chauffage).
-        $epConsoEcsDepEf = $epConsoEcsEf;
+        $epConsoEcsDepEf = $nativeAdeme
+            ? ($isZone ? $epEcsDepTotal * $cleRepartitionEcs : $epEcsDepTotal)
+            : $epConsoEcsEf;
 
         // ── 4. Lecture ef_conso depuis le DOM ────────────────────────────────
         $sortie  = $accessor->ensureSortie($node);
@@ -118,11 +125,11 @@ final class EpConsoCalculator implements CalculatorInterface
 
         $epCauxGenCh     = $cauxGenCh  * $epElec;
         // §15.1 convention: EP dépensier uses nominal EF (not depensier EF)
-        $epCauxGenChDep  = $cauxGenCh  * $epElec;
+        $epCauxGenChDep  = ($nativeAdeme ? $cauxGenChDep : $cauxGenCh) * $epElec;
         $epCauxDistCh    = $cauxDistCh * $epElec;
         $epCauxGenEcs    = $cauxGenEcs    * $epElec;
         // §15.1 convention: EP dépensier uses nominal EF (not depensier EF)
-        $epCauxGenEcsDep = $cauxGenEcs * $epElec;
+        $epCauxGenEcsDep = ($nativeAdeme ? $cauxGenEcsDep : $cauxGenEcs) * $epElec;
         $epCauxDistEcs   = $cauxDistEcs   * $epElec;
         $epCauxVent      = $cauxVent      * $epElec;
         $epCauxTotal     = $epCauxGenCh + $epCauxDistCh + $epCauxGenEcs + $epCauxDistEcs + $epCauxVent;
@@ -325,13 +332,6 @@ final class EpConsoCalculator implements CalculatorInterface
             $rdimEff = $rdim;
         } elseif ($typeInstall === 1) {
             $rdimEff = $nbreAppt * $ratioVirt / $sumEchantillon;
-            // Borne surfacique : une install couvrant surface_chauffee = surface_immeuble
-            // représente déjà tout le bâtiment (rdimEff = 1).
-            $shImm    = $accessor->getFloatOrNull('//caracteristique_generale/surface_habitable_immeuble');
-            $surfInst = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $install);
-            if ($surfInst !== null && $surfInst > 0.0 && $shImm !== null && $shImm > 0.0) {
-                $rdimEff = min($rdimEff, $shImm / $surfInst);
-            }
         } else {
             $rdimEff = $rdim;
         }
@@ -352,15 +352,11 @@ final class EpConsoCalculator implements CalculatorInterface
 
         if ($methode === 1) {
             $rdimEff = $rdim;
+        } elseif ($methode === 4 && $typeInstall === 1) {
+            $rdimEff = EcsInstallationMultiplicity::sampledOrNull($install, $accessor)
+                ?? ($nbreAppt * $ratioVirt / $sumLogement);
         } elseif ($typeInstall === 1) {
             $rdimEff = $nbreAppt * $ratioVirt / $sumLogement;
-            // Borne surfacique : une install couvrant surface_habitable = surface_immeuble
-            // représente déjà tout le bâtiment (rdimEff = 1).
-            $shImm    = $accessor->getFloatOrNull('//caracteristique_generale/surface_habitable_immeuble');
-            $surfInst = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $install);
-            if ($surfInst !== null && $surfInst > 0.0 && $shImm !== null && $shImm > 0.0) {
-                $rdimEff = min($rdimEff, $shImm / $surfInst);
-            }
         } else {
             $rdimEff = $rdim;
         }

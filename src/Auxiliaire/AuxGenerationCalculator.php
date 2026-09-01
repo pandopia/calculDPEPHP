@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Auxiliaire;
 
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -116,7 +117,7 @@ final class AuxGenerationCalculator implements CalculatorInterface
         [$qauxCh, $qauxChDep, $cleRepartCh] = $this->computeChAux($accessor, $node, $isZone);
 
         // ── ECS auxiliaires ───────────────────────────────────────────────────
-        [$qauxEcs, $qauxEcsDep, $cleRepartEcs] = $this->computeEcsAux($accessor, $node, $isZone);
+        [$qauxEcs, $qauxEcsDep, $cleRepartEcs] = $this->computeEcsAux($accessor, $node, $isZone, $context);
 
         // ── Zone scaling ──────────────────────────────────────────────────────
         if ($isZone) {
@@ -184,15 +185,18 @@ final class AuxGenerationCalculator implements CalculatorInterface
                 [$g, $h, $pnCapKw] = $this->getGHch($accessor, $gen);
 
                 if ($ratioVirt > 0.0 && $ratioVirt < 1.0) {
-                    // Collective: pe = Pn_building (apartment pn / ratio_virt), capped
+                    // §15.1 collectif virtualisé : Pe et Paux sont calculés à
+                    // l'échelle du générateur bâtiment. Le besoin porté par
+                    // l'installation est déjà celui du logement représenté :
+                    // le ratio de virtualisation ne doit pas être réappliqué.
                     $pe     = min($pn / $ratioVirt, $pnCapKw * 1000.0);
                     $peKw   = $pe / 1000.0;
-                    $paux   = $g + ($h * $peKw) / $ratioVirt;
+                    $paux   = $g + $h * $peKw;
                     if ($paux <= 0.0) {
                         continue;
                     }
-                    $totalQ    += $ratioVirt * $paux * $besoin              * $ratioSurface / $pe;
-                    $totalQDep += $ratioVirt * $paux * ($besoin + $besoinDep) * $ratioSurface / $pe;
+                    $totalQ    += $paux * $besoin / $pe;
+                    $totalQDep += $paux * ($besoin + $besoinDep) / $pe;
                 } else {
                     $pnKw  = min($pn / 1000.0, $pnCapKw);
                     $paux  = $g + $h * $pnKw;
@@ -216,7 +220,12 @@ final class AuxGenerationCalculator implements CalculatorInterface
     /**
      * @return array{float, float, float} [Q_aux_ecs, Q_aux_ecs_dep, cle_repartition_ecs]
      */
-    private function computeEcsAux(NodeAccessor $accessor, DOMElement $logement, bool $isZone): array
+    private function computeEcsAux(
+        NodeAccessor $accessor,
+        DOMElement $logement,
+        bool $isZone,
+        CalculationContext $context,
+    ): array
     {
         $collection = $this->getChild($logement, 'installation_ecs_collection');
         if ($collection === null) {
@@ -232,13 +241,13 @@ final class AuxGenerationCalculator implements CalculatorInterface
                 continue;
             }
 
-            $besoin    = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs',           $install) ?? 0.0;
-            $besoinDep = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs_depensier', $install) ?? 0.0;
+            $xmlPerKwh = IntermediateEnergyUnit::xmlPerKwh($context->document);
+            $besoin    = ($accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs',           $install) ?? 0.0) / $xmlPerKwh;
+            $besoinDep = ($accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs_depensier', $install) ?? 0.0) / $xmlPerKwh;
             $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation',        $install) ?? 1.0;
             // rdim : nombre d'unités (appartements) représentées par cette installation.
             // Comme pour conso_ecs, la conso d'aux est agrégée à l'échelle bâtiment au niveau sortie.
-            $rdim      = $accessor->getFloatOrNull('./donnee_entree/rdim',                        $install) ?? 1.0;
-            $rdim      = $rdim > 0.0 ? $rdim : 1.0;
+            $rdim      = $this->ecsInstallationMultiplicity($accessor, $logement, $install);
 
             foreach ($install->getElementsByTagName('generateur_ecs') as $gen) {
                 if (!$gen instanceof DOMElement) {
@@ -254,12 +263,12 @@ final class AuxGenerationCalculator implements CalculatorInterface
                 if ($ratioVirt > 0.0 && $ratioVirt < 1.0) {
                     $pe     = min($pn / $ratioVirt, $pnCapKw * 1000.0);
                     $peKw   = $pe / 1000.0;
-                    $paux   = $g + ($h * $peKw) / $ratioVirt;
+                    $paux   = $g + $h * $peKw;
                     if ($paux <= 0.0) {
                         continue;
                     }
-                    $totalQ    += $rdim * $ratioVirt * $paux * $besoin    / $pe;
-                    $totalQDep += $rdim * $ratioVirt * $paux * $besoinDep / $pe;
+                    $totalQ    += $rdim * $paux * $besoin    / $pe;
+                    $totalQDep += $rdim * $paux * $besoinDep / $pe;
                 } else {
                     $pnKw  = min($pn / 1000.0, $pnCapKw);
                     $paux  = $g + $h * $pnKw;
@@ -278,6 +287,33 @@ final class AuxGenerationCalculator implements CalculatorInterface
         }
 
         return [$totalQ, $totalQDep, $cle];
+    }
+
+    /**
+     * §17.2 — multiplicateur effectif d'une installation ECS individuelle échantillonnée.
+     *
+     * @spec-formula F-17.2-rdim-effective
+     */
+    private function ecsInstallationMultiplicity(
+        NodeAccessor $accessor,
+        DOMElement $logement,
+        DOMElement $install,
+    ): float {
+        $rdim = $accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0;
+        $methode = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $install) ?? 1;
+        $type = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $install) ?? 1;
+        if ($methode === 1 || $type !== 1) {
+            return max(1e-9, $rdim);
+        }
+
+        $nbApt = $accessor->getFloatOrNull('./caracteristique_generale/nombre_appartement', $logement) ?? 1.0;
+        $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation', $install) ?? 1.0;
+        $sumSample = 0.0;
+        foreach ($logement->getElementsByTagName('installation_ecs') as $candidate) {
+            $sumSample += $accessor->getFloatOrNull('./donnee_entree/nombre_logement', $candidate) ?? 0.0;
+        }
+
+        return max(1e-9, $nbApt * $ratioVirt / max(1.0, $sumSample));
     }
 
     /**

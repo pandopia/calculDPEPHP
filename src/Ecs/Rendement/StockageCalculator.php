@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Ecs\Rendement;
 
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
+use DOMXPath;
 
 /**
  * Rendement de stockage ECS Rs (§11.6 p.74-75).
@@ -19,6 +21,8 @@ use DOMElement;
  *   Cr lu dans tv_pertes_stockage (tableau indexé par tv_pertes_stockage_id)
  *   Rs = 1,08 / (1 + Qg,w × Rd / Becs)  pour cat C ou 3*
  *   Rs = 1    / (1 + Qg,w × Rd / Becs)  pour les autres ballons électriques
+ *   En échantillonnage individuel (§17.1.2), Qg,w est ramené au logement
+ *   représentatif selon sa surface et celles des logements visités du groupe.
  *
  * Autres ballons (§11.6.1) :
  *   Qg,w = 67662 × Vs^0,55
@@ -42,6 +46,9 @@ final class StockageCalculator implements CalculatorInterface
 
     /** Identifiants CET — §14.2 traite leur Rs différemment */
     private const CET_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+    /** Réseaux de chaleur : Rs × Rg est traité globalement au §14.3. */
+    private const RESEAU_CHALEUR_IDS = [72, 73, 107, 108, 119];
 
     public function id(): string
     {
@@ -83,7 +90,10 @@ final class StockageCalculator implements CalculatorInterface
 
             if ($becsWh > 0.0) {
                 if ($isBallonElec) {
-                    $qgw   = $this->qgwElectrique($vs, $node, $accessor, $context);
+                    [$sampleScale, $reclassifyVolume] = $this->sampledIndividualAdjustment($node, $accessor, $context);
+                    $qgw = $reclassifyVolume
+                        ? $this->qgwElectrique($vs * $sampleScale, $node, $accessor, $context, true)
+                        : $this->qgwElectrique($vs, $node, $accessor, $context) * $sampleScale;
                     $catC  = $this->isCatCVertical($node, $accessor, $context);
                     $denom = 1.0 + $qgw * $rd / $becsWh;
                     $rs    = ($catC ? 1.08 : 1.0) / $denom;
@@ -97,30 +107,236 @@ final class StockageCalculator implements CalculatorInterface
 
         $di = $this->ensureDi($context->document, $node);
         // CET : rendement_stockage géré par CetAccumulationCalculator (= COP).
-        // On écrit Qgw seulement pour permettre la récupération des pertes (§9.1.1).
-        if (!$isCet) {
+        if (!$isCet && !in_array($typeGenId, self::RESEAU_CHALEUR_IDS, true)) {
             $accessor->setChildValue($di, 'rendement_stockage', $rs);
         }
-        $accessor->setChildValue($di, 'Qgw', $qgw);
+
+        // Qg,w sert à la récupération des pertes de stockage (§9.1.1) et au
+        // rendement des chaudières mixtes (§14.1.2). Il transite par le
+        // contexte et non par le XML : `Qgw` n'existe pas dans le schéma
+        // ADEME, et un fichier le contenant serait rejeté à la transmission.
+        $context->set(self::qgwKey($node), $qgw);
 
         $ref = $accessor->getStringOrNull('./donnee_entree/reference', $node) ?? '';
         $context->set('ecs.rendement_stockage.' . $ref, $rs);
     }
 
     /**
+     * Clé de partage de Qg,w pour un générateur ECS donné.
+     *
+     * Le chemin du nœud identifie le générateur de façon stable sur toute la
+     * durée d'un calcul : les Calculators n'ajoutent que des enfants
+     * `<donnee_intermediaire>`, jamais de fratrie aux générateurs.
+     */
+    public static function qgwKey(DOMElement $generateurEcs): string
+    {
+        return 'ecs.qgw.' . $generateurEcs->getNodePath();
+    }
+
+    /**
      * Qg,w pour ballon électrique : 8592 × (45/24) × Vs × Cr — §11.6.2 p.74.
      */
-    private function qgwElectrique(float $vs, DOMElement $node, NodeAccessor $accessor, CalculationContext $context): float
+    private function qgwElectrique(
+        float $vs,
+        DOMElement $node,
+        NodeAccessor $accessor,
+        CalculationContext $context,
+        bool $resolveFromDirectInputs = false,
+    ): float
     {
         $tvId = $accessor->getIntOrNull('./donnee_entree/tv_pertes_stockage_id', $node);
         $cr   = 0.25; // par défaut : cat C ≤100
 
-        if ($tvId !== null) {
+        if ($resolveFromDirectInputs) {
+            $typeGenId = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $node);
+            $categoryOffset = match ($typeGenId) {
+                68 => 0, // horizontal
+                69 => 1, // vertical autre/inconnu
+                70 => 2, // vertical catégorie B / 2 étoiles
+                71 => 3, // vertical catégorie C / 3 étoiles
+                default => $tvId !== null ? (($tvId - 1) % 4) : 3,
+            };
+            $volumeOffset = match (true) {
+                $vs <= 100.0 => 0,
+                $vs <= 200.0 => 4,
+                $vs <= 300.0 => 8,
+                default => 12,
+            };
+            $directId = 1 + $categoryOffset + $volumeOffset;
+            $table = $context->tables->load('ecs/tv_pertes_stockage');
+            $cr = (float)(($table[$directId] ?? [])['cr'] ?? $cr);
+        } elseif ($tvId !== null) {
             $table = $context->tables->load('ecs/tv_pertes_stockage');
             $cr    = (float)(($table[$tvId] ?? [])['cr'] ?? $cr);
         }
 
         return self::FACTEUR_ELEC * $vs * $cr;
+    }
+
+    /**
+     * §17.1.2 p.107-108 — caractéristiques du système d'un appartement moyen :
+     * la caractéristique observée est ramenée à la surface du logement
+     * représentatif par rapport aux surfaces de l'échantillon du groupe.
+     *
+     * Les installations sont ordonnées comme les groupes du XML. Le nombre de
+     * logements visités affecté à chaque groupe suit sa part de surface dans
+     * l'immeuble ; le dernier groupe reçoit le reliquat afin de conserver
+     * exhaustivement l'échantillon.
+     *
+     * @spec-formula F-17.1.2-systeme-appartement-moyen
+     */
+    /** @return array{float, bool} [coefficient_surface, reclasser_la_tranche_de_volume] */
+    private function sampledIndividualAdjustment(
+        DOMElement $genNode,
+        NodeAccessor $accessor,
+        CalculationContext $context,
+    ): array {
+        $installation = $this->findParentInstallation($genNode);
+        if ($installation === null) {
+            return [1.0, false];
+        }
+
+        $method = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $installation) ?? 1;
+        $type = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $installation) ?? 1;
+        if ($method !== 4 || $type !== 1) {
+            return [1.0, false];
+        }
+
+        $logement = $this->findAncestor($installation, 'logement');
+        if ($logement === null) {
+            return [1.0, false];
+        }
+
+        $representativeSurface = $accessor->getFloatOrNull(
+            './caracteristique_generale/surface_habitable_logement',
+            $logement,
+        );
+        if ($representativeSurface === null || $representativeSurface <= 0.0) {
+            return [1.0, false];
+        }
+
+        $xpath = new DOMXPath($context->document);
+        $visitedNodes = $xpath->query('//dpe_immeuble/logement_visite_collection/logement_visite/surface_habitable_logement');
+        if ($visitedNodes === false || $visitedNodes->length === 0) {
+            return [1.0, false];
+        }
+
+        $visitedSurfaces = [];
+        foreach ($visitedNodes as $visitedNode) {
+            $surface = (float)str_replace(',', '.', trim($visitedNode->textContent));
+            if ($surface > 0.0) {
+                $visitedSurfaces[] = $surface;
+            }
+        }
+        if ($visitedSurfaces === []) {
+            return [1.0, false];
+        }
+
+        $installations = [];
+        $totalInstallationSurface = 0.0;
+        foreach ($logement->getElementsByTagName('installation_ecs') as $candidate) {
+            if (!$candidate instanceof DOMElement) {
+                continue;
+            }
+            $candidateMethod = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $candidate) ?? 1;
+            $candidateType = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $candidate) ?? 1;
+            if ($candidateMethod !== 4 || $candidateType !== 1) {
+                continue;
+            }
+            $surface = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $candidate) ?? 0.0;
+            $installations[] = ['node' => $candidate, 'surface' => max(0.0, $surface)];
+            $totalInstallationSurface += max(0.0, $surface);
+        }
+        if ($installations === [] || $totalInstallationSurface <= 0.0) {
+            return [1.0, false];
+        }
+
+        // Lorsque chaque groupe ECS correspond sans ambiguïté à une typologie
+        // visitée, on dispose directement de Shmoy_système (§17.1.2).
+        $typologyGroups = [];
+        $visitedHomes = $xpath->query('//dpe_immeuble/logement_visite_collection/logement_visite');
+        if ($visitedHomes !== false) {
+            foreach ($visitedHomes as $visitedHome) {
+                if (!$visitedHome instanceof DOMElement) {
+                    continue;
+                }
+                $typology = $accessor->getStringOrNull('./enum_typologie_logement_id', $visitedHome);
+                $surface = $accessor->getFloatOrNull('./surface_habitable_logement', $visitedHome) ?? 0.0;
+                if ($typology !== null && $surface > 0.0) {
+                    $typologyGroups[$typology][] = $surface;
+                }
+            }
+        }
+
+        if (count($typologyGroups) === count($installations)) {
+            $availableGroups = $typologyGroups;
+            $matchedGroups = [];
+            $isUnambiguous = true;
+            foreach ($installations as $index => $candidate) {
+                $installationShare = $candidate['surface'] / $totalInstallationSurface;
+                $bestKey = null;
+                $bestDelta = INF;
+                foreach ($availableGroups as $key => $surfaces) {
+                    $groupShare = count($surfaces) / count($visitedSurfaces);
+                    $delta = abs($installationShare - $groupShare);
+                    if ($delta < $bestDelta) {
+                        $bestKey = $key;
+                        $bestDelta = $delta;
+                    }
+                }
+                if ($bestKey === null || $bestDelta > 0.02) {
+                    $isUnambiguous = false;
+                    break;
+                }
+                $matchedGroups[$index] = $availableGroups[$bestKey];
+                unset($availableGroups[$bestKey]);
+            }
+
+            if ($isUnambiguous) {
+                $buildingSurface = $accessor->getFloatOrNull(
+                    './caracteristique_generale/surface_habitable_immeuble',
+                    $logement,
+                ) ?? 0.0;
+                $apartmentCount = $accessor->getFloatOrNull(
+                    './caracteristique_generale/nombre_appartement',
+                    $logement,
+                ) ?? 0.0;
+                $averageApartmentSurface = $apartmentCount > 0.0
+                    ? $buildingSurface / $apartmentCount
+                    : $representativeSurface;
+
+                foreach ($installations as $index => $candidate) {
+                    if ($candidate['node']->isSameNode($installation)) {
+                        $sampleSurface = array_sum($matchedGroups[$index]);
+                        return $sampleSurface > 0.0
+                            ? [$averageApartmentSurface / $sampleSurface, true]
+                            : [1.0, false];
+                    }
+                }
+            }
+        }
+
+        $offset = 0;
+        $remainingVisits = count($visitedSurfaces);
+        $lastIndex = count($installations) - 1;
+        foreach ($installations as $index => $candidate) {
+            $count = $index === $lastIndex
+                ? $remainingVisits
+                : max(1, (int)round(count($visitedSurfaces) * $candidate['surface'] / $totalInstallationSurface));
+            $count = min($count, $remainingVisits - max(0, $lastIndex - $index));
+
+            if ($candidate['node']->isSameNode($installation)) {
+                $sampleSurface = array_sum(array_slice($visitedSurfaces, $offset, $count));
+                return $sampleSurface > 0.0
+                    ? [$representativeSurface / $sampleSurface, false]
+                    : [1.0, false];
+            }
+
+            $offset += $count;
+            $remainingVisits -= $count;
+        }
+
+        return [1.0, false];
     }
 
     /**
@@ -167,7 +383,7 @@ final class StockageCalculator implements CalculatorInterface
         if ($inst !== null) {
             $becs = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs', $inst);
             if ($becs !== null) {
-                return $becs * 1000.0; // kWh → Wh
+                return $becs * 1000.0 / IntermediateEnergyUnit::xmlPerKwh($context->document);
             }
         }
         return (float)$context->get('ecs.besoin_ecs', 0.0) * 1000.0;
@@ -181,6 +397,18 @@ final class StockageCalculator implements CalculatorInterface
                 return $cur;
             }
             $cur = $cur->parentNode;
+        }
+        return null;
+    }
+
+    private function findAncestor(DOMElement $node, string $tagName): ?DOMElement
+    {
+        $current = $node->parentNode;
+        while ($current !== null) {
+            if ($current instanceof DOMElement && $current->nodeName === $tagName) {
+                return $current;
+            }
+            $current = $current->parentNode;
         }
         return null;
     }

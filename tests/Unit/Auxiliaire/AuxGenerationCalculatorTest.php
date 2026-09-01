@@ -205,6 +205,37 @@ XML;
         $this->assertEqualsWithDelta($expectedQch, $this->efValue($doc, 'conso_auxiliaire_generation_ch'), 0.001);
     }
 
+    public function testCollectiveVirtualizedBoilerUsesBuildingPowerWithoutDoubleScaling(): void
+    {
+        $xml = <<<'XML'
+<logement>
+  <caracteristique_generale><surface_habitable_logement>44</surface_habitable_logement><surface_habitable_immeuble>1500</surface_habitable_immeuble></caracteristique_generale>
+  <installation_chauffage_collection><installation_chauffage>
+    <donnee_entree><surface_chauffee>44</surface_chauffee><ratio_virtualisation>0.02933</ratio_virtualisation></donnee_entree>
+    <donnee_intermediaire><besoin_ch>4480.47366624454</besoin_ch><besoin_ch_depensier>5732.53837310582</besoin_ch_depensier></donnee_intermediaire>
+    <generateur_chauffage_collection><generateur_chauffage>
+      <donnee_entree><enum_type_generateur_ch_id>88</enum_type_generateur_ch_id></donnee_entree>
+      <donnee_intermediaire><pn>11733.33</pn></donnee_intermediaire>
+    </generateur_chauffage></generateur_chauffage_collection>
+  </installation_chauffage></installation_chauffage_collection>
+  <installation_ecs_collection><installation_ecs>
+    <donnee_entree><ratio_virtualisation>0.02933</ratio_virtualisation></donnee_entree>
+    <donnee_intermediaire><besoin_ecs>1071.96332565</besoin_ecs><besoin_ecs_depensier>1512.23397725625</besoin_ecs_depensier></donnee_intermediaire>
+    <generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>48</enum_type_generateur_ecs_id></donnee_entree><donnee_intermediaire><pn>11733.33</pn></donnee_intermediaire></generateur_ecs>
+  </installation_ecs></installation_ecs_collection>
+  <sortie/>
+</logement>
+XML;
+        [$doc, $logement, $ctx] = $this->buildDoc($xml);
+
+        (new AuxGenerationCalculator())->calculate($logement, $ctx);
+
+        self::assertEqualsWithDelta(7.3927816, $this->efValue($doc, 'conso_auxiliaire_generation_ch'), 1e-6);
+        self::assertEqualsWithDelta(16.85147, $this->efValue($doc, 'conso_auxiliaire_generation_ch_depensier'), 1e-6);
+        self::assertEqualsWithDelta(1.7687395, $this->efValue($doc, 'conso_auxiliaire_generation_ecs'), 1e-6);
+        self::assertEqualsWithDelta(2.4951861, $this->efValue($doc, 'conso_auxiliaire_generation_ecs_depensier'), 1e-6);
+    }
+
     public function testNoPnSkipsGenerator(): void
     {
         $xml = <<<XML
@@ -259,5 +290,26 @@ XML;
 
         $this->assertEqualsWithDelta(0.0, $this->efValue($doc, 'conso_auxiliaire_generation_ch'), 1e-9);
         $this->assertEqualsWithDelta(0.0, $this->efValue($doc, 'conso_auxiliaire_generation_ecs'), 1e-9);
+    }
+
+    public function testSampledIndividualEcsAuxiliaryUsesEffectiveMultiplicity(): void
+    {
+        $xml = <<<'XML'
+<logement><caracteristique_generale><surface_habitable_logement>54</surface_habitable_logement>
+<surface_habitable_immeuble>1545</surface_habitable_immeuble><nombre_appartement>21</nombre_appartement></caracteristique_generale>
+<installation_chauffage_collection/><installation_ecs_collection><installation_ecs><donnee_entree>
+<enum_type_installation_id>1</enum_type_installation_id><enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id>
+<nombre_logement>1</nombre_logement><ratio_virtualisation>1</ratio_virtualisation><rdim>1</rdim>
+<cle_repartition_ecs>0.042753700986532119</cle_repartition_ecs></donnee_entree>
+<donnee_intermediaire><besoin_ecs>1307.63159877</besoin_ecs><besoin_ecs_depensier>1844.69457683625</besoin_ecs_depensier></donnee_intermediaire>
+<generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>56</enum_type_generateur_ecs_id></donnee_entree>
+<donnee_intermediaire><pn>24000</pn></donnee_intermediaire></generateur_ecs>
+</installation_ecs></installation_ecs_collection><sortie/></logement>
+XML;
+        [$doc, $logement, $ctx] = $this->buildDoc($xml);
+
+        (new AuxGenerationCalculator())->calculate($logement, $ctx);
+
+        $this->assertEqualsWithDelta(2.8568012, $this->efValue($doc, 'conso_auxiliaire_generation_ecs'), 1e-6);
     }
 }

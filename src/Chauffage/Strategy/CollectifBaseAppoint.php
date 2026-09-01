@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Chauffage\Strategy;
 
+use CalculDpePHP\Common\ClimaticSolicitations;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -130,7 +131,7 @@ final class CollectifBaseAppoint implements CalculatorInterface
         $ilpa = ($matAnciensRaw === 1 && $inertieId >= 3) ? 1 : 0;
 
         // ── 4. Tables climatiques ─────────────────────────────────────────────
-        $tvS    = $context->tables->load('reference/tv_sollicitations')[$zoneId][$altId] ?? [];
+        $tvS    = ClimaticSolicitations::heating($context, $zoneId, $altId);
         $tvDH14 = $context->tables->load('chauffage/dh14_base_appoint')[$ilpa][$altId] ?? [];
         $tvText = $context->tables->load('chauffage/text_mensuel_base_appoint')[$ilpa][$altId] ?? [];
 

@@ -182,7 +182,10 @@ final class ChaudiereProfilChargeCalculator implements CalculatorInterface
     /**
      * Résout la période d'installation des émetteurs.
      * Lit en priorité `enum_periode_installation_emetteur_id` (1=avant 1981, 2=1981-2000, 3=après 2000),
-     * sinon retombe sur `annee_installation_emetteur`, sinon sur `annee_construction`.
+     * sinon retombe sur `annee_installation_emetteur`. Les exports ADEME où
+     * les deux champs sont absents utilisent conventionnellement la période
+     * récente ; l'année de construction ne sert de repli que lorsque le bloc
+     * émetteur est lui-même indisponible.
      */
     private function resolvePeriodeEmetteur(DOMElement $node, NodeAccessor $accessor): string
     {
@@ -199,6 +202,18 @@ final class ChaudiereProfilChargeCalculator implements CalculatorInterface
                     default => 'apres_2000',
                 };
             }
+
+            $anneeEmetteur = $accessor->getIntOrNull(
+                './emetteur_chauffage_collection/emetteur_chauffage/donnee_entree/annee_installation_emetteur',
+                $parent,
+            );
+            if ($anneeEmetteur !== null) {
+                return $this->periodeEmetteur($anneeEmetteur);
+            }
+
+            // Compatibilité avec la valeur par défaut des exports ADEME 2.6
+            // lorsque l'enum de période optionnel n'est pas sérialisé.
+            return 'apres_2000';
         }
 
         $anneeBat = $accessor->getIntOrNull('//caracteristique_generale/annee_construction', $node) ?? 2000;

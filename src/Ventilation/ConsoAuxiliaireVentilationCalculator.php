@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Ventilation;
 
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -52,6 +53,17 @@ final class ConsoAuxiliaireVentilationCalculator implements CalculatorInterface
 
         $pventMoy = $accessor->getFloatOrNull('./pvent_moy', $intermediaire) ?? 0.0;
         $caux = 8760.0 * $pventMoy / 1000.0;
+        if (IntermediateEnergyUnit::isNativeAdeme($context->document)) {
+            // Le format natif conserve des sentinelles dans la ventilation,
+            // mais la sortie globale doit recevoir la consommation calculée.
+            $context->set(
+                'ventilation.caux_reel',
+                (float)$context->get('ventilation.caux_reel', 0.0) + $caux,
+            );
+            $accessor->setChildValue($intermediaire, 'pvent_moy', 0.0);
+            $accessor->setChildValue($intermediaire, 'conso_auxiliaire_ventilation', 1.0);
+            return;
+        }
         // LICIEL arrondit la copie donnee_intermediaire à l'entier (la valeur
         // pleine précision va dans sortie/ef_conso via VentilationAggregator,
         // qui recalcule depuis pvent_moy).

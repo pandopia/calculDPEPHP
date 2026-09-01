@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Sortie;
 
+use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -30,7 +32,7 @@ use DOMElement;
  *                sortie.ef_conso.{conso_eclairage, conso_totale_auxiliaire, conso_fr}
  * @xml-output    sortie.sortie_par_energie_collection.sortie_par_energie[]
  * @depends-on    \CalculDpePHP\Sortie\EpConsoCalculator, \CalculDpePHP\Sortie\EmissionGesCalculator, \CalculDpePHP\Sortie\CoutCalculator
- * @tables        (aucune)
+ * @tables        reference/tv_reseau_chaleur
  */
 final class SortieParEnergieAggregator implements CalculatorInterface
 {
@@ -136,12 +138,16 @@ final class SortieParEnergieAggregator implements CalculatorInterface
         // ── 2. Collecter les consos par energie depuis les générateurs CH ──────
         /** @var array<int, float[]> */
         $chByEnergie  = []; // energieId → [conso, consoDep]
-        $this->collectGenConso($accessor, $node, 'installation_chauffage', 'generateur_chauffage', 'conso_ch', $chByEnergie, $isZone, $nbreAppt);
+        /** @var array<int, float> */
+        $chReseauGes = [];
+        $this->collectGenConso($accessor, $node, 'installation_chauffage', 'generateur_chauffage', 'conso_ch', $chByEnergie, $chReseauGes, $isZone, $nbreAppt, $context);
 
         // ── 3. Collecter les consos par energie depuis les générateurs ECS ─────
         /** @var array<int, float[]> */
         $ecsByEnergie = []; // energieId → [conso, consoDep]
-        $this->collectGenConso($accessor, $node, 'installation_ecs', 'generateur_ecs', 'conso_ecs', $ecsByEnergie, $isZone, $nbreAppt);
+        /** @var array<int, float> */
+        $ecsReseauGes = [];
+        $this->collectGenConso($accessor, $node, 'installation_ecs', 'generateur_ecs', 'conso_ecs', $ecsByEnergie, $ecsReseauGes, $isZone, $nbreAppt, $context);
 
         // ── 4. Union des types d'énergie + toujours électricité (id=1) ─────────
         $energieIds = array_unique(array_merge(
@@ -149,7 +155,11 @@ final class SortieParEnergieAggregator implements CalculatorInterface
             array_keys($chByEnergie),
             array_keys($ecsByEnergie),
         ));
-        rsort($energieIds); // non-électrique d'abord, électricité en dernier (idem verif)
+        if (IntermediateEnergyUnit::usesAscendingEnergyOrder($context->document)) {
+            sort($energieIds);
+        } else {
+            rsort($energieIds); // exports historiques : non-électrique d'abord
+        }
 
         // ── 5. Construire le bloc par énergie ──────────────────────────────────
         $collection = $context->document->createElement('sortie_par_energie_collection');
@@ -180,8 +190,8 @@ final class SortieParEnergieAggregator implements CalculatorInterface
             $gesCoefCh  = self::GES[self::GES_KEY_CH[$eId]  ?? 'gaz_naturel'] ?? 0.0;
             $gesCoefEcs = self::GES[self::GES_KEY_ECS[$eId] ?? 'gaz_naturel'] ?? 0.0;
 
-            $gesChE  = $consoChE  * $gesCoefCh;
-            $gesEcsE = $consoEcsE * $gesCoefEcs;
+            $gesChE  = $eId === 8 ? ($chReseauGes[$eId] ?? 0.0) : $consoChE * $gesCoefCh;
+            $gesEcsE = $eId === 8 ? ($ecsReseauGes[$eId] ?? 0.0) : $consoEcsE * $gesCoefEcs;
             $ges5E   = $gesChE + $gesEcsE;
 
             if ($eId === 1 || $eId === 12) {
@@ -220,6 +230,7 @@ final class SortieParEnergieAggregator implements CalculatorInterface
      * Collecte les consos par énergie depuis les générateurs d'une collection.
      *
      * @param array<int, float[]> $byEnergie
+     * @param array<int, float> $reseauGesByEnergie
      */
     /**
      * Mise à l'échelle identique à EfConsoCalculator (§17) :
@@ -233,8 +244,10 @@ final class SortieParEnergieAggregator implements CalculatorInterface
         string $genTag,
         string $consoField,
         array &$byEnergie,
+        array &$reseauGesByEnergie,
         bool $isZone,
-        float $nbreAppt
+        float $nbreAppt,
+        CalculationContext $context,
     ): void {
         $consoDepField = $consoField . '_depensier';
         $collTag  = $installTag . '_collection';
@@ -270,18 +283,11 @@ final class SortieParEnergieAggregator implements CalculatorInterface
 
                 if ($methode === 1) {
                     $rdimEff = $rdim;
+                } elseif (!$isCh && $methode === 4 && $typeInstall === 1) {
+                    $rdimEff = EcsInstallationMultiplicity::sampledOrNull($install, $accessor)
+                        ?? ($nbreAppt * $ratioVirt / $sumEchantillon);
                 } elseif ($typeInstall === 1) {
                     $rdimEff = $nbreAppt * $ratioVirt / $sumEchantillon;
-                    // Borne surfacique : une install couvrant toute la surface immeuble
-                    // représente déjà tout le bâtiment (rdimEff = 1).
-                    $shImm    = $accessor->getFloatOrNull('//caracteristique_generale/surface_habitable_immeuble');
-                    $surfInst = $accessor->getFloatOrNull(
-                        './donnee_entree/' . ($isCh ? 'surface_chauffee' : 'surface_habitable'),
-                        $install,
-                    );
-                    if ($surfInst !== null && $surfInst > 0.0 && $shImm !== null && $shImm > 0.0) {
-                        $rdimEff = min($rdimEff, $shImm / $surfInst);
-                    }
                 } else {
                     $rdimEff = $rdim;
                 }
@@ -293,6 +299,27 @@ final class SortieParEnergieAggregator implements CalculatorInterface
                     $cle = $accessor->getFloatOrNull('./donnee_entree/' . $cleField, $install);
                     if ($cle !== null && $cle > 0.0) {
                         $scale *= $cle;
+                    }
+                }
+
+                // Le format ADEME natif reprend le total de l'installation
+                // lorsqu'elle ne possède qu'un générateur. Cela évite les
+                // écarts de précision dus au rendement réécrit sur le générateur.
+                $generators = $install->getElementsByTagName($genTag);
+                if (IntermediateEnergyUnit::isNativeAdeme($context->document) && $generators->length === 1) {
+                    $gen = $generators->item(0);
+                    if ($gen instanceof DOMElement) {
+                        $eId = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $gen) ?? 1;
+                        $conso = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoField, $install) ?? 0.0) * $scale;
+                        $consoDep = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoDepField, $install) ?? 0.0) * $scale;
+                        $byEnergie[$eId] ??= [0.0, 0.0];
+                        $byEnergie[$eId][0] += $conso;
+                        $byEnergie[$eId][1] += $consoDep;
+                        if ($eId === 8) {
+                            $factor = ReseauChaleurFactorResolver::resolve($gen, $accessor, $context);
+                            $reseauGesByEnergie[$eId] = ($reseauGesByEnergie[$eId] ?? 0.0) + $conso * $factor;
+                        }
+                        continue;
                     }
                 }
 
@@ -312,6 +339,10 @@ final class SortieParEnergieAggregator implements CalculatorInterface
                         }
                         $byEnergie[$eId][0] += $conso;
                         $byEnergie[$eId][1] += $consoDep;
+                        if ($eId === 8) {
+                            $factor = ReseauChaleurFactorResolver::resolve($gen, $accessor, $context);
+                            $reseauGesByEnergie[$eId] = ($reseauGesByEnergie[$eId] ?? 0.0) + $conso * $factor;
+                        }
                     }
                 }
             }

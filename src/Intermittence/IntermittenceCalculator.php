@@ -80,7 +80,7 @@ final class IntermittenceCalculator implements CalculatorInterface
         $regulationId  = $accessor->getIntOrNull('./enum_type_regulation_id', $de);
         $emetteurId    = $accessor->getIntOrNull('./enum_type_emission_distribution_id', $de);
 
-        $batimentType  = $this->batimentType($context, $equipementId);
+        $batimentType  = $this->batimentType($node, $context, $equipementId, $accessor);
         $chauffageType = $chauffageId === 1 ? 'divise' : 'central';
         $regulation    = $regulationId === 2 ? 'avec' : 'sans';
         $emetteur      = $this->emetteurCategory($emetteurId);
@@ -123,8 +123,22 @@ final class IntermittenceCalculator implements CalculatorInterface
         return (float)($row[$equipementId] ?? $row[1] ?? 1.0);
     }
 
-    private function batimentType(CalculationContext $context, ?int $equipementId): string
+    private function batimentType(
+        DOMElement $node,
+        CalculationContext $context,
+        ?int $equipementId,
+        NodeAccessor $accessor,
+    ): string
     {
+        // §8 p.57 : la table « immeuble collectif / chauffage collectif » est
+        // déterminée par l'installation commune, même lorsque l'équipement
+        // d'intermittence est codé « absent » (ID 1) dans l'export ADEME.
+        $installation = $node->parentNode?->parentNode;
+        if ($installation instanceof DOMElement
+            && $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $installation) === 2) {
+            return 'collectif_collectif';
+        }
+
         if ($equipementId !== null && in_array($equipementId, [6, 7], true)) {
             return 'collectif_collectif';
         }
@@ -174,8 +188,13 @@ final class IntermittenceCalculator implements CalculatorInterface
             return (string)$cached;
         }
 
-        $key = 'absent';
         $xpath = new \DOMXPath($context->document);
+        $mode = (int)$xpath->evaluate('string(//caracteristique_generale/enum_methode_application_dpe_log_id)');
+        // Dans les méthodes mixtes, la part collective est nécessairement
+        // individualisée pour être répartie avec ratio_virtualisation (§17.2).
+        $key = in_array($mode, [26, 27, 28, 31, 32, 33, 34, 35, 38], true)
+            ? 'present'
+            : 'absent';
         $nodes = $xpath->query(
             '//fiche_technique[enum_categorie_fiche_technique_id="7"]'
             . '//sous_fiche_technique[contains(translate(description, "PRÉSENCEC", "présencec"), "comptage")]/valeur'

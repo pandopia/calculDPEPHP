@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Auxiliaire;
 
+use CalculDpePHP\Common\ClimaticSolicitations;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -175,9 +176,13 @@ final class AuxDistributionCalculator implements CalculatorInterface
         $cle       = 1.0;
 
         // Surface habitable de référence pour Lem/shFactor (= bâtiment complet pour immeuble, sinon logement)
-        $shRef = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement)
-            ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement',   $logement)
-            ?? 0.0;
+        $modeApp = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $logement);
+        $isAppartementMixte = $modeApp !== null && in_array($modeApp, [31, 32, 35], true);
+        $shRef = $isAppartementMixte
+            ? ($accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement) ?? 0.0)
+            : ($accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement)
+                ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement)
+                ?? 0.0);
 
         foreach ($collection->childNodes as $install) {
             if (!$install instanceof DOMElement || $install->nodeName !== 'installation_chauffage') {
@@ -216,7 +221,7 @@ final class AuxDistributionCalculator implements CalculatorInterface
             //     chaque appartement a son propre circulateur → on calcule à l'échelle
             //     d'un appartement « moyen » (Sh/rdim, GV/rdim) puis on multiplie par rdim
             //     pour obtenir le total bâtiment. Le plancher de 30 W joue par circulateur.
-            $rdimInstall = $accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0;
+            $rdimInstall = $this->heatingInstallationMultiplicity($accessor, $logement, $install);
             $rdimInstall = $rdimInstall > 0.0 ? $rdimInstall : 1.0;
             $isIndividuelMultiplie = ($typeInstall === 1 && $rdimInstall > 1.0);
 
@@ -264,13 +269,14 @@ final class AuxDistributionCalculator implements CalculatorInterface
         $totalCaux = 0.0;
         $cle       = 1.0;
 
-        // DPE appartement / zone (modes 2-5, 10-13, 31-40) : la conso d'aux de
+        // DPE appartement / zone (modes 2-4, 10-13, 31-40) : la conso d'aux de
         // distribution ECS collective est portée par l'immeuble — LICIEL ne la
-        // facture pas au niveau apt. On la laisse à 0.
+        // facture pas au niveau apt. Le mode 5 est une virtualisation directe de
+        // l'installation collective : son réseau local reste donc à calculer.
         $modeAppId  = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $logement);
         $isZoneDpe  = $modeAppId !== null && in_array(
             $modeAppId,
-            [2, 3, 4, 5, 10, 11, 12, 13, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
+            [2, 3, 4, 10, 11, 12, 13, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
             true,
         );
         if ($isZoneDpe) {
@@ -292,6 +298,13 @@ final class AuxDistributionCalculator implements CalculatorInterface
                 continue;
             }
 
+            // §15.2.3 ne prévoit un circulateur que pour un réseau bouclé.
+            // XSD : 1=non bouclé, 2=bouclé, 3=traceur chauffant.
+            $bouclage = $accessor->getIntOrNull('./donnee_entree/enum_bouclage_reseau_ecs_id', $install);
+            if ($bouclage !== 2) {
+                continue;
+            }
+
             $sh       = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $install) ?? 0.0;
             $niv      = $accessor->getFloatOrNull('./donnee_entree/nombre_niveau_installation_ecs', $install) ?? 1.0;
             $isolated = (int)($accessor->getFloatOrNull('./donnee_entree/reseau_distribution_isole', $install) ?? 0);
@@ -300,11 +313,26 @@ final class AuxDistributionCalculator implements CalculatorInterface
                 continue;
             }
 
-            $lb    = 4.0 * sqrt($sh / $niv) + 6.0 * ($niv - 0.5);
+            // §17.2 : en mode zone collectif, le circulateur est dimensionné à
+            // l'échelle de l'immeuble, puis sa consommation est ramenée au
+            // logement par ratio_virtualisation. Dimensionner directement sur
+            // 44 m² ferait jouer à tort le plancher de 20 W au logement entier.
+            $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation', $install) ?? 1.0;
+            $isVirtualized = $ratioVirt > 0.0 && $ratioVirt < 1.0;
+            $shCalc = $isVirtualized ? $sh / $ratioVirt : $sh;
+            $becsCalc = $becsMonthly;
+            if ($isVirtualized) {
+                $becsCalc = array_map(
+                    static fn(mixed $value): float => (float)$value / $ratioVirt,
+                    $becsMonthly,
+                );
+            }
+
+            $lb    = 4.0 * sqrt($shCalc / $niv) + 6.0 * ($niv - 0.5);
             $deltaPb = 0.2 * $lb + 10.0;
 
-            $qcirb = $this->computeBouclageAnnuel($becsMonthly, $sh, $deltaPb, $isolated);
-            $totalCaux += $qcirb / 1000.0;
+            $qcirb = $this->computeBouclageAnnuel($becsCalc, $shCalc, $deltaPb, $isolated);
+            $totalCaux += $qcirb * ($isVirtualized ? $ratioVirt : 1.0) / 1000.0;
 
             $cleInst = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
             if ($cleInst !== null && $cleInst > 0.0) {
@@ -313,6 +341,33 @@ final class AuxDistributionCalculator implements CalculatorInterface
         }
 
         return [$totalCaux, $cle];
+    }
+
+    /**
+     * §17.2 — multiplicateur effectif d'une installation CH individuelle échantillonnée.
+     *
+     * @spec-formula F-17.2-rdim-effective
+     */
+    private function heatingInstallationMultiplicity(
+        NodeAccessor $accessor,
+        DOMElement $logement,
+        DOMElement $install,
+    ): float {
+        $rdim = $accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0;
+        $methode = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $install) ?? 1;
+        $type = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $install) ?? 1;
+        if ($methode === 1 || $type !== 1) {
+            return max(1e-9, $rdim);
+        }
+
+        $nbApt = $accessor->getFloatOrNull('./caracteristique_generale/nombre_appartement', $logement) ?? 1.0;
+        $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation', $install) ?? 1.0;
+        $sumSample = 0.0;
+        foreach ($logement->getElementsByTagName('installation_chauffage') as $candidate) {
+            $sumSample += $accessor->getFloatOrNull('./donnee_entree/nombre_logement_echantillon', $candidate) ?? 0.0;
+        }
+
+        return max(1e-9, $nbApt * $ratioVirt / max(1.0, $sumSample));
     }
 
     /**
@@ -481,9 +536,8 @@ final class AuxDistributionCalculator implements CalculatorInterface
             return 0.0;
         }
 
-        $table = $context->tables->load('reference/tv_sollicitations');
-        $zoneData = $table[$zoneId][$altId] ?? null;
-        if ($zoneData === null) {
+        $zoneData = ClimaticSolicitations::heating($context, $zoneId, $altId);
+        if ($zoneData === []) {
             return 0.0;
         }
 

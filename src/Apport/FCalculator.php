@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Apport;
 
+use CalculDpePHP\Common\IntermediateEnergyUnit;
+use CalculDpePHP\Common\ClimaticSolicitations;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -129,8 +131,8 @@ final class FCalculator implements CalculatorInterface
         // ── 5. Données climatiques ──────────────────────────────────────────────
         $zoneId = $context->zoneClimatique !== null ? (int)$context->zoneClimatique : null;
         $altId  = $context->classeAltitude  !== null ? (int)$context->classeAltitude  : null;
-        $tvS    = ($zoneId !== null && $altId !== null)
-            ? ($context->tables->load('reference/tv_sollicitations')[$zoneId][$altId] ?? null)
+        $tvS = ($zoneId !== null && $altId !== null)
+            ? ClimaticSolicitations::heating($context, $zoneId, $altId)
             : null;
 
         // ── 6. Boucle mensuelle ─────────────────────────────────────────────────
@@ -199,8 +201,9 @@ final class FCalculator implements CalculatorInterface
             array_sum($sseMensuel) + array_sum($sseEtsMensuel));
         $accessor->setChildValue($apportEtBesoin, 'apport_solaire_fr',      0);
         $accessor->setChildValue($apportEtBesoin, 'apport_interne_fr',      0);
-        $accessor->setChildValue($apportEtBesoin, 'apport_solaire_ch',      $apportSolaireCh);
-        $accessor->setChildValue($apportEtBesoin, 'apport_interne_ch',      $apportInterneCh);
+        $xmlPerKwh = IntermediateEnergyUnit::apportXmlPerKwh($context->document);
+        $accessor->setChildValue($apportEtBesoin, 'apport_solaire_ch',      $apportSolaireCh * $xmlPerKwh);
+        $accessor->setChildValue($apportEtBesoin, 'apport_interne_ch',      $apportInterneCh * $xmlPerKwh);
         $accessor->setChildValue($apportEtBesoin, 'fraction_apport_gratuit_ch',           $fractionCh);
         $accessor->setChildValue($apportEtBesoin, 'fraction_apport_gratuit_depensier_ch', $fractionChDepensier);
         $accessor->setChildValue($apportEtBesoin, 'nadeq', $nadeq);

@@ -106,6 +106,39 @@ XML;
         return $ctx;
     }
 
+    public function testUsesDepensierGenerationYieldWhenAvailable(): void
+    {
+        [$doc, $node] = $this->buildXml(
+            bchImmeuble: 1000.0,
+            bchDepImmeuble: 1400.0,
+            gv: 250.0,
+            surfaceChauffee: 100.0,
+            shImmeuble: 100.0,
+            hsp: 2.5,
+            nbreAppartement: 1,
+            rdim: 1.0,
+            ratioVirt: 1.0,
+            methode: 1,
+            typeInstall: 1,
+            nombreEchantillon: 1,
+            i0: 1.0,
+            re: 1.0,
+            rd: 1.0,
+            rr: 1.0,
+            rg: 0.7,
+        );
+        $context = $this->makeContext($doc, 1000.0, 1400.0, 250.0);
+        $context->set('chauffage.rendement_generation_depensier', ['#0' => 0.8]);
+
+        (new InstallationClassique())->calculate($node, $context);
+
+        $installDi = (new \DOMXPath($doc))->query('./donnee_intermediaire', $node)->item(0);
+        $nominal = (float)$installDi->getElementsByTagName('conso_ch')->item(0)->textContent;
+        $depensier = (float)$installDi->getElementsByTagName('conso_ch_depensier')->item(0)->textContent;
+        self::assertEqualsWithDelta(1000.0 / 0.7, $nominal, 1e-6);
+        self::assertEqualsWithDelta(1400.0 / 0.8, $depensier, 1e-6);
+    }
+
     /**
      * Cas BAT pre2026 : 10 installations identiques, rdim=12.7, methode=1.
      *

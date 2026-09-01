@@ -27,7 +27,7 @@ use DOMElement;
  * @spec-pages   86-92
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
  * @xml-input    generateur_chauffage.donnee_entree.{tv_generateur_combustion_id, enum_methode_saisie_carac_sys_id, pn, presence_ventouse}
- * @xml-output   generateur_chauffage.donnee_intermediaire.{pn, rpn, rpint, qp0, pveil}
+ * @xml-output   generateur_chauffage.donnee_intermediaire.{pn, rpn, rpint, qp0, pveilleuse}
  * @depends-on   \CalculDpePHP\Enveloppe\EnveloppeAggregator, \CalculDpePHP\Ventilation\VentilationAggregator
  * @tables       chauffage/tv_generateur_combustion
  */
@@ -104,7 +104,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         //   4 → pn,rpn,rpint,qp0 ; 5 → pn,rpn,rpint,qp0 (+temp_fonc).
         // Les champs NON saisis restent forfaitaires (table tv_generateur_combustion).
         $saisieFields = match (true) {
-            $methode >= 4  => ['pn', 'rpn', 'rpint', 'qp0', 'pveil'],
+            $methode >= 4  => ['pn', 'rpn', 'rpint', 'qp0', 'pveilleuse'],
             $methode === 3 => ['pn', 'rpn', 'rpint'],
             $methode === 2 => ['pn'],
             default        => [],
@@ -138,6 +138,12 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
 
         // Ratio de virtualisation pour installations collectives (§17.2)
         $ratioVirt = $this->getRatioVirtualisation($node, $accessor);
+        $modeApp = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
+        $mixedHeatingMode = $modeApp !== null && in_array($modeApp, [26, 27, 28, 31, 32, 33, 34, 35, 38], true);
+        // En chauffage mixte, ratio_virtualisation est une clé de couverture
+        // entre parts collective et individuelle, pas un changement d'échelle
+        // du générateur décrit pour le logement.
+        $ratioForCharacteristics = $ratioVirt;
 
         // Puissance nominale : depuis donnee_entree/donnee_intermediaire si saisie,
         // sinon calculée depuis GV
@@ -145,42 +151,43 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         $pnW = $pnSaisi;
         if ($pnW === null || $pnW <= 0.0) {
             // §13.2.2.4 : Pch (kW) au scale approprié
-            $modeApp = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
             $nblgt   = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement') ?? 1;
             $isImmeubleIndividuel = $modeApp !== null
                 && in_array($modeApp, self::MODES_IMMEUBLE_INDIVIDUEL, true)
                 && $nblgt > 1;
 
-            $pchW = $this->computePnFromGv($context, $ratioVirt, $genId);
+            $pchW = $this->computePnFromGv($context, $mixedHeatingMode ? 1.0 : $ratioVirt, $genId);
             if ($isImmeubleIndividuel) {
-                // §17.1.4.2 : pour un DPE immeuble chauffage individuel, Pch reflète
-                // la portion d'immeuble servie par cette installation.
-                //   • Modes 10/12 (appartement généré depuis immeuble) : Pch au prorata
-                //     de la surface de l'installation, y compris ratio = 1 quand elle
-                //     couvre tout l'immeuble (LICIEL dimensionne alors à l'échelle
-                //     immeuble, plaffonné à 400 kW).
-                //   • Modes 6/8 (DPE immeuble) : prorata si l'installation ne couvre
-                //     qu'une partie de l'immeuble, sinon « appartement moyen » /nblgt.
-                $shImmeuble = $accessor->getFloatOrNull('//caracteristique_generale/surface_habitable_immeuble', $node);
-                $shInstall  = $this->getSurfaceInstallation($node, $accessor);
-                $isGeneratedFromImmeuble = in_array($modeApp, [10, 12], true);
-                $hasSurfaces = $shImmeuble !== null && $shImmeuble > 0.0
-                    && $shInstall !== null && $shInstall > 0.0;
-                if ($hasSurfaces && ($isGeneratedFromImmeuble || $shInstall < $shImmeuble)) {
-                    $pchW = $pchW * min(1.0, $shInstall / $shImmeuble);
-                } else {
-                    $pchW = $pchW / $nblgt;
-                }
+                // §17.1.4.2 : a DPE generated from an apartment building still
+                // models individual heating at the average-apartment scale. The
+                // installation's declared surface can cover a sampling group and
+                // must not size every individual boiler at that group scale.
+                $pchW = $pchW / $nblgt;
             }
 
-            // Pour les chaudières mixtes, Pdim = max(Pch, Pecs) puis Pn lue dans la table §13.2.2.4
-            $pecsW = $this->computePecsForMixte($node, $accessor);
-            if ($pecsW > 0.0) {
-                $pdimKw = max($pchW, $pecsW) / 1000.0;
-                $pnW    = $this->lookupPnFromPdim($pdimKw, $node, $accessor) * 1000.0;
-            } else {
-                // Chaudière non-mixte : Pn ≈ Pch (formule directe §13.2.2.4)
+            // §17.2 / convention ADEME : une chaudière collective virtualisée
+            // gaz/fioul est représentée par la puissance bâtiment plafonnée à
+            // 400 kW, puis ramenée au logement via ratio_virtualisation.
+            // Les exports de référence portent donc pn = 400000 × ratio.
+            $pnCap = $this->getPnCap($genId);
+            if ($mixedHeatingMode) {
                 $pnW = $pchW;
+            } elseif ($ratioVirt > 0.0 && $ratioVirt < 1.0
+                && $pnCap < PHP_FLOAT_MAX
+                && $this->isCollectiveInstallation($node, $accessor)) {
+                $pnW = $pnCap;
+            } else {
+                // Pour les chaudières mixtes, Pdim = max(Pch, Pecs) puis Pn lue dans la table §13.2.2.4
+                $pecsW = $this->computePecsForMixte($node, $accessor);
+                if ($pecsW > 0.0) {
+                    $pdimKw = max($pchW, $pecsW) / 1000.0;
+                    $pnW    = $this->lookupPnFromPdim($pdimKw, $node, $accessor) * 1000.0;
+                } else {
+                    // §13.2.2.4 : a non-mixed boiler uses Pch as Pdim, then Pn is
+                    // selected from the nominal-power table (rather than left at an
+                    // arbitrary calculated value between two nominal ranges).
+                    $pnW = $this->lookupPnFromPdim($pchW / 1000.0, $node, $accessor) * 1000.0;
+                }
             }
         }
         $pnKw = $pnW / 1000.0;
@@ -197,16 +204,20 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             // Pour pn saisi (non calculé), pas de virtualisation (ratio=1 implicite).
             $pnBuildingKw = $pnKw;
             $pnApartmentW = $pnW;
-            if ($ratioVirt > 0.0 && $ratioVirt < 1.0 && $pnSaisi === null) {
+            if ($ratioForCharacteristics > 0.0 && $ratioForCharacteristics < 1.0 && $pnSaisi === null) {
                 // pnW ici = pn_bâtiment (déjà plaffonné dans computePnFromGv)
-                $pnBuildingKw = $pnW / 1000.0;
-                $pnApartmentW = $pnW * $ratioVirt;
+                $pnBuildingKw = $mixedHeatingMode
+                    ? $pnW / $ratioForCharacteristics / 1000.0
+                    : $pnW / 1000.0;
+                $pnApartmentW = $mixedHeatingMode
+                    ? $pnW
+                    : $pnW * $ratioForCharacteristics;
             }
             $row = $entry($pnBuildingKw, $e, $f);
-            // pn stocké = part du logement ; qp0/pveil proportionnels si collectif
+            // pn stocké = part du logement ; qp0/pveilleuse proportionnels si collectif
             $row['pn']    = $pnApartmentW;
-            $row['qp0']   = ($row['qp0']   ?? 0.0) * ($ratioVirt < 1.0 ? $ratioVirt : 1.0);
-            $row['pveil'] = ($row['pveil']  ?? 0.0) * ($ratioVirt < 1.0 ? $ratioVirt : 1.0);
+            $row['qp0']   = ($row['qp0']   ?? 0.0) * ($ratioForCharacteristics < 1.0 ? $ratioForCharacteristics : 1.0);
+            $row['pveil'] = ($row['pveil']  ?? 0.0) * ($ratioForCharacteristics < 1.0 ? $ratioForCharacteristics : 1.0);
         } else {
             $row = $entry;
         }
@@ -215,7 +226,12 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         $accessor->setChildValue($di, 'rpn',   $saisie['rpn']   ?? (float)($row['rpn']   ?? 0.0));
         $accessor->setChildValue($di, 'rpint', $saisie['rpint'] ?? (float)($row['rpint'] ?? 0.0));
         $accessor->setChildValue($di, 'qp0',   $saisie['qp0']   ?? (float)($row['qp0']   ?? 0.0));
-        $accessor->setChildValue($di, 'pveil', $saisie['pveil'] ?? (float)($row['pveil'] ?? 0.0));
+        // §13.2.2 p.86 : Pveil ne s'applique que « si veilleuse ». L'export ne
+        // fournit pas d'indicateur de présence distinct : ne pas inventer la
+        // veilleuse forfaitaire lorsque sa puissance n'a pas été renseignée.
+        if (array_key_exists('pveilleuse', $saisie)) {
+            $accessor->setChildValue($di, 'pveilleuse', $saisie['pveilleuse']);
+        }
     }
 
     /**
@@ -410,5 +426,13 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             return 1.0;
         }
         return $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation', $parent) ?? 1.0;
+    }
+
+    private function isCollectiveInstallation(DOMElement $genNode, NodeAccessor $accessor): bool
+    {
+        $installation = $genNode->parentNode?->parentNode;
+        return $installation instanceof DOMElement
+            && $installation->nodeName === 'installation_chauffage'
+            && $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $installation) === 2;
     }
 }

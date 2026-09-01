@@ -782,6 +782,443 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ---
 
+## Phase J — Corrections diagnostics ADEME septembre 2026
+
+### TASK-J01 — ECS mixte et échantillonnage des installations individuelles
+
+- [x] Owner: AI  | Phase: J  | Estimation: 4h  | Priorité: haute
+- DPE 2571E1547842H : inclure `Qgw` dans le rendement combiné chaudière mixte,
+  récupérer les pertes de stockage en volume chauffé pour l'installation collective,
+  et ne calculer l'auxiliaire ECS que pour un réseau réellement bouclé.
+- DPE 2659E2206652S : appliquer `1/nombre_appartement` au besoin ECS d'une unique
+  installation individuelle échantillonnée en mode 10, et utiliser le multiplicateur
+  d'échantillonnage effectif pour les pertes récupérées et auxiliaires chauffage.
+- Cibles : `src/Ecs/`, `src/Chauffage/BesoinChauffageCalculator.php`,
+  `src/Auxiliaire/AuxDistributionCalculator.php` et tests unitaires dédiés.
+- Validation : les deltas structurants de ces deux DPE doivent disparaître et la
+  suite PHPUnit complète doit rester verte.
+
+### TASK-J02 — Facteur GES 2025 des réseaux de chaleur
+
+- [x] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2657E1975665N : le réseau `5703C` daté du 25 avril 2026 attend un contenu
+  CO2 de 0,174 kgCO2e/kWh, alors que la table locale s'arrête à l'arrêté 2024 et
+  retombe sur 0,187.
+- Action : ajouter exhaustivement la table annuelle manquante depuis une source
+  traçable, puis l'utiliser dans les sorties GES globales et par énergie.
+- Cibles : `resources/tables/reference/tv_reseau_chaleur.php`, `src/Sortie/` et
+  tests unitaires dédiés.
+- Validation : `php bin/diff-report --filter=2657E1975665N` → 0 delta.
+
+### TASK-J03 — Pertes de stockage ECS d'un logement échantillonné
+
+- [x] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2657E1981571R : deux ballons électriques individuels issus d'un DPE
+  appartement par échantillonnage attendent des rendements de stockage proches
+  de 0,96-0,97 ; le moteur applique les pertes des ballons entiers et produit
+  0,76, soit environ +27 % sur la consommation ECS.
+- Action : ramener les caractéristiques de stockage au logement représentatif
+  conformément au §17.1.2 pour la méthode de calcul 4, sans modifier les cas
+  simples ni les installations collectives.
+- Cibles : `src/Ecs/Rendement/StockageCalculator.php` et test unitaire dédié.
+- Validation : `php bin/diff-report --filter=2657E1981571R` → 0 delta.
+  > NOTE-AI: le rendement de stockage est corrigé ; la validation globale reste
+  > dépendante de TASK-J04, car les agrégateurs pondèrent encore les deux groupes
+  > individuels à 50/50 au lieu de leur répartition surfacique 40/60 et
+  > n'extrapolent pas les pertes récupérées à l'immeuble.
+
+### TASK-J04 — Pondération ECS échantillonnée et pertes récupérées
+
+- [x] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2657E1981571R : en méthode 4 individuelle, pondérer chaque installation
+  par `surface_habitable / Shmoy` conformément au §17.1.3, puis extrapoler les
+  pertes de stockage récupérées à l'échelle de l'immeuble.
+- Cibles : `src/Sortie/{EfConsoCalculator,EmissionGesCalculator,SortieParEnergieAggregator}.php`,
+  `src/Chauffage/BesoinChauffageCalculator.php` et tests unitaires dédiés.
+- Validation : `php bin/diff-report --filter=2657E1981571R` → 0 delta.
+  > NOTE-AI: `EpConsoCalculator` réagrège lui aussi les installations ECS ; il
+  > doit donc consommer la même multiplicité surfacique pour éviter un écart EP.
+
+### TASK-J05 — Tranche de stockage et position du ballon échantillonné
+
+- [x] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2657E1989142W : lorsque les groupes ECS correspondent aux typologies des
+  logements visités, ramener d'abord le volume du ballon au logement moyen puis
+  sélectionner `Cr` sur ce volume effectif (§17.1.2 puis §11.6.2).
+- Pour les pertes récupérées, utiliser exclusivement
+  `position_volume_chauffe_stockage` : `position_volume_chauffe` décrit le
+  générateur et non le ballon selon le XSD.
+- Cibles : `src/Ecs/Rendement/StockageCalculator.php`,
+  `src/Chauffage/BesoinChauffageCalculator.php` et tests unitaires dédiés.
+- Validation : `php bin/diff-report --filter=2657E1989142W` → 0 delta, sans
+  régression sur 2657E1981571R.
+
+### TASK-J06 — Ponts thermiques des parois donnant sur un local non chauffé
+
+- [x] Owner: AI  | Phase: J  | Estimation: 1h  | Priorité: haute
+- NOTE-AI: la négligence s'applique aux jonctions entre parois opaques (liaisons
+  1 à 4) sur circulations communes 14-18 et local chauffé non déperditif 22 ;
+  une liaison menuiserie-mur de type 5 conserve sa valeur tabulée.
+- DPE 2618E2138973C : les liaisons rattachées à une paroi dont le coefficient
+  de réduction `b` est inférieur à 1 doivent être négligées (`k = 0`) ; leur
+  prise en compte ajoute à tort 23,295 W/K aux déperditions de l'enveloppe.
+- Action : appliquer la règle du §3.4 aux ponts thermiques sur circulations
+  communes et locaux non chauffés, à partir de l'adjacence directe des parois.
+- Cibles : `src/Enveloppe/PontThermique/KCalculator.php` et test unitaire dédié.
+- Validation : les ponts concernés de `2618E2138973C` valent zéro, les autres
+  restent à 0,71 et la suite PHPUnit complète reste verte.
+
+### TASK-J07 — Unités Wh des besoins ECS et pertes/apports récupérés
+
+- [x] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- NOTE-AI: le facteur Wh est propre au format ADEME natif
+  `<dpe version="0.1.0">`; les exports LICIEL historiques version 2 restent en
+  kWh. La conversion est centralisée dans `IntermediateEnergyUnit`.
+- DPE 2618E2138973C : les besoins ECS de chaque installation, les apports de
+  chauffage et les pertes récupérées sont écrits en kWh alors que les balises
+  intermédiaires ADEME et les formules §9.1/§11.1 les expriment en Wh.
+- Action : sérialiser ces balises en Wh tout en conservant les calculs de
+  consommation et les besoins récapitulatifs en kWh ; adapter les lecteurs DOM
+  internes pour éviter toute modification des résultats énergétiques.
+- Cibles : `src/Ecs/`, `src/Apport/FCalculator.php`,
+  `src/Sortie/ApportEtBesoinCalculator.php`, `src/Auxiliaire/` et tests dédiés.
+- Validation : disparition de tous les deltas exactement égaux à un facteur
+  1000 sur `2618E2138973C`, sans régression sur les DPE J01-J06.
+
+### TASK-J08 — Sorties dépensier et ordre par énergie du format ADEME natif
+
+- [x] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- NOTE-AI: 12 des 14 deltas ont disparu. Les deux écarts dépensier chauffage
+  restants proviennent de la consommation source calculée avec le rendement
+  nominal, et non de l'agrégation ; ils sont isolés dans TASK-J09.
+- DPE 2618E2138973C : le format natif 0.1.0 attend les consommations et GES
+  dépensier réels, tandis que les exports historiques version 2 répètent les
+  valeurs conventionnelles ; sa collection par énergie est en ordre croissant
+  (électricité puis gaz) et reprend les totaux d'installation.
+- Action : appliquer ces conventions selon la version XML sans modifier les
+  exports LICIEL, et couvrir les deux branches par des tests unitaires.
+- Cibles : `src/Sortie/{EpConsoCalculator,EmissionGesCalculator,SortieParEnergieAggregator}.php`.
+- Validation : disparition des 14 deltas d'agrégation restants sur le DPE cible,
+  sans régression sur les DPE J01-J07.
+
+### TASK-J09 — Rendement chaudière sur le scénario chauffage dépensier
+
+- [x] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2618E2138973C : `conso_ch_depensier` vaut 6189,62 kWh au lieu de
+  6110,89 kWh, car `InstallationClassique` réutilise le rendement annuel moyen
+  du profil conventionnel pour le besoin à 21 °C.
+- Action : calculer le rendement annuel moyen au profil de charge dépensier
+  conformément au §13.2, puis l'utiliser uniquement pour `conso_ch_depensier`.
+- Cibles : `src/Chauffage/Rendement/Combustion/`,
+  `src/Chauffage/Strategy/InstallationClassique.php` et tests dédiés.
+- Validation : les sorties EP/GES dépensier du DPE cible correspondent à
+  l'ADEME, sans modifier les consommations conventionnelles.
+
+### TASK-J10 — Sentinelles ventilation natives et configuration Uph d'un LC
+
+- [x] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2618E2138973C : le format natif 0.1.0 écrit `pvent_moy=0` et
+  `conso_auxiliaire_ventilation=1` dans la ventilation tout en conservant
+  413,640 kWh dans la sortie globale ; le plancher haut de type 8 adjacent à un
+  local chauffé non déperditif relève de la table terrasse (Uph=0,42).
+- Action : conserver la puissance réelle de ventilation dans le contexte avant
+  d'écrire les sentinelles natives, et sélectionner la configuration Uph depuis
+  le type de plancher pour l'adjacence 22.
+- Cibles : `src/Ventilation/`, `src/Enveloppe/PlancherHaut/UphCalculator.php`
+  et tests unitaires dédiés.
+- Validation : `php bin/diff-report --filter=2618E2138973C` → 0 delta, sans
+  régression sur les DPE J01-J09.
+
+### TASK-J11 — Facteur GES charbon et qualité de toiture LICIEL
+
+- [x] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2662E2197010Z : le chauffage au charbon (`enum_type_energie_id=11`)
+  est agrégé avec un facteur GES nul, ce qui fausse les émissions et les deux
+  classes finales ; la référence LICIEL classe ses planchers hauts mixtes LNC
+  dans la qualité « toit terrasse ».
+- Action : compléter les facteurs GES des énergies ADEME non couvertes et
+  reproduire la convention de classement de toiture observée sans modifier les
+  cas standards, avec tests unitaires dédiés.
+- Cibles : `src/Sortie/EmissionGesCalculator.php`,
+  `src/Sortie/QualiteIsolationCalculator.php` et tests dédiés.
+- Validation : `php bin/diff-report --filter=2662E2197010Z` → 0 delta, sans
+  régression sur les DPE J01-J10.
+
+### TASK-J12 — Pont mur-refend et générateur mixte collectif
+
+- [x] Owner: AI  | Phase: J  | Estimation: 3h  | Priorité: haute
+- DPE 2659E2129582M : une liaison mur-refend (`enum_type_liaison_id=4`) est
+  annulée à tort lorsque le refend borde un local chauffé, puis les besoins et
+  consommations divergent ; le générateur collectif mixte CH/ECS requiert le
+  même dimensionnement et les mêmes pertes dans les deux usages.
+- Action : restreindre la négligence des ponts aux liaisons réellement hors
+  enveloppe, puis aligner si nécessaire le calcul du générateur mixte à partir
+  de ses paramètres directs, avec tests unitaires dédiés.
+- Cibles : `src/Enveloppe/PontThermique/KCalculator.php`, calculateurs du
+  générateur mixte strictement nécessaires et tests dédiés.
+- Validation : `php bin/diff-report --filter=2659E2129582M` → 0 delta, sans
+  régression sur les DPE J01-J11.
+
+### TASK-J13 — Correction du DPE 2662E2158901G
+
+- [x] Owner: AI  | Phase: J  | Estimation: 3h  | Priorité: haute
+- DPE 2662E2158901G : identifier les écarts avec la sortie ADEME et corriger
+  leurs causes racines conformément à la spécification 3CL.
+- Action : analyser les valeurs intermédiaires, appliquer le correctif minimal
+  traçable et ajouter les tests unitaires couvrant les branches concernées.
+- Validation : `php bin/diff-report --filter=2662E2158901G` → 0 delta, sans
+  régression sur les DPE J01-J12.
+
+### TASK-J14 — Correction du DPE 2659E2047646C
+
+- [x] Owner: AI  | Phase: J  | Estimation: 3h  | Priorité: haute
+- DPE 2659E2047646C : identifier les écarts avec la sortie ADEME et corriger
+  leurs causes racines conformément à la spécification 3CL.
+- Action : analyser les valeurs intermédiaires, appliquer le correctif minimal
+  traçable et ajouter les tests unitaires couvrant les branches concernées.
+- Validation : `php bin/diff-report --filter=2659E2047646C` → 0 delta, sans
+  régression sur les DPE J01-J13.
+
+### TASK-J15 — Correction du DPE 2659E2170095R
+
+- [x] Owner: AI  | Phase: J  | Estimation: 3h  | Priorité: haute
+- DPE 2659E2170095R : identifier les écarts avec la sortie ADEME et corriger
+  leurs causes racines conformément à la spécification 3CL.
+- Action : analyser les valeurs intermédiaires, appliquer le correctif minimal
+  traçable et ajouter les tests unitaires couvrant les branches concernées.
+- Validation : `php bin/diff-report --filter=2659E2170095R` → 0 delta, sans
+  régression sur les DPE J01-J14.
+
+---
+
+## Phase K — Conformité jeux de tests d'évaluation
+
+> Demandée sous le nom « Phase I — Conformité jeux officiels CSTB ». La lettre I
+> est déjà prise (audit croisé open3cl) : la phase est donc numérotée **K**, le
+> contenu est celui demandé.
+
+### Où en est-on des jeux officiels
+
+Les **autotests et cas tests de la procédure officielle d'évaluation ne sont pas
+publics** : le règlement (DHUP/ADEME/CSTB, v. 13/12/2022) les annonce
+téléchargeables, mais la seule voie d'accès est la plateforme éditeurs
+<https://app.rt-batiment.fr/evaluation_logiciel/>, protégée par authentification.
+Aucun miroir public identifiable n'existe. Le règlement ne publie pas non plus de
+seuil de tolérance chiffré. Détail de la recherche et des sources consultées :
+`resources/XML/official/README.md`.
+
+La conformité est donc mesurée contre le meilleur substitut public : les DPE
+opposables de l'**observatoire ADEME** (Licence Ouverte 2.0), produits par des
+logiciels évalués CSTB.
+
+### Outillage
+
+- `php bin/official-test-report` — compare **toutes** les balises de
+  `<donnee_intermediaire>` et `<sortie>`, sans liste de balises couvertes,
+  et écrit `reports/official-tests.{json,md}`.
+- `php bin/fetch-official-corpus --build=<jeu>` — construit un jeu stratifié
+  (4 périmètres CSTB × 2 régimes du coefficient EP électricité) depuis l'open
+  data ADEME, avec manifeste de provenance versionné.
+- Profils de tolérance : `strict` (0,1 %, défaut), `reglementaire` (1 %),
+  `repo` (reprend `tests/tolerances.php`).
+
+### Point de départ mesuré — 1er septembre 2026, profil `strict`
+
+Corpus `ademe-observatoire-local`, 224 cas.
+
+```
+Cas                     : 224      Valeurs comparées       : 71 304
+Exécutés                : 224      Exactes                 : 51 799
+Crash                   :   0      Dans tolérance          :  7 418
+Totalement conformes    :   0      Hors tolérance          :  9 723
+Partiellement conformes : 224      Balises manquantes      :     45
+                                   Balises supplémentaires :  2 280
+Conformité              : 83,05 %
+```
+
+> Plusieurs agents modifient le moteur en parallèle : le chiffre bouge d'une
+> heure à l'autre. Le rapport porte la révision et le nombre de fichiers `src/`
+> non commités au moment de la mesure ; un gain ne se mesure qu'en relançant
+> `bin/official-test-report` **avant et après** le seul changement évalué, sur
+> le même arbre.
+
+Le corpus est déséquilibré (206 immeubles collectifs, 4 maisons individuelles) :
+c'est la première chose à corriger pour que le chiffre soit représentatif.
+
+### Tâches, par gain attendu décroissant
+
+### TASK-K01 — Corpus stratifié sur les 4 périmètres CSTB
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: haute
+- Le corpus actuel est à 92 % de l'immeuble collectif : maison individuelle
+  (4 cas) et appartement individuel (6 cas) ne sont pas représentés, alors que
+  ce sont deux des quatre périmètres évalués par le CSTB.
+- Action : `php bin/fetch-official-corpus --build=ademe-2026-09 --per-stratum=15`
+  puis vérifier la répartition réelle avec
+  `php bin/official-test-report --corpus=ademe-2026-09`.
+- Nécessite un accès réseau sortant vers `api-externe.ademe.fr`.
+- Validation : au moins 20 cas par périmètre, manifeste committé.
+
+### TASK-K02 — Tarifs annuels des énergies indexés sur la date du DPE
+
+- [x] Owner: AI2  | Phase: K  | Estimation: 6h  | Priorité: haute
+- **47 % de tous les écarts hors tolérance** viennent des
+  coûts : `cout_5_usages`, `cout_ch`, `cout_ecs`, `cout_eclairage`,
+  `cout_auxiliaire_*`, `cout_total_auxiliaire`. `cout_5_usages` est faux sur
+  **223 cas sur 224**.
+- Cause : `src/Sortie/CoutCalculator.php` applique en dur les tarifs de
+  l'Annexe 7 au 31 mars 2021, alors que les tarifs sont réactualisés par arrêté
+  (arrêté du 24 mars 2024, arrêté du 13 août 2025 notamment) et que la
+  référence applique celui en vigueur à `date_etablissement_dpe`. Le doc-block
+  de la classe documente déjà l'écart.
+- Action : digitaliser les barèmes successifs dans
+  `resources/tables/reference/tv_prix_energie.php`, indexés par période de
+  validité et type d'énergie, en citant l'arrêté et la page ; sélectionner le
+  barème sur `administratif/date_etablissement_dpe`.
+- Ne pas caler les valeurs sur les fichiers de test : chaque tarif doit être
+  sourcé dans un texte publié.
+- **Fait**. Trois défauts corrigés dans `src/Sortie/CoutCalculator.php` :
+  1. barème choisi sur `date_etablissement_dpe` — annexe 7 de l'arrêté du
+     31 mars 2021 jusqu'au 30 juin 2024, annexe 2 de l'arrêté du 25 mars 2024
+     ensuite (`resources/tables/reference/tv_prix_energie.php`) ;
+  2. la tranche porte sur le **total** de l'énergie, plus sur chaque usage —
+     l'ancien code facturait la part d'abonnement une fois par poste ;
+  3. la tranche s'apprécie **par logement** (`nombre_appartement`), la sortie
+     d'un DPE immeuble portant sur tout le bâtiment.
+- Mesure A/B isolée sur le même arbre, 224 cas, profil strict :
+  hors tolérance **7 143 → 6 044 (−1 099, −15,4 %)**, conformité
+  **86,67 % → 88,21 %**. Famille « Coûts » 2 218 → 1 714 écarts,
+  « Auxiliaires » 2 095 → 1 500. Aucun crash, aucune autre famille touchée,
+  suite E2E inchangée (136 échecs avant comme après).
+- Reste 43 cas sur 224 où le seul chemin tarifaire (`cout_eclairage`) diverge
+  encore : voir TASK-K10.
+
+### TASK-K03 — Balises hors vocabulaire ADEME : `Qgw` et `pveil`
+
+- [x] Owner: AI2  | Phase: K  | Estimation: 1h  | Priorité: haute
+- Le moteur écrit deux balises qui n'existent dans aucun XML de l'observatoire
+  ni dans `resources/ademe_DPE.xsd` : `Qgw` (224 cas) et `pveil` (163 cas).
+  Le schéma déclare `pveilleuse`, pas `pveil` ; `Qgw` n'existe pas du tout.
+- Un XML les contenant serait rejeté à la transmission ADEME — c'est un défaut
+  de **conformité structurelle**, indépendamment des valeurs.
+- **Fait**.
+  - `pveil` → `pveilleuse`, le nom déclaré par le schéma, à l'écriture
+    (`ChaudiereDefautCalculator`) comme à la relecture
+    (`RendementAnnuelMoyenCalculator`, `Ecs\Rendement\CombustionCalculator`).
+    `OutputPurger` préservait déjà `pveilleuse` : les deux bouts de la chaîne
+    parlent enfin le même nom, et une valeur saisie par le diagnostiqueur est
+    désormais réellement reprise.
+  - `Qgw` n'existe dans aucun schéma : c'était un canal interne entre
+    `StockageCalculator` et ses deux lecteurs, qui passait par le XML. Il
+    transite maintenant par `CalculationContext`, via
+    `StockageCalculator::qgwKey()`.
+- Mesure A/B isolée, profil strict : balises supplémentaires
+  **2 286 → 1 949 (−337)**, conformité **88,15 % → 88,57 %**, section
+  « Conformité structurelle » vide. Aucun changement sur les valeurs
+  (exactes et hors tolérance identiques), 449 tests unitaires verts.
+
+### TASK-K04 — Consommations de chauffage : `conso_ch` / `conso_ch_depensier`
+
+- [ ] Owner: __  | Phase: K  | Estimation: 8h  | Priorité: haute
+- 871 valeurs hors tolérance (517 `conso_ch_depensier`, 354 `conso_ch`),
+  écart maximal 110 %. C'est le premier poste après les coûts, et il cascade
+  sur `emission_ges_ch` (264), `ep_conso_ch` (166), `conso_5_usages` (266),
+  `emission_ges_5_usages` (236), `ep_conso_5_usages` (157).
+- En amont, `rendement_generation` (76), `pn` (54) et `qp0` (54) divergent
+  aussi : remonter jusqu'au premier intermédiaire faux avant de toucher aux
+  agrégats.
+- Action : sur 3 à 5 cas représentatifs de
+  `php bin/official-test-report --famille="Génération chauffage" --top=40`,
+  remonter la chaîne §12 → §9 et comparer à la spec (et à open3cl en cas
+  d'ambiguïté).
+- Validation : famille « Génération chauffage » au-dessus de 90 %.
+
+### TASK-K05 — Bloc `<confort_ete>` produit alors que la référence ne le contient pas
+
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- 1 065 balises supplémentaires : le moteur écrit systématiquement le
+  sous-bloc `sortie/confort_ete` (`isolation_toiture`, `brasseur_air`,
+  `aspect_traversant`, `protection_solaire_exterieure`,
+  `enum_indicateur_confort_ete_id`), absent de 204 des 207 références de 2026.
+- **À qualifier avant de corriger** : ce n'est pas nécessairement une erreur —
+  il faut d'abord établir, à partir de l'arrêté et du XSD, si le sous-bloc est
+  obligatoire, conditionnel ou optionnel. Ne pas supprimer une sortie
+  réglementaire pour faire baisser un compteur.
+- Validation : décision tracée dans le doc-block de
+  `src/Sortie/ConfortEteCalculator.php`, avec la référence réglementaire.
+
+### TASK-K06 — Génération ECS : balises supplémentaires et rendements
+
+- [ ] Owner: __  | Phase: K  | Estimation: 5h  | Priorité: moyenne
+- 558 balises supplémentaires (dont `rendement_stockage` 203,
+  `rendement_generation` côté ECS), 276 hors tolérance (`conso_ecs` 134,
+  `conso_ecs_depensier` 100) et 14 manquantes
+  (`rendement_generation_stockage`).
+- Action : aligner la production de balises sur ce que la référence renseigne
+  selon le type de générateur (§11), en s'appuyant sur le XSD pour savoir
+  quelles balises sont attendues pour quel `enum_type_generateur_ecs_id`.
+- Validation : famille « Génération ECS » au-dessus de 92 %.
+
+### TASK-K07 — Classes DPE et GES divergentes
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- 39 écarts non numériques : 15 sur `classe_bilan_dpe`, 24 sur
+  `classe_emission_ges`. Ce sont les deux valeurs les plus visibles d'un DPE.
+- À traiter **après** K02 et K04 : une classe fausse est presque toujours la
+  conséquence d'une consommation fausse, pas d'un seuil faux. Vérifier
+  néanmoins les seuils (dont l'ajustement < 40 m² de l'arrêté du 24 mars 2024).
+- Validation : 0 écart sur `classe_bilan_dpe` et `classe_emission_ges`.
+
+### TASK-K08 — Balises manquantes du bloc froid
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
+- 20 balises manquantes côté froid, dont `conso_auxiliaire_distribution_fr`,
+  `ep_conso_auxiliaire_distribution_fr`,
+  `emission_ges_auxiliaire_distribution_fr`, `cout_auxiliaire_distribution_fr`,
+  attendues à 0 par la référence.
+- Action : écrire ces balises même à 0 quand une installation de
+  climatisation est présente.
+- Validation : famille « Froid » sans balise manquante.
+
+### TASK-K09 — Remplacer les exclusions du harness E2E par la mesure de conformité
+
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
+- `tests/EndToEndTest.php` porte une liste `TAGS_EXCLUDED_BY_FILE` et une liste
+  `$tagsCovered` qui masquent une partie des écarts, et son indexation de
+  chemin ignore les fratries homonymes : sur un logement à 30 murs, un seul
+  `umur` est réellement comparé.
+- Action : faire converger le harness E2E vers `CalculDpePHP\Conformite\*`
+  (chemins indexés, aucune balise exclue), en gardant un seuil de
+  non-régression sur le nombre de valeurs hors tolérance plutôt que des
+  exclusions nominatives.
+- Validation : suite verte, et le compte de valeurs hors tolérance du rapport
+  ne remonte pas.
+
+### TASK-K10 — Diviseur « par logement » des tranches tarifaires
+
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- TASK-K02 a établi que la tranche tarifaire de l'électricité et du gaz
+  s'apprécie sur la consommation **d'un logement**, et l'a implémentée en
+  divisant par `caracteristique_generale/nombre_appartement`. Vérifié exact
+  sur 181 cas sur 224.
+- Sur les 43 cas restants, `cout_eclairage` diverge alors que
+  `conso_eclairage` est juste : le diviseur n'est donc pas toujours
+  `nombre_appartement`. Les écarts vont dans les deux sens (tantôt la
+  référence applique une tranche plus haute, tantôt plus basse), ce qui exclut
+  une simple erreur de facteur.
+- Pistes : DPE appartement issu des données de l'immeuble (la sortie porte
+  peut-être déjà sur un seul logement) ; immeubles où `nombre_appartement`
+  diffère du nombre de logements desservis par l'énergie considérée ;
+  logements-types de l'échantillonnage §17.
+- Action : à partir de
+  `php bin/official-test-report --famille=Coûts --top=50`, isoler les 43 cas,
+  établir la règle depuis l'arrêté plutôt que par ajustement, puis l'appliquer.
+- Ne pas caler un diviseur sur les fichiers de test.
+- Validation : `cout_eclairage` conforme sur tous les cas dont
+  `conso_eclairage` l'est déjà.
+
+---
+
 ## Validation par phase (gate)
 
 On ne passe à la phase suivante que quand le harness `tests/EndToEndTest.php` valide les balises produites par la phase courante sur les 4 fichiers de `resources/XML/input/` (tolérance 1e-3, exceptions dans `tests/tolerances.php`) :

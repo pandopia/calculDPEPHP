@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Sortie;
 
+use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -16,7 +18,8 @@ use DOMElement;
  *   Électricité CH   : 0.079  Électricité ECS   : 0.065
  *   Électricité ECL  : 0.069  Électricité AUX   : 0.064
  *   Gaz naturel      : 0.227  Fioul domestique  : 0.324
- *   Bois (toutes formes) : 0.030  Propane : 0.272  Réseau chaleur : 0.110
+ *   Bois (toutes formes) : 0.030  Propane : 0.272
+ *   Réseau chaleur : contenu CO2 ACV de l'arrêté annuel, sinon 0.385
  *
  * Met à jour classe_bilan_dpe = WORST(classe_energie, classe_ges).
  *
@@ -32,7 +35,7 @@ use DOMElement;
  *                sortie.ep_conso.classe_bilan_dpe (mis à jour avec WORST(classe_energie, classe_ges))
  * @depends-on    \CalculDpePHP\Sortie\EfConsoCalculator
  *                \CalculDpePHP\Sortie\EpConsoCalculator
- * @tables        (aucune)
+ * @tables        reference/tv_reseau_chaleur
  */
 final class EmissionGesCalculator implements CalculatorInterface
 {
@@ -53,6 +56,12 @@ final class EmissionGesCalculator implements CalculatorInterface
         7 => 0.030,  // bois – plaquettes d'industrie
         8 => 0.110,  // réseau de chauffage urbain
         9 => 0.272,  // propane
+        10 => 0.272, // butane
+        11 => 0.385, // charbon
+        12 => 0.000, // électricité renouvelable utilisée dans le bâtiment
+        13 => 0.272, // GPL
+        14 => 0.385, // autre combustible fossile
+        15 => 0.000, // réseau de froid urbain (hors usages CH/ECS)
     ];
 
     /** Seuils de classe GES (kgCO2eq/m².an) : A≤6, B≤11, C≤30, D≤50, E≤70, F≤100, G>100 */
@@ -85,6 +94,7 @@ final class EmissionGesCalculator implements CalculatorInterface
     public function calculate(DOMElement $node, CalculationContext $context): void
     {
         $accessor = new NodeAccessor($context->document);
+        $nativeAdeme = IntermediateEnergyUnit::usesDepensierOutputs($context->document);
 
         // ── 1. Paramètres ────────────────────────────────────────────────────
         $shLogement = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node);
@@ -100,15 +110,19 @@ final class EmissionGesCalculator implements CalculatorInterface
         $gesConsoChEf    = $isZone ? $gesChTotal * $cleRepartitionCh : $gesChTotal;
         // GES dépensier chauffage = GES conventionnel (même convention que l'EP :
         // le scénario dépensier ne change pas les émissions de référence pour l'étiquette).
-        $gesConsoChDepEf = $gesConsoChEf;
+        $gesConsoChDepEf = $nativeAdeme
+            ? ($isZone ? $gesChDepTotal * $cleRepartitionCh : $gesChDepTotal)
+            : $gesConsoChEf;
 
         // ── 3. ECS GES ───────────────────────────────────────────────────────
-        [$gesEcsTotal, , $cleRepartitionEcs] =
+        [$gesEcsTotal, $gesEcsDepTotal, $cleRepartitionEcs] =
             $this->aggregateEcsGes($accessor, $node, $nbreAppt, $context);
 
         $gesConsoEcsEf    = $isZone ? $gesEcsTotal * $cleRepartitionEcs : $gesEcsTotal;
         // GES dépensier ECS = GES conventionnel (même convention).
-        $gesConsoEcsDepEf = $gesConsoEcsEf;
+        $gesConsoEcsDepEf = $nativeAdeme
+            ? ($isZone ? $gesEcsDepTotal * $cleRepartitionEcs : $gesEcsDepTotal)
+            : $gesConsoEcsEf;
 
         // ── 4. ef_conso depuis le DOM ────────────────────────────────────────
         $sortie    = $accessor->ensureSortie($node);
@@ -136,10 +150,10 @@ final class EmissionGesCalculator implements CalculatorInterface
         $cauxVent      = $accessor->getFloatOrNull('./conso_auxiliaire_ventilation',                 $efConso) ?? 0.0;
 
         $gesCauxGenCh     = $cauxGenCh * self::GES_ELEC_AUX;
-        $gesCauxGenChDep  = $gesCauxGenCh;  // dépensier = conventionnel
+        $gesCauxGenChDep  = ($nativeAdeme ? $cauxGenChDep : $cauxGenCh) * self::GES_ELEC_AUX;
         $gesCauxDistCh    = $cauxDistCh    * self::GES_ELEC_AUX;
         $gesCauxGenEcs    = $cauxGenEcs    * self::GES_ELEC_AUX;
-        $gesCauxGenEcsDep = $gesCauxGenEcs;  // dépensier = conventionnel
+        $gesCauxGenEcsDep = ($nativeAdeme ? $cauxGenEcsDep : $cauxGenEcs) * self::GES_ELEC_AUX;
         $gesCauxDistEcs   = $cauxDistEcs   * self::GES_ELEC_AUX;
         $gesCauxVent      = $cauxVent      * self::GES_ELEC_AUX;
         $gesCauxTotal     = $gesCauxGenCh + $gesCauxDistCh + $gesCauxGenEcs + $gesCauxDistEcs + $gesCauxVent;
@@ -147,6 +161,9 @@ final class EmissionGesCalculator implements CalculatorInterface
         // ── 6. 5 usages GES ─────────────────────────────────────────────────
         $ges5   = $gesConsoChEf + $gesConsoEcsEf + $gesConsoFr + $gesConsoEcl + $gesCauxTotal;
         $ges5m2 = $surface > 0.0 ? (int)floor($ges5 / $surface) : 0;
+        if (IntermediateEnergyUnit::usesRoundedGesTotal($context->document) && $surface > 0.0) {
+            $ges5 = $ges5m2 * $surface;
+        }
 
         $classeGes = $this->classeGes($ges5m2);
 
@@ -301,10 +318,7 @@ final class EmissionGesCalculator implements CalculatorInterface
         if ($energyTypeId === 8 && $install !== null && $accessor !== null && $context !== null && $generatorTag !== null) {
             $gen = $this->firstGenerator($install, $generatorTag);
             if ($gen !== null) {
-                $factor = $this->resolveReseauChaleurFactor($gen, $accessor, $context);
-                if ($factor !== null) {
-                    return $factor;
-                }
+                return ReseauChaleurFactorResolver::resolve($gen, $accessor, $context);
             }
         }
         return self::GES_BY_ENERGY[$energyTypeId] ?? 0.0;
@@ -320,46 +334,9 @@ final class EmissionGesCalculator implements CalculatorInterface
             return self::GES_ELEC_ECS;
         }
         if ($energyTypeId === 8 && $gen !== null && $accessor !== null && $context !== null) {
-            $factor = $this->resolveReseauChaleurFactor($gen, $accessor, $context);
-            if ($factor !== null) {
-                return $factor;
-            }
+            return ReseauChaleurFactorResolver::resolve($gen, $accessor, $context);
         }
         return self::GES_BY_ENERGY[$energyTypeId] ?? 0.0;
-    }
-
-    /**
-     * Lookup contenu_co2_acv pour un générateur sur réseau de chauffage urbain.
-     * Année : year(date_arrete_reseau_chaleur) - 1, sinon year(date_etablissement_dpe) - 1.
-     * Clamp ≥ 2022. Fallback null (caller utilise 0.385 par défaut).
-     */
-    private function resolveReseauChaleurFactor(
-        DOMElement $gen,
-        NodeAccessor $accessor,
-        CalculationContext $context,
-    ): ?float {
-        $reseauId = $accessor->getStringOrNull('./donnee_entree/identifiant_reseau_chaleur', $gen);
-        if ($reseauId === null || $reseauId === '') {
-            return 0.385; // « autres réseaux de chaleur »
-        }
-
-        $dateArrete = $accessor->getStringOrNull('./donnee_entree/date_arrete_reseau_chaleur', $gen);
-        $dateRef    = $dateArrete ?: $accessor->getStringOrNull('//date_etablissement_dpe', $gen);
-        $year = 2022;
-        if ($dateRef !== null) {
-            $ts = strtotime($dateRef);
-            if ($ts !== false) {
-                $year = max(2022, (int)date('Y', $ts) - 1);
-            }
-        }
-
-        $table = $context->tables->load('reference/tv_reseau_chaleur');
-        for ($y = $year; $y >= 2022; $y--) {
-            if (isset($table[$y][$reseauId])) {
-                return (float)$table[$y][$reseauId];
-            }
-        }
-        return null;
     }
 
     private function firstGenerator(DOMElement $install, string $generatorTag): ?DOMElement
@@ -424,13 +401,6 @@ final class EmissionGesCalculator implements CalculatorInterface
             $rdimEff = $rdim;
         } elseif ($typeInstall === 1) {
             $rdimEff = $nbreAppt * $ratioVirt / $sumEchantillon;
-            // Borne surfacique : une install couvrant surface_chauffee = surface_immeuble
-            // représente déjà tout le bâtiment (rdimEff = 1).
-            $shImm    = $accessor->getFloatOrNull('//caracteristique_generale/surface_habitable_immeuble');
-            $surfInst = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $install);
-            if ($surfInst !== null && $surfInst > 0.0 && $shImm !== null && $shImm > 0.0) {
-                $rdimEff = min($rdimEff, $shImm / $surfInst);
-            }
         } else {
             $rdimEff = $rdim;
         }
@@ -451,15 +421,11 @@ final class EmissionGesCalculator implements CalculatorInterface
 
         if ($methode === 1) {
             $rdimEff = $rdim;
+        } elseif ($methode === 4 && $typeInstall === 1) {
+            $rdimEff = EcsInstallationMultiplicity::sampledOrNull($install, $accessor)
+                ?? ($nbreAppt * $ratioVirt / $sumLogement);
         } elseif ($typeInstall === 1) {
             $rdimEff = $nbreAppt * $ratioVirt / $sumLogement;
-            // Borne surfacique : une install couvrant surface_habitable = surface_immeuble
-            // représente déjà tout le bâtiment (rdimEff = 1).
-            $shImm    = $accessor->getFloatOrNull('//caracteristique_generale/surface_habitable_immeuble');
-            $surfInst = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $install);
-            if ($surfInst !== null && $surfInst > 0.0 && $shImm !== null && $shImm > 0.0) {
-                $rdimEff = min($rdimEff, $shImm / $surfInst);
-            }
         } else {
             $rdimEff = $rdim;
         }

@@ -111,6 +111,24 @@ XML;
         $this->assertEqualsWithDelta(500.0 * 0.064, $gesT, 0.001, 'GES aux_total');
     }
 
+    public function testNativeAdemeUsesDepensierGenerationAuxiliary(): void
+    {
+        [$doc, $node, $ctx] = $this->buildDocWithEfConso(
+            [
+                'conso_auxiliaire_generation_ecs' => 10.0,
+                'conso_auxiliaire_generation_ecs_depensier' => 30.0,
+            ],
+            shLogement: 100.0,
+            shImmeuble: 100.0,
+        );
+        $doc->documentElement->setAttribute('version', '0.1.0');
+
+        (new EmissionGesCalculator())->calculate($node, $ctx);
+
+        $value = (float)$doc->getElementsByTagName('emission_ges_auxiliaire_generation_ecs_depensier')->item(0)->textContent;
+        self::assertEqualsWithDelta(30.0 * 0.064, $value, 0.001);
+    }
+
     /**
      * Installation CH gaz (id=2) : ef_conso_ch × 0.227.
      */
@@ -173,6 +191,37 @@ XML;
 
         // ZONE: 27615.05 × 1 (rdim collectif=1) × 0.227 × cle = 1677.60 × 0.227 = 380.82
         $this->assertEqualsWithDelta(1677.60 * 0.227, $gesCh, 1.0, 'GES CH gaz ZONE');
+    }
+
+    /** Charbon (enum énergie 11) : facteur Annexe 5 = 0,385 kgCO2eq/kWh EF. */
+    public function testChCharbonGes(): void
+    {
+        $xml = <<<'XML'
+<logement>
+  <caracteristique_generale>
+    <surface_habitable_immeuble>100</surface_habitable_immeuble>
+    <nombre_appartement>1</nombre_appartement>
+  </caracteristique_generale>
+  <installation_chauffage_collection>
+    <installation_chauffage>
+      <donnee_entree><rdim>1</rdim></donnee_entree>
+      <donnee_intermediaire><conso_ch>10000</conso_ch><conso_ch_depensier>12000</conso_ch_depensier></donnee_intermediaire>
+      <generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+        <enum_type_energie_id>11</enum_type_energie_id>
+      </donnee_entree></generateur_chauffage></generateur_chauffage_collection>
+    </installation_chauffage>
+  </installation_chauffage_collection>
+  <installation_ecs_collection/>
+  <sortie><ef_conso/><ep_conso><classe_bilan_dpe>D</classe_bilan_dpe></ep_conso></sortie>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+
+        (new EmissionGesCalculator())->calculate($doc->documentElement, $this->makeContext($doc));
+
+        $ges = (float)$doc->getElementsByTagName('emission_ges_ch')->item(0)->textContent;
+        $this->assertEqualsWithDelta(3850.0, $ges, 1e-6);
     }
 
     /**
@@ -455,6 +504,63 @@ XML;
         // 10000 kWh × 0.314 (contenu_co2_acv 9120C 2023) = 3140 kgCO2
         $this->assertEqualsWithDelta(10000 * 0.314, $gesCh, 1.0,
             'GES réseau de chaleur urbain doit utiliser le facteur spécifique au réseau');
+    }
+
+    /**
+     * Arrêté publié en 2026 → table 2025 exhaustive du JORF du 25 avril 2026.
+     * 5703C (Farébersviller) : contenu CO2 ACV = 0.174 kgCO2/kWh.
+     */
+    public function testGesReseauChaleurLookupMillesime2025(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<dpe>
+    <administratif><date_etablissement_dpe>2026-05-01</date_etablissement_dpe></administratif>
+    <logement>
+        <caracteristique_generale>
+            <surface_habitable_immeuble>100</surface_habitable_immeuble>
+            <nombre_appartement>1</nombre_appartement>
+        </caracteristique_generale>
+        <installation_chauffage_collection>
+            <installation_chauffage>
+                <donnee_entree><rdim>1</rdim></donnee_entree>
+                <donnee_intermediaire>
+                    <conso_ch>10000</conso_ch>
+                    <conso_ch_depensier>10000</conso_ch_depensier>
+                </donnee_intermediaire>
+                <generateur_chauffage_collection>
+                    <generateur_chauffage>
+                        <donnee_entree>
+                            <enum_type_energie_id>8</enum_type_energie_id>
+                            <identifiant_reseau_chaleur>5703C</identifiant_reseau_chaleur>
+                            <date_arrete_reseau_chaleur>2026-04-25</date_arrete_reseau_chaleur>
+                        </donnee_entree>
+                    </generateur_chauffage>
+                </generateur_chauffage_collection>
+            </installation_chauffage>
+        </installation_chauffage_collection>
+        <installation_ecs_collection/>
+        <sortie>
+            <ef_conso>
+                <conso_eclairage>0</conso_eclairage>
+                <conso_fr>0</conso_fr>
+                <conso_fr_depensier>0</conso_fr_depensier>
+            </ef_conso>
+            <ep_conso><classe_bilan_dpe>D</classe_bilan_dpe></ep_conso>
+        </sortie>
+    </logement>
+</dpe>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $node = $doc->getElementsByTagName('logement')->item(0);
+
+        (new EmissionGesCalculator())->calculate($node, $this->makeContext($doc));
+
+        $emGes = $doc->getElementsByTagName('emission_ges')->item(0);
+        $gesCh = (float)$emGes->getElementsByTagName('emission_ges_ch')->item(0)->textContent;
+
+        $this->assertEqualsWithDelta(10000 * 0.174, $gesCh, 1e-6);
     }
 
     /**

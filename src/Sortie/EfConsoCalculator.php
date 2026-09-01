@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Sortie;
 
+use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -257,13 +258,6 @@ final class EfConsoCalculator implements CalculatorInterface
             $rdimEff = $rdim;
         } elseif ($typeInstall === 1) {
             $rdimEff = $nbreAppt * $ratioVirt / $sumEchantillon;
-            // L'extrapolation échantillon → bâtiment est bornée par la couverture
-            // surfacique : une install dont surface_chauffee = surface_immeuble
-            // représente déjà tout le bâtiment (rdimEff = 1).
-            $surfInst = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $install);
-            if ($surfInst !== null && $surfInst > 0.0 && $shImmeuble > 0.0) {
-                $rdimEff = min($rdimEff, $shImmeuble / $surfInst);
-            }
         } else {
             $rdimEff = $rdim;
         }
@@ -285,14 +279,11 @@ final class EfConsoCalculator implements CalculatorInterface
 
         if ($methode === 1) {
             $rdimEff = $rdim;
+        } elseif ($methode === 4 && $typeInstall === 1) {
+            $rdimEff = EcsInstallationMultiplicity::sampledOrNull($install, $accessor)
+                ?? ($nbreAppt * $ratioVirt / $sumLogement);
         } elseif ($typeInstall === 1) {
             $rdimEff = $nbreAppt * $ratioVirt / $sumLogement;
-            // Même borne surfacique que pour le chauffage (install couvrant tout
-            // l'immeuble → rdimEff = 1).
-            $surfInst = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $install);
-            if ($surfInst !== null && $surfInst > 0.0 && $shImmeuble > 0.0) {
-                $rdimEff = min($rdimEff, $shImmeuble / $surfInst);
-            }
         } else {
             $rdimEff = $rdim;
         }

@@ -1,0 +1,203 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use CalculDpePHP\Conformite\CaseComparator;
+use CalculDpePHP\Conformite\ComparisonStatus;
+use CalculDpePHP\Conformite\ConformityReport;
+use CalculDpePHP\Conformite\CorpusLocator;
+use CalculDpePHP\Conformite\MarkdownRenderer;
+use CalculDpePHP\Conformite\ToleranceProfile;
+
+require __DIR__ . '/../vendor/autoload.php';
+
+/**
+ * Rapport de conformité du moteur face aux jeux de tests DPE.
+ *
+ * Exécute chaque cas via CalculDpePHP::calculate(), compare l'intégralité des
+ * balises calculées à la référence, et produit reports/official-tests.{json,md}.
+ *
+ * Usage :
+ *   php bin/official-test-report
+ *   php bin/official-test-report --corpus=ademe-observatoire-local --limit=20
+ *   php bin/official-test-report --tolerance=reglementaire --filter=2657E
+ *   php bin/official-test-report --famille="Génération ECS" --top=15
+ */
+
+$options = getopt('h', [
+    'corpus:', 'filter:', 'limit:', 'tolerance:', 'json:', 'md:',
+    'famille:', 'top:', 'list-corpora', 'quiet', 'help',
+]);
+
+if (isset($options['h']) || isset($options['help'])) {
+    fwrite(STDOUT, <<<TXT
+    Usage : php bin/official-test-report [options]
+
+      --corpus=NOM        Restreint à un jeu (défaut : tous)
+      --filter=SOUSCHAINE Restreint aux cas dont le nom contient SOUSCHAINE
+      --limit=N           N premiers cas seulement
+      --tolerance=PROFIL  strict (défaut) | reglementaire | repo
+      --json=CHEMIN       défaut : reports/official-tests.json
+      --md=CHEMIN         défaut : reports/official-tests.md
+      --famille=NOM       Détaille les écarts de cette famille en console
+      --top=N             Nombre de lignes détaillées (défaut 20)
+      --list-corpora      Liste les jeux disponibles et sort
+      --quiet             N'écrit que les fichiers, pas de sortie console
+
+    TXT);
+    exit(0);
+}
+
+$projectRoot = dirname(__DIR__);
+$locator = new CorpusLocator($projectRoot);
+
+if (isset($options['list-corpora'])) {
+    $official = $locator->officialCorpora();
+    fwrite(STDOUT, "Jeux officiels/publics intégrés :\n");
+    if ($official === []) {
+        fwrite(STDOUT, "  (aucun — voir resources/XML/official/README.md)\n");
+    }
+    foreach ($official as $name => $dir) {
+        $n = count(glob($dir . '/input/*.xml') ?: []);
+        fwrite(STDOUT, sprintf("  %-40s %d cas\n", $name, $n));
+    }
+    $legacy = $locator->locate(CorpusLocator::LEGACY_CORPUS);
+    fwrite(STDOUT, sprintf("\nCorpus historique du dépôt :\n  %-40s %d cas\n", CorpusLocator::LEGACY_CORPUS, count($legacy)));
+    exit(0);
+}
+
+$quiet = isset($options['quiet']);
+$profileName = (string) ($options['tolerance'] ?? 'strict');
+$tolerance = ToleranceProfile::named($profileName, $projectRoot);
+
+$cases = $locator->locate(
+    isset($options['corpus']) ? (string) $options['corpus'] : null,
+    isset($options['filter']) ? (string) $options['filter'] : null,
+);
+
+if (isset($options['limit'])) {
+    $cases = array_slice($cases, 0, max(0, (int) $options['limit']));
+}
+
+if ($cases === []) {
+    fwrite(STDERR, "Aucun cas trouvé. Vérifiez resources/XML/official/ ou resources/XML/{input,verif}/.\n");
+    exit(1);
+}
+
+$comparator = new CaseComparator($tolerance, $projectRoot . '/resources/ademe_DPE.xsd');
+// Plusieurs agents modifient ce moteur en parallèle : sans la révision exacte
+// (et l'état de l'arbre de travail), deux rapports ne sont pas comparables.
+$head = trim((string) @shell_exec('git -C ' . escapeshellarg($projectRoot) . ' rev-parse --short HEAD 2>/dev/null'));
+$dirty = trim((string) @shell_exec('git -C ' . escapeshellarg($projectRoot) . ' status --porcelain -- src 2>/dev/null'));
+$revision = [
+    'head' => $head !== '' ? $head : 'inconnue',
+    'dirty' => $dirty !== '' ? substr_count($dirty, "\n") + 1 . ' fichier(s) src/ non commités' : '',
+];
+
+$report = new ConformityReport($profileName, date('c'), $revision);
+
+$total = count($cases);
+foreach ($cases as $i => $case) {
+    if (!$quiet) {
+        fwrite(STDERR, sprintf("\r[%d/%d] %-40s", $i + 1, $total, $case['name']));
+    }
+    $report->addCase($comparator->run($case['corpus'], $case['name'], $case['input'], $case['expected']));
+}
+if (!$quiet) {
+    fwrite(STDERR, "\r" . str_repeat(' ', 60) . "\r");
+}
+
+$data = $report->toArray();
+
+$jsonPath = (string) ($options['json'] ?? $projectRoot . '/reports/official-tests.json');
+$mdPath = (string) ($options['md'] ?? $projectRoot . '/reports/official-tests.md');
+
+foreach ([$jsonPath, $mdPath] as $path) {
+    $dir = dirname($path);
+    if (!is_dir($dir) && !mkdir($dir, 0777, true) && !is_dir($dir)) {
+        fwrite(STDERR, "Impossible de créer $dir\n");
+        exit(1);
+    }
+}
+
+file_put_contents($jsonPath, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+file_put_contents($mdPath, (new MarkdownRenderer())->render($data));
+
+if ($quiet) {
+    exit(0);
+}
+
+// ── Résumé console ─────────────────────────────────────────────────────────
+$s = $data['summary'];
+$fmt = static fn (int|float $n): string => number_format((float) $n, 0, ',', ' ');
+// printf('%-24s') compte des octets : les libellés accentués se décalent.
+$pad = static fn (string $text, int $width): string => $text . str_repeat(' ', max(0, $width - mb_strlen($text)));
+$padLeft = static fn (string $text, int $width): string => str_repeat(' ', max(0, $width - mb_strlen($text))) . $text;
+
+echo "\nJEUX DE TESTS DPE 3CL — profil de tolérance : {$profileName}\n\n";
+printf("Cas                     : %d\n", $s['cases_total']);
+printf("Exécutés                : %d\n", $s['cases_run']);
+printf("Crash                   : %d\n", $s['cases_crashed']);
+printf("Totalement conformes    : %d\n", $s['cases_fully_conform']);
+printf("Partiellement conformes : %d\n\n", $s['cases_partially_conform']);
+printf("Valeurs comparées       : %s\n", $fmt($s['values_compared']));
+printf("Exactes                 : %s\n", $fmt($s[ComparisonStatus::EXACT]));
+printf("Dans tolérance          : %s\n", $fmt($s[ComparisonStatus::WITHIN]));
+printf("Hors tolérance          : %s\n", $fmt($s[ComparisonStatus::OUT]));
+printf("Balises manquantes      : %s\n", $fmt($s[ComparisonStatus::MISSING]));
+printf("Balises supplémentaires : %s\n", $fmt($s[ComparisonStatus::EXTRA]));
+printf("Écarts non numériques   : %s\n\n", $fmt($s[ComparisonStatus::MISMATCH]));
+printf("Conformité              : %s %%\n\n", $s['conformity_percent'] === null ? 'n/a' : number_format((float) $s['conformity_percent'], 2, ',', ' '));
+
+echo "Par famille fonctionnelle :\n";
+foreach ($data['by_famille'] as $f) {
+    echo '  ' . $pad($f['famille'], 26)
+        . $padLeft($fmt($f['compared']), 8) . ' comparées  '
+        . $padLeft($fmt($f['failing']), 7) . ' non conformes  '
+        . $padLeft($f['conformity_percent'] === null ? 'n/a' : number_format((float) $f['conformity_percent'], 2, ',', ' '), 7) . " %\n";
+}
+
+$top = (int) ($options['top'] ?? 20);
+echo "\nPrincipales sources d'écart :\n";
+$rank = 0;
+foreach (array_slice($data['by_tag'], 0, $top) as $t) {
+    $rank++;
+    echo $padLeft((string) $rank, 3) . '. '
+        . $pad($t['famille'], 26)
+        . $pad($t['tag'], 44)
+        . $padLeft($fmt($t['count']), 6) . ' occurrences / '
+        . $padLeft((string) $t['cases'], 3) . " cas\n";
+}
+
+// ── Détail d'une famille ───────────────────────────────────────────────────
+if (isset($options['famille'])) {
+    $famille = (string) $options['famille'];
+    echo "\nDétail — famille « {$famille} » :\n";
+    $shown = 0;
+    foreach ($data['cases'] as $case) {
+        foreach ($case['deltas'] as $d) {
+            if ($d['famille'] !== $famille || !in_array($d['status'], ComparisonStatus::FAILING, true)) {
+                continue;
+            }
+            if ($shown++ >= $top) {
+                break 2;
+            }
+            echo '  ' . $pad($case['name'], 20)
+                . $pad($d['tag'], 44)
+                . 'attendu=' . $pad(substr((string) ($d['expected'] ?? '—'), 0, 14), 16)
+                . 'obtenu=' . $pad(substr((string) ($d['actual'] ?? '—'), 0, 14), 16)
+                . ($d['delta_percent'] !== null ? sprintf('%.2f %%', $d['delta_percent']) : $d['status'])
+                . ($d['note'] !== null ? '  [' . $d['note'] . ']' : '') . "\n";
+        }
+    }
+}
+
+if (($data['unknown_elements'] ?? []) !== []) {
+    echo "\nBalises produites hors vocabulaire ADEME (XML rejeté par l'observatoire) :\n";
+    foreach ($data['unknown_elements'] as $name => $n) {
+        echo '  ' . $pad($name, 40) . $padLeft((string) $n, 5) . " cas\n";
+    }
+}
+
+echo "\nRapports écrits :\n  {$jsonPath}\n  {$mdPath}\n";

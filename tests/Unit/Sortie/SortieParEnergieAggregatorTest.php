@@ -31,6 +31,7 @@ final class SortieParEnergieAggregatorTest extends TestCase
 <logement>
     <installation_chauffage_collection>
         <installation_chauffage>
+            <donnee_intermediaire><conso_ch>{$consoChGen}</conso_ch><conso_ch_depensier>0</conso_ch_depensier></donnee_intermediaire>
             <generateur_chauffage_collection>
                 <generateur_chauffage>
                     <donnee_entree>
@@ -46,6 +47,7 @@ final class SortieParEnergieAggregatorTest extends TestCase
     </installation_chauffage_collection>
     <installation_ecs_collection>
         <installation_ecs>
+            <donnee_intermediaire><conso_ecs>{$consoEcsGen}</conso_ecs><conso_ecs_depensier>0</conso_ecs_depensier></donnee_intermediaire>
             <generateur_ecs_collection>
                 <generateur_ecs>
                     <donnee_entree>
@@ -110,6 +112,22 @@ XML;
         $this->assertEqualsWithDelta(500.0, $elecConso5[0], self::TOL, 'elec conso_5 = ecl + aux');
     }
 
+    public function testNativeAdemeOrdersElectricityBeforeGas(): void
+    {
+        $doc = $this->buildDoc(2, 2, 10000.0, 5000.0, 200.0, 300.0);
+        $doc->documentElement->setAttribute('version', '0.1.0');
+        $logement = $doc->getElementsByTagName('logement')->item(0);
+
+        (new SortieParEnergieAggregator())->calculate($logement, $this->makeContext($doc));
+
+        self::assertSame([1.0, 2.0], $this->getValues($doc, '//sortie_par_energie/enum_type_energie_id'));
+        self::assertEqualsWithDelta(
+            15000.0,
+            $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=2]/conso_5_usages')[0],
+            self::TOL,
+        );
+    }
+
     /**
      * Gas GES : 10000 kWh * 0.227 = 2270 kgCO2e
      */
@@ -121,6 +139,31 @@ XML;
 
         $gesChValues = $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=2]/emission_ges_ch');
         $this->assertEqualsWithDelta(10000.0 * 0.227, $gesChValues[0], self::TOL, 'gas GES ch');
+    }
+
+    /**
+     * La ventilation par énergie utilise le facteur propre au réseau et au millésime.
+     */
+    public function testReseauChaleurGesMillesime2025(): void
+    {
+        $doc = $this->buildDoc(8, 8, 10000.0, 5000.0, 0.0, 0.0);
+        $xp = new DOMXPath($doc);
+        foreach (['generateur_chauffage', 'generateur_ecs'] as $tag) {
+            $entry = $xp->query('//' . $tag . '/donnee_entree')->item(0);
+            $entry->appendChild($doc->createElement('identifiant_reseau_chaleur', '5703C'));
+            $entry->appendChild($doc->createElement('date_arrete_reseau_chaleur', '2026-04-25'));
+        }
+
+        $logement = $doc->getElementsByTagName('logement')->item(0);
+        (new SortieParEnergieAggregator())->calculate($logement, $this->makeContext($doc));
+
+        $gesCh = $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=8]/emission_ges_ch');
+        $gesEcs = $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=8]/emission_ges_ecs');
+        $ges5 = $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=8]/emission_ges_5_usages');
+
+        $this->assertEqualsWithDelta(10000.0 * 0.174, $gesCh[0], self::TOL);
+        $this->assertEqualsWithDelta(5000.0 * 0.174, $gesEcs[0], self::TOL);
+        $this->assertEqualsWithDelta(15000.0 * 0.174, $ges5[0], self::TOL);
     }
 
     /**

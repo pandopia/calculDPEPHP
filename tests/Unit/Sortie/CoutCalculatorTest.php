@@ -8,195 +8,244 @@ use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Sortie\CoutCalculator;
 use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
+use DOMElement;
 use DOMXPath;
 use PHPUnit\Framework\TestCase;
 
 final class CoutCalculatorTest extends TestCase
 {
     private const PROJECT_ROOT = __DIR__ . '/../../..';
-    private const TOL = 1e-4;
+    private const TOL = 1e-6;
 
-    private function makeContext(DOMDocument $doc): CalculationContext
+    /** @param array<string, float|int|string> $ef */
+    private function build(array $ef, int $energieCh = 1, int $energieEcs = 1, ?string $date = null, ?int $nbLogements = null): DOMDocument
     {
-        return new CalculationContext(
-            document: $doc,
-            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
-        );
-    }
+        $defaults = [
+            'conso_ch' => 0, 'conso_ch_depensier' => 0,
+            'conso_ecs' => 0, 'conso_ecs_depensier' => 0,
+            'conso_eclairage' => 0, 'conso_fr' => 0, 'conso_fr_depensier' => 0,
+            'conso_auxiliaire_generation_ch' => 0, 'conso_auxiliaire_generation_ch_depensier' => 0,
+            'conso_auxiliaire_distribution_ch' => 0,
+            'conso_auxiliaire_generation_ecs' => 0, 'conso_auxiliaire_generation_ecs_depensier' => 0,
+            'conso_auxiliaire_distribution_ecs' => 0, 'conso_auxiliaire_ventilation' => 0,
+        ];
+        $ef = array_merge($defaults, $ef);
 
-    private function buildDoc(int $energieChId, float $consoChEf, float $consoEcsEf, float $consoEcl, float $consoAuxVent): DOMDocument
-    {
+        $efXml = '';
+        foreach ($ef as $tag => $value) {
+            $efXml .= "<$tag>$value</$tag>";
+        }
+        $admin = $date === null ? '' : "<administratif><date_etablissement_dpe>$date</date_etablissement_dpe></administratif>";
+        $carac = $nbLogements === null ? '' : "<caracteristique_generale><nombre_appartement>$nbLogements</nombre_appartement></caracteristique_generale>";
+
         $xml = <<<XML
-<?xml version="1.0"?>
-<logement>
-    <installation_chauffage_collection>
-        <installation_chauffage>
-            <generateur_chauffage_collection>
-                <generateur_chauffage>
-                    <donnee_entree>
-                        <enum_type_energie_id>{$energieChId}</enum_type_energie_id>
-                    </donnee_entree>
-                </generateur_chauffage>
-            </generateur_chauffage_collection>
-        </installation_chauffage>
-    </installation_chauffage_collection>
-    <installation_ecs_collection>
-        <installation_ecs>
-            <generateur_ecs_collection>
-                <generateur_ecs>
-                    <donnee_entree>
-                        <enum_type_energie_id>{$energieChId}</enum_type_energie_id>
-                    </donnee_entree>
-                </generateur_ecs>
-            </generateur_ecs_collection>
-        </installation_ecs>
-    </installation_ecs_collection>
-    <sortie>
-        <ef_conso>
-            <conso_ch>{$consoChEf}</conso_ch>
-            <conso_ch_depensier>0</conso_ch_depensier>
-            <conso_ecs>{$consoEcsEf}</conso_ecs>
-            <conso_ecs_depensier>0</conso_ecs_depensier>
-            <conso_eclairage>{$consoEcl}</conso_eclairage>
-            <conso_fr>0</conso_fr>
-            <conso_fr_depensier>0</conso_fr_depensier>
-            <conso_auxiliaire_generation_ch>0</conso_auxiliaire_generation_ch>
-            <conso_auxiliaire_generation_ch_depensier>0</conso_auxiliaire_generation_ch_depensier>
-            <conso_auxiliaire_distribution_ch>0</conso_auxiliaire_distribution_ch>
-            <conso_auxiliaire_generation_ecs>0</conso_auxiliaire_generation_ecs>
-            <conso_auxiliaire_generation_ecs_depensier>0</conso_auxiliaire_generation_ecs_depensier>
-            <conso_auxiliaire_distribution_ecs>0</conso_auxiliaire_distribution_ecs>
-            <conso_auxiliaire_ventilation>{$consoAuxVent}</conso_auxiliaire_ventilation>
-        </ef_conso>
-    </sortie>
-</logement>
-XML;
+        <?xml version="1.0"?>
+        <dpe>$admin<logement>$carac
+          <installation_chauffage_collection><installation_chauffage><generateur_chauffage_collection>
+            <generateur_chauffage><donnee_entree><enum_type_energie_id>$energieCh</enum_type_energie_id></donnee_entree></generateur_chauffage>
+          </generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection>
+          <installation_ecs_collection><installation_ecs><generateur_ecs_collection>
+            <generateur_ecs><donnee_entree><enum_type_energie_id>$energieEcs</enum_type_energie_id></donnee_entree></generateur_ecs>
+          </generateur_ecs_collection></installation_ecs></installation_ecs_collection>
+          <sortie><ef_conso>$efXml</ef_conso></sortie>
+        </logement></dpe>
+        XML;
+
         $doc = new DOMDocument();
         $doc->loadXML($xml);
+
         return $doc;
     }
 
-    private function getLeaf(DOMDocument $doc, string $xpath): float
+    private function compute(DOMDocument $doc): void
     {
-        $xp = new DOMXPath($doc);
-        $nodes = $xp->query($xpath);
+        $logement = $doc->getElementsByTagName('logement')->item(0);
+        self::assertInstanceOf(DOMElement::class, $logement);
+
+        (new CoutCalculator())->calculate($logement, new CalculationContext(
+            document: $doc,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        ));
+    }
+
+    private function cout(DOMDocument $doc, string $tag): float
+    {
+        $nodes = (new DOMXPath($doc))->query('//sortie/cout/' . $tag);
         if ($nodes === false || $nodes->length === 0) {
-            $this->fail("XPath not found: $xpath");
+            self::fail("Balise absente : $tag");
         }
-        return (float)$nodes->item(0)->textContent;
+
+        return (float) $nodes->item(0)?->textContent;
     }
 
-    /**
-     * Gaz naturel — conso_ch=10000 (tranche 5009-50055) : 230 + 0.06533×10000 = 883.3
-     */
-    public function testGazNaturelMediumConso(): void
-    {
-        $doc = $this->buildDoc(2, 10000.0, 5000.0, 200.0, 100.0);
-        $logement = $doc->getElementsByTagName('logement')->item(0);
-        (new CoutCalculator())->calculate($logement, $this->makeContext($doc));
+    // ── Barème selon la date d'établissement ──────────────────────────────
 
-        $coutCh = $this->getLeaf($doc, '//sortie/cout/cout_ch');
-        $expected = 230.0 + 0.06533 * 10000.0;
-        $this->assertEqualsWithDelta($expected, $coutCh, self::TOL * $expected, 'cout_ch gaz medium');
+    public function testBaremeAvant2024EstCeluiDeLArrete2021(): void
+    {
+        // Fioul, annexe 7 de 2021 : 0,09142 €/kWh.
+        $doc = $this->build(['conso_ch' => 5000], energieCh: 3, date: '2023-05-16');
+        $this->compute($doc);
+
+        self::assertEqualsWithDelta(0.09142 * 5000, $this->cout($doc, 'cout_ch'), self::TOL);
     }
 
-    /**
-     * Gaz naturel — petite conso (<5009) : 0.11121×conso
-     */
-    public function testGazNaturelSmallConso(): void
+    public function testBaremeDepuisJuillet2024EstCeluiDeLArrete2024(): void
     {
-        $doc = $this->buildDoc(2, 1000.0, 500.0, 100.0, 50.0);
-        $logement = $doc->getElementsByTagName('logement')->item(0);
-        (new CoutCalculator())->calculate($logement, $this->makeContext($doc));
+        // Fioul, arrêté du 25 mars 2024 : 0,14821 €/kWh.
+        $doc = $this->build(['conso_ch' => 5000], energieCh: 3, date: '2026-01-05');
+        $this->compute($doc);
 
-        $coutCh = $this->getLeaf($doc, '//sortie/cout/cout_ch');
-        $this->assertEqualsWithDelta(0.11121 * 1000.0, $coutCh, self::TOL * 111.21, 'cout_ch gaz small');
+        self::assertEqualsWithDelta(0.14821 * 5000, $this->cout($doc, 'cout_ch'), self::TOL);
     }
 
-    /**
-     * Gaz naturel — grande conso (>50055) : 415 + 0.06164×conso
-     */
-    public function testGazNaturelLargeConso(): void
+    public function testBasculeExactementAu1erJuillet2024(): void
     {
-        $doc = $this->buildDoc(2, 60000.0, 0.0, 0.0, 0.0);
-        $logement = $doc->getElementsByTagName('logement')->item(0);
-        (new CoutCalculator())->calculate($logement, $this->makeContext($doc));
+        $veille = $this->build(['conso_ch' => 1000], energieCh: 3, date: '2024-06-30');
+        $jour   = $this->build(['conso_ch' => 1000], energieCh: 3, date: '2024-07-01');
+        $this->compute($veille);
+        $this->compute($jour);
 
-        $coutCh = $this->getLeaf($doc, '//sortie/cout/cout_ch');
-        $expected = 415.0 + 0.06164 * 60000.0;
-        $this->assertEqualsWithDelta($expected, $coutCh, self::TOL * $expected, 'cout_ch gaz large');
+        self::assertEqualsWithDelta(91.42, $this->cout($veille, 'cout_ch'), 1e-4);
+        self::assertEqualsWithDelta(148.21, $this->cout($jour, 'cout_ch'), 1e-4);
     }
 
-    /**
-     * Électricité — tranche 5000-15000 : 94 + 0.15735×conso
-     */
-    public function testElectriciteMediumConso(): void
+    public function testSansDateLeBaremeLePlusRecentSApplique(): void
     {
-        $doc = $this->buildDoc(1, 8000.0, 2000.0, 500.0, 300.0);
-        $logement = $doc->getElementsByTagName('logement')->item(0);
-        (new CoutCalculator())->calculate($logement, $this->makeContext($doc));
+        $doc = $this->build(['conso_ch' => 1000], energieCh: 3);
+        $this->compute($doc);
 
-        $coutCh = $this->getLeaf($doc, '//sortie/cout/cout_ch');
-        $expected = 94.0 + 0.15735 * 8000.0;
-        $this->assertEqualsWithDelta($expected, $coutCh, self::TOL * $expected, 'cout_ch elec medium');
+        self::assertEqualsWithDelta(148.21, $this->cout($doc, 'cout_ch'), 1e-4);
     }
 
-    /**
-     * Électricité — très petite conso (<1000) : 0.29007×conso
-     */
-    public function testElectriciteSmallConso(): void
-    {
-        $doc = $this->buildDoc(1, 500.0, 0.0, 0.0, 0.0);
-        $logement = $doc->getElementsByTagName('logement')->item(0);
-        (new CoutCalculator())->calculate($logement, $this->makeContext($doc));
+    // ── La tranche porte sur le total de l'énergie, pas sur chaque usage ──
 
-        $coutCh = $this->getLeaf($doc, '//sortie/cout/cout_ch');
-        $this->assertEqualsWithDelta(0.29007 * 500.0, $coutCh, self::TOL * 145.0, 'cout_ch elec small');
+    public function testLaTrancheElectriquePorteSurLeTotalPasSurChaqueUsage(): void
+    {
+        // 4 000 kWh de chauffage + 4 000 kWh d'ECS = 8 000 kWh au total, donc
+        // tranche 5 000-15 000 : 119 + 0,19726 × 8 000 = 1 697,08 €.
+        // Tarifer chaque usage séparément placerait les deux dans la tranche
+        // 2 500-5 000 et facturerait deux fois le terme fixe.
+        $doc = $this->build(
+            ['conso_ch' => 4000, 'conso_ecs' => 4000],
+            energieCh: 1,
+            energieEcs: 1,
+            date: '2026-01-05',
+        );
+        $this->compute($doc);
+
+        $total = 119.0 + 0.19726 * 8000.0;
+        self::assertEqualsWithDelta($total / 2, $this->cout($doc, 'cout_ch'), 1e-6);
+        self::assertEqualsWithDelta($total / 2, $this->cout($doc, 'cout_ecs'), 1e-6);
+        self::assertEqualsWithDelta($total, $this->cout($doc, 'cout_5_usages'), 1e-6);
     }
 
-    /**
-     * Fioul — tarif fixe 0.09142 €/kWh
-     */
-    public function testFioul(): void
+    public function testChaqueEnergieEstTarifeeSurSonPropreTotal(): void
     {
-        $doc = $this->buildDoc(3, 5000.0, 2000.0, 200.0, 100.0);
-        $logement = $doc->getElementsByTagName('logement')->item(0);
-        (new CoutCalculator())->calculate($logement, $this->makeContext($doc));
+        // Chauffage au gaz, ECS électrique : deux paniers distincts.
+        $doc = $this->build(
+            ['conso_ch' => 20000, 'conso_ecs' => 3000],
+            energieCh: 2,
+            energieEcs: 1,
+            date: '2026-01-05',
+        );
+        $this->compute($doc);
 
-        $coutCh = $this->getLeaf($doc, '//sortie/cout/cout_ch');
-        $this->assertEqualsWithDelta(0.09142 * 5000.0, $coutCh, self::TOL * 500.0, 'cout_ch fioul');
+        self::assertEqualsWithDelta(182.0 + 0.09488 * 20000.0, $this->cout($doc, 'cout_ch'), 1e-6);
+        self::assertEqualsWithDelta(158.0 + 0.18949 * 3000.0, $this->cout($doc, 'cout_ecs'), 1e-6);
     }
 
-    /**
-     * cout_total_auxiliaire = sum des auxiliaires individuels.
-     */
-    public function testTotalAuxiliaire(): void
-    {
-        $doc = $this->buildDoc(1, 1000.0, 500.0, 200.0, 300.0);
-        $logement = $doc->getElementsByTagName('logement')->item(0);
-        (new CoutCalculator())->calculate($logement, $this->makeContext($doc));
+    // ── La tranche s'apprécie par logement ────────────────────────────────
 
-        $total = $this->getLeaf($doc, '//sortie/cout/cout_total_auxiliaire');
-        $vent  = $this->getLeaf($doc, '//sortie/cout/cout_auxiliaire_ventilation');
-        // Only ventilation non-zero in this test (others are 0)
-        $this->assertEqualsWithDelta($vent, $total, self::TOL, 'cout_total_auxiliaire = sum');
+    public function testLaTrancheSAppricieParLogement(): void
+    {
+        // 20 000 kWh sur 40 logements = 500 kWh par ménage : première tranche
+        // (0,34721 €/kWh), et non la tranche ≥ 15 000 du total du bâtiment.
+        $doc = $this->build(['conso_eclairage' => 20000], date: '2026-01-05', nbLogements: 40);
+        $this->compute($doc);
+
+        self::assertEqualsWithDelta(0.34721 * 20000.0, $this->cout($doc, 'cout_eclairage'), 1e-6);
     }
 
-    /**
-     * cout_5_usages = ch + ecs + fr + total_aux + eclairage.
-     */
-    public function testCout5Usages(): void
+    public function testSansNombreDeLogementsLaTrancheSAppliqueAuTotal(): void
     {
-        $doc = $this->buildDoc(2, 10000.0, 5000.0, 200.0, 100.0);
-        $logement = $doc->getElementsByTagName('logement')->item(0);
-        (new CoutCalculator())->calculate($logement, $this->makeContext($doc));
+        $doc = $this->build(['conso_eclairage' => 20000], date: '2026-01-05');
+        $this->compute($doc);
 
-        $expected = $this->getLeaf($doc, '//sortie/cout/cout_ch')
-                  + $this->getLeaf($doc, '//sortie/cout/cout_ecs')
-                  + $this->getLeaf($doc, '//sortie/cout/cout_fr')
-                  + $this->getLeaf($doc, '//sortie/cout/cout_total_auxiliaire')
-                  + $this->getLeaf($doc, '//sortie/cout/cout_eclairage');
-        $actual = $this->getLeaf($doc, '//sortie/cout/cout_5_usages');
-        $this->assertEqualsWithDelta($expected, $actual, self::TOL, 'cout_5_usages');
+        // 78 + 0,20001 × 20 000, ramené au prix unitaire puis réappliqué.
+        self::assertEqualsWithDelta(78.0 + 0.20001 * 20000.0, $this->cout($doc, 'cout_eclairage'), 1e-6);
+    }
+
+    public function testNombreDeLogementsAberrantEstRameneAUn(): void
+    {
+        $doc = $this->build(['conso_eclairage' => 20000], date: '2026-01-05', nbLogements: 0);
+        $this->compute($doc);
+
+        self::assertEqualsWithDelta(78.0 + 0.20001 * 20000.0, $this->cout($doc, 'cout_eclairage'), 1e-6);
+    }
+
+    // ── Panier dépensier ──────────────────────────────────────────────────
+
+    public function testLeScenarioDepensierAToutesSesPropresTranches(): void
+    {
+        $doc = $this->build(
+            ['conso_ch' => 800, 'conso_ch_depensier' => 8000],
+            energieCh: 1,
+            date: '2026-01-05',
+        );
+        $this->compute($doc);
+
+        self::assertEqualsWithDelta(0.34721 * 800.0, $this->cout($doc, 'cout_ch'), 1e-6);
+        self::assertEqualsWithDelta(119.0 + 0.19726 * 8000.0, $this->cout($doc, 'cout_ch_depensier'), 1e-6);
+    }
+
+    // ── Agrégats ──────────────────────────────────────────────────────────
+
+    public function testTotalAuxiliaireEtCout5Usages(): void
+    {
+        $doc = $this->build([
+            'conso_ch' => 1000, 'conso_ecs' => 500, 'conso_eclairage' => 200,
+            'conso_auxiliaire_generation_ch' => 50,
+            'conso_auxiliaire_distribution_ch' => 60,
+            'conso_auxiliaire_generation_ecs' => 30,
+            'conso_auxiliaire_distribution_ecs' => 20,
+            'conso_auxiliaire_ventilation' => 100,
+        ], date: '2026-01-05');
+        $this->compute($doc);
+
+        $aux = $this->cout($doc, 'cout_auxiliaire_generation_ch')
+            + $this->cout($doc, 'cout_auxiliaire_distribution_ch')
+            + $this->cout($doc, 'cout_auxiliaire_generation_ecs')
+            + $this->cout($doc, 'cout_auxiliaire_distribution_ecs')
+            + $this->cout($doc, 'cout_auxiliaire_ventilation');
+
+        self::assertEqualsWithDelta($aux, $this->cout($doc, 'cout_total_auxiliaire'), 1e-9);
+
+        $attendu = $this->cout($doc, 'cout_ch') + $this->cout($doc, 'cout_ecs')
+            + $this->cout($doc, 'cout_fr') + $aux + $this->cout($doc, 'cout_eclairage');
+        self::assertEqualsWithDelta($attendu, $this->cout($doc, 'cout_5_usages'), 1e-9);
+    }
+
+    public function testConsommationNulleDonneUnCoutNul(): void
+    {
+        $doc = $this->build([], date: '2026-01-05');
+        $this->compute($doc);
+
+        self::assertSame(0.0, $this->cout($doc, 'cout_5_usages'));
+        self::assertSame(0.0, $this->cout($doc, 'cout_ch'));
+    }
+
+    public function testElectriciteRenouvelableEstTarifeeCommeLElectricite(): void
+    {
+        // enum_type_energie_id 12 partage le panier de l'électricité : les
+        // deux consommations doivent se cumuler dans la même tranche.
+        $doc = $this->build(
+            ['conso_ch' => 4000, 'conso_eclairage' => 4000],
+            energieCh: 12,
+            date: '2026-01-05',
+        );
+        $this->compute($doc);
+
+        $total = 119.0 + 0.19726 * 8000.0;
+        self::assertEqualsWithDelta($total / 2, $this->cout($doc, 'cout_ch'), 1e-6);
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Chauffage;
 
+use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
+use CalculDpePHP\Common\ClimaticSolicitations;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -49,7 +51,7 @@ final class BesoinChauffageCalculator implements CalculatorInterface
             '\CalculDpePHP\Enveloppe\EnveloppeAggregator',
             '\CalculDpePHP\Ventilation\VentilationAggregator',
             '\CalculDpePHP\Ecs\BesoinEcsCalculator',
-            '\CalculDpePHP\Ecs\Rendement\StockageCalculator', // writes Qgw to DOM
+            '\CalculDpePHP\Ecs\Rendement\StockageCalculator', // publie Qg,w dans le contexte
             '\CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator', // writes qp0/pn
         ];
     }
@@ -77,8 +79,8 @@ final class BesoinChauffageCalculator implements CalculatorInterface
         // ── 3. Σ(DH19j) et Σ(DH21j) sur la saison de chauffe ─────────────────
         $zoneId = $context->zoneClimatique !== null ? (int)$context->zoneClimatique : null;
         $altId  = $context->classeAltitude  !== null ? (int)$context->classeAltitude  : null;
-        $tvS    = ($zoneId !== null && $altId !== null)
-            ? ($context->tables->load('reference/tv_sollicitations')[$zoneId][$altId] ?? null)
+        $tvS = ($zoneId !== null && $altId !== null)
+            ? ClimaticSolicitations::heating($context, $zoneId, $altId)
             : null;
 
         $sumDH19 = 0.0;
@@ -186,6 +188,7 @@ final class BesoinChauffageCalculator implements CalculatorInterface
                 'pn'    => $pn,
                 'cper'  => $ventouse === 1 ? 0.75 : 0.5,
                 'usage' => $usage, // 1=chauffage, 2=ecs, 3=chauffage+ecs
+                'multiplicity' => $this->generatorMultiplicity($gen, $accessor),
             ];
         }
         if ($gens === []) {
@@ -213,7 +216,7 @@ final class BesoinChauffageCalculator implements CalculatorInterface
                     3       => min($nref, 1.3 * $bchHpJ / (0.3 * $g['pn']) + $nref * 1790.0 / 8760.0),
                     default => min($nref, 1.3 * $bchHpJ / (0.3 * $g['pn'])),
                 };
-                $totalWh += 0.48 * $g['cper'] * $g['qp0'] * $dper;
+                $totalWh += 0.48 * $g['cper'] * $g['qp0'] * $dper * $g['multiplicity'];
             }
         }
 
@@ -227,7 +230,6 @@ final class BesoinChauffageCalculator implements CalculatorInterface
      * Qgw_total_ecs = Σ_instal(0.48 × Σ_gen(Qgw) × rdim / 8760)   [W]
      * pertes = Qgw_total_ecs × Σ_j(Nref19_j or Nref21_j) / 1000   [kWh]
      *
-     * Seules les installations individuelles (enum_type_installation_id=1) contribuent.
      * Les générateurs hors volume chauffé (position_volume_chauffe=0
      * ou position_volume_chauffe_stockage=0) sont exclus.
      */
@@ -253,20 +255,16 @@ final class BesoinChauffageCalculator implements CalculatorInterface
         $installations = $context->document->getElementsByTagName('installation_ecs');
 
         foreach ($installations as $install) {
-            $typeInstallId = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $install);
-            if ($typeInstallId !== 1) {
-                continue; // collective → pas de récupération stockage
-            }
-            $rdim = $accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0;
+            $rdim = EcsInstallationMultiplicity::sampledOrNull($install, $accessor)
+                ?? ($accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0);
 
             $qgwInstall = 0.0;
             foreach ($install->getElementsByTagName('generateur_ecs') as $gen) {
-                $posVol      = $accessor->getIntOrNull('./donnee_entree/position_volume_chauffe', $gen) ?? 1;
                 $posStockage = $accessor->getIntOrNull('./donnee_entree/position_volume_chauffe_stockage', $gen) ?? 1;
-                if ($posVol === 0 || $posStockage === 0) {
+                if ($posStockage === 0) {
                     continue;
                 }
-                $qgwGen = $accessor->getFloatOrNull('./donnee_intermediaire/Qgw', $gen) ?? 0.0;
+                $qgwGen = (float) $context->get(\CalculDpePHP\Ecs\Rendement\StockageCalculator::qgwKey($gen), 0.0);
                 $qgwInstall += $qgwGen;
             }
 
@@ -274,6 +272,39 @@ final class BesoinChauffageCalculator implements CalculatorInterface
         }
 
         return $qgwTotalEcs * $sumNref / 1000.0;
+    }
+
+    /**
+     * §17.2 p.112-119 — nombre de générateurs individuels représentés par
+     * un générateur de l'échantillon.
+     *
+     * @spec-formula F-17.2-rdim-effective
+     */
+    private function generatorMultiplicity(DOMElement $gen, NodeAccessor $accessor): float
+    {
+        $install = $gen->parentNode?->parentNode;
+        if (!$install instanceof DOMElement || $install->nodeName !== 'installation_chauffage') {
+            return 1.0;
+        }
+
+        $methode = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $install) ?? 1;
+        $type    = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $install) ?? 1;
+        if ($methode === 1 || $type !== 1) {
+            return max(1e-9, $accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0);
+        }
+
+        $logement = $install->parentNode?->parentNode;
+        if (!$logement instanceof DOMElement) {
+            return 1.0;
+        }
+        $nbApt = $accessor->getFloatOrNull('./caracteristique_generale/nombre_appartement', $logement) ?? 1.0;
+        $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation', $install) ?? 1.0;
+        $sumSample = 0.0;
+        foreach ($logement->getElementsByTagName('installation_chauffage') as $candidate) {
+            $sumSample += $accessor->getFloatOrNull('./donnee_entree/nombre_logement_echantillon', $candidate) ?? 0.0;
+        }
+
+        return max(1e-9, $nbApt * $ratioVirt / max(1.0, $sumSample));
     }
 
     private function ensureApportEtBesoin(DOMElement $sortie): DOMElement
