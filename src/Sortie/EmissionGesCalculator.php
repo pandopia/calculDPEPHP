@@ -65,10 +65,6 @@ final class EmissionGesCalculator implements CalculatorInterface
     ];
 
     /** Seuils de classe GES (kgCO2eq/m².an) : A≤6, B≤11, C≤30, D≤50, E≤70, F≤100, G>100 */
-    private const GES_THRESHOLDS = [
-        'A' => 6, 'B' => 11, 'C' => 30, 'D' => 50, 'E' => 70, 'F' => 100,
-    ];
-
     /** Ordre des classes de A à G pour calculer la moins bonne. */
     private const CLASSE_ORDER = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
 
@@ -165,7 +161,13 @@ final class EmissionGesCalculator implements CalculatorInterface
             $ges5 = $ges5m2 * $surface;
         }
 
-        $classeGes = $this->classeGes($ges5m2);
+        $classeGes = SeuilsClasses::ges(
+            $ges5m2,
+            $surface,
+            $this->zoneClimatiqueId($accessor, $context),
+            $this->classeAltitudeId($accessor, $context),
+            $context,
+        );
 
         // ── 7. Mise à jour classe_bilan_dpe = WORST(classe_energie, classe_ges) ──
         $epConso = $this->ensureChild($context->document, $sortie, 'ep_conso');
@@ -366,14 +368,18 @@ final class EmissionGesCalculator implements CalculatorInterface
         return 2; // default: gaz
     }
 
-    private function classeGes(int $ges5m2): string
+    private function zoneClimatiqueId(NodeAccessor $accessor, CalculationContext $context): ?int
     {
-        foreach (self::GES_THRESHOLDS as $classe => $threshold) {
-            if ($ges5m2 <= $threshold) {
-                return $classe;
-            }
-        }
-        return 'G';
+        $zone = $context->zoneClimatique ?? $accessor->getStringOrNull('//meteo/enum_zone_climatique_id');
+
+        return $zone === null ? null : (int) $zone;
+    }
+
+    private function classeAltitudeId(NodeAccessor $accessor, CalculationContext $context): ?int
+    {
+        $alt = $context->classeAltitude ?? $accessor->getStringOrNull('//meteo/enum_classe_altitude_id');
+
+        return $alt === null ? null : (int) $alt;
     }
 
     private function worstClasse(string $classeA, string $classeB): string

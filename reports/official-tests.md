@@ -1,7 +1,7 @@
 # Conformité du moteur — jeux de tests DPE 3CL
 
-_Généré le 2026-09-01T14:34:59+00:00 — profil de tolérance : `strict`_
-_Révision mesurée : `3285fe8` — arbre de travail modifié : 2 fichier(s) src/ non commités_
+_Généré le 2026-09-01T14:44:08+00:00 — profil de tolérance : `strict`_
+_Révision mesurée : `f64b659` — arbre de travail modifié : 3 fichier(s) src/ non commités_
 
 Comparaison balise à balise de la totalité de `<donnee_intermediaire>` et
 `<sortie>` entre la sortie du moteur et la référence du cas. Aucune balise
@@ -17,17 +17,17 @@ Totalement conformes     : 0
 Partiellement conformes  : 349
 
 Valeurs comparées        : 112 097
-Exactes                  : 84 864
+Exactes                  : 84 909
 Dans tolérance           : 14 447
 Hors tolérance           : 10 846
 Balises manquantes       : 69
 Balises supplémentaires  : 1 792
-Écarts non numériques    : 79
+Écarts non numériques    : 34
 
-Conformité               : 88,59 %
+Conformité               : 88,63 %
 ```
 
-Sur ces écarts, **2 788 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **91,08 %**. Détail plus bas.
+Sur ces écarts, **2 788 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **91,12 %**. Détail plus bas.
 
 ## Écarts par famille fonctionnelle
 
@@ -44,8 +44,8 @@ Sur ces écarts, **2 788 sont imputables à la référence** et non au moteur : 
 | Froid | 4300 | 3996 | 28 | 248 | 28 | 0 | 93,58 % |
 | PV | 2449 | 2440 | 0 | 9 | 0 | 0 | 99,63 % |
 | Sorties énergie finale | 2285 | 1198 | 609 | 478 | 0 | 0 | 79,08 % |
-| Sorties énergie primaire | 2792 | 1298 | 813 | 651 | 0 | 0 | 75,61 % |
-| GES | 4649 | 2193 | 1362 | 1045 | 0 | 0 | 76,47 % |
+| Sorties énergie primaire | 2792 | 1310 | 813 | 651 | 0 | 0 | 76,04 % |
+| GES | 4649 | 2226 | 1362 | 1045 | 0 | 0 | 77,18 % |
 | Coûts | 3951 | 827 | 1244 | 1880 | 0 | 0 | 52,42 % |
 | Confort d'été | 2018 | 558 | 0 | 89 | 0 | 1371 | 27,65 % |
 | Autre | 744 | 437 | 172 | 135 | 0 | 0 | 81,85 % |
@@ -57,17 +57,17 @@ Périmètres du règlement d'évaluation CSTB §1.1, déduits de
 
 | Périmètre | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| immeuble_collectif | 236 | 79126 | 61199 | 10764 | 5602 | 22 | 90,68 % |
-| appartement_issu_immeuble | 38 | 13740 | 9474 | 1287 | 2739 | 1 | 78,10 % |
-| maison_individuelle | 36 | 10085 | 7558 | 1120 | 1331 | 18 | 85,74 % |
-| appartement_individuel | 39 | 9146 | 6633 | 1276 | 1174 | 28 | 86,11 % |
+| immeuble_collectif | 236 | 79126 | 61227 | 10764 | 5602 | 22 | 90,71 % |
+| appartement_issu_immeuble | 38 | 13740 | 9479 | 1287 | 2739 | 1 | 78,14 % |
+| maison_individuelle | 36 | 10085 | 7563 | 1120 | 1331 | 18 | 85,79 % |
+| appartement_individuel | 39 | 9146 | 6640 | 1276 | 1174 | 28 | 86,18 % |
 
 ## Écarts par régime du coefficient EP électricité
 
 | Régime | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| post_2026 | 272 | 84783 | 64912 | 11988 | 6296 | 29 | 90,41 % |
-| pre_2026 | 77 | 27314 | 19952 | 2459 | 4550 | 40 | 81,82 % |
+| post_2026 | 272 | 84783 | 64949 | 11988 | 6296 | 29 | 90,46 % |
+| pre_2026 | 77 | 27314 | 19960 | 2459 | 4550 | 40 | 81,85 % |
 
 ## Écarts par moteur de calcul de la référence
 
@@ -76,10 +76,10 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 
 | Moteur | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| BBS_Slama_2025.11.1.0 | 268 | 83793 | 64279 | 11721 | 6225 | 15 | 90,41 % |
-| 3cl_tribu_1.4.25.1 | 64 | 23040 | 16807 | 2019 | 3921 | 24 | 81,48 % |
-| 3cl_tribu_2024.6.1.0 | 7 | 2711 | 2064 | 242 | 374 | 0 | 84,84 % |
-| 3cl-2024.6.1.0 | 3 | 644 | 440 | 81 | 106 | 12 | 80,53 % |
+| BBS_Slama_2025.11.1.0 | 268 | 83793 | 64316 | 11721 | 6225 | 15 | 90,45 % |
+| 3cl_tribu_1.4.25.1 | 64 | 23040 | 16811 | 2019 | 3921 | 24 | 81,50 % |
+| 3cl_tribu_2024.6.1.0 | 7 | 2711 | 2067 | 242 | 374 | 0 | 84,95 % |
+| 3cl-2024.6.1.0 | 3 | 644 | 441 | 81 | 106 | 12 | 80,68 % |
 | BBS_Slama_2024.6.1.0 | 2 | 640 | 457 | 83 | 100 | 0 | 84,11 % |
 | inconnu | 2 | 522 | 347 | 131 | 33 | 10 | 91,22 % |
 | 3cl_tribu_1.4.25.0 | 1 | 279 | 184 | 34 | 49 | 4 | 77,86 % |

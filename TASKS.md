@@ -1186,13 +1186,24 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K07 — Classes DPE et GES divergentes
 
-- [~AI2] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: moyenne
-- 39 écarts non numériques : 15 sur `classe_bilan_dpe`, 24 sur
-  `classe_emission_ges`. Ce sont les deux valeurs les plus visibles d'un DPE.
-- À traiter **après** K02 et K04 : une classe fausse est presque toujours la
-  conséquence d'une consommation fausse, pas d'un seuil faux. Vérifier
-  néanmoins les seuils (dont l'ajustement < 40 m² de l'arrêté du 24 mars 2024).
-- Validation : 0 écart sur `classe_bilan_dpe` et `classe_emission_ges`.
+- [x] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- 79 écarts non numériques sur les deux valeurs les plus visibles d'un DPE.
+  Contrairement à ce que la tâche supposait, **49 d'entre eux avaient la valeur
+  au m² exacte** : le seuil était bien en cause, pas l'amont.
+- Trois défauts corrigés dans le nouveau `src/Sortie/SeuilsClasses.php` :
+  1. **le seuil est strict** — un logement à 70 kWh/m²/an est en B, pas en A.
+     Le `<=` décalait d'une classe tous les logements pile sur un seuil ;
+  2. **les petites surfaces ont leurs propres seuils** (arrêté du 25 mars 2024),
+     relevés surface par surface de 3 à 40 m² :
+     `resources/tables/reference/tv_seuils_classes.php` ;
+  3. **E et F sont relevés au-dessus de 800 m** en zone H1b, H1c ou H2d.
+- Valeurs recoupées avec le texte publié : à 8 m², CEP A = 146 et F = 739,
+  EGES A = 11 et F = 122 ; au-dessus de 800 m à 8 m², CEP E = 682 ; à 40 m² on
+  retrouve le barème national.
+- Mesure A/B isolée, 349 cas : écarts non numériques **79 → 34 (−45)**, tous
+  passés en « exactes ». Famille GES 1 094 → 1 061, EP 681 → 669. Aucune autre
+  valeur touchée. 516 tests unitaires verts.
+- Les 34 restants sont bien en aval d'une consommation fausse (TASK-K04, K06).
 
 ### TASK-K08 — Balises manquantes du bloc froid : ne rien changer
 
