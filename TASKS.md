@@ -1180,7 +1180,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K10 — Diviseur « par logement » des tranches tarifaires
 
-- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- [~AI2] Owner: AI2  | Phase: K  | Estimation: 3h  | Priorité: moyenne
 - TASK-K02 a établi que la tranche tarifaire de l'électricité et du gaz
   s'apprécie sur la consommation **d'un logement**, et l'a implémentée en
   divisant par `caracteristique_generale/nombre_appartement`. Vérifié exact
