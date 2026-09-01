@@ -125,17 +125,23 @@ XML;
         $this->assertSame(4, $ctx->get('inertie.classe_id'));
     }
 
-    public function testWritesXmlTag(): void
+    /**
+     * Le schéma ADEME ne déclare `enum_classe_inertie_id` que sous
+     * `<enveloppe><inertie>`, où c'est une donnée d'entrée. L'écrire en
+     * `<logement><donnee_intermediaire>` produisait une balise inexistante :
+     * la classe ne transite plus que par le contexte.
+     */
+    public function testNecritPasLaClasseDansLeXml(): void
     {
         $doc = $this->buildDoc('1', '1', '1');
         $logement = $doc->getElementsByTagName('logement')->item(0);
         $ctx = $this->makeContext($doc);
+
         (new InertieCalculator())->calculate($logement, $ctx);
+
+        $this->assertSame(1, $ctx->get('inertie.classe_id'));
         $di = $doc->getElementsByTagName('donnee_intermediaire')->item(0);
-        $this->assertNotNull($di);
-        $tag = $di->getElementsByTagName('enum_classe_inertie_id')->item(0);
-        $this->assertNotNull($tag);
-        $this->assertSame('1', $tag->textContent);
+        $this->assertNull($di?->getElementsByTagName('enum_classe_inertie_id')->item(0));
     }
 
     public function testDefaultPbLourd_WhenAbsent(): void
@@ -208,7 +214,5 @@ XML;
         (new InertieCalculator())->calculate($doc->documentElement, $context);
 
         $this->assertSame(2, $context->get('inertie.classe_id'));
-        $this->assertSame('2', $doc->getElementsByTagName('donnee_intermediaire')->item(0)
-            ->getElementsByTagName('enum_classe_inertie_id')->item(0)->textContent);
     }
 }

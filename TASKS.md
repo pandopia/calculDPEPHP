@@ -1300,7 +1300,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K14 — `enum_classe_inertie_id` écrit hors de son emplacement au schéma
 
-- [~AI2] Owner: AI2  | Phase: K  | Estimation: 1h  | Priorité: haute
+- [x] Owner: AI2  | Phase: K  | Estimation: 1h  | Priorité: haute
 - Le moteur écrit `enum_classe_inertie_id` dans
   `logement/donnee_intermediaire`, sur **229 cas sur 229**. Le schéma ne
   déclare cette balise qu'à un seul endroit :
@@ -1310,9 +1310,27 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
   de balises, pas leur emplacement.
 - La classe est déjà publiée dans le contexte (`inertie.classe_id`) ; deux
   consommateurs la relisent inutilement depuis le DOM.
-- Action : cesser d'écrire la balise, faire lire le contexte à
-  `ConfortEteCalculator` et `CollectifBaseAppoint`.
-- Validation : 229 balises supplémentaires en moins, aucune valeur changée.
+- **Fait** : la balise n'est plus écrite, `ConfortEteCalculator` et
+  `CollectifBaseAppoint` lisent `inertie.classe_id` dans le contexte.
+- Mesure A/B isolée : balises supplémentaires **1 779 → 1 550 (−229)**,
+  conformité **90,60 % → 90,89 %**, aucune valeur modifiée (exactes, tolérées
+  et hors tolérance strictement identiques). 487 tests verts.
+- Voir TASK-K15 : le contrôle de vocabulaire doit devenir sensible au chemin
+  pour attraper ce genre de défaut tout seul.
+
+### TASK-K15 — Contrôle structurel sensible au chemin
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- `XsdVocabulary` ne vérifie que les **noms** de balises. TASK-K14 a montré la
+  limite : `enum_classe_inertie_id` existait bien au schéma, mais sous
+  `<enveloppe><inertie>`, et le moteur l'écrivait dans
+  `<logement><donnee_intermediaire>` sur 229 cas sur 229 sans que le rapport
+  s'en aperçoive.
+- Le XSD porte les chemins complets dans ses `<xs:appinfo source="...">` : le
+  contrôle peut donc être rendu sensible au chemin sans travail d'inférence.
+- Comme aujourd'hui, il faudra unir le vocabulaire du XSD (périmé) aux chemins
+  réellement observés dans la référence du cas, pour éviter les faux positifs.
+- Validation : le contrôle rejoue TASK-K14 et signale la balise mal placée.
 
 ---
 
