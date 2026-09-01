@@ -181,25 +181,40 @@ commités : si ce nombre change entre deux runs, la comparaison est invalide.
 
 ### Point de départ et acquis
 
-| Étape | Hors tolérance | Conformité |
-|---|---:|---:|
-| Baseline (1er sept. 2026, 224 cas) | 9 723 | 83,05 % |
-| Après TASK-K02 (tarifs des énergies) | −1 099 | 88,21 % |
-| Après TASK-K03 (balises hors schéma) | −337 balises suppl. | 88,57 % |
+| Étape | Hors tolérance | Suppl. | Conformité |
+|---|---:|---:|---:|
+| Baseline — 1er sept. 2026, 224 cas | 9 723 | 2 280 | 83,05 % |
+| K02 — tarifs indexés sur la date du DPE | −1 099 | | 88,21 % |
+| K03 — balises hors schéma (`Qgw`, `pveil`) | | −337 | 88,57 % |
+| K10 — tranche tarifaire par abonnement | −914 | | 90,57 % |
+| K04 — taux de charge sur la puissance installée | −20 | | 90,60 % |
+| K14 — classe d'inertie hors emplacement | | −229 | 90,89 % |
+| K06 — rendement de stockage sans ballon | | −191 | 91,13 % |
+| **Actuel — 229 cas** | **4 922** | **1 356** | **91,13 %** |
 
-Deux causes structurelles déjà traitées, dont il faut retenir la leçon :
+Sur les écarts restants, **1 873 sont imputables à la référence** : le plafond
+réellement atteignable sur ce corpus est de **93,74 %**. Le rapport l'affiche.
 
-1. **TASK-K02** — les tarifs sont réactualisés par arrêté et la référence
-   applique celui en vigueur à `date_etablissement_dpe` (annexe 7 de l'arrêté
-   du 31 mars 2021 jusqu'au 30 juin 2024, annexe 2 de l'arrêté du 25 mars 2024
-   ensuite : `resources/tables/reference/tv_prix_energie.php`). La tranche
-   tarifaire porte sur le **total** de l'énergie, pas sur chaque usage, et
-   s'apprécie **par logement**.
-2. **TASK-K03** — le moteur écrivait `Qgw` et `pveil`, deux balises qu'aucun
-   schéma ne déclare : un XML les contenant serait rejeté par l'ADEME. Une
-   grandeur intermédiaire interne passe par `CalculationContext`, jamais par le
-   XML. Le rapport contrôle ça en permanence (section « Conformité structurelle
-   du XML produit »), garde-la vide.
+Quatre leçons à retenir de ces corrections :
+
+1. **Le barème dépend de la date du DPE** (K02). Les tarifs des énergies sont
+   réactualisés par arrêté ; la référence applique celui en vigueur à
+   `date_etablissement_dpe`. Table : `resources/tables/reference/tv_prix_energie.php`.
+2. **Une grandeur intermédiaire ne passe jamais par le XML** (K03, K14). Le
+   moteur écrivait `Qgw`, `pveil` et `enum_classe_inertie_id` dans des
+   emplacements que le schéma ne déclare pas — un fichier les contenant serait
+   rejeté par l'ADEME. Un canal entre Calculators passe par
+   `CalculationContext`. Le rapport contrôle ça en permanence (section
+   « Conformité structurelle du XML produit ») : garde-la vide.
+3. **La référence a ses propres défauts** (K05, K12). 1 873 écarts viennent de
+   fichiers qui contredisent leur propre schéma — coût dépensier recopié du
+   coût conventionnel, bloc `<confort_ete>` vide. `ReferenceDefects` les
+   détecte et les isole. **Ne les « corrige » pas** : reproduire le défaut d'un
+   logiciel tiers éloigne le moteur de la méthode.
+4. **Une hypothèse se départage sur le corpus entier, pas sur un cas** (K10,
+   K13). Un diviseur qui reproduit exactement un cas peut dégrader l'ensemble.
+   Mesure chaque variante en A/B et consigne les chiffres, y compris ceux des
+   variantes écartées, pour que personne ne refasse l'expérience.
 
 ### Ce qu'on attend d'une correction
 
