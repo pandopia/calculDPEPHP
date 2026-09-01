@@ -197,7 +197,12 @@ XML;
     }
 
     /**
-     * Fioul — fixed tarif 0.09142 €/kWh.
+     * Fioul — prix du kWh unique. La fixture ne porte pas de date
+     * d'établissement : le barème le plus récent s'applique, soit 0,14821 €/kWh
+     * (arrêté du 25 mars 2024) et non 0,09142 (annexe 7 de 2021).
+     *
+     * Le bloc `<sortie_par_energie>` doit appliquer exactement le même barème
+     * que `<sortie><cout>` : les deux décrivent les mêmes euros.
      */
     public function testFioulCout(): void
     {
@@ -206,6 +211,24 @@ XML;
         (new SortieParEnergieAggregator())->calculate($logement, $this->makeContext($doc));
 
         $coutCh = $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=3]/cout_ch');
-        $this->assertEqualsWithDelta(0.09142 * 4000.0, $coutCh[0], self::TOL, 'fioul cout_ch');
+        $this->assertEqualsWithDelta(0.14821 * 4000.0, $coutCh[0], self::TOL, 'fioul cout_ch');
+    }
+
+    /**
+     * La tranche de l'électricité porte sur le total de l'énergie, pas sur
+     * chaque usage : chauffage + ECS + éclairage + auxiliaires partagent un
+     * seul abonnement, donc une seule part fixe.
+     */
+    public function testTrancheElectriquePorteSurLeTotalDeLEnergie(): void
+    {
+        $doc = $this->buildDoc(1, 1, 5000.0, 2000.0, 300.0, 400.0);
+        $logement = $doc->getElementsByTagName('logement')->item(0);
+        (new SortieParEnergieAggregator())->calculate($logement, $this->makeContext($doc));
+
+        $conso5 = $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=1]/conso_5_usages')[0];
+        $cout5  = $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=1]/cout_5_usages')[0];
+
+        // 7 700 kWh → tranche 5 000-15 000 : 119 + 0,19726 × Cef.
+        $this->assertEqualsWithDelta(119.0 + 0.19726 * $conso5, $cout5, self::TOL, 'cout_5_usages elec');
     }
 }

@@ -1180,7 +1180,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K10 — Diviseur « par logement » des tranches tarifaires
 
-- [~AI2] Owner: AI2  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- [x] Owner: AI2  | Phase: K  | Estimation: 3h  | Priorité: moyenne
 - TASK-K02 a établi que la tranche tarifaire de l'électricité et du gaz
   s'apprécie sur la consommation **d'un logement**, et l'a implémentée en
   divisant par `caracteristique_generale/nombre_appartement`. Vérifié exact
@@ -1194,12 +1194,50 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
   peut-être déjà sur un seul logement) ; immeubles où `nombre_appartement`
   diffère du nombre de logements desservis par l'énergie considérée ;
   logements-types de l'échantillonnage §17.
-- Action : à partir de
-  `php bin/official-test-report --famille=Coûts --top=50`, isoler les 43 cas,
-  établir la règle depuis l'arrêté plutôt que par ajustement, puis l'appliquer.
-- Ne pas caler un diviseur sur les fichiers de test.
-- Validation : `cout_eclairage` conforme sur tous les cas dont
-  `conso_eclairage` l'est déjà.
+- **Fait**. Le diviseur n'est pas un nombre de logements mais un **nombre
+  d'abonnements**. Le barème tarifie la consommation annuelle d'un ménage,
+  donc d'un point de livraison :
+  - un DPE immeuble collectif dessert un abonnement par logement pour les
+    usages individuels, mais un **abonnement unique d'immeuble** pour les
+    usages portés par une installation collective (chauffage ou ECS avec
+    `enum_type_installation_id = 2`, et leurs auxiliaires) ;
+  - tous les autres périmètres — maison, appartement, et **appartement généré
+    à partir des données de l'immeuble** — ne décrivent qu'un logement :
+    diviseur 1. Sur ces DPE, `nombre_appartement` renseigne la taille du
+    bâtiment, pas la portée du DPE, et le prendre comme diviseur était faux.
+  - la ventilation reste individuelle : la rattacher à l'abonnement d'immeuble
+    dégrade nettement l'accord avec la référence.
+- Départage empirique sur les 229 cas, en reproduisant le coût par énergie de
+  la référence : diviseur = `nombre_appartement` 139/229 · `+1` 125/229 ·
+  toujours 1 : 18/229 · **règle par abonnement : 216/229**.
+- Au passage, `SortieParEnergieAggregator` dupliquait toute la mécanique
+  tarifaire avec les tarifs de 2021 figés — d'où 899 des écarts restants. Le
+  barème et les tranches vivent désormais dans `src/Sortie/PrixEnergie.php`,
+  partagé par les deux calculateurs.
+- Mesure A/B isolée, profil strict : hors tolérance **5 856 → 4 942
+  (−914, −15,6 %)**, conformité **89,30 % → 90,57 %**. Famille « Coûts »
+  1 751 → 1 004 écarts, « Auxiliaires » 1 497 → 1 330. 477 tests unitaires
+  verts.
+- Reste : TASK-K11.
+
+### TASK-K11 — Confirmer la règle d'abonnement sur le texte officiel
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- TASK-K10 a établi par l'observation que la tranche tarifaire s'apprécie par
+  abonnement (un par installation collective d'immeuble, un par logement
+  sinon). La règle est physiquement cohérente et reproduit la référence sur
+  216 cas sur 229, **mais elle n'est pas écrite dans le barème publié** : le
+  doc-block de `PrixEnergie` le signale explicitement.
+- Action : retrouver dans l'arrêté, sa notice ou la documentation
+  d'accompagnement le texte qui définit l'assiette de la tranche, et soit
+  citer la source dans `PrixEnergie`, soit corriger la règle.
+- Restent 4 cas où l'écart dépasse 20 % (2659E2129582M, 2592E0655586O,
+  2593E3377930D, 2594E0486196Q) : ce sont des **appartements desservis par une
+  installation collective** (méthodes 3, 5, 9). La référence y semble apprécier
+  la tranche sur la consommation de l'immeuble entier, information que le DPE
+  d'un appartement ne porte pas directement. À trancher avec la même source.
+- Validation : source citée dans le doc-block, ou règle corrigée et gain
+  mesuré en A/B.
 
 ---
 
