@@ -65,6 +65,36 @@ final class ReferenceDefectsTest extends TestCase
         self::assertSame([], ReferenceDefects::detect([]));
     }
 
+    /**
+     * Le schéma rend `confort_ete` facultatif mais impose
+     * `protection_solaire_exterieure` dès que le bloc est là : un bloc vide le
+     * viole, et le contenu que nous produisons n'est pas de trop.
+     */
+    public function testBlocConfortEteVideEstSignale(): void
+    {
+        $suspects = ReferenceDefects::detect(['dpe/logement/sortie/confort_ete' => '']);
+
+        self::assertArrayHasKey('protection_solaire_exterieure', $suspects);
+        self::assertArrayHasKey('enum_indicateur_confort_ete_id', $suspects);
+        self::assertArrayHasKey('inertie_lourde', $suspects);
+    }
+
+    public function testBlocConfortEteRenseigneNestPasSignale(): void
+    {
+        // Le bloc est un conteneur : renseigné, il n'apparaît pas comme feuille
+        // vide dans les valeurs extraites.
+        $suspects = ReferenceDefects::detect([
+            'dpe/logement/sortie/confort_ete/protection_solaire_exterieure' => '1',
+        ]);
+
+        self::assertSame([], $suspects);
+    }
+
+    public function testBlocConfortEteAbsentNestPasSignale(): void
+    {
+        self::assertSame([], ReferenceDefects::detect(['dpe/logement/sortie/ep_conso/classe_bilan_dpe' => 'D']));
+    }
+
     public function testTousLesPostesConcernesSontCouverts(): void
     {
         $suspects = ReferenceDefects::detect([

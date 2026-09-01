@@ -46,6 +46,26 @@ final class ReferenceDefects
 
     private const COUT_PREFIX = 'dpe/logement/sortie/cout/';
     private const EF_PREFIX = 'dpe/logement/sortie/ef_conso/';
+    private const CONFORT_ETE_PATH = 'dpe/logement/sortie/confort_ete';
+
+    /**
+     * Contenu du bloc `<sortie><confort_ete>` déclaré par le schéma ADEME.
+     *
+     * Le schéma rend le bloc facultatif (`minOccurs="0"`), mais
+     * `protection_solaire_exterieure` y est obligatoire dès que le bloc est
+     * présent. Une balise `<confort_ete></confort_ete>` vide viole donc le
+     * schéma : le bloc est là, son contenu obligatoire non.
+     *
+     * @var list<string>
+     */
+    private const CONFORT_ETE_ENFANTS = [
+        'enum_indicateur_confort_ete_id',
+        'isolation_toiture',
+        'protection_solaire_exterieure',
+        'aspect_traversant',
+        'brasseur_air',
+        'inertie_lourde',
+    ];
 
     /**
      * Balises dont l'écart est imputable à la référence, pour ce cas.
@@ -56,6 +76,15 @@ final class ReferenceDefects
     public static function detect(array $expected): array
     {
         $suspects = [];
+
+        // Bloc confort d'été présent mais vide : le contenu que nous produisons
+        // est conforme au schéma, c'est la référence qui ne l'est pas.
+        if (($expected[self::CONFORT_ETE_PATH] ?? null) === '') {
+            foreach (self::CONFORT_ETE_ENFANTS as $enfant) {
+                $suspects[$enfant] = 'la référence écrit un bloc <confort_ete> vide, '
+                    . 'alors que son schéma y rend protection_solaire_exterieure obligatoire';
+            }
+        }
 
         foreach (self::COUTS_DEPENSIER as [$cout, $coutDep, $conso, $consoDep]) {
             $vCout = self::num($expected, self::COUT_PREFIX . $cout);

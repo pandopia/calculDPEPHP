@@ -1,7 +1,7 @@
 # Conformité du moteur — jeux de tests DPE 3CL
 
-_Généré le 2026-09-01T14:11:21+00:00 — profil de tolérance : `strict`_
-_Révision mesurée : `bc54ad5` — arbre de travail modifié : 1 fichier(s) src/ non commités_
+_Généré le 2026-09-01T14:13:37+00:00 — profil de tolérance : `strict`_
+_Révision mesurée : `de52aa9` — arbre de travail modifié : 1 fichier(s) src/ non commités_
 
 Comparaison balise à balise de la totalité de `<donnee_intermediaire>` et
 `<sortie>` entre la sortie du moteur et la référence du cas. Aucune balise
@@ -27,7 +27,7 @@ Balises supplémentaires  : 1 779
 Conformité               : 90,60 %
 ```
 
-Sur ces écarts, **619 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **91,46 %**. Détail plus bas.
+Sur ces écarts, **1 873 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **93,19 %**. Détail plus bas.
 
 ## Écarts par famille fonctionnelle
 
@@ -139,6 +139,12 @@ reproduire le défaut d'un logiciel tiers éloignerait le moteur de la méthode.
 
 | Balise | Occurrences | Motif |
 |---|---:|---|
+| `aspect_traversant` | 209 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
+| `brasseur_air` | 209 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
+| `enum_indicateur_confort_ete_id` | 209 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
+| `inertie_lourde` | 209 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
+| `isolation_toiture` | 209 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
+| `protection_solaire_exterieure` | 209 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
 | `cout_fr_depensier` | 3 | la référence recopie cout_fr dans cout_fr_depensier alors que les consommations diffèrent (51 vs 129 kWh) |
 | `cout_ecs_depensier` | 184 | la référence recopie cout_ecs dans cout_ecs_depensier alors que les consommations diffèrent (2217 vs 2879 kWh) |
 | `cout_ch_depensier` | 184 | la référence recopie cout_ch dans cout_ch_depensier alors que les consommations diffèrent (4934 vs 6434 kWh) |

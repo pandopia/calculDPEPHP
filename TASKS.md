@@ -1130,17 +1130,22 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K05 — Bloc `<confort_ete>` produit alors que la référence ne le contient pas
 
-- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
-- 1 065 balises supplémentaires : le moteur écrit systématiquement le
+- [x] Owner: AI2  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- 1 070 balises supplémentaires : le moteur écrit systématiquement le
   sous-bloc `sortie/confort_ete` (`isolation_toiture`, `brasseur_air`,
   `aspect_traversant`, `protection_solaire_exterieure`,
   `enum_indicateur_confort_ete_id`), absent de 204 des 207 références de 2026.
-- **À qualifier avant de corriger** : ce n'est pas nécessairement une erreur —
-  il faut d'abord établir, à partir de l'arrêté et du XSD, si le sous-bloc est
-  obligatoire, conditionnel ou optionnel. Ne pas supprimer une sortie
-  réglementaire pour faire baisser un compteur.
-- Validation : décision tracée dans le doc-block de
-  `src/Sortie/ConfortEteCalculator.php`, avec la référence réglementaire.
+- **Qualifié : c'est la référence qui est en tort, ne rien changer.** Le XSD
+  rend `<confort_ete>` facultatif (`minOccurs="0"`) mais y impose
+  `protection_solaire_exterieure` dès que le bloc est présent. Or 213 des 229
+  références écrivent un bloc **vide** `<confort_ete></confort_ete>` : le bloc
+  est là, son contenu obligatoire non. Ces fichiers violent leur propre schéma.
+  Les 15 références qui renseignent le bloc ont exactement la forme que nous
+  produisons.
+- Supprimer notre sous-bloc aurait fait tomber 1 070 « balises
+  supplémentaires » tout en rendant notre sortie moins conforme au schéma.
+- Fait : `ReferenceDefects` détecte le bloc vide et le signale dans la section
+  « Écarts imputables à la référence » du rapport.
 
 ### TASK-K06 — Génération ECS : balises supplémentaires et rendements
 
