@@ -160,16 +160,27 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
                 $pchW = $pchW / $nblgt;
             }
 
-            // Pour les chaudières mixtes, Pdim = max(Pch, Pecs) puis Pn lue dans la table §13.2.2.4
-            $pecsW = $this->computePecsForMixte($node, $accessor);
-            if ($pecsW > 0.0) {
-                $pdimKw = max($pchW, $pecsW) / 1000.0;
-                $pnW    = $this->lookupPnFromPdim($pdimKw, $node, $accessor) * 1000.0;
+            // §17.2 / convention ADEME : une chaudière collective virtualisée
+            // gaz/fioul est représentée par la puissance bâtiment plafonnée à
+            // 400 kW, puis ramenée au logement via ratio_virtualisation.
+            // Les exports de référence portent donc pn = 400000 × ratio.
+            $pnCap = $this->getPnCap($genId);
+            if ($ratioVirt > 0.0 && $ratioVirt < 1.0
+                && $pnCap < PHP_FLOAT_MAX
+                && $this->isCollectiveInstallation($node, $accessor)) {
+                $pnW = $pnCap;
             } else {
-                // §13.2.2.4 : a non-mixed boiler uses Pch as Pdim, then Pn is
-                // selected from the nominal-power table (rather than left at an
-                // arbitrary calculated value between two nominal ranges).
-                $pnW = $this->lookupPnFromPdim($pchW / 1000.0, $node, $accessor) * 1000.0;
+                // Pour les chaudières mixtes, Pdim = max(Pch, Pecs) puis Pn lue dans la table §13.2.2.4
+                $pecsW = $this->computePecsForMixte($node, $accessor);
+                if ($pecsW > 0.0) {
+                    $pdimKw = max($pchW, $pecsW) / 1000.0;
+                    $pnW    = $this->lookupPnFromPdim($pdimKw, $node, $accessor) * 1000.0;
+                } else {
+                    // §13.2.2.4 : a non-mixed boiler uses Pch as Pdim, then Pn is
+                    // selected from the nominal-power table (rather than left at an
+                    // arbitrary calculated value between two nominal ranges).
+                    $pnW = $this->lookupPnFromPdim($pchW / 1000.0, $node, $accessor) * 1000.0;
+                }
             }
         }
         $pnKw = $pnW / 1000.0;
@@ -204,9 +215,12 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         $accessor->setChildValue($di, 'rpn',   $saisie['rpn']   ?? (float)($row['rpn']   ?? 0.0));
         $accessor->setChildValue($di, 'rpint', $saisie['rpint'] ?? (float)($row['rpint'] ?? 0.0));
         $accessor->setChildValue($di, 'qp0',   $saisie['qp0']   ?? (float)($row['qp0']   ?? 0.0));
-        // Le schéma ADEME déclare `pveilleuse`, pas `pveil` : écrire `pveil`
-        // rendait le fichier irrecevable par l'observatoire.
-        $accessor->setChildValue($di, 'pveilleuse', $saisie['pveilleuse'] ?? (float)($row['pveil'] ?? 0.0));
+        // §13.2.2 p.86 : Pveil ne s'applique que « si veilleuse ». L'export ne
+        // fournit pas d'indicateur de présence distinct : ne pas inventer la
+        // veilleuse forfaitaire lorsque sa puissance n'a pas été renseignée.
+        if (array_key_exists('pveilleuse', $saisie)) {
+            $accessor->setChildValue($di, 'pveilleuse', $saisie['pveilleuse']);
+        }
     }
 
     /**
@@ -401,5 +415,13 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             return 1.0;
         }
         return $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation', $parent) ?? 1.0;
+    }
+
+    private function isCollectiveInstallation(DOMElement $genNode, NodeAccessor $accessor): bool
+    {
+        $installation = $genNode->parentNode?->parentNode;
+        return $installation instanceof DOMElement
+            && $installation->nodeName === 'installation_chauffage'
+            && $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $installation) === 2;
     }
 }

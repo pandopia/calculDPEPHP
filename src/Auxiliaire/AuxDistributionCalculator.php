@@ -264,13 +264,14 @@ final class AuxDistributionCalculator implements CalculatorInterface
         $totalCaux = 0.0;
         $cle       = 1.0;
 
-        // DPE appartement / zone (modes 2-5, 10-13, 31-40) : la conso d'aux de
+        // DPE appartement / zone (modes 2-4, 10-13, 31-40) : la conso d'aux de
         // distribution ECS collective est portée par l'immeuble — LICIEL ne la
-        // facture pas au niveau apt. On la laisse à 0.
+        // facture pas au niveau apt. Le mode 5 est une virtualisation directe de
+        // l'installation collective : son réseau local reste donc à calculer.
         $modeAppId  = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $logement);
         $isZoneDpe  = $modeAppId !== null && in_array(
             $modeAppId,
-            [2, 3, 4, 5, 10, 11, 12, 13, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
+            [2, 3, 4, 10, 11, 12, 13, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
             true,
         );
         if ($isZoneDpe) {
@@ -307,11 +308,26 @@ final class AuxDistributionCalculator implements CalculatorInterface
                 continue;
             }
 
-            $lb    = 4.0 * sqrt($sh / $niv) + 6.0 * ($niv - 0.5);
+            // §17.2 : en mode zone collectif, le circulateur est dimensionné à
+            // l'échelle de l'immeuble, puis sa consommation est ramenée au
+            // logement par ratio_virtualisation. Dimensionner directement sur
+            // 44 m² ferait jouer à tort le plancher de 20 W au logement entier.
+            $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation', $install) ?? 1.0;
+            $isVirtualized = $ratioVirt > 0.0 && $ratioVirt < 1.0;
+            $shCalc = $isVirtualized ? $sh / $ratioVirt : $sh;
+            $becsCalc = $becsMonthly;
+            if ($isVirtualized) {
+                $becsCalc = array_map(
+                    static fn(mixed $value): float => (float)$value / $ratioVirt,
+                    $becsMonthly,
+                );
+            }
+
+            $lb    = 4.0 * sqrt($shCalc / $niv) + 6.0 * ($niv - 0.5);
             $deltaPb = 0.2 * $lb + 10.0;
 
-            $qcirb = $this->computeBouclageAnnuel($becsMonthly, $sh, $deltaPb, $isolated);
-            $totalCaux += $qcirb / 1000.0;
+            $qcirb = $this->computeBouclageAnnuel($becsCalc, $shCalc, $deltaPb, $isolated);
+            $totalCaux += $qcirb * ($isVirtualized ? $ratioVirt : 1.0) / 1000.0;
 
             $cleInst = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
             if ($cleInst !== null && $cleInst > 0.0) {

@@ -112,9 +112,12 @@ final class KCalculator implements CalculatorInterface
         NodeAccessor $accessor,
         DOMDocument $document,
     ): bool {
-        // La règle vise les jonctions entre parois opaques. Les liaisons entre
-        // une menuiserie et un mur (type 5) conservent leur valeur tabulée.
-        if ($accessor->getIntOrNull('./enum_type_liaison_id', $entree) === 5) {
+        // La règle vise uniquement les jonctions de l'enveloppe basse/haute
+        // (types 1 et 3). Un plancher intermédiaire (type 2) ou un refend
+        // (type 4) reste un pont du mur extérieur, même si la paroi référencée
+        // borde un local chauffé ; les menuiseries (type 5) restent tabulées.
+        $liaison = $accessor->getIntOrNull('./enum_type_liaison_id', $entree);
+        if ($liaison !== 1 && $liaison !== 3) {
             return false;
         }
 

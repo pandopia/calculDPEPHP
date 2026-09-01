@@ -16,16 +16,18 @@ final class KCalculatorTest extends TestCase
 {
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
 
-    /** @return iterable<string, array{int, string}> */
+    /** @return iterable<string, array{int, int, string}> */
     public static function adjacencyCases(): iterable
     {
-        yield 'circulation commune' => [14, '0'];
-        yield 'local chauffé non déperditif' => [22, '0'];
-        yield 'extérieur' => [1, '0.71'];
+        yield 'circulation commune' => [14, 1, '0'];
+        yield 'local chauffé non déperditif' => [22, 1, '0'];
+        yield 'extérieur' => [1, 1, '0.71'];
+        yield 'plancher intermédiaire vers local chauffé' => [22, 2, '0.71'];
+        yield 'refend vers local chauffé' => [22, 4, '0.71'];
     }
 
     #[DataProvider('adjacencyCases')]
-    public function testNeglectsOnlyNonEnvelopeAdjacencies(int $adjacency, string $expected): void
+    public function testNeglectsOnlyNonEnvelopeAdjacencies(int $adjacency, int $liaison, string $expected): void
     {
         $document = new DOMDocument();
         $document->loadXML(sprintf(<<<'XML'
@@ -56,13 +58,13 @@ final class KCalculatorTest extends TestCase
           <reference_2>mur-1</reference_2>
           <tv_pont_thermique_id>7</tv_pont_thermique_id>
           <enum_methode_saisie_pont_thermique_id>1</enum_methode_saisie_pont_thermique_id>
-          <enum_type_liaison_id>1</enum_type_liaison_id>
+          <enum_type_liaison_id>%d</enum_type_liaison_id>
         </donnee_entree>
       </pont_thermique>
     </pont_thermique_collection>
   </enveloppe>
 </logement>
-XML, $adjacency));
+XML, $adjacency, $liaison));
 
         $context = new CalculationContext(
             document: $document,

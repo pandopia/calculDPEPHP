@@ -172,6 +172,25 @@ XML;
         $this->assertNull($di->getElementsByTagName('rpn')->item(0));
     }
 
+    public function testDeclaredPilotLightPowerIsPreserved(): void
+    {
+        [$doc, $node] = $this->buildGenerator(88, 4, 4, [
+            'pn' => 25000,
+            'rpn' => 0.87,
+            'rpint' => 0.84,
+            'qp0' => 300,
+            'pveilleuse' => 90,
+        ]);
+
+        (new ChaudiereDefautCalculator())->calculate($node, $this->makeContext($doc));
+
+        $this->assertEqualsWithDelta(
+            90.0,
+            (float)$doc->getElementsByTagName('pveilleuse')->item(0)->textContent,
+            self::TOL,
+        );
+    }
+
     /** A sampled installation in a method-10 DPE is sized as one average apartment. */
     public function testGeneratedApartmentBuildingUsesAverageApartmentPower(): void
     {
@@ -211,5 +230,35 @@ XML;
         (new ChaudiereDefautCalculator())->calculate($doc->getElementsByTagName('generateur_chauffage')->item(0), $context);
 
         $this->assertEqualsWithDelta(5000.0, (float)$doc->getElementsByTagName('pn')->item(0)->textContent, 0.1);
+    }
+
+    public function testCollectiveVirtualizedGasBoilerUsesFourHundredKwBuildingPower(): void
+    {
+        $xml = <<<'XML'
+<logement>
+  <caracteristique_generale><enum_methode_application_dpe_log_id>5</enum_methode_application_dpe_log_id></caracteristique_generale>
+  <meteo><enum_zone_climatique_id>1</enum_zone_climatique_id><enum_classe_altitude_id>1</enum_classe_altitude_id></meteo>
+  <installation_chauffage><donnee_entree>
+    <enum_type_installation_id>2</enum_type_installation_id><ratio_virtualisation>0.02933</ratio_virtualisation>
+  </donnee_entree><generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+    <enum_type_generateur_ch_id>88</enum_type_generateur_ch_id><tv_generateur_combustion_id>4</tv_generateur_combustion_id>
+    <enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id><presence_ventouse>0</presence_ventouse>
+  </donnee_entree></generateur_chauffage></generateur_chauffage_collection></installation_chauffage>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $context = $this->makeContext($doc);
+        $context->set('enveloppe.dp_parois', 100.0);
+        $context->set('enveloppe.dp_pont_thermique', 20.0);
+        $context->set('ventilation.hvent', 30.0);
+        $context->set('ventilation.hperm', 2.0);
+
+        (new ChaudiereDefautCalculator())->calculate($doc->getElementsByTagName('generateur_chauffage')->item(0), $context);
+
+        self::assertEqualsWithDelta(400000.0 * 0.02933, (float)$doc->getElementsByTagName('pn')->item(0)->textContent, 1e-6);
+        self::assertEqualsWithDelta((84.0 + 2.0 * log10(400.0)) / 100.0, (float)$doc->getElementsByTagName('rpn')->item(0)->textContent, 1e-9);
+        self::assertEqualsWithDelta(0.012 * 400000.0 * 0.02933, (float)$doc->getElementsByTagName('qp0')->item(0)->textContent, 1e-6);
+        self::assertNull($doc->getElementsByTagName('pveilleuse')->item(0));
     }
 }

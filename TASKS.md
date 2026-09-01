@@ -930,7 +930,7 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-J12 — Pont mur-refend et générateur mixte collectif
 
-- [~AI] Owner: AI  | Phase: J  | Estimation: 3h  | Priorité: haute
+- [x] Owner: AI  | Phase: J  | Estimation: 3h  | Priorité: haute
 - DPE 2659E2129582M : une liaison mur-refend (`enum_type_liaison_id=4`) est
   annulée à tort lorsque le refend borde un local chauffé, puis les besoins et
   consommations divergent ; le générateur collectif mixte CH/ECS requiert le

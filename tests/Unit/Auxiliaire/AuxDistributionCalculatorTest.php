@@ -229,6 +229,7 @@ XML;
 <?xml version="1.0"?>
 <logement>
   <caracteristique_generale>
+    <enum_methode_application_dpe_log_id>5</enum_methode_application_dpe_log_id>
     <surface_habitable_logement>62.86</surface_habitable_logement>
     <surface_habitable_immeuble>1034.74</surface_habitable_immeuble>
   </caracteristique_generale>
@@ -283,6 +284,32 @@ XML;
 
         $this->assertEqualsWithDelta(0.0, $this->efValue($doc, 'conso_auxiliaire_distribution_ch'), 1e-9);
         $this->assertEqualsWithDelta(0.0, $this->efValue($doc, 'conso_auxiliaire_distribution_ecs'), 1e-9);
+    }
+
+    public function testVirtualizedCollectiveEcsSizesPumpAtBuildingScale(): void
+    {
+        $xml = <<<'XML'
+<logement><caracteristique_generale>
+<enum_methode_application_dpe_log_id>5</enum_methode_application_dpe_log_id>
+<surface_habitable_logement>44</surface_habitable_logement>
+</caracteristique_generale><installation_chauffage_collection/><installation_ecs_collection>
+<installation_ecs><donnee_entree>
+<enum_type_installation_id>2</enum_type_installation_id><ratio_virtualisation>0.02933</ratio_virtualisation>
+<surface_habitable>44</surface_habitable><nombre_niveau_installation_ecs>7</nombre_niveau_installation_ecs>
+<enum_bouclage_reseau_ecs_id>2</enum_bouclage_reseau_ecs_id><reseau_distribution_isole>0</reseau_distribution_isole>
+</donnee_entree></installation_ecs></installation_ecs_collection><sortie/></logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $context = $this->buildCtx($doc, [
+            'ecs.besoin_ecs_mensuel' => array_fill(1, 12, 1000.0),
+        ]);
+
+        (new AuxDistributionCalculator())->calculate($doc->documentElement, $context);
+
+        $value = $this->efValue($doc, 'conso_auxiliaire_distribution_ecs');
+        $this->assertGreaterThan(5.1, $value);
+        $this->assertLessThan(30.0, $value);
     }
 
     public function testNonIsolatedNetworkAddsHvcCorrection(): void

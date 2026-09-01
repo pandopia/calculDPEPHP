@@ -185,15 +185,18 @@ final class AuxGenerationCalculator implements CalculatorInterface
                 [$g, $h, $pnCapKw] = $this->getGHch($accessor, $gen);
 
                 if ($ratioVirt > 0.0 && $ratioVirt < 1.0) {
-                    // Collective: pe = Pn_building (apartment pn / ratio_virt), capped
+                    // §15.1 collectif virtualisé : Pe et Paux sont calculés à
+                    // l'échelle du générateur bâtiment. Le besoin porté par
+                    // l'installation est déjà celui du logement représenté :
+                    // le ratio de virtualisation ne doit pas être réappliqué.
                     $pe     = min($pn / $ratioVirt, $pnCapKw * 1000.0);
                     $peKw   = $pe / 1000.0;
-                    $paux   = $g + ($h * $peKw) / $ratioVirt;
+                    $paux   = $g + $h * $peKw;
                     if ($paux <= 0.0) {
                         continue;
                     }
-                    $totalQ    += $ratioVirt * $paux * $besoin              * $ratioSurface / $pe;
-                    $totalQDep += $ratioVirt * $paux * ($besoin + $besoinDep) * $ratioSurface / $pe;
+                    $totalQ    += $paux * $besoin / $pe;
+                    $totalQDep += $paux * ($besoin + $besoinDep) / $pe;
                 } else {
                     $pnKw  = min($pn / 1000.0, $pnCapKw);
                     $paux  = $g + $h * $pnKw;
@@ -260,12 +263,12 @@ final class AuxGenerationCalculator implements CalculatorInterface
                 if ($ratioVirt > 0.0 && $ratioVirt < 1.0) {
                     $pe     = min($pn / $ratioVirt, $pnCapKw * 1000.0);
                     $peKw   = $pe / 1000.0;
-                    $paux   = $g + ($h * $peKw) / $ratioVirt;
+                    $paux   = $g + $h * $peKw;
                     if ($paux <= 0.0) {
                         continue;
                     }
-                    $totalQ    += $rdim * $ratioVirt * $paux * $besoin    / $pe;
-                    $totalQDep += $rdim * $ratioVirt * $paux * $besoinDep / $pe;
+                    $totalQ    += $rdim * $paux * $besoin    / $pe;
+                    $totalQDep += $rdim * $paux * $besoinDep / $pe;
                 } else {
                     $pnKw  = min($pn / 1000.0, $pnCapKw);
                     $paux  = $g + $h * $pnKw;

@@ -80,7 +80,7 @@ final class IntermittenceCalculator implements CalculatorInterface
         $regulationId  = $accessor->getIntOrNull('./enum_type_regulation_id', $de);
         $emetteurId    = $accessor->getIntOrNull('./enum_type_emission_distribution_id', $de);
 
-        $batimentType  = $this->batimentType($context, $equipementId);
+        $batimentType  = $this->batimentType($node, $context, $equipementId, $accessor);
         $chauffageType = $chauffageId === 1 ? 'divise' : 'central';
         $regulation    = $regulationId === 2 ? 'avec' : 'sans';
         $emetteur      = $this->emetteurCategory($emetteurId);
@@ -123,8 +123,22 @@ final class IntermittenceCalculator implements CalculatorInterface
         return (float)($row[$equipementId] ?? $row[1] ?? 1.0);
     }
 
-    private function batimentType(CalculationContext $context, ?int $equipementId): string
+    private function batimentType(
+        DOMElement $node,
+        CalculationContext $context,
+        ?int $equipementId,
+        NodeAccessor $accessor,
+    ): string
     {
+        // §8 p.57 : la table « immeuble collectif / chauffage collectif » est
+        // déterminée par l'installation commune, même lorsque l'équipement
+        // d'intermittence est codé « absent » (ID 1) dans l'export ADEME.
+        $installation = $node->parentNode?->parentNode;
+        if ($installation instanceof DOMElement
+            && $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $installation) === 2) {
+            return 'collectif_collectif';
+        }
+
         if ($equipementId !== null && in_array($equipementId, [6, 7], true)) {
             return 'collectif_collectif';
         }
