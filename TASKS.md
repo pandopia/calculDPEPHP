@@ -837,6 +837,18 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 - Validation : `php bin/diff-report --filter=2657E1989142W` → 0 delta, sans
   régression sur 2657E1981571R.
 
+### TASK-J06 — Ponts thermiques des parois donnant sur un local non chauffé
+
+- [~AI] Owner: AI  | Phase: J  | Estimation: 1h  | Priorité: haute
+- DPE 2618E2138973C : les liaisons rattachées à une paroi dont le coefficient
+  de réduction `b` est inférieur à 1 doivent être négligées (`k = 0`) ; leur
+  prise en compte ajoute à tort 23,295 W/K aux déperditions de l'enveloppe.
+- Action : appliquer la règle du §3.4 aux ponts thermiques sur circulations
+  communes et locaux non chauffés, à partir de l'adjacence directe des parois.
+- Cibles : `src/Enveloppe/PontThermique/KCalculator.php` et test unitaire dédié.
+- Validation : les ponts concernés de `2618E2138973C` valent zéro, les autres
+  restent à 0,71 et la suite PHPUnit complète reste verte.
+
 ---
 
 ## Validation par phase (gate)
