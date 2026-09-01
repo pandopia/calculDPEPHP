@@ -1227,17 +1227,25 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K09 — Remplacer les exclusions du harness E2E par la mesure de conformité
 
-- [~AI2] Owner: AI2  | Phase: K  | Estimation: 3h  | Priorité: basse
-- `tests/EndToEndTest.php` porte une liste `TAGS_EXCLUDED_BY_FILE` et une liste
-  `$tagsCovered` qui masquent une partie des écarts, et son indexation de
-  chemin ignore les fratries homonymes : sur un logement à 30 murs, un seul
-  `umur` est réellement comparé.
-- Action : faire converger le harness E2E vers `CalculDpePHP\Conformite\*`
-  (chemins indexés, aucune balise exclue), en gardant un seuil de
-  non-régression sur le nombre de valeurs hors tolérance plutôt que des
-  exclusions nominatives.
-- Validation : suite verte, et le compte de valeurs hors tolérance du rapport
-  ne remonte pas.
+- [x] Owner: AI2  | Phase: K  | Estimation: 3h  | Priorité: basse
+- `tests/EndToEndTest.php` portait une liste `TAGS_EXCLUDED_BY_FILE` et une
+  liste `$tagsCovered` qui masquaient une partie des écarts, et son indexation
+  de chemin ignorait les fratries homonymes : sur un logement à 30 murs, un
+  seul `umur` était réellement comparé. Le harness pouvait être vert et faux.
+- **Fait** : il utilise désormais le même comparateur que
+  `bin/official-test-report` — toutes les balises, chemins indexés, aucune
+  exclusion. Les deux listes ont disparu.
+- Le critère n'est pas « zéro écart » (le moteur n'y est pas) mais « pas plus
+  d'écarts qu'au dernier relevé », **cas par cas** :
+  `tests/conformity-baseline.php`, 349 cas, 9 953 écarts. Les écarts imputables
+  à la référence en sont exclus : le budget mesure notre qualité.
+- Le harness vérifie en plus qu'aucun cas ne produit de chemin hors schéma
+  ADEME — le critère structurel du règlement d'évaluation.
+- Resserrer le budget après une amélioration :
+  `php bin/official-test-report --write-baseline`. Ne jamais le régénérer pour
+  faire passer une régression.
+- Vérifié : en ramenant à 0 le budget d'un cas, la suite échoue bien avec
+  « Régression sur 2242E2979513I.xml : 61 écarts pour un budget de 0 ».
 
 ### TASK-K10 — Diviseur « par logement » des tranches tarifaires
 

@@ -27,7 +27,7 @@ require __DIR__ . '/../vendor/autoload.php';
 
 $options = getopt('h', [
     'corpus:', 'filter:', 'limit:', 'tolerance:', 'json:', 'md:',
-    'famille:', 'top:', 'list-corpora', 'quiet', 'help',
+    'famille:', 'top:', 'list-corpora', 'quiet', 'write-baseline', 'help',
 ]);
 
 if (isset($options['h']) || isset($options['help'])) {
@@ -43,6 +43,8 @@ if (isset($options['h']) || isset($options['help'])) {
       --famille=NOM       Détaille les écarts de cette famille en console
       --top=N             Nombre de lignes détaillées (défaut 20)
       --list-corpora      Liste les jeux disponibles et sort
+      --write-baseline    Réécrit tests/conformity-baseline.php (budget de
+                          non-régression du harness E2E) et sort
       --quiet             N'écrit que les fichiers, pas de sortie console
 
     TXT);
@@ -109,6 +111,57 @@ if (!$quiet) {
 }
 
 $data = $report->toArray();
+
+// ── Budget de non-régression du harness E2E ────────────────────────────────
+if (isset($options['write-baseline'])) {
+    $baseline = [];
+    foreach ($data['cases'] as $case) {
+        $failing = 0;
+        foreach ($case['deltas'] as $delta) {
+            // Les écarts dont la référence est responsable ne mesurent pas
+            // notre qualité : ils sortent du budget.
+            if (isset($delta['reference_suspect'])) {
+                continue;
+            }
+            if (in_array($delta['status'], ComparisonStatus::FAILING, true)) {
+                $failing++;
+            }
+        }
+        $baseline[$case['name']] = $failing;
+    }
+    ksort($baseline);
+
+    $lines = [
+        '<?php',
+        '',
+        '/**',
+        " * Budget de non-régression du harness E2E : nombre d'écarts imputables au",
+        ' * moteur, cas par cas, au profil de tolérance `strict`.',
+        ' *',
+        ' * `tests/EndToEndTest.php` échoue si un cas dépasse son budget. Les écarts',
+        " * dont la référence est responsable en sont exclus (voir ReferenceDefects) :",
+        ' * le budget mesure notre qualité, pas celle du corpus.',
+        ' *',
+        ' * Régénérer après une amélioration mesurée :',
+        ' *',
+        ' *     php bin/official-test-report --write-baseline',
+        ' *',
+        ' * Ne jamais le régénérer pour faire passer une régression.',
+        ' *',
+        ' * @generated-by bin/official-test-report --write-baseline',
+        ' */',
+        'return [',
+    ];
+    foreach ($baseline as $name => $failing) {
+        $lines[] = sprintf("    %-46s => %d,", var_export($name, true), $failing);
+    }
+    $lines[] = '];';
+
+    $path = $projectRoot . '/tests/conformity-baseline.php';
+    file_put_contents($path, implode("\n", $lines) . "\n");
+    printf("Budget écrit : %s (%d cas, %d écarts)\n", $path, count($baseline), array_sum($baseline));
+    exit(0);
+}
 
 $jsonPath = (string) ($options['json'] ?? $projectRoot . '/reports/official-tests.json');
 $mdPath = (string) ($options['md'] ?? $projectRoot . '/reports/official-tests.md');
