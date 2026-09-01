@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Chauffage;
 
+use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -253,7 +254,8 @@ final class BesoinChauffageCalculator implements CalculatorInterface
         $installations = $context->document->getElementsByTagName('installation_ecs');
 
         foreach ($installations as $install) {
-            $rdim = $accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0;
+            $rdim = EcsInstallationMultiplicity::sampledOrNull($install, $accessor)
+                ?? ($accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0);
 
             $qgwInstall = 0.0;
             foreach ($install->getElementsByTagName('generateur_ecs') as $gen) {

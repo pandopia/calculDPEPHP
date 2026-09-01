@@ -202,7 +202,11 @@ XML;
         $rs = (float)$doc->getElementsByTagName('rendement_stockage')->item(0)->textContent;
 
         $this->assertEqualsWithDelta($expected, $rs, self::TOL);
-        $this->assertEqualsWithDelta($rawQgw, (float)$doc->getElementsByTagName('Qgw')->item(0)->textContent, self::TOL);
+        $this->assertEqualsWithDelta(
+            $rawQgw * (71.0 / $sampleSurface),
+            (float)$doc->getElementsByTagName('Qgw')->item(0)->textContent,
+            self::TOL,
+        );
     }
 
     /**

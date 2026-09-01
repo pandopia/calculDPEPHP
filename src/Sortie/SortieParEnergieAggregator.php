@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Sortie;
 
+use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -277,6 +278,9 @@ final class SortieParEnergieAggregator implements CalculatorInterface
 
                 if ($methode === 1) {
                     $rdimEff = $rdim;
+                } elseif (!$isCh && $methode === 4 && $typeInstall === 1) {
+                    $rdimEff = EcsInstallationMultiplicity::sampledOrNull($install, $accessor)
+                        ?? ($nbreAppt * $ratioVirt / $sumEchantillon);
                 } elseif ($typeInstall === 1) {
                     $rdimEff = $nbreAppt * $ratioVirt / $sumEchantillon;
                 } else {

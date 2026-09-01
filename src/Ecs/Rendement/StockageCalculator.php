@@ -87,9 +87,9 @@ final class StockageCalculator implements CalculatorInterface
             if ($becsWh > 0.0) {
                 if ($isBallonElec) {
                     $qgw   = $this->qgwElectrique($vs, $node, $accessor, $context);
-                    $qgwRs = $qgw * $this->sampledIndividualScale($node, $accessor, $context);
+                    $qgw  *= $this->sampledIndividualScale($node, $accessor, $context);
                     $catC  = $this->isCatCVertical($node, $accessor, $context);
-                    $denom = 1.0 + $qgwRs * $rd / $becsWh;
+                    $denom = 1.0 + $qgw * $rd / $becsWh;
                     $rs    = ($catC ? 1.08 : 1.0) / $denom;
                 } else {
                     $qgw   = 67662.0 * ($vs ** 0.55);

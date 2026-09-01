@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Sortie;
 
+use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -278,6 +279,9 @@ final class EfConsoCalculator implements CalculatorInterface
 
         if ($methode === 1) {
             $rdimEff = $rdim;
+        } elseif ($methode === 4 && $typeInstall === 1) {
+            $rdimEff = EcsInstallationMultiplicity::sampledOrNull($install, $accessor)
+                ?? ($nbreAppt * $ratioVirt / $sumLogement);
         } elseif ($typeInstall === 1) {
             $rdimEff = $nbreAppt * $ratioVirt / $sumLogement;
         } else {
