@@ -898,6 +898,21 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 - Validation : les sorties EP/GES dépensier du DPE cible correspondent à
   l'ADEME, sans modifier les consommations conventionnelles.
 
+### TASK-J10 — Sentinelles ventilation natives et configuration Uph d'un LC
+
+- [~AI] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2618E2138973C : le format natif 0.1.0 écrit `pvent_moy=0` et
+  `conso_auxiliaire_ventilation=1` dans la ventilation tout en conservant
+  413,640 kWh dans la sortie globale ; le plancher haut de type 8 adjacent à un
+  local chauffé non déperditif relève de la table terrasse (Uph=0,42).
+- Action : conserver la puissance réelle de ventilation dans le contexte avant
+  d'écrire les sentinelles natives, et sélectionner la configuration Uph depuis
+  le type de plancher pour l'adjacence 22.
+- Cibles : `src/Ventilation/`, `src/Enveloppe/PlancherHaut/UphCalculator.php`
+  et tests unitaires dédiés.
+- Validation : `php bin/diff-report --filter=2618E2138973C` → 0 delta, sans
+  régression sur les DPE J01-J09.
+
 ---
 
 ## Phase K — Conformité jeux de tests d'évaluation
