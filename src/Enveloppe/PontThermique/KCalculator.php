@@ -164,6 +164,14 @@ final class KCalculator implements CalculatorInterface
         NodeAccessor $accessor,
         DOMDocument $document,
     ): bool {
+        // Cette convention de sérialisation ne vaut que pour le format ADEME
+        // natif 0.1.0. Dans le format 2, `paroi_lourde` décrit l'inertie et ne
+        // neutralise pas le coefficient tabulé du pont thermique.
+        $formatVersion = $document->documentElement?->getAttribute('version') ?? '';
+        if ($formatVersion !== '0.1.0') {
+            return false;
+        }
+
         // Le cas observé par la convention ADEME ne concerne que la liaison
         // plancher bas / mur. Les liaisons de plancher haut, intermédiaire et
         // refend restent comptées même lorsque les indicateurs de masse valent 0.

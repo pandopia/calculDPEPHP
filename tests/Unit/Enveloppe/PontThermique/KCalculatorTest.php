@@ -127,7 +127,7 @@ XML);
     ): void {
         $document = new DOMDocument();
         $document->loadXML(sprintf(<<<'XML'
-<logement><enveloppe>
+<dpe version="0.1.0"><logement><enveloppe>
   <plancher_bas><donnee_entree><reference>pb</reference><paroi_lourde>%s</paroi_lourde></donnee_entree></plancher_bas>
   <mur><donnee_entree><reference>mur</reference><paroi_lourde>%s</paroi_lourde></donnee_entree></mur>
   <pont_thermique><donnee_entree>
@@ -136,7 +136,7 @@ XML);
     <enum_methode_saisie_pont_thermique_id>1</enum_methode_saisie_pont_thermique_id>
     <enum_type_liaison_id>1</enum_type_liaison_id>
   </donnee_entree></pont_thermique>
-</enveloppe></logement>
+</enveloppe></logement></dpe>
 XML, $plancherLourd, $murLourd));
 
         $context = new CalculationContext(
@@ -149,6 +149,33 @@ XML, $plancherLourd, $murLourd));
         (new KCalculator())->calculate($pont, $context);
 
         self::assertSame($expected, $document->getElementsByTagName('k')->item(0)?->textContent);
+    }
+
+    public function testKeepsLowFloorJunctionBetweenLightweightParoisInVersion2(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<dpe version="2"><logement><enveloppe>
+  <plancher_bas><donnee_entree><reference>pb</reference><paroi_lourde>0</paroi_lourde></donnee_entree></plancher_bas>
+  <mur><donnee_entree><reference>mur</reference><paroi_lourde>0</paroi_lourde></donnee_entree></mur>
+  <pont_thermique><donnee_entree>
+    <reference_1>pb</reference_1><reference_2>mur</reference_2>
+    <tv_pont_thermique_id>7</tv_pont_thermique_id>
+    <enum_methode_saisie_pont_thermique_id>1</enum_methode_saisie_pont_thermique_id>
+    <enum_type_liaison_id>1</enum_type_liaison_id>
+  </donnee_entree></pont_thermique>
+</enveloppe></logement></dpe>
+XML);
+        $context = new CalculationContext(
+            document: $document,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        );
+        $pont = $document->getElementsByTagName('pont_thermique')->item(0);
+        self::assertInstanceOf(DOMElement::class, $pont);
+
+        (new KCalculator())->calculate($pont, $context);
+
+        self::assertSame('0.71', $document->getElementsByTagName('k')->item(0)?->textContent);
     }
 
     public function testKeepsHighFloorJunctionBetweenLightweightParois(): void
