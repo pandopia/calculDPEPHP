@@ -137,6 +137,75 @@ XML;
     }
 
     /**
+     * §17.1.2 : en méthode 4 individuelle, les pertes du ballon sont ramenées
+     * de la surface visitée du groupe à celle du logement représentatif.
+     */
+    public function testSampledIndividualStorageUsesRepresentativeSurface(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<dpe>
+    <logement>
+        <caracteristique_generale>
+            <surface_habitable_logement>71</surface_habitable_logement>
+        </caracteristique_generale>
+        <installation_ecs_collection>
+            <installation_ecs>
+                <donnee_entree>
+                    <enum_type_installation_id>1</enum_type_installation_id>
+                    <enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id>
+                    <surface_habitable>40</surface_habitable>
+                </donnee_entree>
+                <donnee_intermediaire>
+                    <rendement_distribution>0.93</rendement_distribution>
+                    <besoin_ecs>1269.4297152964</besoin_ecs>
+                </donnee_intermediaire>
+                <generateur_ecs_collection>
+                    <generateur_ecs>
+                        <donnee_entree>
+                            <enum_type_energie_id>1</enum_type_energie_id>
+                            <enum_type_generateur_ecs_id>70</enum_type_generateur_ecs_id>
+                            <tv_pertes_stockage_id>7</tv_pertes_stockage_id>
+                            <volume_stockage>120</volume_stockage>
+                        </donnee_entree>
+                    </generateur_ecs>
+                </generateur_ecs_collection>
+            </installation_ecs>
+            <installation_ecs>
+                <donnee_entree>
+                    <enum_type_installation_id>1</enum_type_installation_id>
+                    <enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id>
+                    <surface_habitable>60</surface_habitable>
+                </donnee_entree>
+            </installation_ecs>
+        </installation_ecs_collection>
+    </logement>
+    <dpe_immeuble>
+        <logement_visite_collection>
+            <logement_visite><surface_habitable_logement>71</surface_habitable_logement></logement_visite>
+            <logement_visite><surface_habitable_logement>60</surface_habitable_logement></logement_visite>
+            <logement_visite><surface_habitable_logement>71</surface_habitable_logement></logement_visite>
+            <logement_visite><surface_habitable_logement>60</surface_habitable_logement></logement_visite>
+        </logement_visite_collection>
+    </dpe_immeuble>
+</dpe>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $node = $doc->getElementsByTagName('generateur_ecs')->item(0);
+
+        (new StockageCalculator())->calculate($node, $this->makeContext($doc));
+
+        $rawQgw = 8592.0 * 45.0 / 24.0 * 120.0 * 0.22;
+        $sampleSurface = 71.0 + 60.0;
+        $expected = 1.0 / (1.0 + $rawQgw * (71.0 / $sampleSurface) * 0.93 / (1269.4297152964 * 1000.0));
+        $rs = (float)$doc->getElementsByTagName('rendement_stockage')->item(0)->textContent;
+
+        $this->assertEqualsWithDelta($expected, $rs, self::TOL);
+        $this->assertEqualsWithDelta($rawQgw, (float)$doc->getElementsByTagName('Qgw')->item(0)->textContent, self::TOL);
+    }
+
+    /**
      * Ballon non-électrique avec stockage → Qg,w = 67662 × VS^0.55.
      */
     public function testNonElectricStorageFormula(): void

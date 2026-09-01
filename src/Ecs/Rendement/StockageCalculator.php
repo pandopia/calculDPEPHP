@@ -8,6 +8,7 @@ use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
+use DOMXPath;
 
 /**
  * Rendement de stockage ECS Rs (§11.6 p.74-75).
@@ -19,6 +20,8 @@ use DOMElement;
  *   Cr lu dans tv_pertes_stockage (tableau indexé par tv_pertes_stockage_id)
  *   Rs = 1,08 / (1 + Qg,w × Rd / Becs)  pour cat C ou 3*
  *   Rs = 1    / (1 + Qg,w × Rd / Becs)  pour les autres ballons électriques
+ *   En échantillonnage individuel (§17.1.2), Qg,w est ramené au logement
+ *   représentatif selon sa surface et celles des logements visités du groupe.
  *
  * Autres ballons (§11.6.1) :
  *   Qg,w = 67662 × Vs^0,55
@@ -84,8 +87,9 @@ final class StockageCalculator implements CalculatorInterface
             if ($becsWh > 0.0) {
                 if ($isBallonElec) {
                     $qgw   = $this->qgwElectrique($vs, $node, $accessor, $context);
+                    $qgwRs = $qgw * $this->sampledIndividualScale($node, $accessor, $context);
                     $catC  = $this->isCatCVertical($node, $accessor, $context);
-                    $denom = 1.0 + $qgw * $rd / $becsWh;
+                    $denom = 1.0 + $qgwRs * $rd / $becsWh;
                     $rs    = ($catC ? 1.08 : 1.0) / $denom;
                 } else {
                     $qgw   = 67662.0 * ($vs ** 0.55);
@@ -121,6 +125,104 @@ final class StockageCalculator implements CalculatorInterface
         }
 
         return self::FACTEUR_ELEC * $vs * $cr;
+    }
+
+    /**
+     * §17.1.2 p.107-108 — caractéristiques du système d'un appartement moyen :
+     * la caractéristique observée est ramenée à la surface du logement
+     * représentatif par rapport aux surfaces de l'échantillon du groupe.
+     *
+     * Les installations sont ordonnées comme les groupes du XML. Le nombre de
+     * logements visités affecté à chaque groupe suit sa part de surface dans
+     * l'immeuble ; le dernier groupe reçoit le reliquat afin de conserver
+     * exhaustivement l'échantillon.
+     *
+     * @spec-formula F-17.1.2-systeme-appartement-moyen
+     */
+    private function sampledIndividualScale(
+        DOMElement $genNode,
+        NodeAccessor $accessor,
+        CalculationContext $context,
+    ): float {
+        $installation = $this->findParentInstallation($genNode);
+        if ($installation === null) {
+            return 1.0;
+        }
+
+        $method = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $installation) ?? 1;
+        $type = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $installation) ?? 1;
+        if ($method !== 4 || $type !== 1) {
+            return 1.0;
+        }
+
+        $logement = $this->findAncestor($installation, 'logement');
+        if ($logement === null) {
+            return 1.0;
+        }
+
+        $representativeSurface = $accessor->getFloatOrNull(
+            './caracteristique_generale/surface_habitable_logement',
+            $logement,
+        );
+        if ($representativeSurface === null || $representativeSurface <= 0.0) {
+            return 1.0;
+        }
+
+        $xpath = new DOMXPath($context->document);
+        $visitedNodes = $xpath->query('//dpe_immeuble/logement_visite_collection/logement_visite/surface_habitable_logement');
+        if ($visitedNodes === false || $visitedNodes->length === 0) {
+            return 1.0;
+        }
+
+        $visitedSurfaces = [];
+        foreach ($visitedNodes as $visitedNode) {
+            $surface = (float)str_replace(',', '.', trim($visitedNode->textContent));
+            if ($surface > 0.0) {
+                $visitedSurfaces[] = $surface;
+            }
+        }
+        if ($visitedSurfaces === []) {
+            return 1.0;
+        }
+
+        $installations = [];
+        $totalInstallationSurface = 0.0;
+        foreach ($logement->getElementsByTagName('installation_ecs') as $candidate) {
+            if (!$candidate instanceof DOMElement) {
+                continue;
+            }
+            $candidateMethod = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $candidate) ?? 1;
+            $candidateType = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $candidate) ?? 1;
+            if ($candidateMethod !== 4 || $candidateType !== 1) {
+                continue;
+            }
+            $surface = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $candidate) ?? 0.0;
+            $installations[] = ['node' => $candidate, 'surface' => max(0.0, $surface)];
+            $totalInstallationSurface += max(0.0, $surface);
+        }
+        if ($installations === [] || $totalInstallationSurface <= 0.0) {
+            return 1.0;
+        }
+
+        $offset = 0;
+        $remainingVisits = count($visitedSurfaces);
+        $lastIndex = count($installations) - 1;
+        foreach ($installations as $index => $candidate) {
+            $count = $index === $lastIndex
+                ? $remainingVisits
+                : max(1, (int)round(count($visitedSurfaces) * $candidate['surface'] / $totalInstallationSurface));
+            $count = min($count, $remainingVisits - max(0, $lastIndex - $index));
+
+            if ($candidate['node']->isSameNode($installation)) {
+                $sampleSurface = array_sum(array_slice($visitedSurfaces, $offset, $count));
+                return $sampleSurface > 0.0 ? $representativeSurface / $sampleSurface : 1.0;
+            }
+
+            $offset += $count;
+            $remainingVisits -= $count;
+        }
+
+        return 1.0;
     }
 
     /**
@@ -181,6 +283,18 @@ final class StockageCalculator implements CalculatorInterface
                 return $cur;
             }
             $cur = $cur->parentNode;
+        }
+        return null;
+    }
+
+    private function findAncestor(DOMElement $node, string $tagName): ?DOMElement
+    {
+        $current = $node->parentNode;
+        while ($current !== null) {
+            if ($current instanceof DOMElement && $current->nodeName === $tagName) {
+                return $current;
+            }
+            $current = $current->parentNode;
         }
         return null;
     }

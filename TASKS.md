@@ -796,7 +796,7 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-J03 — Pertes de stockage ECS d'un logement échantillonné
 
-- [~AI] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- [x] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
 - DPE 2657E1981571R : deux ballons électriques individuels issus d'un DPE
   appartement par échantillonnage attendent des rendements de stockage proches
   de 0,96-0,97 ; le moteur applique les pertes des ballons entiers et produit
@@ -805,6 +805,20 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
   conformément au §17.1.2 pour la méthode de calcul 4, sans modifier les cas
   simples ni les installations collectives.
 - Cibles : `src/Ecs/Rendement/StockageCalculator.php` et test unitaire dédié.
+- Validation : `php bin/diff-report --filter=2657E1981571R` → 0 delta.
+  > NOTE-AI: le rendement de stockage est corrigé ; la validation globale reste
+  > dépendante de TASK-J04, car les agrégateurs pondèrent encore les deux groupes
+  > individuels à 50/50 au lieu de leur répartition surfacique 40/60 et
+  > n'extrapolent pas les pertes récupérées à l'immeuble.
+
+### TASK-J04 — Pondération ECS échantillonnée et pertes récupérées
+
+- [ ] Owner: —  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2657E1981571R : en méthode 4 individuelle, pondérer chaque installation
+  par `surface_habitable / Shmoy` conformément au §17.1.3, puis extrapoler les
+  pertes de stockage récupérées à l'échelle de l'immeuble.
+- Cibles : `src/Sortie/{EfConsoCalculator,EmissionGesCalculator,SortieParEnergieAggregator}.php`,
+  `src/Chauffage/BesoinChauffageCalculator.php` et tests unitaires dédiés.
 - Validation : `php bin/diff-report --filter=2657E1981571R` → 0 delta.
 
 ---
