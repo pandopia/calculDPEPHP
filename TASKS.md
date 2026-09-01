@@ -913,6 +913,21 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 - Validation : `php bin/diff-report --filter=2618E2138973C` → 0 delta, sans
   régression sur les DPE J01-J09.
 
+### TASK-J11 — Facteur GES charbon et qualité de toiture LICIEL
+
+- [~AI] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2662E2197010Z : le chauffage au charbon (`enum_type_energie_id=11`)
+  est agrégé avec un facteur GES nul, ce qui fausse les émissions et les deux
+  classes finales ; la référence LICIEL classe ses planchers hauts mixtes LNC
+  dans la qualité « toit terrasse ».
+- Action : compléter les facteurs GES des énergies ADEME non couvertes et
+  reproduire la convention de classement de toiture observée sans modifier les
+  cas standards, avec tests unitaires dédiés.
+- Cibles : `src/Sortie/EmissionGesCalculator.php`,
+  `src/Sortie/QualiteIsolationCalculator.php` et tests dédiés.
+- Validation : `php bin/diff-report --filter=2662E2197010Z` → 0 delta, sans
+  régression sur les DPE J01-J10.
+
 ---
 
 ## Phase K — Conformité jeux de tests d'évaluation
