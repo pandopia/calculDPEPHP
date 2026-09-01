@@ -964,7 +964,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K02 — Tarifs annuels des énergies indexés sur la date du DPE
 
-- [ ] Owner: __  | Phase: K  | Estimation: 6h  | Priorité: haute
+- [~AI2] Owner: AI2  | Phase: K  | Estimation: 6h  | Priorité: haute
 - **47 % de tous les écarts hors tolérance** (3 495 sur 7 419) viennent des
   coûts : `cout_5_usages`, `cout_ch`, `cout_ecs`, `cout_eclairage`,
   `cout_auxiliaire_*`, `cout_total_auxiliaire`. `cout_5_usages` est faux sur
