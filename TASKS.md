@@ -766,6 +766,24 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ---
 
+## Phase J — Corrections diagnostics ADEME septembre 2026
+
+### TASK-J01 — ECS mixte et échantillonnage des installations individuelles
+
+- [~AI] Owner: AI  | Phase: J  | Estimation: 4h  | Priorité: haute
+- DPE 2571E1547842H : inclure `Qgw` dans le rendement combiné chaudière mixte,
+  récupérer les pertes de stockage en volume chauffé pour l'installation collective,
+  et ne calculer l'auxiliaire ECS que pour un réseau réellement bouclé.
+- DPE 2659E2206652S : appliquer `1/nombre_appartement` au besoin ECS d'une unique
+  installation individuelle échantillonnée en mode 10, et utiliser le multiplicateur
+  d'échantillonnage effectif pour les pertes récupérées et auxiliaires chauffage.
+- Cibles : `src/Ecs/`, `src/Chauffage/BesoinChauffageCalculator.php`,
+  `src/Auxiliaire/AuxDistributionCalculator.php` et tests unitaires dédiés.
+- Validation : les deltas structurants de ces deux DPE doivent disparaître et la
+  suite PHPUnit complète doit rester verte.
+
+---
+
 ## Validation par phase (gate)
 
 On ne passe à la phase suivante que quand le harness `tests/EndToEndTest.php` valide les balises produites par la phase courante sur les 4 fichiers de `resources/XML/input/` (tolérance 1e-3, exceptions dans `tests/tolerances.php`) :
