@@ -794,6 +794,19 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
   tests unitaires dédiés.
 - Validation : `php bin/diff-report --filter=2657E1975665N` → 0 delta.
 
+### TASK-J03 — Pertes de stockage ECS d'un logement échantillonné
+
+- [~AI] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- DPE 2657E1981571R : deux ballons électriques individuels issus d'un DPE
+  appartement par échantillonnage attendent des rendements de stockage proches
+  de 0,96-0,97 ; le moteur applique les pertes des ballons entiers et produit
+  0,76, soit environ +27 % sur la consommation ECS.
+- Action : ramener les caractéristiques de stockage au logement représentatif
+  conformément au §17.1.2 pour la méthode de calcul 4, sans modifier les cas
+  simples ni les installations collectives.
+- Cibles : `src/Ecs/Rendement/StockageCalculator.php` et test unitaire dédié.
+- Validation : `php bin/diff-report --filter=2657E1981571R` → 0 delta.
+
 ---
 
 ## Validation par phase (gate)
