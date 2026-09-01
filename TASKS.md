@@ -1121,7 +1121,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K04 — Consommations de chauffage : `conso_ch` / `conso_ch_depensier`
 
-- [ ] Owner: __  | Phase: K  | Estimation: 8h  | Priorité: haute
+- [~AI2] Owner: AI2  | Phase: K  | Estimation: 8h  | Priorité: haute
 - **Avancement** : la cause amont est identifiée et une première correction est
   livrée. `rendement_generation` est fautif dans **63 des 72 cas** où `conso_ch`
   l'est ; dans 37 de ces 63, `pn` et `qp0` le sont aussi. La chaîne à remonter
