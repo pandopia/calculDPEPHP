@@ -1227,7 +1227,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K09 — Remplacer les exclusions du harness E2E par la mesure de conformité
 
-- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
+- [~AI2] Owner: AI2  | Phase: K  | Estimation: 3h  | Priorité: basse
 - `tests/EndToEndTest.php` porte une liste `TAGS_EXCLUDED_BY_FILE` et une liste
   `$tagsCovered` qui masquent une partie des écarts, et son indexation de
   chemin ignore les fratries homonymes : sur un logement à 30 murs, un seul
