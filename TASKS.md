@@ -1154,9 +1154,16 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
   `rendement_generation` côté ECS), 276 hors tolérance (`conso_ecs` 134,
   `conso_ecs_depensier` 100) et 14 manquantes
   (`rendement_generation_stockage`).
-- Action : aligner la production de balises sur ce que la référence renseigne
-  selon le type de générateur (§11), en s'appuyant sur le XSD pour savoir
-  quelles balises sont attendues pour quel `enum_type_generateur_ecs_id`.
+- **Avancement** : `rendement_stockage` n'est plus écrit lorsqu'il n'y a pas
+  de volume de stockage. §11.6 ne définit Rs que pour un ballon, et le corpus
+  est net : sur 336 générateurs ECS, la référence écrit la balise si et
+  seulement si `volume_stockage > 0`, à 9 exceptions près.
+  Mesure A/B : balises supplémentaires **1 547 → 1 356 (−191)**, famille
+  « Génération ECS » 476 → 287 écarts, conformité **90,89 % → 91,13 %**.
+  Deux cas de type 53 renseignent Rs sans volume et passent en « manquante ».
+- Reste : `conso_ecs` (134 écarts sur 28 cas) et `conso_ecs_depensier` (100
+  sur 26). Concentrés sur peu de cas — donc probablement une configuration
+  d'installation précise, à isoler avant de toucher au calcul.
 - Validation : famille « Génération ECS » au-dessus de 92 %.
 
 ### TASK-K07 — Classes DPE et GES divergentes

@@ -66,15 +66,18 @@ XML;
     }
 
     /**
-     * Vs = 0 → pas de stockage → Rs = 1.
+     * Sans volume de stockage il n'y a pas de ballon, donc pas de rendement de
+     * stockage à publier — §11.6 ne définit Rs que pour un ballon. La référence
+     * n'écrit jamais la balise dans ce cas.
      */
-    public function testNoStorageRsEqualsOne(): void
+    public function testSansVolumeAucunRendementDeStockageNestEcrit(): void
     {
         [$doc, $node] = $this->buildGen(0.0, 1, 71);
         $ctx = $this->makeContext($doc);
+
         (new StockageCalculator())->calculate($node, $ctx);
-        $rs = (float)$doc->getElementsByTagName('rendement_stockage')->item(0)->textContent;
-        $this->assertEqualsWithDelta(1.0, $rs, self::TOL);
+
+        self::assertSame(0, $doc->getElementsByTagName('rendement_stockage')->length);
     }
 
     /**
