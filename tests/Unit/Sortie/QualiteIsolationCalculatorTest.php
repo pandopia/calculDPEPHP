@@ -187,6 +187,33 @@ XML;
         $this->assertEquals($expectedClasse, (int)$this->childText($qi, 'qualite_isol_plancher_haut_comble_perdu'));
     }
 
+    public function testLicielMixedLncType10RoofUsesToitTerrasseQuality(): void
+    {
+        $xml = <<<'XML'
+<logement>
+  <enveloppe><plancher_haut_collection>
+    <plancher_haut>
+      <donnee_entree><enum_type_adjacence_id>7</enum_type_adjacence_id><enum_type_plancher_haut_id>10</enum_type_plancher_haut_id><surface_paroi_opaque>30</surface_paroi_opaque></donnee_entree>
+      <donnee_intermediaire><uph>0.12</uph></donnee_intermediaire>
+    </plancher_haut>
+    <plancher_haut>
+      <donnee_entree><enum_type_adjacence_id>12</enum_type_adjacence_id><enum_type_plancher_haut_id>10</enum_type_plancher_haut_id><surface_paroi_opaque>20</surface_paroi_opaque></donnee_entree>
+      <donnee_intermediaire><uph>0.34</uph></donnee_intermediaire>
+    </plancher_haut>
+  </plancher_haut_collection></enveloppe>
+  <sortie><deperdition><deperdition_plancher_haut>10.4</deperdition_plancher_haut></deperdition></sortie>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+
+        (new QualiteIsolationCalculator())->calculate($doc->documentElement, $this->makeContext($doc));
+
+        $qi = $doc->getElementsByTagName('qualite_isolation')->item(0);
+        $this->assertSame('1', $this->childText($qi, 'qualite_isol_plancher_haut_toit_terrasse'));
+        $this->assertNull($this->childText($qi, 'qualite_isol_plancher_haut_comble_perdu'));
+    }
+
     public static function phQualiteProvider(): array
     {
         // CP_THRESHOLDS = [0.15, 0.20, 0.30] (strict <)

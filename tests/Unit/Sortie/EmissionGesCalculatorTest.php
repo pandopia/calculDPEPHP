@@ -193,6 +193,37 @@ XML;
         $this->assertEqualsWithDelta(1677.60 * 0.227, $gesCh, 1.0, 'GES CH gaz ZONE');
     }
 
+    /** Charbon (enum énergie 11) : facteur Annexe 5 = 0,385 kgCO2eq/kWh EF. */
+    public function testChCharbonGes(): void
+    {
+        $xml = <<<'XML'
+<logement>
+  <caracteristique_generale>
+    <surface_habitable_immeuble>100</surface_habitable_immeuble>
+    <nombre_appartement>1</nombre_appartement>
+  </caracteristique_generale>
+  <installation_chauffage_collection>
+    <installation_chauffage>
+      <donnee_entree><rdim>1</rdim></donnee_entree>
+      <donnee_intermediaire><conso_ch>10000</conso_ch><conso_ch_depensier>12000</conso_ch_depensier></donnee_intermediaire>
+      <generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+        <enum_type_energie_id>11</enum_type_energie_id>
+      </donnee_entree></generateur_chauffage></generateur_chauffage_collection>
+    </installation_chauffage>
+  </installation_chauffage_collection>
+  <installation_ecs_collection/>
+  <sortie><ef_conso/><ep_conso><classe_bilan_dpe>D</classe_bilan_dpe></ep_conso></sortie>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+
+        (new EmissionGesCalculator())->calculate($doc->documentElement, $this->makeContext($doc));
+
+        $ges = (float)$doc->getElementsByTagName('emission_ges_ch')->item(0)->textContent;
+        $this->assertEqualsWithDelta(3850.0, $ges, 1e-6);
+    }
+
     /**
      * Installation CH électricité (id=1) : ef × 0.079.
      */

@@ -56,6 +56,12 @@ final class EmissionGesCalculator implements CalculatorInterface
         7 => 0.030,  // bois – plaquettes d'industrie
         8 => 0.110,  // réseau de chauffage urbain
         9 => 0.272,  // propane
+        10 => 0.272, // butane
+        11 => 0.385, // charbon
+        12 => 0.000, // électricité renouvelable utilisée dans le bâtiment
+        13 => 0.272, // GPL
+        14 => 0.385, // autre combustible fossile
+        15 => 0.000, // réseau de froid urbain (hors usages CH/ECS)
     ];
 
     /** Seuils de classe GES (kgCO2eq/m².an) : A≤6, B≤11, C≤30, D≤50, E≤70, F≤100, G>100 */

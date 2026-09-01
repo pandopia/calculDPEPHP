@@ -233,6 +233,27 @@ final class QualiteIsolationCalculator implements CalculatorInterface
             return [null, 0.0, null, 0.0, null, 0.0];
         }
 
+        // Compatibilité LICIEL/BBS observée sur les exports ADEME 2.6 : quand
+        // une toiture est entièrement constituée de plafonds sous solives bois
+        // (type 10) et combine un LNC non accessible (7) avec un comble
+        // faiblement ventilé (12), la qualité est sérialisée dans la rubrique
+        // « toit terrasse ». Les configurations usuelles restent classées par
+        // l'adjacence conformément à open3cl.
+        $allType10 = $nodes->length > 0;
+        $hasAdj7   = false;
+        $hasAdj12  = false;
+        foreach ($nodes as $candidate) {
+            if (!$candidate instanceof DOMElement) {
+                continue;
+            }
+            $candidateType = $accessor->getIntOrNull('./donnee_entree/enum_type_plancher_haut_id', $candidate);
+            $candidateAdj  = $accessor->getIntOrNull('./donnee_entree/enum_type_adjacence_id', $candidate);
+            $allType10 = $allType10 && $candidateType === 10;
+            $hasAdj7   = $hasAdj7 || $candidateAdj === 7;
+            $hasAdj12  = $hasAdj12 || $candidateAdj === 12;
+        }
+        $licielMixedLncRoof = $allType10 && $hasAdj7 && $hasAdj12;
+
         foreach ($nodes as $ph) {
             if (!$ph instanceof DOMElement) {
                 continue;
@@ -247,7 +268,9 @@ final class QualiteIsolationCalculator implements CalculatorInterface
             $typePhId = $accessor->getIntOrNull('./donnee_entree/enum_type_plancher_haut_id', $ph);
             $desc     = strtolower($accessor->getStringOrNull('./donnee_entree/description', $ph) ?? '');
 
-            if ($adjId === 1) {
+            if ($licielMixedLncRoof) {
+                $bucket = 'tt';
+            } elseif ($adjId === 1) {
                 $isCA   = ($typePhId === self::COMBLE_AMENAGE_ID)
                        || str_contains($desc, 'combles aménagés')
                        || str_contains($desc, 'comble aménagé');
