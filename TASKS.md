@@ -1291,22 +1291,29 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K11 — Confirmer la règle d'abonnement sur le texte officiel
 
-- [~AI2] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: moyenne
-- TASK-K10 a établi par l'observation que la tranche tarifaire s'apprécie par
-  abonnement (un par installation collective d'immeuble, un par logement
-  sinon). La règle est physiquement cohérente et reproduit la référence sur
-  216 cas sur 229, **mais elle n'est pas écrite dans le barème publié** : le
-  doc-block de `PrixEnergie` le signale explicitement.
-- Action : retrouver dans l'arrêté, sa notice ou la documentation
-  d'accompagnement le texte qui définit l'assiette de la tranche, et soit
-  citer la source dans `PrixEnergie`, soit corriger la règle.
-- Restent 4 cas où l'écart dépasse 20 % (2659E2129582M, 2592E0655586O,
-  2593E3377930D, 2594E0486196Q) : ce sont des **appartements desservis par une
-  installation collective** (méthodes 3, 5, 9). La référence y semble apprécier
-  la tranche sur la consommation de l'immeuble entier, information que le DPE
-  d'un appartement ne porte pas directement. À trancher avec la même source.
-- Validation : source citée dans le doc-block, ou règle corrigée et gain
-  mesuré en A/B.
+- [x] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- **Confirmé, et la règle manquante est trouvée.** L'annexe tarifaire de
+  l'arrêté écrit littéralement :
+  - « Pour chaque énergie, les frais annuels sont établis à partir de la
+    formule de la plage de consommation correspondante, sans effet cumulatif
+    des tranches précédentes. »
+  - « Abonnement individuel : la consommation considérée est celle de
+    l'appartement seul. »
+  - « Abonnement collectif : la consommation de gaz naturel ou d'électricité à
+    prendre en compte pour la détermination du prix du kWh est celle de
+    l'ensemble de l'immeuble. »
+  - « Les frais annuels par type d'énergie et par usage sont obtenus en
+    multipliant la consommation d'énergie finale pour ce type d'énergie et cet
+    usage par le prix moyen du kWh. »
+- La règle inférée en TASK-K10 était donc la bonne, et le prix moyen appliqué
+  poste par poste aussi. Les citations sont dans le doc-block de
+  `PrixEnergie`.
+- Le texte donne en plus la règle qui manquait pour les 4 cas résiduels : sur
+  un **DPE d'appartement desservi par une installation collective**, la
+  consommation de l'immeuble s'estime en multipliant celle de l'appartement
+  par le rapport des surfaces habitables. Implémenté.
+- Mesure A/B isolée, 349 cas : hors tolérance **10 846 → 10 789 (−57)**,
+  famille « Coûts » 1 880 → 1 853, « Auxiliaires » 2 050 → 2 020.
 
 ### TASK-K12 — Coût dépensier : défaut de la référence, ne pas reproduire
 

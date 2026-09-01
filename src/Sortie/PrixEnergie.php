@@ -21,8 +21,26 @@ use DOMElement;
  * 1. le barème dépend de `date_etablissement_dpe` ;
  * 2. la tranche de l'électricité et du gaz porte sur le total de l'énergie,
  *    pas sur chaque usage pris isolément ;
- * 3. la tranche s'apprécie par abonnement — un par installation collective
- *    d'immeuble, un par logement pour les usages individuels.
+ * 3. la tranche s'apprécie par abonnement — un par installation collective,
+ *    un par logement pour les usages individuels.
+ *
+ * L'annexe tarifaire l'écrit :
+ *
+ *   « Pour chaque énergie, les frais annuels sont établis à partir de la
+ *     formule de la plage de consommation correspondante, sans effet cumulatif
+ *     des tranches précédentes. »
+ *   « Abonnement individuel : la consommation considérée est celle de
+ *     l'appartement seul. »
+ *   « Abonnement collectif : la consommation de gaz naturel ou d'électricité à
+ *     prendre en compte pour la détermination du prix du kWh est celle de
+ *     l'ensemble de l'immeuble. »
+ *   « Les frais annuels par type d'énergie et par usage sont obtenus en
+ *     multipliant la consommation d'énergie finale pour ce type d'énergie et
+ *     cet usage par le prix moyen du kWh. »
+ *
+ * Sur un DPE d'appartement desservi par une installation collective, la
+ * consommation de l'immeuble s'estime en multipliant celle de l'appartement
+ * par le rapport des surfaces habitables.
  *
  * @spec-section Annexe 7 (prix des énergies)
  * @spec-source  https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000044202205
@@ -54,6 +72,7 @@ final class PrixEnergie
     private function __construct(
         private readonly array $bareme,
         private readonly float $nbLogements,
+        private readonly float $facteurImmeuble,
         public readonly bool $chauffageCollectif,
         public readonly bool $ecsCollectif,
     ) {
@@ -66,10 +85,9 @@ final class PrixEnergie
         return new self(
             self::bareme($accessor, $context),
             self::nombreLogements($accessor, $logement, $estImmeuble),
-            // Hors DPE immeuble, la sortie ne décrit qu'un logement : tout est
-            // sur un seul abonnement, il n'y a rien à découper.
-            $estImmeuble && self::aUneInstallationCollective($accessor, $logement, 'installation_chauffage'),
-            $estImmeuble && self::aUneInstallationCollective($accessor, $logement, 'installation_ecs'),
+            self::facteurImmeuble($accessor, $logement, $estImmeuble),
+            self::aUneInstallationCollective($accessor, $logement, 'installation_chauffage'),
+            self::aUneInstallationCollective($accessor, $logement, 'installation_ecs'),
         );
     }
 
@@ -92,9 +110,12 @@ final class PrixEnergie
         $prix = [];
         foreach ($totaux as $key => $total) {
             [$energieKey, $collectif] = $this->splitAbonnementKey($key);
-            // Un abonnement d'immeuble dessert le bâtiment entier : sa tranche
-            // s'apprécie sur le total, pas sur une part par logement.
-            $prix[$key] = $this->prixUnitaire($energieKey, $total, $collectif ? 1.0 : $this->nbLogements);
+            $prix[$key] = $collectif
+                // Abonnement collectif : la tranche s'apprécie sur la
+                // consommation de l'immeuble entier.
+                ? $this->prixUnitaire($energieKey, $total * $this->facteurImmeuble, 1.0)
+                // Abonnement individuel : sur celle d'un logement.
+                : $this->prixUnitaire($energieKey, $total, $this->nbLogements);
         }
 
         $couts = [];
@@ -230,6 +251,30 @@ final class PrixEnergie
         $n = $accessor->getFloatOrNull('./caracteristique_generale/nombre_appartement', $logement);
 
         return ($n === null || $n < 1.0) ? 1.0 : $n;
+    }
+
+    /**
+     * Facteur de passage de la consommation décrite à celle de l'immeuble, pour
+     * les usages sur abonnement collectif.
+     *
+     * Sur un DPE immeuble la sortie porte déjà sur le bâtiment : facteur 1. Sur
+     * un DPE d'appartement, l'annexe demande d'estimer la consommation de
+     * l'immeuble par le rapport des surfaces habitables.
+     */
+    private static function facteurImmeuble(NodeAccessor $accessor, DOMElement $logement, bool $estImmeuble): float
+    {
+        if ($estImmeuble) {
+            return 1.0;
+        }
+
+        $immeuble = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement);
+        $logementSh = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement);
+
+        if ($immeuble === null || $logementSh === null || $logementSh <= 0.0 || $immeuble <= $logementSh) {
+            return 1.0;
+        }
+
+        return $immeuble / $logementSh;
     }
 
     /** Au moins une installation du type donné est-elle collective ? */
