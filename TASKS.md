@@ -1320,7 +1320,7 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K15 — Contrôle structurel sensible au chemin
 
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- [~AI2] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: moyenne
 - `XsdVocabulary` ne vérifie que les **noms** de balises. TASK-K14 a montré la
   limite : `enum_classe_inertie_id` existait bien au schéma, mais sous
   `<enveloppe><inertie>`, et le moteur l'écrivait dans
