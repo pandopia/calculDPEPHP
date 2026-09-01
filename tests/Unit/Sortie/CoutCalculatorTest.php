@@ -18,7 +18,7 @@ final class CoutCalculatorTest extends TestCase
     private const TOL = 1e-6;
 
     /** @param array<string, float|int|string> $ef */
-    private function build(array $ef, int $energieCh = 1, int $energieEcs = 1, ?string $date = null, ?int $nbLogements = null): DOMDocument
+    private function build(array $ef, int $energieCh = 1, int $energieEcs = 1, ?string $date = null, ?int $nbLogements = null, int $methode = 1, bool $chCollectif = false, ?float $shLogement = null, ?float $shImmeuble = null): DOMDocument
     {
         $defaults = [
             'conso_ch' => 0, 'conso_ch_depensier' => 0,
@@ -36,12 +36,18 @@ final class CoutCalculatorTest extends TestCase
             $efXml .= "<$tag>$value</$tag>";
         }
         $admin = $date === null ? '' : "<administratif><date_etablissement_dpe>$date</date_etablissement_dpe></administratif>";
-        $carac = $nbLogements === null ? '' : "<caracteristique_generale><nombre_appartement>$nbLogements</nombre_appartement></caracteristique_generale>";
+        $napp = $nbLogements === null ? '' : "<nombre_appartement>$nbLogements</nombre_appartement>";
+        $typeInstallCh = $chCollectif
+            ? '<donnee_entree><enum_type_installation_id>2</enum_type_installation_id></donnee_entree>'
+            : '';
+        $surfaces = ($shLogement === null ? '' : "<surface_habitable_logement>$shLogement</surface_habitable_logement>")
+            . ($shImmeuble === null ? '' : "<surface_habitable_immeuble>$shImmeuble</surface_habitable_immeuble>");
+        $carac = "<caracteristique_generale><enum_methode_application_dpe_log_id>$methode</enum_methode_application_dpe_log_id>$napp$surfaces</caracteristique_generale>";
 
         $xml = <<<XML
         <?xml version="1.0"?>
         <dpe>$admin<logement>$carac
-          <installation_chauffage_collection><installation_chauffage><generateur_chauffage_collection>
+          <installation_chauffage_collection><installation_chauffage>$typeInstallCh<generateur_chauffage_collection>
             <generateur_chauffage><donnee_entree><enum_type_energie_id>$energieCh</enum_type_energie_id></donnee_entree></generateur_chauffage>
           </generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection>
           <installation_ecs_collection><installation_ecs><generateur_ecs_collection>
@@ -156,19 +162,31 @@ final class CoutCalculatorTest extends TestCase
 
     // ── La tranche s'apprécie par logement ────────────────────────────────
 
-    public function testLaTrancheSAppricieParLogement(): void
+    public function testSurUnDpeImmeubleLaTrancheSAppricieParLogement(): void
     {
-        // 20 000 kWh sur 40 logements = 500 kWh par ménage : première tranche
-        // (0,34721 €/kWh), et non la tranche ≥ 15 000 du total du bâtiment.
-        $doc = $this->build(['conso_eclairage' => 20000], date: '2026-01-05', nbLogements: 40);
+        // Méthode 6 = DPE immeuble collectif. 20 000 kWh sur 40 logements =
+        // 500 kWh par ménage : première tranche (0,34721 €/kWh), et non la
+        // tranche ≥ 15 000 du total du bâtiment.
+        $doc = $this->build(['conso_eclairage' => 20000], date: '2026-01-05', nbLogements: 40, methode: 6);
         $this->compute($doc);
 
         self::assertEqualsWithDelta(0.34721 * 20000.0, $this->cout($doc, 'cout_eclairage'), 1e-6);
     }
 
+    public function testHorsDpeImmeubleNombreAppartementEstIgnore(): void
+    {
+        // Méthode 10 = appartement généré à partir des données de l'immeuble :
+        // la sortie ne décrit qu'un logement. `nombre_appartement` y renseigne
+        // la taille du bâtiment et ne doit pas diviser la consommation.
+        $doc = $this->build(['conso_eclairage' => 20000], date: '2026-01-05', nbLogements: 40, methode: 10);
+        $this->compute($doc);
+
+        self::assertEqualsWithDelta(78.0 + 0.20001 * 20000.0, $this->cout($doc, 'cout_eclairage'), 1e-6);
+    }
+
     public function testSansNombreDeLogementsLaTrancheSAppliqueAuTotal(): void
     {
-        $doc = $this->build(['conso_eclairage' => 20000], date: '2026-01-05');
+        $doc = $this->build(['conso_eclairage' => 20000], date: '2026-01-05', methode: 6);
         $this->compute($doc);
 
         // 78 + 0,20001 × 20 000, ramené au prix unitaire puis réappliqué.
@@ -177,10 +195,83 @@ final class CoutCalculatorTest extends TestCase
 
     public function testNombreDeLogementsAberrantEstRameneAUn(): void
     {
-        $doc = $this->build(['conso_eclairage' => 20000], date: '2026-01-05', nbLogements: 0);
+        $doc = $this->build(['conso_eclairage' => 20000], date: '2026-01-05', nbLogements: 0, methode: 6);
         $this->compute($doc);
 
         self::assertEqualsWithDelta(78.0 + 0.20001 * 20000.0, $this->cout($doc, 'cout_eclairage'), 1e-6);
+    }
+
+    /**
+     * Une installation collective d'immeuble est desservie par un abonnement
+     * unique : sa tranche s'apprécie sur le total du bâtiment, pas sur une
+     * part par logement. Les usages individuels restent divisés.
+     */
+    public function testInstallationCollectiveEstUnAbonnementUnique(): void
+    {
+        $doc = $this->buildAvecInstallationCollective();
+        $this->compute($doc);
+
+        // Chauffage collectif électrique : 40 000 kWh sur un seul abonnement
+        // → tranche ≥ 15 000.
+        self::assertEqualsWithDelta(78.0 + 0.20001 * 40000.0, $this->cout($doc, 'cout_ch'), 1e-6);
+        // Éclairage individuel : 20 000 kWh sur 40 logements → première tranche.
+        self::assertEqualsWithDelta(0.34721 * 20000.0, $this->cout($doc, 'cout_eclairage'), 1e-6);
+    }
+
+    /**
+     * Annexe tarifaire : « Abonnement collectif : la consommation […] à prendre
+     * en compte pour la détermination du prix du kWh est celle de l'ensemble de
+     * l'immeuble », estimée sur un DPE d'appartement par le rapport des
+     * surfaces habitables.
+     */
+    public function testAppartementSurInstallationCollectiveEstTarifeSurLImmeuble(): void
+    {
+        // Appartement de 50 m² dans un immeuble de 1 000 m² : facteur 20.
+        // 500 kWh d'ECS collective ⇒ 10 000 kWh à l'échelle de l'immeuble,
+        // donc tranche 5 000-15 000 et non la première.
+        $doc = $this->build(
+            ['conso_ecs' => 500],
+            energieEcs: 1,
+            date: '2026-01-05',
+            methode: 5,
+            shLogement: 50.0,
+            shImmeuble: 1000.0,
+        );
+        $this->marquerEcsCollective($doc);
+        $this->compute($doc);
+
+        $prixMoyen = (119.0 + 0.19726 * 10000.0) / 10000.0;
+        self::assertEqualsWithDelta($prixMoyen * 500.0, $this->cout($doc, 'cout_ecs'), 1e-6);
+    }
+
+    public function testSansSurfaceImmeubleLAppartementResteTarifeSurLuiMeme(): void
+    {
+        $doc = $this->build(['conso_ecs' => 500], energieEcs: 1, date: '2026-01-05', methode: 5);
+        $this->marquerEcsCollective($doc);
+        $this->compute($doc);
+
+        self::assertEqualsWithDelta(0.34721 * 500.0, $this->cout($doc, 'cout_ecs'), 1e-6);
+    }
+
+    private function marquerEcsCollective(DOMDocument $doc): void
+    {
+        $inst = $doc->getElementsByTagName('installation_ecs')->item(0);
+        self::assertInstanceOf(DOMElement::class, $inst);
+        $de = $doc->createElement('donnee_entree');
+        $de->appendChild($doc->createElement('enum_type_installation_id', '2'));
+        $inst->insertBefore($de, $inst->firstChild);
+    }
+
+    private function buildAvecInstallationCollective(): DOMDocument
+    {
+        return $this->build(
+            ['conso_ch' => 40000, 'conso_eclairage' => 20000],
+            energieCh: 1,
+            date: '2026-01-05',
+            nbLogements: 40,
+            methode: 6,
+            chCollectif: true,
+        );
     }
 
     // ── Panier dépensier ──────────────────────────────────────────────────

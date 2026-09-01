@@ -126,7 +126,7 @@ final class CollectifBaseAppoint implements CalculatorInterface
 
         // ── 3. ilpa : parois anciennes + inertie lourde ───────────────────────
         $matAnciensRaw = $accessor->getIntOrNull('./donnee_entree/batiment_materiaux_anciens', $logementNode) ?? 0;
-        $inertieId     = $accessor->getIntOrNull('./donnee_intermediaire/enum_classe_inertie_id', $logementNode) ?? 1;
+        $inertieId     = (int) ($context->get('inertie.classe_id') ?? 1);
         // PHP enum: 1=légère, 2=moyenne, 3=lourde, 4=très lourde
         $ilpa = ($matAnciensRaw === 1 && $inertieId >= 3) ? 1 : 0;
 

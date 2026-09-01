@@ -45,6 +45,7 @@ final class ConformityReport
             'cases_fully_conform' => 0,
             'cases_partially_conform' => 0,
             'values_compared' => 0,
+            'reference_suspect' => 0,
         ];
         foreach (ComparisonStatus::ALL as $status) {
             $summary[$status] = 0;
@@ -72,6 +73,7 @@ final class ConformityReport
             $failing = $this->failing($counts);
 
             $summary['values_compared'] += $compared;
+            $summary['reference_suspect'] += (int) ($case['reference_suspect'] ?? 0);
             foreach (ComparisonStatus::ALL as $status) {
                 $summary[$status] += $counts[$status];
             }
@@ -142,9 +144,21 @@ final class ConformityReport
                 'conformity_percent' => $this->rate($counts),
                 'duration_ms' => round((float) $case['duration_ms'], 1),
                 'unknown_elements' => $case['unknown_elements'] ?? [],
+                'reference_suspect' => (int) ($case['reference_suspect'] ?? 0),
                 'deltas' => $case['deltas'],
             ];
         }
+
+        // Plafond atteignable : ce que donnerait le taux si les écarts dont la
+        // référence est responsable disparaissaient. Il borne ce que ce corpus
+        // permet de démontrer, sans changer la mesure brute.
+        $summary['reachable_percent'] = $summary['values_compared'] > 0
+            ? round(
+                ($summary[ComparisonStatus::EXACT] + $summary[ComparisonStatus::WITHIN] + $summary['reference_suspect'])
+                / $summary['values_compared'] * 100,
+                2,
+            )
+            : null;
 
         $summary['conformity_percent'] = $this->rate([
             ComparisonStatus::EXACT => $summary[ComparisonStatus::EXACT],

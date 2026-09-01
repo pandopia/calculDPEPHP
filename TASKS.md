@@ -1049,15 +1049,33 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K01 — Corpus stratifié sur les 4 périmètres CSTB
 
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: haute
+- [x] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: haute
 - Le corpus actuel est à 92 % de l'immeuble collectif : maison individuelle
   (4 cas) et appartement individuel (6 cas) ne sont pas représentés, alors que
   ce sont deux des quatre périmètres évalués par le CSTB.
-- Action : `php bin/fetch-official-corpus --build=ademe-2026-09 --per-stratum=15`
-  puis vérifier la répartition réelle avec
-  `php bin/official-test-report --corpus=ademe-2026-09`.
-- Nécessite un accès réseau sortant vers `api-externe.ademe.fr`.
-- Validation : au moins 20 cas par périmètre, manifeste committé.
+- **Fait** : jeu `ademe-2026-09`, 120 cas, **30 par périmètre**, moitié
+  pre-2026 / moitié post-2026. Manifeste et provenance suivis en git ; les XML
+  se retéléchargent avec
+  `php bin/fetch-official-corpus --manifest=resources/XML/official/ademe-2026-09/metadata/manifest.json`.
+- **Le déséquilibre du corpus historique flattait bien le chiffre.** Sur le jeu
+  équilibré, la conformité tombe à **84,10 %** contre 91,13 % sur
+  `ademe-observatoire-local` (92 % d'immeubles collectifs) :
+
+  | Périmètre | Cas | Conformité |
+  |---|---:|---:|
+  | immeuble collectif | 30 | 87,89 % |
+  | appartement individuel | 30 | 87,04 % |
+  | maison individuelle | 30 | 84,58 % |
+  | appartement issu de l'immeuble | 30 | **76,12 %** |
+
+- Familles qui s'effondrent hors immeuble collectif : Génération ECS 63,4 %
+  (contre 91,6 %), Besoin chauffage 71,9 % (93,6 %), Froid 86,4 % (97,5 %),
+  Coûts 31,3 %.
+- **Biais résiduel à connaître** : l'échantillonnage a pris les DPE pre-2026
+  parmi les plus anciens numéros, tous produits par `3cl_tribu_1.4.25.1`, et
+  les post-2026 par `BBS_Slama_2025.11.1.0`. Régime réglementaire et moteur
+  éditeur sont donc confondus dans ce jeu — ne pas conclure de l'un sur
+  l'autre. À corriger en diversifiant `modele_dpe`/éditeur au tirage.
 
 ### TASK-K02 — Tarifs annuels des énergies indexés sur la date du DPE
 
@@ -1120,6 +1138,72 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 ### TASK-K04 — Consommations de chauffage : `conso_ch` / `conso_ch_depensier`
 
 - [ ] Owner: __  | Phase: K  | Estimation: 8h  | Priorité: haute
+- **Avancement** : la cause amont est identifiée et une première correction est
+  livrée. `rendement_generation` est fautif dans **63 des 72 cas** où `conso_ch`
+  l'est ; dans 37 de ces 63, `pn` et `qp0` le sont aussi. La chaîne à remonter
+  est donc `pn`/`qp0` → `rendement_generation` → `conso_ch`, pas l'inverse.
+- Corrigé : §13.2.1.2 impose que le taux de charge se juge sur la **puissance
+  installée totale** des générateurs à combustion, pas sur celle du seul
+  générateur courant. Cdimref utilise désormais la puissance cumulée
+  (−20 écarts hors tolérance, conformité 90,57 % → 90,60 %).
+- **Reste à traiter — piste précise, sur le corpus élargi à 349 cas.**
+  `conso_ch` est faux sur 134 cas ; l'amont fautif est `pn` (132 cas) et
+  `qp0` (135), puis `temp_fonc_30`/`temp_fonc_100` (55) et `rpn` (71).
+  C'est donc **`pn` qu'il faut corriger en premier**, tout le reste en découle
+  (`qp0` en est un pourcentage, `rpn` une fonction de log(Pn)).
+- Signature de l'écart sur `pn` : rapport attendu/obtenu de **médiane 0,914**
+  sur 73 cas — notre Pn est systématiquement ~9 % trop haut sur les chaudières
+  collectives. Exemple net, reproduit à l'identique sur 17 fichiers du groupe
+  2400E03338xx : attendu **370 000 W**, obtenu **405 000 W**.
+#### Ce qui a été établi sur `pn` (investigation menée, à ne pas refaire)
+
+**La formule de §13.2.2.4 est bien celle qu'on applique** :
+`Pch = 1,2 × GV × (19 − Tbase) / (1000 × 0,95³)`, `Pdim = max(Pch ; Pecs)`,
+puis lecture du palier de puissance nominale. La spec donne aussi les
+variantes appartement/installation collective (`GV_immeuble = GV_appartement ×
+Sh_immeuble / Sh_appartement`) et appartement issu de l'immeuble
+(`GV / N`, N = nombre de logements).
+
+**Ce n'est pas une cause unique mais au moins trois**, séparées par
+l'observation des 73 cas où `pn` diverge :
+
+1. *Grosses chaudières collectives* — cluster de 18 cas (immeuble
+   2400E03338xx) : attendu 370 kW, obtenu 405 kW. Le Rpn publié
+   (0,913523) confirme Pn = 370 kW au chiffre près, via la ligne « basse
+   température » `(87,5 + 1,5 log Pn)/100`. Or **aucune variante de GV ne
+   donne 370 kW** : GV total 10 907,8 → 465,6 kW ; hors renouvellement d'air
+   (8 973,4) → 383,1 ; le palier `(⌊Pdim/5⌋ + 1) × 5` suppose un Pdim entre
+   365 et 370 kW, soit un GV entre 8 549 et 8 666 W/K, qui ne correspond à
+   aucune grandeur publiée. La formule de dimensionnement de la référence
+   reste à identifier sur ce cluster.
+
+2. *Petites chaudières* — le palier de §13.2.2.4 a **deux colonnes** :
+   « chaudières murales installées avant 2005 ou chaudières sur sol » et
+   « chaudières murales installées à partir de 2006 ». Le choix change Pn du
+   simple au triple (5 kW contre 18 kW). **Or la distinction murale / sur sol
+   n'est portée par aucune balise du XSD** : `enum_type_generateur_ch_id`
+   n'encode que l'ancienneté. Le corpus le montre : le type 97 (gaz
+   condensation après 2015) reçoit Pn = 5 000 W sur 5 cas et 18 000 W sur un
+   autre. Seul l'attribut propriétaire `data_complementaires/@data-chaudiere-murale`
+   la porte, et il n'est présent que sur 2 des 11 cas concernés. Sans autre
+   source, ce choix n'est pas dérivable des données standard — à traiter comme
+   les autres cas non reproductibles (cf. TASK-K16) plutôt qu'à deviner.
+
+3. *Installations multi-générateurs* — les cas à 6 ou 7 générateurs
+   (2400E0575636Z, 2400E0636882P, 2400E0669425G, 2400E0669495Y) répartissent
+   la puissance par surface desservie (§13.2.2.4, prorata `Sh_i / Sh_tot`).
+   Les écarts y sont grands et de sens variable ; c'est une troisième
+   mécanique, à traiter séparément.
+
+- Le plafond de 400 kW (`getPnCap`) n'est appliqué que si
+  `ratio_virtualisation < 1` : il ne joue pas sur le cluster 1, alors que
+  notre 405 kW le dépasse. À réexaminer avec le point 1.
+- `besoin_ch` est aussi multi-cause : sur 49 cas, 15 ont
+  `pertes_distribution_ecs_recup` faux en amont, 12 n'ont **aucun** amont
+  fautif (donc la formule §9 elle-même), les autres se répartissent entre
+  `ubat`, `fraction_apport_gratuit_ch` et `surface_sud_equivalente`.
+- **Ordre suggéré** : cluster 1 (18 cas, signature nette), puis les 12 cas de
+  `besoin_ch` sans amont fautif, puis le multi-générateurs.
 - 871 valeurs hors tolérance (517 `conso_ch_depensier`, 354 `conso_ch`),
   écart maximal 110 %. C'est le premier poste après les coûts, et il cascade
   sur `emission_ges_ch` (264), `ep_conso_ch` (166), `conso_5_usages` (266),
@@ -1135,17 +1219,22 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 
 ### TASK-K05 — Bloc `<confort_ete>` produit alors que la référence ne le contient pas
 
-- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
-- 1 065 balises supplémentaires : le moteur écrit systématiquement le
+- [x] Owner: AI2  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- 1 070 balises supplémentaires : le moteur écrit systématiquement le
   sous-bloc `sortie/confort_ete` (`isolation_toiture`, `brasseur_air`,
   `aspect_traversant`, `protection_solaire_exterieure`,
   `enum_indicateur_confort_ete_id`), absent de 204 des 207 références de 2026.
-- **À qualifier avant de corriger** : ce n'est pas nécessairement une erreur —
-  il faut d'abord établir, à partir de l'arrêté et du XSD, si le sous-bloc est
-  obligatoire, conditionnel ou optionnel. Ne pas supprimer une sortie
-  réglementaire pour faire baisser un compteur.
-- Validation : décision tracée dans le doc-block de
-  `src/Sortie/ConfortEteCalculator.php`, avec la référence réglementaire.
+- **Qualifié : c'est la référence qui est en tort, ne rien changer.** Le XSD
+  rend `<confort_ete>` facultatif (`minOccurs="0"`) mais y impose
+  `protection_solaire_exterieure` dès que le bloc est présent. Or 213 des 229
+  références écrivent un bloc **vide** `<confort_ete></confort_ete>` : le bloc
+  est là, son contenu obligatoire non. Ces fichiers violent leur propre schéma.
+  Les 15 références qui renseignent le bloc ont exactement la forme que nous
+  produisons.
+- Supprimer notre sous-bloc aurait fait tomber 1 070 « balises
+  supplémentaires » tout en rendant notre sortie moins conforme au schéma.
+- Fait : `ReferenceDefects` détecte le bloc vide et le signale dans la section
+  « Écarts imputables à la référence » du rapport.
 
 ### TASK-K06 — Génération ECS : balises supplémentaires et rendements
 
@@ -1154,49 +1243,100 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
   `rendement_generation` côté ECS), 276 hors tolérance (`conso_ecs` 134,
   `conso_ecs_depensier` 100) et 14 manquantes
   (`rendement_generation_stockage`).
-- Action : aligner la production de balises sur ce que la référence renseigne
-  selon le type de générateur (§11), en s'appuyant sur le XSD pour savoir
-  quelles balises sont attendues pour quel `enum_type_generateur_ecs_id`.
+- **Avancement** : `rendement_stockage` n'est plus écrit lorsqu'il n'y a pas
+  de volume de stockage. §11.6 ne définit Rs que pour un ballon, et le corpus
+  est net : sur 336 générateurs ECS, la référence écrit la balise si et
+  seulement si `volume_stockage > 0`, à 9 exceptions près.
+  Mesure A/B : balises supplémentaires **1 547 → 1 356 (−191)**, famille
+  « Génération ECS » 476 → 287 écarts, conformité **90,89 % → 91,13 %**.
+  Deux cas de type 53 renseignent Rs sans volume et passent en « manquante ».
+- **Second correctif** : dès `enum_methode_saisie_carac_sys_id = 2`, Pn est
+  une donnée d'entrée. Les logiciels diagnostiqueurs l'écrivent en
+  `donnee_intermediaire` — c'est là que `OutputPurger` la préserve — alors que
+  le moteur ne la lisait qu'en `donnee_entree`. Il dérivait donc un Pn du GV,
+  faussant du même coup QP0 qui en est un pourcentage.
+  Vérifié sur 2600E0033082P : Pn saisi 20 kW, §13.2.2 donne
+  Rpn = (91 + 3 log Pn)/100 et QP0 = 0,5 % de Pn ; le moteur reproduit
+  désormais `pn`, `qp0`, `rpn`, `rendement_generation` et `conso_ecs` au
+  chiffre près.
+  Mesure A/B : hors tolérance **10 789 → 10 718 (−71)**, toutes les familles
+  concernées baissent.
+- **Reste à traiter** — analyse faite, causes non encore isolées :
+  - 33 cas où `rendement_generation` côté ECS diverge, de 0,1 % à 91,7 % :
+    plusieurs causes distinctes, pas une règle unique. Les extrêmes
+    (2600E0660731Y, 2400E0669425G, 2400E0669495Y) sont des immeubles à
+    installations ECS multiples et hétérogènes.
+  - `conso_ecs` reste faux sur 70 cas ; l'amont fautif est
+    `rendement_generation` (33 cas), `rendement_stockage` (33 cas, dont
+    l'essentiel relève de TASK-K16) ou le `cop` (3 cas).
 - Validation : famille « Génération ECS » au-dessus de 92 %.
 
 ### TASK-K07 — Classes DPE et GES divergentes
 
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
-- 39 écarts non numériques : 15 sur `classe_bilan_dpe`, 24 sur
-  `classe_emission_ges`. Ce sont les deux valeurs les plus visibles d'un DPE.
-- À traiter **après** K02 et K04 : une classe fausse est presque toujours la
-  conséquence d'une consommation fausse, pas d'un seuil faux. Vérifier
-  néanmoins les seuils (dont l'ajustement < 40 m² de l'arrêté du 24 mars 2024).
-- Validation : 0 écart sur `classe_bilan_dpe` et `classe_emission_ges`.
+- [x] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- 79 écarts non numériques sur les deux valeurs les plus visibles d'un DPE.
+  Contrairement à ce que la tâche supposait, **49 d'entre eux avaient la valeur
+  au m² exacte** : le seuil était bien en cause, pas l'amont.
+- Trois défauts corrigés dans le nouveau `src/Sortie/SeuilsClasses.php` :
+  1. **le seuil est strict** — un logement à 70 kWh/m²/an est en B, pas en A.
+     Le `<=` décalait d'une classe tous les logements pile sur un seuil ;
+  2. **les petites surfaces ont leurs propres seuils** (arrêté du 25 mars 2024),
+     relevés surface par surface de 3 à 40 m² :
+     `resources/tables/reference/tv_seuils_classes.php` ;
+  3. **E et F sont relevés au-dessus de 800 m** en zone H1b, H1c ou H2d.
+- Valeurs recoupées avec le texte publié : à 8 m², CEP A = 146 et F = 739,
+  EGES A = 11 et F = 122 ; au-dessus de 800 m à 8 m², CEP E = 682 ; à 40 m² on
+  retrouve le barème national.
+- Mesure A/B isolée, 349 cas : écarts non numériques **79 → 34 (−45)**, tous
+  passés en « exactes ». Famille GES 1 094 → 1 061, EP 681 → 669. Aucune autre
+  valeur touchée. 516 tests unitaires verts.
+- Les 34 restants sont bien en aval d'une consommation fausse (TASK-K04, K06).
 
-### TASK-K08 — Balises manquantes du bloc froid
+### TASK-K08 — Balises manquantes du bloc froid : ne rien changer
 
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
-- 20 balises manquantes côté froid, dont `conso_auxiliaire_distribution_fr`,
+- [x] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: basse
+- 28 balises manquantes côté froid : `conso_auxiliaire_distribution_fr`,
   `ep_conso_auxiliaire_distribution_fr`,
-  `emission_ges_auxiliaire_distribution_fr`, `cout_auxiliaire_distribution_fr`,
-  attendues à 0 par la référence.
-- Action : écrire ces balises même à 0 quand une installation de
-  climatisation est présente.
-- Validation : famille « Froid » sans balise manquante.
+  `emission_ges_auxiliaire_distribution_fr`,
+  `cout_auxiliaire_distribution_fr`, attendues à 0 par la référence.
+- **Décision : ne pas les écrire.** Sur les 349 fichiers des deux corpus,
+  seuls **7** les portent, tous à 0, et tous produits par des moteurs
+  minoritaires (`3cl-2024.6.1.0`, `3cl_tribu_1.4.25.0`, `3cl_bbs_V2025.11.1.0`
+  et 2 fichiers sans moteur déclaré). Les trois moteurs dominants — 339
+  fichiers — ne les écrivent jamais.
+- La présence de la balise n'est même pas liée à celle d'une climatisation :
+  les 7 fichiers qui la portent n'ont **pas** de bloc `climatisation`, et les
+  19 fichiers qui en ont un ne la portent pas.
+- Les écrire systématiquement échangerait 28 balises manquantes contre environ
+  1 368 balises supplémentaires (342 fichiers × 4 balises). Le schéma les rend
+  facultatives : le silence est le comportement majoritaire et le moins
+  coûteux.
 
 ### TASK-K09 — Remplacer les exclusions du harness E2E par la mesure de conformité
 
-- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
-- `tests/EndToEndTest.php` porte une liste `TAGS_EXCLUDED_BY_FILE` et une liste
-  `$tagsCovered` qui masquent une partie des écarts, et son indexation de
-  chemin ignore les fratries homonymes : sur un logement à 30 murs, un seul
-  `umur` est réellement comparé.
-- Action : faire converger le harness E2E vers `CalculDpePHP\Conformite\*`
-  (chemins indexés, aucune balise exclue), en gardant un seuil de
-  non-régression sur le nombre de valeurs hors tolérance plutôt que des
-  exclusions nominatives.
-- Validation : suite verte, et le compte de valeurs hors tolérance du rapport
-  ne remonte pas.
+- [x] Owner: AI2  | Phase: K  | Estimation: 3h  | Priorité: basse
+- `tests/EndToEndTest.php` portait une liste `TAGS_EXCLUDED_BY_FILE` et une
+  liste `$tagsCovered` qui masquaient une partie des écarts, et son indexation
+  de chemin ignorait les fratries homonymes : sur un logement à 30 murs, un
+  seul `umur` était réellement comparé. Le harness pouvait être vert et faux.
+- **Fait** : il utilise désormais le même comparateur que
+  `bin/official-test-report` — toutes les balises, chemins indexés, aucune
+  exclusion. Les deux listes ont disparu.
+- Le critère n'est pas « zéro écart » (le moteur n'y est pas) mais « pas plus
+  d'écarts qu'au dernier relevé », **cas par cas** :
+  `tests/conformity-baseline.php`, 349 cas, 9 953 écarts. Les écarts imputables
+  à la référence en sont exclus : le budget mesure notre qualité.
+- Le harness vérifie en plus qu'aucun cas ne produit de chemin hors schéma
+  ADEME — le critère structurel du règlement d'évaluation.
+- Resserrer le budget après une amélioration :
+  `php bin/official-test-report --write-baseline`. Ne jamais le régénérer pour
+  faire passer une régression.
+- Vérifié : en ramenant à 0 le budget d'un cas, la suite échoue bien avec
+  « Régression sur 2242E2979513I.xml : 61 écarts pour un budget de 0 ».
 
 ### TASK-K10 — Diviseur « par logement » des tranches tarifaires
 
-- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- [x] Owner: AI2  | Phase: K  | Estimation: 3h  | Priorité: moyenne
 - TASK-K02 a établi que la tranche tarifaire de l'électricité et du gaz
   s'apprécie sur la consommation **d'un logement**, et l'a implémentée en
   divisant par `caracteristique_generale/nombre_appartement`. Vérifié exact
@@ -1210,12 +1350,179 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
   peut-être déjà sur un seul logement) ; immeubles où `nombre_appartement`
   diffère du nombre de logements desservis par l'énergie considérée ;
   logements-types de l'échantillonnage §17.
-- Action : à partir de
-  `php bin/official-test-report --famille=Coûts --top=50`, isoler les 43 cas,
-  établir la règle depuis l'arrêté plutôt que par ajustement, puis l'appliquer.
-- Ne pas caler un diviseur sur les fichiers de test.
-- Validation : `cout_eclairage` conforme sur tous les cas dont
-  `conso_eclairage` l'est déjà.
+- **Fait**. Le diviseur n'est pas un nombre de logements mais un **nombre
+  d'abonnements**. Le barème tarifie la consommation annuelle d'un ménage,
+  donc d'un point de livraison :
+  - un DPE immeuble collectif dessert un abonnement par logement pour les
+    usages individuels, mais un **abonnement unique d'immeuble** pour les
+    usages portés par une installation collective (chauffage ou ECS avec
+    `enum_type_installation_id = 2`, et leurs auxiliaires) ;
+  - tous les autres périmètres — maison, appartement, et **appartement généré
+    à partir des données de l'immeuble** — ne décrivent qu'un logement :
+    diviseur 1. Sur ces DPE, `nombre_appartement` renseigne la taille du
+    bâtiment, pas la portée du DPE, et le prendre comme diviseur était faux.
+  - la ventilation reste individuelle : la rattacher à l'abonnement d'immeuble
+    dégrade nettement l'accord avec la référence.
+- Départage empirique sur les 229 cas, en reproduisant le coût par énergie de
+  la référence : diviseur = `nombre_appartement` 139/229 · `+1` 125/229 ·
+  toujours 1 : 18/229 · **règle par abonnement : 216/229**.
+- Au passage, `SortieParEnergieAggregator` dupliquait toute la mécanique
+  tarifaire avec les tarifs de 2021 figés — d'où 899 des écarts restants. Le
+  barème et les tranches vivent désormais dans `src/Sortie/PrixEnergie.php`,
+  partagé par les deux calculateurs.
+- Mesure A/B isolée, profil strict : hors tolérance **5 856 → 4 942
+  (−914, −15,6 %)**, conformité **89,30 % → 90,57 %**. Famille « Coûts »
+  1 751 → 1 004 écarts, « Auxiliaires » 1 497 → 1 330. 477 tests unitaires
+  verts.
+- Reste : TASK-K11.
+
+### TASK-K11 — Confirmer la règle d'abonnement sur le texte officiel
+
+- [x] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- **Confirmé, et la règle manquante est trouvée.** L'annexe tarifaire de
+  l'arrêté écrit littéralement :
+  - « Pour chaque énergie, les frais annuels sont établis à partir de la
+    formule de la plage de consommation correspondante, sans effet cumulatif
+    des tranches précédentes. »
+  - « Abonnement individuel : la consommation considérée est celle de
+    l'appartement seul. »
+  - « Abonnement collectif : la consommation de gaz naturel ou d'électricité à
+    prendre en compte pour la détermination du prix du kWh est celle de
+    l'ensemble de l'immeuble. »
+  - « Les frais annuels par type d'énergie et par usage sont obtenus en
+    multipliant la consommation d'énergie finale pour ce type d'énergie et cet
+    usage par le prix moyen du kWh. »
+- La règle inférée en TASK-K10 était donc la bonne, et le prix moyen appliqué
+  poste par poste aussi. Les citations sont dans le doc-block de
+  `PrixEnergie`.
+- Le texte donne en plus la règle qui manquait pour les 4 cas résiduels : sur
+  un **DPE d'appartement desservi par une installation collective**, la
+  consommation de l'immeuble s'estime en multipliant celle de l'appartement
+  par le rapport des surfaces habitables. Implémenté.
+- Mesure A/B isolée, 349 cas : hors tolérance **10 846 → 10 789 (−57)**,
+  famille « Coûts » 1 880 → 1 853, « Auxiliaires » 2 050 → 2 020.
+
+### TASK-K12 — Coût dépensier : défaut de la référence, ne pas reproduire
+
+- [x] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: haute
+- 184 références sur 229 écrivent `cout_ch_depensier = cout_ch` et
+  `cout_ecs_depensier = cout_ecs`, alors que `conso_ch_depensier` et
+  `conso_ch` diffèrent. Idem pour les auxiliaires de génération. Cela
+  représente **619 des écarts hors tolérance**, soit 12,5 % du total.
+- **C'est la référence qui a tort**, et son propre schéma le dit :
+  `cout_ch_depensier` y est documenté comme le « coût de chauffage pour le
+  scénario dépensier ». Deux consommations différentes ne peuvent pas coûter
+  exactement la même chose. Le défaut est concentré sur un éditeur
+  (BBS_Slama : 171/209) mais pas exclusif.
+- Les 45 références qui calculent bien un coût dépensier distinct sont en
+  accord avec notre modèle : les écarts qui y subsistent viennent tous d'un
+  `conso_ch_depensier` déjà faux en amont (TASK-K04), pas de la tarification.
+- **Ne pas « corriger » ce poste.** Reproduire le défaut ferait gagner
+  619 écarts au compteur tout en éloignant le moteur de la méthode.
+- Fait : `src/Conformite/ReferenceDefects.php` détecte ces cas depuis le seul
+  fichier de référence et les signale dans une section dédiée du rapport. Ils
+  restent comptés dans le taux — la mesure brute ne se maquille pas — et le
+  rapport affiche en regard le **plafond atteignable** sur ce corpus.
+
+### TASK-K13 — Cdimref : diviseur du GV sur un DPE immeuble
+
+- [x] Owner: AI2  | Phase: K  | Estimation: 3h  | Priorité: basse
+- Cdimref rapporte la puissance installée au GV desservi. Sur un DPE immeuble,
+  le moteur divise le GV par `nombre_appartement` ; open3cl
+  (`9_chauffage.js::tauxChargeForGenerator`) divise par le `rdim` de
+  l'installation.
+- Les deux ont été mesurés en A/B sur les 229 cas, profil strict :
+  `nombre_appartement` **4 942** écarts hors tolérance · `rdim` **4 972**
+  (+30) · `rdim` combiné à la puissance cumulée **4 952** (+10) · puissance
+  cumulée seule **4 922** (−20, retenue).
+- `nombre_appartement` est donc conservé faute de mieux, alors qu'il n'a pas
+  de justification dans la spec : ce n'est pas le GV desservi par
+  l'installation. Sur 2467E3590684Y (rdim = 3 pour 12 logements), `GV / rdim`
+  reproduit **exactement** le Cdimref de la référence là où
+  `nombre_appartement` en est loin — la bonne règle est probablement
+  conditionnelle, et aucun des deux diviseurs n'est correct partout.
+- **Résolu par la spec : l'implémentation actuelle est la bonne.**
+  - §13.2.1.2 définit `GV` comme « les déperditions **totales du bâtiment**
+    (W/K) » et donne, pour N générateurs,
+    `Cdimref = 1000 × (Pngen1 + … + PngenN) / (GV × (Tcons − Tbase))`.
+  - §17.1.4.2 précise que si le chauffage d'un immeuble est **individuel**,
+    « le calcul des consommations de chauffage est effectué sur la base d'un
+    appartement "moyen" […] ce qui revient à diviser le besoin de chauffage
+    Bch de l'immeuble par le nombre de logements de l'immeuble **Nblgt** ». Le
+    générateur individuel se compare donc au GV d'un logement moyen.
+  - Chauffage **collectif** : le calcul reste à l'échelle de l'immeuble, GV
+    entier — c'est aussi ce que fait le moteur.
+- `rdim` n'apparaît nulle part dans cette règle : le départage empirique et la
+  spec concordent. Le cas 2467E3590684Y où `GV / rdim` tombait juste est une
+  coïncidence.
+- Doc-block de `RendementAnnuelMoyenCalculator` mis à jour avec les citations.
+
+### TASK-K14 — `enum_classe_inertie_id` écrit hors de son emplacement au schéma
+
+- [x] Owner: AI2  | Phase: K  | Estimation: 1h  | Priorité: haute
+- Le moteur écrit `enum_classe_inertie_id` dans
+  `logement/donnee_intermediaire`, sur **229 cas sur 229**. Le schéma ne
+  déclare cette balise qu'à un seul endroit :
+  `dpe/logement/enveloppe/inertie/enum_classe_inertie_id`, où c'est une
+  **donnée d'entrée**. Aucune référence ne la produit en sortie.
+- Le contrôle de vocabulaire de TASK-K03 ne l'a pas vue : il vérifie les noms
+  de balises, pas leur emplacement.
+- La classe est déjà publiée dans le contexte (`inertie.classe_id`) ; deux
+  consommateurs la relisent inutilement depuis le DOM.
+- **Fait** : la balise n'est plus écrite, `ConfortEteCalculator` et
+  `CollectifBaseAppoint` lisent `inertie.classe_id` dans le contexte.
+- Mesure A/B isolée : balises supplémentaires **1 779 → 1 550 (−229)**,
+  conformité **90,60 % → 90,89 %**, aucune valeur modifiée (exactes, tolérées
+  et hors tolérance strictement identiques). 487 tests verts.
+- Voir TASK-K15 : le contrôle de vocabulaire doit devenir sensible au chemin
+  pour attraper ce genre de défaut tout seul.
+
+### TASK-K15 — Contrôle structurel sensible au chemin
+
+- [x] Owner: AI2  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- `XsdVocabulary` ne vérifiait que les **noms** de balises. TASK-K14 a montré la
+  limite : `enum_classe_inertie_id` existait bien au schéma, mais sous
+  `<enveloppe><inertie>`, et le moteur l'écrivait dans
+  `<logement><donnee_intermediaire>` sur 229 cas sur 229 sans que le rapport
+  s'en aperçoive.
+- Le XSD porte les chemins complets dans ses `<xs:appinfo source="...">` : le
+  contrôle peut donc être rendu sensible au chemin sans travail d'inférence.
+- Comme aujourd'hui, il faudra unir le vocabulaire du XSD (périmé) aux chemins
+  réellement observés dans la référence du cas, pour éviter les faux positifs.
+- **Fait** : le contrôle porte désormais sur les chemins complets, lus dans
+  les `<xs:appinfo source>` du schéma (885 chemins déclarés), unis aux chemins
+  observés dans la référence du cas. Il signale bien la balise de TASK-K14.
+- Il a immédiatement trouvé un second défaut du même type : `eer` écrit sous
+  `sortie/apport_et_besoin` (3 cas) alors que le schéma ne le déclare que sous
+  `climatisation/donnee_intermediaire`, où le moteur l'écrivait déjà
+  correctement. L'écriture en double a été supprimée.
+- La section « Conformité structurelle du XML produit » du rapport est
+  désormais **vide** : plus aucun chemin produit hors schéma.
+
+### TASK-K16 — Rendement de stockage des DPE échantillonnés : non reproductible
+
+- [x] Owner: AI2  | Phase: K  | Estimation: 3h  | Priorité: haute
+- Sur les DPE « appartement issu de l'immeuble » avec échantillonnage §17
+  (32 cas du jeu `ademe-2026-09`), la référence publie jusqu'à 13
+  `installation_ecs` **strictement identiques** — mêmes surface, même volume
+  de stockage, même type de générateur, seule la `reference` horodatée change
+  — et leur attribue pourtant 4 `rendement_stockage` distincts.
+- Le rendement suit la surface du logement visité dont l'installation provient :
+  sur 2400E0333876N, `(1/Rs − 1) × S` vaut exactement 23,9 pour S = 92, 85 et
+  49 m². Mais **aucun élément du XML ne relie une installation à un logement
+  visité** : `logement_visite` ne porte que description, étage, typologie et
+  surface, et l'installation ne porte aucune référence croisée.
+- Des entrées identiques doivent donner des sorties identiques. L'écart n'est
+  donc pas reproductible depuis les données publiées, et toute règle qui y
+  parviendrait devinerait l'appariement.
+- Fait : `ReferenceDefects` détecte les installations ECS indiscernables aux
+  rendements divergents et les range avec les écarts imputables à la
+  référence — 225 des 267 écarts sur `rendement_stockage`.
+- **Conséquence à examiner** : `StockageCalculator::sampledIndividualAdjustment()`
+  apparie déjà installations et typologies par part de surface. Sur ces cas
+  toutes les parts sont égales, l'appariement est arbitraire. L'heuristique a
+  été calibrée sur d'autres cas (TASK-J03, TASK-J05) et n'est pas touchée ici,
+  mais elle devine : à reconsidérer si elle coûte plus qu'elle ne rapporte.
 
 ---
 

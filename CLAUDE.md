@@ -20,6 +20,10 @@ Le CLI cible : `bin/calcul-dpe input.xml` → enrichit le XML avec les balises `
 | `tests/EndToEndTest.php` | Harness : input/*.xml → engine → diff vs verif/*.xml (tolérance 1e-3). |
 | `bin/process-xml` | Outil legacy : prépare un fichier verif en générant un input épuré. |
 | `bin/calcul-dpe` | CLI principal qui exécute le moteur de calcul. |
+| `bin/official-test-report` | **Juge de conformité** : compare toutes les balises calculées à la référence, écrit `reports/official-tests.{json,md}`. |
+| `bin/fetch-official-corpus` | Construit un jeu de cas stratifié depuis l'open data ADEME, avec manifeste de provenance. |
+| `resources/XML/official/` | Jeux de tests documentés (manifestes suivis en git, XML non versionnés). |
+| `src/Conformite/` | Outillage de mesure d'écart (extraction, familles, tolérances, rapport). |
 | `TASKS.md` | Liste des tâches à faire, organisées en phases A→G, avec checkboxes. |
 
 ## Workflow de calcul
@@ -109,6 +113,139 @@ Plusieurs agents IA travaillent en parallèle sur ce repo. Pour éviter les coll
 - `CalculDpe\Sortie\` : agrégateurs finaux (EF, EP, GES, coût, classes A→G).
 - `CalculDpe\Collectif\` : §17 (immeuble, appartement, multi-immeuble, mixte).
 
+## Mesure de conformité (phase K) — à lire avant de « corriger » quoi que ce soit
+
+### Pourquoi
+
+Le but du projet n'est pas de faire passer `tests/EndToEndTest.php`, c'est
+d'être **conforme à la méthode réglementaire**. Le harness E2E ne peut pas
+servir de juge : il ne compare qu'une liste de balises « couvertes », exclut
+des balises fichier par fichier (`TAGS_EXCLUDED_BY_FILE`), et son indexation de
+chemin ignore les fratries homonymes — sur un logement à 30 murs, un seul
+`umur` est réellement vérifié. Un moteur peut donc être vert et faux.
+
+`bin/official-test-report` mesure l'écart réel : **toutes** les balises de
+`<donnee_intermediaire>` et `<sortie>`, chemins indexés, aucune exclusion, une
+balise attendue mais non produite comptant comme non conforme.
+
+### Statut des jeux officiels CSTB
+
+**Ils ne sont pas diffusés publiquement.** Le règlement d'évaluation les
+annonce téléchargeables, mais la seule voie d'accès est la plateforme éditeurs
+<https://app.rt-batiment.fr/evaluation_logiciel/>, protégée par
+authentification ; aucun miroir public n'existe, et aucun seuil de tolérance
+chiffré n'est publié. La mesure se fait donc contre les DPE opposables de
+l'observatoire ADEME (Licence Ouverte 2.0), produits par des logiciels évalués
+CSTB. Détail des sources : `resources/XML/official/README.md`.
+
+Conséquence pratique : **la référence n'est pas la vérité réglementaire, c'est
+la sortie d'un autre logiciel**. Un écart peut venir de nous *ou* de lui. Le
+rapport ventile par `version_moteur_calcul` justement pour ça : un écart
+concentré sur un seul moteur éditeur est suspect côté référence.
+
+### Comment mesurer
+
+```bash
+php bin/official-test-report                          # rapport complet
+php bin/official-test-report --famille="Coûts" --top=40
+php bin/official-test-report --filter=2657E1981571R
+php bin/official-test-report --tolerance=reglementaire # 1 % au lieu de 0,1 %
+php bin/official-test-report --list-corpora
+```
+
+Sorties : `reports/official-tests.md` (suivi en git, c'est la baseline lisible)
+et `reports/official-tests.json` (~10 Mo, non suivi, régénérable).
+
+Profils : `strict` (0,1 %, défaut, sert de juge), `reglementaire` (1 %),
+`repo` (reprend `tests/tolerances.php`, pour comparer au harness historique).
+**N'élargis jamais une tolérance pour faire baisser un compteur.**
+
+### Règle de mesure d'un gain (impérative)
+
+Plusieurs agents modifient le moteur en parallèle et le corpus s'enrichit :
+comparer deux rapports pris à des moments différents ne veut **rien** dire. Un
+gain se mesure en A/B isolé, sur le même arbre, en ne changeant que le code
+évalué :
+
+```bash
+cp src/Mon/Calculator.php /tmp/mine.php
+git checkout HEAD -- src/Mon/Calculator.php
+php bin/official-test-report --quiet --json=/tmp/before.json --md=/tmp/before.md
+cp /tmp/mine.php src/Mon/Calculator.php
+php bin/official-test-report --quiet --json=/tmp/after.json --md=/tmp/after.md
+```
+
+Puis compare `summary.out_of_tolerance`, `extra`, `missing` et `by_famille`.
+Chaque rapport porte la révision git et le nombre de fichiers `src/` non
+commités : si ce nombre change entre deux runs, la comparaison est invalide.
+
+### Point de départ et acquis
+
+Deux corpus : `ademe-observatoire-local` (229 cas, historique, 92 % d'immeubles
+collectifs) et `ademe-2026-09` (120 cas, **stratifié 30 par périmètre CSTB**).
+Le rapport par défaut couvre les deux — 349 cas.
+
+| Étape | Hors tolérance | Suppl. | Conformité |
+|---|---:|---:|---:|
+| Baseline — 224 cas, corpus historique seul | 9 723 | 2 280 | 83,05 % |
+| K02 — tarifs indexés sur la date du DPE | −1 099 | | 88,21 % |
+| K03 — balises hors schéma (`Qgw`, `pveil`) | | −337 | 88,57 % |
+| K10 — tranche tarifaire par abonnement | −914 | | 90,57 % |
+| K04 — taux de charge sur la puissance installée | −20 | | 90,60 % |
+| K14 — classe d'inertie hors emplacement | | −229 | 90,89 % |
+| K06 — rendement de stockage sans ballon | | −191 | 91,13 % |
+| **K01 — corpus stratifié ajouté** | | | **88,59 %** |
+| K07 — seuils des étiquettes DPE et GES | −45 écarts de classe | | 88,63 % |
+| K11 — usages collectifs d'un appartement | −57 | | 88,68 % |
+| K06 — puissance saisie du générateur ECS | −71 | | 88,75 % |
+| **Actuel — 349 cas** | **10 718** | **1 792** | **88,75 %** |
+
+**Le corpus historique flattait le chiffre.** Sur le jeu stratifié seul, la
+conformité est de 84,1 % : immeuble collectif 87,9 %, appartement individuel
+87,0 %, maison individuelle 84,6 %, **appartement issu de l'immeuble 76,1 %**.
+Ne juge jamais une correction sur le seul corpus historique.
+
+Sur les écarts restants, **2 788 sont imputables à la référence** : le plafond
+atteignable sur ces corpus est de **91,24 %**. Le rapport l'affiche.
+
+Cinq leçons à retenir de ces corrections :
+
+1. **Le barème dépend de la date du DPE** (K02). Les tarifs des énergies sont
+   réactualisés par arrêté ; la référence applique celui en vigueur à
+   `date_etablissement_dpe`. Idem pour les seuils d'étiquette (K07).
+2. **Une grandeur intermédiaire ne passe jamais par le XML** (K03, K14, K15).
+   `Qgw`, `pveil` et `enum_classe_inertie_id` étaient écrits dans des
+   emplacements que le schéma ne déclare pas — un fichier les contenant serait
+   rejeté par l'ADEME. Un canal entre Calculators passe par
+   `CalculationContext`. Le contrôle est automatique et porte sur les
+   **chemins**, pas les noms : garde la section « Conformité structurelle » du
+   rapport vide, le harness E2E échoue sinon.
+3. **La référence a ses propres défauts** (2788 écarts : K05, K12, K16). Coût
+   dépensier recopié du conventionnel, bloc `<confort_ete>` vide, rendements
+   de stockage non reproductibles depuis les données publiées.
+   `ReferenceDefects` les isole. **Ne les « corrige » pas.**
+4. **Une donnée saisie prime sur un forfait — et elle est en
+   `donnee_intermediaire`** (K06). Les logiciels diagnostiqueurs y écrivent
+   `pn`, `pveilleuse`, `qp0`… et c'est là que `OutputPurger` les préserve. Ne
+   lire que `donnee_entree` revient à ignorer la saisie.
+5. **Une hypothèse se départage sur le corpus entier, puis se source** (K10,
+   K11, K13). Un diviseur qui reproduit un cas peut dégrader l'ensemble ;
+   inversement, le texte officiel a fini par confirmer une règle inférée et
+   par en donner une seconde. Mesure, puis cherche la source — et consigne les
+   chiffres des variantes écartées.
+
+### Ce qu'on attend d'une correction
+
+- Justifiée par la méthode 3CL, le XSD ADEME, un texte réglementaire, ou une
+  incohérence démontrée de notre implémentation — **jamais** par l'observation
+  d'un fichier de test.
+- **Aucun `if ($dpeId === 'XXXX')`**, aucun comportement spécifique à un cas.
+- Remonter au **premier intermédiaire divergent** avant de toucher un agrégat :
+  une classe DPE fausse est presque toujours une consommation fausse en amont,
+  pas un seuil faux.
+- Une tâche `TASK-Kxx` dans `TASKS.md`, un test de non-régression, le gain
+  mesuré en A/B, et la suite unitaire verte.
+
 ## Tolérance des tests E2E
 
 - Défaut : 1e-3 (différence absolue normalisée par la valeur attendue).
@@ -165,4 +302,7 @@ vendor/bin/phpunit       # tous les tests
 vendor/bin/phpunit --coverage-text          # avec couverture
 vendor/bin/phpunit --filter EnveloppeTest
 php bin/calcul-dpe resources/XML/input/zone_post2026coefelec_diag2356755.xml
+
+php bin/official-test-report                     # rapport de conformité complet
+php bin/official-test-report --famille="Coûts" --top=40
 ```

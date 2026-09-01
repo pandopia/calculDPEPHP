@@ -17,10 +17,17 @@ use DOMElement;
  *   Rg_ch_PCI = k_PCS/PCI × Rg_ch_PCS
  *
  * Le profil de charge (§13.2.1.1) est le profil long à 10 niveaux.
- * Cdimref = 1000 × Pn / (GV_building × (Tcons - Tbase)) permet d'adapter
- * le profil aux charges partielles.
+ * Cdimref = Pn / (GV_ratio × (Tcons - Tbase)) permet d'adapter le profil aux
+ * charges partielles.
  *
- * GV_building = GV_appartement × (Sh_immeuble / Sh_appartement) pour installations collectives.
+ * Point que la formule seule ne dit pas, et que §13.2.1.2 (« présence d'un ou
+ * plusieurs générateurs à combustion indépendants ») impose : **Pn est la
+ * puissance cumulée** de tous les générateurs à combustion du logement, pas
+ * celle du seul générateur courant. Le taux de charge d'une chaudière dépend
+ * de la puissance installée face au besoin, pas de sa puissance propre.
+ * Cf. open3cl `9_chauffage.js::tauxChargeForGenerator`.
+ *
+ * GV_building : voir `resolveGvBuilding()`.
  *
  * @spec-section 13.2.3-13.2.4
  * @spec-pages   92
@@ -148,17 +155,19 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         // Le profil conventionnel utilise 19 °C et le profil dépensier 21 °C.
         $gvBuilding = $this->resolveGvBuilding($node, $accessor, $context);
         $tbase      = $this->resolveTbase($context, $accessor);
+        // §13.2.1.2 : le taux de charge se juge sur la puissance installée.
+        $pnCumule   = $this->puissanceCombustionCumulee($accessor, $context);
 
         // Calcul QPx selon le type de chaudière
         $boilerCat = $this->boilerCategory($genId);
         $regulation = $accessor->getIntOrNull('./donnee_entree/presence_regulation_combustion', $node) === 1;
 
         $rgPci = $this->computeAnnualYield(
-            19.0, $tbase, $gvBuilding, $pn_kw, $boilerCat, $rpn_pcs,
+            19.0, $tbase, $gvBuilding, $pn_kw, $pnCumule / 1000.0, $boilerCat, $rpn_pcs,
             $rpint_pcs, $tfonc100, $tfonc30, $qp0_pcs, $pveil_pcs, $k, $regulation,
         );
         $rgPciDepensier = $this->computeAnnualYield(
-            21.0, $tbase, $gvBuilding, $pn_kw, $boilerCat, $rpn_pcs,
+            21.0, $tbase, $gvBuilding, $pn_kw, $pnCumule / 1000.0, $boilerCat, $rpn_pcs,
             $rpint_pcs, $tfonc100, $tfonc30, $qp0_pcs, $pveil_pcs, $k, $regulation,
         );
 
@@ -190,6 +199,7 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         float $tbase,
         float $gvBuilding,
         float $pnKw,
+        float $pnCumuleKw,
         string $boilerCat,
         float $rpnPcs,
         float $rpintPcs,
@@ -200,8 +210,10 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         float $k,
         bool $regulation,
     ): ?float {
+        // Cdimref porte sur la puissance installée totale ; le profil de
+        // charge qui en découle s'applique ensuite à ce générateur.
         $cdimref = $gvBuilding > 0.0
-            ? (1000.0 * $pnKw) / ($gvBuilding * ($tcons - $tbase))
+            ? (1000.0 * $pnCumuleKw) / ($gvBuilding * ($tcons - $tbase))
             : 1.0;
         $pmFou = 0.0;
         $pmCons = 0.0;
@@ -359,9 +371,27 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
     }
 
     /**
-     * Détermine GV bâtiment (W/K).
-     * chauffage.gv représente déjà le GV du bâtiment entier (calculé sur l'enveloppe complète
-     * du logement XML, que ce soit un DPE bâtiment ou un DPE zone/appartement).
+     * Détermine le GV (W/K) auquel se compare la puissance installée.
+     *
+     * `chauffage.gv` est le GV du bâtiment décrit par le XML.
+     *
+     * Immeuble avec chauffage individuel (§17.1.4.2) : Cdimref est calculé à
+     * l'échelle de l'appartement moyen.
+     *
+     * §17.1.4.2 : quand le chauffage d'un immeuble est individuel, « le calcul
+     * des consommations de chauffage est effectué sur la base d'un appartement
+     * "moyen", à partir du besoin de chauffage de l'appartement "moyen"
+     * (obtenu en multipliant le besoin de chauffage de l'immeuble Bch par le
+     * rapport de la surface habitable de l'appartement "moyen" à celle de
+     * l'immeuble, ce qui revient à diviser le besoin de chauffage Bch de
+     * l'immeuble par le nombre de logements de l'immeuble Nblgt) ». Le
+     * générateur individuel se compare donc au GV d'un logement moyen, soit
+     * `GV / Nblgt`. Chauffage collectif : le calcul reste à l'immeuble, GV
+     * entier.
+     *
+     * Le diviseur `rdim` d'open3cl (`9_chauffage.js::tauxChargeForGenerator`)
+     * a été testé et écarté : il dégrade l'ensemble du corpus (+30 écarts hors
+     * tolérance) et ne correspond pas au Nblgt de la spec.
      */
     private function resolveGvBuilding(DOMElement $node, NodeAccessor $accessor, CalculationContext $context): float
     {
@@ -370,9 +400,6 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
             return 0.0;
         }
 
-        // Immeuble avec chauffage individuel (§17.1.4.2) : Cdimref est calculé
-        // à l'échelle de l'appartement moyen. Une surface d'installation peut
-        // représenter un groupe d'échantillonnage, pas la chaudière individuelle.
         $modeApp = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
         if ($modeApp !== null && in_array($modeApp, [6, 8, 10, 12], true)) {
             $nblgt = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement');
@@ -380,7 +407,33 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
                 return $gv / $nblgt;
             }
         }
+
         return $gv;
+    }
+
+    /**
+     * Puissance nominale cumulée (W) des générateurs à combustion du logement.
+     *
+     * @spec-section 13.2.1.2
+     */
+    private function puissanceCombustionCumulee(NodeAccessor $accessor, CalculationContext $context): float
+    {
+        $total = 0.0;
+        foreach ($context->document->getElementsByTagName('generateur_chauffage') as $gen) {
+            if (!$gen instanceof DOMElement) {
+                continue;
+            }
+            $genId = \CalculDpePHP\Chauffage\GenerateurChAlias::normalizeNode(
+                $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $gen),
+                $gen,
+            );
+            if ($genId === null || $genId < self::COMBUSTION_MIN || $genId > self::COMBUSTION_MAX) {
+                continue;
+            }
+            $total += $accessor->getFloatOrNull('./donnee_intermediaire/pn', $gen) ?? 0.0;
+        }
+
+        return $total;
     }
 
     /**

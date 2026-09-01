@@ -41,14 +41,15 @@ use DOMElement;
  * vs non-lourde (si `paroi_lourde` absent, on applique les défauts ci-dessus).
  *
  * Le résultat est écrit dans le contexte (clé `inertie.classe_id`) **et** dans
- * `<logement><donnee_intermediaire><enum_classe_inertie_id>` pour la sortie XML.
+ * Le résultat est publié dans le contexte sous `inertie.classe_id` ; il n'est
+ * pas écrit dans le XML (voir `writeResult()`).
  *
  * @spec-section 7
  * @spec-pages   53-54
  * @spec-source  resources/specsplitted/07-inertie/00-calcul.md
  * @xml-input    logement.enveloppe.{mur,plancher_bas,plancher_haut}_collection.*.donnee_entree.paroi_lourde
  * @xml-input    logement.enveloppe.{mur,plancher_bas,plancher_haut}_collection.*.donnee_entree.surface_paroi_totale
- * @xml-output   logement.donnee_intermediaire.enum_classe_inertie_id
+ * @xml-output   (aucun — résultat publié dans le contexte : `inertie.classe_id`)
  * @depends-on   (aucun)
  * @tables       (aucune)
  */
@@ -120,9 +121,12 @@ final class InertieCalculator implements CalculatorInterface
         NodeAccessor $accessor,
         int $classeId,
     ): void {
+        // La classe d'inertie transite par le contexte, jamais par le XML : le
+        // schéma ADEME ne déclare `enum_classe_inertie_id` que sous
+        // `<enveloppe><inertie>`, où c'est une donnée d'entrée. L'écrire dans
+        // `<logement><donnee_intermediaire>` produisait une balise inexistante,
+        // sur la totalité des cas du corpus.
         $context->set('inertie.classe_id', $classeId);
-        $intermediaire = $accessor->ensureDonneeIntermediaire($node);
-        $accessor->setChildValue($intermediaire, 'enum_classe_inertie_id', $classeId);
     }
 
     /**

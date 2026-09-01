@@ -56,20 +56,6 @@ final class SortieParEnergieAggregator implements CalculatorInterface
         'elec_renouv'      => 0.0,
     ];
 
-    // Tarifs Annexe 7 (mars 2021, en €/kWh sauf fonctions tiered)
-    private const TARIF_FIXE = [
-        3  => 0.09142, // fioul
-        4  => 0.03201, // bois bûches
-        5  => 0.05991, // bois granulés
-        6  => 0.03201, // bois plaquettes forestières
-        7  => 0.03201, // bois plaquettes industrie
-        8  => 0.0787,  // réseau chaleur urbain
-        9  => 0.14305, // propane
-        10 => 0.20027, // butane
-        11 => 0.02372, // charbon
-        13 => 0.14305, // gpl
-    ];
-
     // GES key for each energy_id (ch/ecs usage)
     private const GES_KEY_CH = [
         1  => 'elec_ch',
@@ -165,6 +151,10 @@ final class SortieParEnergieAggregator implements CalculatorInterface
         $collection = $context->document->createElement('sortie_par_energie_collection');
         $sortie->appendChild($collection);
 
+        $prix = PrixEnergie::pour($node, $accessor, $context);
+        $postesCout = [];
+        $items = [];
+
         foreach ($energieIds as $eId) {
             $consoChE    = $chByEnergie[$eId][0]  ?? 0.0;
             $consoChEDep = $chByEnergie[$eId][1]  ?? 0.0;
@@ -200,14 +190,15 @@ final class SortieParEnergieAggregator implements CalculatorInterface
                         + $consoFrE  * self::GES['elec_fr'];
             }
 
-            // Coût
-            $coutChE  = $this->coutEnergie($eId, $consoChE);
-            $coutEcsE = $this->coutEnergie($eId, $consoEcsE);
-            $cout5E   = $coutChE + $coutEcsE;
-            if ($eId === 1 || $eId === 12) {
-                $cout5E += $this->coutElectricite($consoEclE)
-                         + $this->coutElectricite($consoAuxE)
-                         + $this->coutElectricite($consoFrE);
+            // Coût : les postes sont accumulés, la tarification a lieu une
+            // seule fois après la boucle. La tranche de l'électricité et du gaz
+            // porte sur le total d'un abonnement, pas sur un poste isolé.
+            $postesCout[$eId . '|ch']  = [$eId, $consoChE, $prix->chauffageCollectif];
+            $postesCout[$eId . '|ecs'] = [$eId, $consoEcsE, $prix->ecsCollectif];
+            if (PrixEnergie::estElectricite($eId)) {
+                $postesCout[$eId . '|ecl'] = [$eId, $consoEclE, false];
+                $postesCout[$eId . '|aux'] = [$eId, $consoAuxE, false];
+                $postesCout[$eId . '|fr']  = [$eId, $consoFrE, false];
             }
 
             $item = $context->document->createElement('sortie_par_energie');
@@ -220,9 +211,22 @@ final class SortieParEnergieAggregator implements CalculatorInterface
             $accessor->setChildValue($item, 'emission_ges_ch',           $gesChE);
             $accessor->setChildValue($item, 'emission_ges_ecs',          $gesEcsE);
             $accessor->setChildValue($item, 'emission_ges_5_usages',     $ges5E);
-            $accessor->setChildValue($item, 'cout_ch',                   $coutChE);
-            $accessor->setChildValue($item, 'cout_ecs',                  $coutEcsE);
-            $accessor->setChildValue($item, 'cout_5_usages',             $cout5E);
+            $items[$eId] = $item;
+        }
+
+        // Tarification unique, tous postes et toutes énergies confondus.
+        $couts = $prix->tarifer($postesCout);
+        foreach ($items as $eId => $item) {
+            $coutChE  = $couts[$eId . '|ch'] ?? 0.0;
+            $coutEcsE = $couts[$eId . '|ecs'] ?? 0.0;
+            $cout5E   = $coutChE + $coutEcsE
+                + ($couts[$eId . '|ecl'] ?? 0.0)
+                + ($couts[$eId . '|aux'] ?? 0.0)
+                + ($couts[$eId . '|fr'] ?? 0.0);
+
+            $accessor->setChildValue($item, 'cout_ch',        $coutChE);
+            $accessor->setChildValue($item, 'cout_ecs',       $coutEcsE);
+            $accessor->setChildValue($item, 'cout_5_usages',  $cout5E);
         }
     }
 
@@ -347,52 +351,6 @@ final class SortieParEnergieAggregator implements CalculatorInterface
                 }
             }
         }
-    }
-
-    private function coutEnergie(int $energieId, float $conso): float
-    {
-        if ($conso === 0.0) {
-            return 0.0;
-        }
-        if ($energieId === 1 || $energieId === 12) {
-            return $this->coutElectricite($conso);
-        }
-        if ($energieId === 2) {
-            return $this->coutGazNaturel($conso);
-        }
-        $tarif = self::TARIF_FIXE[$energieId] ?? null;
-        return $tarif !== null ? $tarif * $conso : $conso;
-    }
-
-    private function coutGazNaturel(float $cef): float
-    {
-        if ($cef < 5009.0) {
-            return 0.11121 * $cef;
-        }
-        if ($cef < 50055.0) {
-            return 230.0 + 0.06533 * $cef;
-        }
-        return 415.0 + 0.06164 * $cef;
-    }
-
-    private function coutElectricite(float $cef): float
-    {
-        if ($cef === 0.0) {
-            return 0.0;
-        }
-        if ($cef < 1000.0) {
-            return 0.29007 * $cef;
-        }
-        if ($cef < 2500.0) {
-            return 149.0 + 0.14066 * $cef;
-        }
-        if ($cef < 5000.0) {
-            return 122.0 + 0.15176 * $cef;
-        }
-        if ($cef < 15000.0) {
-            return 94.0 + 0.15735 * $cef;
-        }
-        return 56.0 + 0.15989 * $cef;
     }
 
     private function getChild(DOMElement $parent, string $tagName): ?DOMElement

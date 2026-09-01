@@ -68,8 +68,9 @@ final class ConfortEteCalculator implements CalculatorInterface
     {
         $accessor = new NodeAccessor($context->document);
 
-        // Classe d'inertie : stockée par InertieCalculator dans logement/donnee_intermediaire
-        $inertieId = $accessor->getIntOrNull('donnee_intermediaire/enum_classe_inertie_id', $node);
+        // Classe d'inertie : publiée par InertieCalculator dans le contexte.
+        $inertieId = $context->get('inertie.classe_id');
+        $inertieId = $inertieId === null ? null : (int) $inertieId;
         $inertieLourde = $this->resolveInertieLourde($inertieId);
 
         // Baies vitrées

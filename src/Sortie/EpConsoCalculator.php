@@ -43,10 +43,6 @@ final class EpConsoCalculator implements CalculatorInterface
     private const EP_OTHER         = 1.0;
 
     /** Seuils de classe énergie 2021 (kWhEP/m².an) — A≤70, B≤110, C≤180, D≤250, E≤330, F≤420, G>420 */
-    private const ENERGY_THRESHOLDS = [
-        'A' => 70, 'B' => 110, 'C' => 180, 'D' => 250, 'E' => 330, 'F' => 420,
-    ];
-
     public function id(): string
     {
         return self::class;
@@ -139,7 +135,13 @@ final class EpConsoCalculator implements CalculatorInterface
         $ep5m2 = $surface > 0.0 ? (int)floor($ep5 / $surface) : 0;
 
         // Classe énergie provisoire (EmissionGesCalculator mettra à jour classe_bilan_dpe)
-        $classeEnergie = $this->classeEnergetique($ep5m2);
+        $classeEnergie = SeuilsClasses::energie(
+            $ep5m2,
+            $surface,
+            $this->zoneClimatiqueId($accessor, $context),
+            $this->classeAltitudeId($accessor, $context),
+            $context,
+        );
 
         // ── 7. Écriture dans sortie/ep_conso ─────────────────────────────────
         $accessor->setChildValue($epConso, 'ep_conso_ch',                                  $epConsoChEf);
@@ -307,14 +309,18 @@ final class EpConsoCalculator implements CalculatorInterface
         return $energyTypeId === 1 ? $epElec : self::EP_OTHER;
     }
 
-    private function classeEnergetique(int $ep5m2): string
+    private function zoneClimatiqueId(NodeAccessor $accessor, CalculationContext $context): ?int
     {
-        foreach (self::ENERGY_THRESHOLDS as $classe => $threshold) {
-            if ($ep5m2 <= $threshold) {
-                return $classe;
-            }
-        }
-        return 'G';
+        $zone = $context->zoneClimatique ?? $accessor->getStringOrNull('//meteo/enum_zone_climatique_id');
+
+        return $zone === null ? null : (int) $zone;
+    }
+
+    private function classeAltitudeId(NodeAccessor $accessor, CalculationContext $context): ?int
+    {
+        $alt = $context->classeAltitude ?? $accessor->getStringOrNull('//meteo/enum_classe_altitude_id');
+
+        return $alt === null ? null : (int) $alt;
     }
 
     private function computeRdimChauffage(

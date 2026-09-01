@@ -106,8 +106,11 @@ final class StockageCalculator implements CalculatorInterface
         }
 
         $di = $this->ensureDi($context->document, $node);
+        // Sans volume de stockage, il n'y a pas de rendement de stockage à
+        // publier : écrire Rs = 1 produisait une balise que la référence ne
+        // renseigne jamais dans ce cas. §11.6 ne définit Rs que pour un ballon.
         // CET : rendement_stockage géré par CetAccumulationCalculator (= COP).
-        if (!$isCet && !in_array($typeGenId, self::RESEAU_CHALEUR_IDS, true)) {
+        if ($vs > 0.0 && !$isCet && !in_array($typeGenId, self::RESEAU_CHALEUR_IDS, true)) {
             $accessor->setChildValue($di, 'rendement_stockage', $rs);
         }
 
