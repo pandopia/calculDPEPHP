@@ -854,7 +854,10 @@ d'enum_type_generateur_ch_id > 97 (hors plage `COMBUSTION_MIN=20..MAX=97`).
 
 ### TASK-J07 — Unités Wh des besoins ECS et pertes/apports récupérés
 
-- [~AI] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- [x] Owner: AI  | Phase: J  | Estimation: 2h  | Priorité: haute
+- NOTE-AI: le facteur Wh est propre au format ADEME natif
+  `<dpe version="0.1.0">`; les exports LICIEL historiques version 2 restent en
+  kWh. La conversion est centralisée dans `IntermediateEnergyUnit`.
 - DPE 2618E2138973C : les besoins ECS de chaque installation, les apports de
   chauffage et les pertes récupérées sont écrits en kWh alors que les balises
   intermédiaires ADEME et les formules §9.1/§11.1 les expriment en Wh.

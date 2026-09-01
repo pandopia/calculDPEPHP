@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Ecs;
 
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -187,8 +188,9 @@ final class BesoinEcsCalculator implements CalculatorInterface
             $becsForInstDep = $becsTotalDep * $ratio;
 
             $di = $this->ensureChild($context->document, $inst, 'donnee_intermediaire');
-            $accessor->setChildValue($di, 'besoin_ecs',           $becsForInst);
-            $accessor->setChildValue($di, 'besoin_ecs_depensier', $becsForInstDep);
+            $xmlPerKwh = IntermediateEnergyUnit::xmlPerKwh($context->document);
+            $accessor->setChildValue($di, 'besoin_ecs',           $becsForInst * $xmlPerKwh);
+            $accessor->setChildValue($di, 'besoin_ecs_depensier', $becsForInstDep * $xmlPerKwh);
         }
 
         // ── 9. Contexte pour ConsoEcsCalculator ────────────────────────────────

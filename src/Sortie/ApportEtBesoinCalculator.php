@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Sortie;
 
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -59,20 +60,21 @@ final class ApportEtBesoinCalculator implements CalculatorInterface
     public function calculate(DOMElement $node, CalculationContext $context): void
     {
         $accessor = new NodeAccessor($context->document);
+        $xmlPerKwh = IntermediateEnergyUnit::xmlPerKwh($context->document);
 
         $values = [
             'surface_sud_equivalente'                    => (float)($context->get('apport.sse_annuel') ?? 0.0),
             'apport_solaire_fr'                          => (float)($context->get('apport.apport_solaire_fr')             ?? 0.0),
             'apport_interne_fr'                          => (float)($context->get('apport.apport_interne_fr')             ?? 0.0),
-            'apport_solaire_ch'                          => (float)($context->get('apport.apport_solaire_ch')             ?? 0.0),
-            'apport_interne_ch'                          => (float)($context->get('apport.apport_interne_ch')             ?? 0.0),
+            'apport_solaire_ch'                          => (float)($context->get('apport.apport_solaire_ch')             ?? 0.0) * $xmlPerKwh,
+            'apport_interne_ch'                          => (float)($context->get('apport.apport_interne_ch')             ?? 0.0) * $xmlPerKwh,
             'fraction_apport_gratuit_ch'                 => (float)($context->get('apport.fraction_ch')                   ?? 0.0),
             'fraction_apport_gratuit_depensier_ch'       => (float)($context->get('apport.fraction_ch_depensier')         ?? 0.0),
-            'pertes_distribution_ecs_recup'              => (float)($context->get('ecs.pertes_distribution_recup')        ?? 0.0),
-            'pertes_distribution_ecs_recup_depensier'    => (float)($context->get('ecs.pertes_distribution_recup_dep')    ?? 0.0),
-            'pertes_stockage_ecs_recup'                  => (float)($context->get('ecs.pertes_stockage_recup')            ?? 0.0),
-            'pertes_generateur_ch_recup'                 => (float)($context->get('ch.pertes_generateur_recup')           ?? 0.0),
-            'pertes_generateur_ch_recup_depensier'       => (float)($context->get('ch.pertes_generateur_recup_dep')       ?? 0.0),
+            'pertes_distribution_ecs_recup'              => (float)($context->get('ecs.pertes_distribution_recup')        ?? 0.0) * $xmlPerKwh,
+            'pertes_distribution_ecs_recup_depensier'    => (float)($context->get('ecs.pertes_distribution_recup_dep')    ?? 0.0) * $xmlPerKwh,
+            'pertes_stockage_ecs_recup'                  => (float)($context->get('ecs.pertes_stockage_recup')            ?? 0.0) * $xmlPerKwh,
+            'pertes_generateur_ch_recup'                 => (float)($context->get('ch.pertes_generateur_recup')           ?? 0.0) * $xmlPerKwh,
+            'pertes_generateur_ch_recup_depensier'       => (float)($context->get('ch.pertes_generateur_recup_dep')       ?? 0.0) * $xmlPerKwh,
             'nadeq'                                      => (float)($context->get('ecs.nadeq')                            ?? 0.0),
             'v40_ecs_journalier'                         => (float)($context->get('ecs.v40_journalier')                   ?? 0.0),
             'v40_ecs_journalier_depensier'               => (float)($context->get('ecs.v40_journalier_dep')               ?? 0.0),

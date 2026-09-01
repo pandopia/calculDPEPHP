@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Ecs;
 
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -95,10 +96,11 @@ final class FacteurCouvertureSolaireEcsCalculator implements CalculatorInterface
         $di = $accessor->ensureDonneeIntermediaire($node);
         $accessor->setChildValue($di, 'fecs', $fecs);
 
-        // Production ECS solaire (Wh) = besoin × fecs (avant Iecs)
+        // Production ECS solaire est toujours sérialisée en Wh.
         $becs = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs', $node);
         if ($becs !== null && $becs > 0.0) {
-            $accessor->setChildValue($di, 'production_ecs_solaire', $becs * $fecs * 1000.0);
+            $becsWh = $becs * 1000.0 / IntermediateEnergyUnit::xmlPerKwh($context->document);
+            $accessor->setChildValue($di, 'production_ecs_solaire', $becsWh * $fecs);
         }
     }
 

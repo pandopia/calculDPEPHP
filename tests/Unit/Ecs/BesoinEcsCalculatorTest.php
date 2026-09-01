@@ -413,4 +413,21 @@ XML);
             ->getElementsByTagName('besoin_ecs')->item(0)->textContent;
         $this->assertEqualsWithDelta($total / 21.0, $installValue, 1e-6);
     }
+
+    public function testNativeAdemeFormatWritesInstallationNeedInWh(): void
+    {
+        [$doc, $node] = $this->buildCollectifLogement();
+        $doc->documentElement->setAttribute('version', '0.1.0');
+        $ctx = $this->makeContext($doc, ['apport.nadeq' => 34.13977]);
+
+        (new BesoinEcsCalculator())->calculate($node, $ctx);
+
+        $installValue = (float)$doc->getElementsByTagName('installation_ecs')->item(0)
+            ->getElementsByTagName('besoin_ecs')->item(0)->textContent;
+        self::assertEqualsWithDelta(
+            (float)$ctx->get('ecs.besoin_ecs') * 1000.0,
+            $installValue,
+            0.01,
+        );
+    }
 }

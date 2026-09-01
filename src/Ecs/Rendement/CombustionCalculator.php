@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Ecs\Rendement;
 
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -460,7 +461,7 @@ final class CombustionCalculator implements CalculatorInterface
         if ($inst !== null) {
             $becs = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs', $inst);
             if ($becs !== null) {
-                return $becs * 1000.0;
+                return $becs * 1000.0 / IntermediateEnergyUnit::xmlPerKwh($context->document);
             }
         }
         return (float)$context->get('ecs.besoin_ecs', 0.0) * 1000.0;

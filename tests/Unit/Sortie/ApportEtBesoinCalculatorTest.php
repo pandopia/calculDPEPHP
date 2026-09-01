@@ -120,6 +120,21 @@ XML;
         $this->assertEqualsWithDelta(0.39335, (float)$this->childText($block, 'fraction_apport_gratuit_depensier_ch'), 0.001);
     }
 
+    public function testNativeAdemeFormatWritesApportsAndRecoveredLossesInWh(): void
+    {
+        [$doc, $logement, $ctx] = $this->buildContextWithValues([
+            'apport.apport_solaire_ch' => 901.5,
+            'ecs.pertes_distribution_recup' => 37.25,
+        ]);
+        $doc->documentElement->setAttribute('version', '0.1.0');
+
+        (new ApportEtBesoinCalculator())->calculate($logement, $ctx);
+        $block = $doc->getElementsByTagName('apport_et_besoin')->item(0);
+
+        self::assertEqualsWithDelta(901500.0, (float)$this->childText($block, 'apport_solaire_ch'), 0.01);
+        self::assertEqualsWithDelta(37250.0, (float)$this->childText($block, 'pertes_distribution_ecs_recup'), 0.01);
+    }
+
     public function testNadeqAndV40(): void
     {
         $block = $this->runAndGetBlock([

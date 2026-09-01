@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Auxiliaire;
 
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -116,7 +117,7 @@ final class AuxGenerationCalculator implements CalculatorInterface
         [$qauxCh, $qauxChDep, $cleRepartCh] = $this->computeChAux($accessor, $node, $isZone);
 
         // ── ECS auxiliaires ───────────────────────────────────────────────────
-        [$qauxEcs, $qauxEcsDep, $cleRepartEcs] = $this->computeEcsAux($accessor, $node, $isZone);
+        [$qauxEcs, $qauxEcsDep, $cleRepartEcs] = $this->computeEcsAux($accessor, $node, $isZone, $context);
 
         // ── Zone scaling ──────────────────────────────────────────────────────
         if ($isZone) {
@@ -216,7 +217,12 @@ final class AuxGenerationCalculator implements CalculatorInterface
     /**
      * @return array{float, float, float} [Q_aux_ecs, Q_aux_ecs_dep, cle_repartition_ecs]
      */
-    private function computeEcsAux(NodeAccessor $accessor, DOMElement $logement, bool $isZone): array
+    private function computeEcsAux(
+        NodeAccessor $accessor,
+        DOMElement $logement,
+        bool $isZone,
+        CalculationContext $context,
+    ): array
     {
         $collection = $this->getChild($logement, 'installation_ecs_collection');
         if ($collection === null) {
@@ -232,8 +238,9 @@ final class AuxGenerationCalculator implements CalculatorInterface
                 continue;
             }
 
-            $besoin    = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs',           $install) ?? 0.0;
-            $besoinDep = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs_depensier', $install) ?? 0.0;
+            $xmlPerKwh = IntermediateEnergyUnit::xmlPerKwh($context->document);
+            $besoin    = ($accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs',           $install) ?? 0.0) / $xmlPerKwh;
+            $besoinDep = ($accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs_depensier', $install) ?? 0.0) / $xmlPerKwh;
             $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation',        $install) ?? 1.0;
             // rdim : nombre d'unités (appartements) représentées par cette installation.
             // Comme pour conso_ecs, la conso d'aux est agrégée à l'échelle bâtiment au niveau sortie.
