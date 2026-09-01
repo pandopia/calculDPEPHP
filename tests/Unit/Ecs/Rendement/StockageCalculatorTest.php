@@ -210,6 +210,47 @@ XML;
     }
 
     /**
+     * §17.1.2 puis §11.6.2 : quand les typologies identifient les groupes,
+     * le volume est d'abord ramené au logement moyen. Un ballon nominal de
+     * 120 L devient ici inférieur à 100 L et utilise donc Cr=0.27, pas 0.22.
+     */
+    public function testSampledTypologyReclassifiesEffectiveStorageVolume(): void
+    {
+        $visits = '';
+        for ($i = 0; $i < 3; $i++) {
+            $visits .= '<logement_visite><enum_typologie_logement_id>4</enum_typologie_logement_id><surface_habitable_logement>71</surface_habitable_logement></logement_visite>';
+        }
+        for ($i = 0; $i < 10; $i++) {
+            $visits .= '<logement_visite><enum_typologie_logement_id>3</enum_typologie_logement_id><surface_habitable_logement>63</surface_habitable_logement></logement_visite>';
+        }
+
+        $xml = <<<XML
+<dpe>
+<logement><caracteristique_generale><surface_habitable_logement>65</surface_habitable_logement><surface_habitable_immeuble>2204</surface_habitable_immeuble><nombre_appartement>34</nombre_appartement></caracteristique_generale>
+<installation_ecs_collection>
+<installation_ecs><donnee_entree><enum_type_installation_id>1</enum_type_installation_id><enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id><surface_habitable>508.615385</surface_habitable></donnee_entree><donnee_intermediaire><rendement_distribution>0.93</rendement_distribution><besoin_ecs>1264.715725</besoin_ecs></donnee_intermediaire><generateur_ecs_collection><generateur_ecs><donnee_entree><enum_type_energie_id>1</enum_type_energie_id><enum_type_generateur_ecs_id>70</enum_type_generateur_ecs_id><tv_pertes_stockage_id>7</tv_pertes_stockage_id><volume_stockage>120</volume_stockage></donnee_entree></generateur_ecs></generateur_ecs_collection></installation_ecs>
+<installation_ecs><donnee_entree><enum_type_installation_id>1</enum_type_installation_id><enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id><surface_habitable>1695.384615</surface_habitable></donnee_entree></installation_ecs>
+</installation_ecs_collection></logement>
+<dpe_immeuble><logement_visite_collection>$visits</logement_visite_collection></dpe_immeuble>
+</dpe>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $node = $doc->getElementsByTagName('generateur_ecs')->item(0);
+
+        (new StockageCalculator())->calculate($node, $this->makeContext($doc));
+
+        $shMoy = 2204.0 / 34.0;
+        $effectiveVolume = 120.0 * $shMoy / (3.0 * 71.0);
+        $qgw = 8592.0 * 45.0 / 24.0 * $effectiveVolume * 0.27;
+        $expectedRs = 1.0 / (1.0 + $qgw * 0.93 / (1264.715725 * 1000.0));
+
+        $this->assertLessThan(100.0, $effectiveVolume);
+        $this->assertEqualsWithDelta($qgw, (float)$doc->getElementsByTagName('Qgw')->item(0)->textContent, self::TOL);
+        $this->assertEqualsWithDelta($expectedRs, (float)$doc->getElementsByTagName('rendement_stockage')->item(0)->textContent, self::TOL);
+    }
+
+    /**
      * Ballon non-électrique avec stockage → Qg,w = 67662 × VS^0.55.
      */
     public function testNonElectricStorageFormula(): void

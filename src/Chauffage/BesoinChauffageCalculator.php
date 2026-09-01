@@ -259,9 +259,8 @@ final class BesoinChauffageCalculator implements CalculatorInterface
 
             $qgwInstall = 0.0;
             foreach ($install->getElementsByTagName('generateur_ecs') as $gen) {
-                $posVol      = $accessor->getIntOrNull('./donnee_entree/position_volume_chauffe', $gen) ?? 1;
                 $posStockage = $accessor->getIntOrNull('./donnee_entree/position_volume_chauffe_stockage', $gen) ?? 1;
-                if ($posVol === 0 || $posStockage === 0) {
+                if ($posStockage === 0) {
                     continue;
                 }
                 $qgwGen = $accessor->getFloatOrNull('./donnee_intermediaire/Qgw', $gen) ?? 0.0;

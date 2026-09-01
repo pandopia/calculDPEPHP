@@ -308,4 +308,29 @@ XML);
 
         $this->assertGreaterThan(0.0, (float)$ctx->get('ecs.pertes_stockage_recup', 0.0));
     }
+
+    /**
+     * Le XSD distingue la position du générateur de celle du ballon : une
+     * position générateur=0 ne doit pas annuler les pertes du stockage lorsque
+     * position_volume_chauffe_stockage est absente (défaut conventionnel=1).
+     */
+    public function testStoragePositionDoesNotUseGeneratorPosition(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<logement><installation_ecs_collection><installation_ecs><donnee_entree><rdim>1</rdim></donnee_entree>
+<generateur_ecs_collection><generateur_ecs><donnee_entree><position_volume_chauffe>0</position_volume_chauffe></donnee_entree>
+<donnee_intermediaire><Qgw>100000</Qgw></donnee_intermediaire></generateur_ecs></generateur_ecs_collection>
+</installation_ecs></installation_ecs_collection></logement>
+XML);
+        $ctx = $this->makeContext($doc, '1', '1', [
+            'enveloppe.dp_parois' => 1000.0,
+            'apport.fraction_ch' => 0.4,
+            'apport.fraction_ch_depensier' => 0.35,
+        ]);
+
+        (new BesoinChauffageCalculator())->calculate($doc->documentElement, $ctx);
+
+        $this->assertGreaterThan(0.0, (float)$ctx->get('ecs.pertes_stockage_recup', 0.0));
+    }
 }
