@@ -124,6 +124,31 @@ XML;
     }
 
     /**
+     * La ventilation par énergie utilise le facteur propre au réseau et au millésime.
+     */
+    public function testReseauChaleurGesMillesime2025(): void
+    {
+        $doc = $this->buildDoc(8, 8, 10000.0, 5000.0, 0.0, 0.0);
+        $xp = new DOMXPath($doc);
+        foreach (['generateur_chauffage', 'generateur_ecs'] as $tag) {
+            $entry = $xp->query('//' . $tag . '/donnee_entree')->item(0);
+            $entry->appendChild($doc->createElement('identifiant_reseau_chaleur', '5703C'));
+            $entry->appendChild($doc->createElement('date_arrete_reseau_chaleur', '2026-04-25'));
+        }
+
+        $logement = $doc->getElementsByTagName('logement')->item(0);
+        (new SortieParEnergieAggregator())->calculate($logement, $this->makeContext($doc));
+
+        $gesCh = $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=8]/emission_ges_ch');
+        $gesEcs = $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=8]/emission_ges_ecs');
+        $ges5 = $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=8]/emission_ges_5_usages');
+
+        $this->assertEqualsWithDelta(10000.0 * 0.174, $gesCh[0], self::TOL);
+        $this->assertEqualsWithDelta(5000.0 * 0.174, $gesEcs[0], self::TOL);
+        $this->assertEqualsWithDelta(15000.0 * 0.174, $ges5[0], self::TOL);
+    }
+
+    /**
      * Electricity GES for eclairage (0.069) and aux (0.064).
      */
     public function testElecGes(): void

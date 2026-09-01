@@ -16,7 +16,8 @@ use DOMElement;
  *   Électricité CH   : 0.079  Électricité ECS   : 0.065
  *   Électricité ECL  : 0.069  Électricité AUX   : 0.064
  *   Gaz naturel      : 0.227  Fioul domestique  : 0.324
- *   Bois (toutes formes) : 0.030  Propane : 0.272  Réseau chaleur : 0.110
+ *   Bois (toutes formes) : 0.030  Propane : 0.272
+ *   Réseau chaleur : contenu CO2 ACV de l'arrêté annuel, sinon 0.385
  *
  * Met à jour classe_bilan_dpe = WORST(classe_energie, classe_ges).
  *
@@ -32,7 +33,7 @@ use DOMElement;
  *                sortie.ep_conso.classe_bilan_dpe (mis à jour avec WORST(classe_energie, classe_ges))
  * @depends-on    \CalculDpePHP\Sortie\EfConsoCalculator
  *                \CalculDpePHP\Sortie\EpConsoCalculator
- * @tables        (aucune)
+ * @tables        reference/tv_reseau_chaleur
  */
 final class EmissionGesCalculator implements CalculatorInterface
 {
@@ -301,10 +302,7 @@ final class EmissionGesCalculator implements CalculatorInterface
         if ($energyTypeId === 8 && $install !== null && $accessor !== null && $context !== null && $generatorTag !== null) {
             $gen = $this->firstGenerator($install, $generatorTag);
             if ($gen !== null) {
-                $factor = $this->resolveReseauChaleurFactor($gen, $accessor, $context);
-                if ($factor !== null) {
-                    return $factor;
-                }
+                return ReseauChaleurFactorResolver::resolve($gen, $accessor, $context);
             }
         }
         return self::GES_BY_ENERGY[$energyTypeId] ?? 0.0;
@@ -320,46 +318,9 @@ final class EmissionGesCalculator implements CalculatorInterface
             return self::GES_ELEC_ECS;
         }
         if ($energyTypeId === 8 && $gen !== null && $accessor !== null && $context !== null) {
-            $factor = $this->resolveReseauChaleurFactor($gen, $accessor, $context);
-            if ($factor !== null) {
-                return $factor;
-            }
+            return ReseauChaleurFactorResolver::resolve($gen, $accessor, $context);
         }
         return self::GES_BY_ENERGY[$energyTypeId] ?? 0.0;
-    }
-
-    /**
-     * Lookup contenu_co2_acv pour un générateur sur réseau de chauffage urbain.
-     * Année : year(date_arrete_reseau_chaleur) - 1, sinon year(date_etablissement_dpe) - 1.
-     * Clamp ≥ 2022. Fallback null (caller utilise 0.385 par défaut).
-     */
-    private function resolveReseauChaleurFactor(
-        DOMElement $gen,
-        NodeAccessor $accessor,
-        CalculationContext $context,
-    ): ?float {
-        $reseauId = $accessor->getStringOrNull('./donnee_entree/identifiant_reseau_chaleur', $gen);
-        if ($reseauId === null || $reseauId === '') {
-            return 0.385; // « autres réseaux de chaleur »
-        }
-
-        $dateArrete = $accessor->getStringOrNull('./donnee_entree/date_arrete_reseau_chaleur', $gen);
-        $dateRef    = $dateArrete ?: $accessor->getStringOrNull('//date_etablissement_dpe', $gen);
-        $year = 2022;
-        if ($dateRef !== null) {
-            $ts = strtotime($dateRef);
-            if ($ts !== false) {
-                $year = max(2022, (int)date('Y', $ts) - 1);
-            }
-        }
-
-        $table = $context->tables->load('reference/tv_reseau_chaleur');
-        for ($y = $year; $y >= 2022; $y--) {
-            if (isset($table[$y][$reseauId])) {
-                return (float)$table[$y][$reseauId];
-            }
-        }
-        return null;
     }
 
     private function firstGenerator(DOMElement $install, string $generatorTag): ?DOMElement
