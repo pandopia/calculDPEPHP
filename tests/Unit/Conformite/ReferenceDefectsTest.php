@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Conformite;
 
 use CalculDpePHP\Conformite\ReferenceDefects;
+use DOMDocument;
 use PHPUnit\Framework\TestCase;
 
 final class ReferenceDefectsTest extends TestCase
@@ -93,6 +94,66 @@ final class ReferenceDefectsTest extends TestCase
     public function testBlocConfortEteAbsentNestPasSignale(): void
     {
         self::assertSame([], ReferenceDefects::detect(['dpe/logement/sortie/ep_conso/classe_bilan_dpe' => 'D']));
+    }
+
+    /**
+     * Échantillonnage §17 : la référence publie plusieurs installations ECS
+     * aux entrées identiques et leur donne des rendements de stockage
+     * différents. Rien dans le XML ne les distingue — l'écart n'est pas
+     * reproductible, et une règle qui y parviendrait devinerait.
+     */
+    public function testInstallationsEcsIdentiquesAuxRendementsDifferentsSontSignalees(): void
+    {
+        $suspects = ReferenceDefects::detect([], $this->docEcs(['0.79', '0.62', '0.78']));
+
+        self::assertSame(
+            ['rendement_stockage@1', 'rendement_stockage@2', 'rendement_stockage@3'],
+            array_keys($suspects),
+        );
+        self::assertStringContainsString('3 rendements de stockage différents', $suspects['rendement_stockage@1']);
+    }
+
+    public function testInstallationsEcsIdentiquesAuMemeRendementNeSontPasSignalees(): void
+    {
+        self::assertSame([], ReferenceDefects::detect([], $this->docEcs(['0.79', '0.79'])));
+    }
+
+    public function testInstallationsEcsDifferentesNeSontPasSignalees(): void
+    {
+        // Volumes de stockage distincts : deux rendements différents sont
+        // parfaitement explicables.
+        self::assertSame([], ReferenceDefects::detect([], $this->docEcs(['0.79', '0.62'], ['100', '200'])));
+    }
+
+    public function testSansDocumentDeReferenceLaRegleNeSApplique(): void
+    {
+        self::assertSame([], ReferenceDefects::detect([]));
+    }
+
+    /**
+     * @param list<string> $rendements
+     * @param list<string>|null $volumes
+     */
+    private function docEcs(array $rendements, ?array $volumes = null): DOMDocument
+    {
+        $installations = '';
+        foreach ($rendements as $i => $rs) {
+            $volume = $volumes[$i] ?? '150';
+            $installations .= <<<XML
+            <installation_ecs>
+              <donnee_entree><reference>ref-$i</reference><surface_habitable>108</surface_habitable></donnee_entree>
+              <generateur_ecs_collection><generateur_ecs>
+                <donnee_entree><enum_type_generateur_ecs_id>70</enum_type_generateur_ecs_id><volume_stockage>$volume</volume_stockage></donnee_entree>
+                <donnee_intermediaire><rendement_stockage>$rs</rendement_stockage></donnee_intermediaire>
+              </generateur_ecs></generateur_ecs_collection>
+            </installation_ecs>
+            XML;
+        }
+
+        $doc = new DOMDocument();
+        $doc->loadXML("<dpe><logement><installation_ecs_collection>$installations</installation_ecs_collection></logement></dpe>");
+
+        return $doc;
     }
 
     public function testTousLesPostesConcernesSontCouverts(): void

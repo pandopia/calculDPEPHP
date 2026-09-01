@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Conformite;
 
+use DOMDocument;
+use DOMElement;
+use DOMXPath;
+
 /**
  * Repère les écarts où c'est la **référence** qui est en tort.
  *
@@ -68,14 +72,16 @@ final class ReferenceDefects
     ];
 
     /**
-     * Balises dont l'écart est imputable à la référence, pour ce cas.
+     * Écarts imputables à la référence, pour ce cas.
      *
      * @param array<string, string> $expected valeurs de la référence
-     * @return array<string, string> nom de balise ⇒ motif
+     * @param DOMDocument|null $referenceDoc document de référence, pour les
+     *        règles qui doivent inspecter les données d'entrée
+     * @return array<string, string> nom de balise **ou chemin** ⇒ motif
      */
-    public static function detect(array $expected): array
+    public static function detect(array $expected, ?DOMDocument $referenceDoc = null): array
     {
-        $suspects = [];
+        $suspects = $referenceDoc === null ? [] : self::installationsEcsIndiscernables($referenceDoc);
 
         // Bloc confort d'été présent mais vide : le contenu que nous produisons
         // est conforme au schéma, c'est la référence qui ne l'est pas.
@@ -115,6 +121,95 @@ final class ReferenceDefects
         }
 
         return $suspects;
+    }
+
+    /**
+     * Installations ECS aux données d'entrée identiques mais aux rendements de
+     * stockage différents.
+     *
+     * Sur un DPE issu d'un échantillonnage §17, la référence publie plusieurs
+     * `installation_ecs` strictement identiques — mêmes surface, même volume
+     * de stockage, même type de générateur, seule la `reference` horodatée
+     * change — et leur attribue pourtant des `rendement_stockage` distincts.
+     * Le rendement y suit la surface du logement visité dont l'installation
+     * provient, mais **aucun élément du XML ne relie une installation à un
+     * logement visité** : `logement_visite` ne porte que description, étage,
+     * typologie et surface.
+     *
+     * L'écart n'est donc pas reproductible depuis les données publiées : des
+     * entrées identiques doivent donner des sorties identiques. Toute règle qui
+     * y parviendrait devinerait l'appariement.
+     *
+     * @return array<string, string> chemin ⇒ motif
+     */
+    private static function installationsEcsIndiscernables(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+        $installations = $xpath->query('//installation_ecs');
+        if ($installations === false || $installations->length < 2) {
+            return [];
+        }
+
+        /** @var array<string, list<array{path: string, rs: string}>> $groupes */
+        $groupes = [];
+        $index = 0;
+        foreach ($installations as $installation) {
+            $index++;
+            if (!$installation instanceof DOMElement) {
+                continue;
+            }
+            $rsNodes = $xpath->query('.//generateur_ecs/donnee_intermediaire/rendement_stockage', $installation);
+            if ($rsNodes === false || $rsNodes->length === 0) {
+                continue;
+            }
+            $groupes[self::signature($xpath, $installation)][] = [
+                'index' => $index,
+                'rs' => trim($rsNodes->item(0)?->textContent ?? ''),
+            ];
+        }
+
+        $suspects = [];
+        foreach ($groupes as $membres) {
+            if (count($membres) < 2) {
+                continue;
+            }
+            $valeurs = array_unique(array_column($membres, 'rs'));
+            if (count($valeurs) < 2) {
+                continue;
+            }
+            $motif = sprintf(
+                'la référence publie %d rendements de stockage différents pour %d installations ECS '
+                . 'aux données d\'entrée identiques, sans qu\'aucun élément du XML ne les distingue',
+                count($valeurs),
+                count($membres),
+            );
+            foreach ($membres as $membre) {
+                $suspects['rendement_stockage@' . $membre['index']] = $motif;
+            }
+        }
+
+        return $suspects;
+    }
+
+    /**
+     * Empreinte des données d'entrée d'une installation ECS, hors identifiants
+     * (`reference`, `description`) qui n'ont pas d'effet sur le calcul.
+     */
+    private static function signature(DOMXPath $xpath, DOMElement $installation): string
+    {
+        $parts = [];
+        $nodes = $xpath->query('./donnee_entree/*|.//generateur_ecs/donnee_entree/*', $installation);
+        if ($nodes !== false) {
+            foreach ($nodes as $node) {
+                if (!$node instanceof DOMElement || in_array($node->nodeName, ['reference', 'description'], true)) {
+                    continue;
+                }
+                $parts[] = $node->nodeName . '=' . trim($node->textContent);
+            }
+        }
+        sort($parts);
+
+        return implode('|', $parts);
     }
 
     /** @param array<string, string> $values */

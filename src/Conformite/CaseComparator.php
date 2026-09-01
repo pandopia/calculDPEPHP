@@ -95,12 +95,13 @@ final class CaseComparator
 
         // Écarts dont la référence est responsable : signalés, jamais retirés
         // du décompte (voir ReferenceDefects).
-        $suspects = ReferenceDefects::detect($expectedValues);
+        $suspects = ReferenceDefects::detect($expectedValues, $expectedDoc);
 
         foreach ($this->compareValues($expectedValues, $actualValues) as $delta) {
             $result['counts'][$delta['status']]++;
-            if (isset($suspects[$delta['tag']]) && in_array($delta['status'], ComparisonStatus::FAILING, true)) {
-                $delta['reference_suspect'] = $suspects[$delta['tag']];
+            $motif = $this->suspectFor($suspects, $delta);
+            if ($motif !== null && in_array($delta['status'], ComparisonStatus::FAILING, true)) {
+                $delta['reference_suspect'] = $motif;
                 $result['reference_suspect']++;
             }
             if ($delta['status'] === ComparisonStatus::EXACT) {
@@ -116,6 +117,30 @@ final class CaseComparator
         $result['duration_ms'] = (microtime(true) - $started) * 1000;
 
         return $result;
+    }
+
+    /**
+     * Motif de suspicion applicable à un delta, s'il y en a un.
+     *
+     * Une règle vise soit une balise entière (`cout_ch_depensier`), soit une
+     * occurrence précise dans une collection
+     * (`rendement_stockage@3` pour la troisième `installation_ecs`).
+     *
+     * @param array<string, string> $suspects
+     * @param array<string, mixed> $delta
+     */
+    private function suspectFor(array $suspects, array $delta): ?string
+    {
+        $tag = (string) $delta['tag'];
+        if (isset($suspects[$tag])) {
+            return $suspects[$tag];
+        }
+
+        if (preg_match('/installation_ecs\[(\d+)\]/', (string) $delta['path'], $m) === 1) {
+            return $suspects[$tag . '@' . $m[1]] ?? null;
+        }
+
+        return null;
     }
 
     /**

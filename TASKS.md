@@ -1365,6 +1365,31 @@ c'est la première chose à corriger pour que le chiffre soit représentatif.
 - La section « Conformité structurelle du XML produit » du rapport est
   désormais **vide** : plus aucun chemin produit hors schéma.
 
+### TASK-K16 — Rendement de stockage des DPE échantillonnés : non reproductible
+
+- [x] Owner: AI2  | Phase: K  | Estimation: 3h  | Priorité: haute
+- Sur les DPE « appartement issu de l'immeuble » avec échantillonnage §17
+  (32 cas du jeu `ademe-2026-09`), la référence publie jusqu'à 13
+  `installation_ecs` **strictement identiques** — mêmes surface, même volume
+  de stockage, même type de générateur, seule la `reference` horodatée change
+  — et leur attribue pourtant 4 `rendement_stockage` distincts.
+- Le rendement suit la surface du logement visité dont l'installation provient :
+  sur 2400E0333876N, `(1/Rs − 1) × S` vaut exactement 23,9 pour S = 92, 85 et
+  49 m². Mais **aucun élément du XML ne relie une installation à un logement
+  visité** : `logement_visite` ne porte que description, étage, typologie et
+  surface, et l'installation ne porte aucune référence croisée.
+- Des entrées identiques doivent donner des sorties identiques. L'écart n'est
+  donc pas reproductible depuis les données publiées, et toute règle qui y
+  parviendrait devinerait l'appariement.
+- Fait : `ReferenceDefects` détecte les installations ECS indiscernables aux
+  rendements divergents et les range avec les écarts imputables à la
+  référence — 225 des 267 écarts sur `rendement_stockage`.
+- **Conséquence à examiner** : `StockageCalculator::sampledIndividualAdjustment()`
+  apparie déjà installations et typologies par part de surface. Sur ces cas
+  toutes les parts sont égales, l'appariement est arbitraire. L'heuristique a
+  été calibrée sur d'autres cas (TASK-J03, TASK-J05) et n'est pas touchée ici,
+  mais elle devine : à reconsidérer si elle coûte plus qu'elle ne rapporte.
+
 ---
 
 ## Validation par phase (gate)
