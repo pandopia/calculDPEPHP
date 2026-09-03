@@ -1524,6 +1524,17 @@ l'observation des 73 cas où `pn` diverge :
   été calibrée sur d'autres cas (TASK-J03, TASK-J05) et n'est pas touchée ici,
   mais elle devine : à reconsidérer si elle coûte plus qu'elle ne rapporte.
 
+### TASK-K17 — Correction réglementaire du DPE 2659E2236995T
+
+- [~AI] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- Identifier le premier intermédiaire divergent du DPE `2659E2236995T` et
+  corriger sa cause racine uniquement si elle est justifiée par la méthode
+  3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
+- Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
+  avec `bin/official-test-report` sur le même corpus et le même arbre.
+- Validation : cible conforme en profil strict, suite unitaire verte, aucune
+  régression globale sur `out_of_tolerance`, `extra` et `missing`.
+
 ---
 
 ## Validation par phase (gate)
