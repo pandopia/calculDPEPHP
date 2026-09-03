@@ -1526,7 +1526,7 @@ l'observation des 73 cas où `pn` diverge :
 
 ### TASK-K17 — Correction réglementaire du DPE 2659E2236995T
 
-- [~AI] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- [x] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
 - Identifier le premier intermédiaire divergent du DPE `2659E2236995T` et
   corriger sa cause racine uniquement si elle est justifiée par la méthode
   3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
@@ -1534,6 +1534,24 @@ l'observation des 73 cas où `pn` diverge :
   avec `bin/official-test-report` sur le même corpus et le même arbre.
 - Validation : cible conforme en profil strict, suite unitaire verte, aucune
   régression globale sur `out_of_tolerance`, `extra` et `missing`.
+- Fait : les modes appartement généré depuis l'immeuble utilisent désormais la
+  surface immeuble pour les intermédiaires de ventilation et les installations
+  collectives, puis la clé surfacique réglementaire pour les sorties logement.
+  Sur la cible, les 6 écarts de ventilation sont supprimés et les classes DPE/GES
+  redeviennent conformes. A/B strict sur 350 cas : `out_of_tolerance` 10 811 →
+  10 803, `string_mismatch` 36 → 34, `missing` 73 → 73, `extra` 1 799 → 1 799.
+> NOTE-AI: la cible conserve des écarts indépendants (rendements de génération,
+> scénario dépensier et auxiliaires). Ils ne sont pas calibrés sur ce cas isolé ;
+> ils devront être traités par famille sur le corpus conformément aux règles K.
+
+### TASK-K18 — Écarts résiduels des appartements générés depuis l'immeuble
+
+- [ ] Owner: —  | Phase: K  | Estimation: 5h  | Priorité: haute
+- Analyser par famille, sur tout le corpus `appartement_issu_immeuble`, les écarts
+  résiduels de rendement de génération, scénario dépensier et auxiliaires révélés
+  notamment par `2659E2236995T`.
+- Distinguer les défauts reproductibles du moteur des conventions ou défauts de
+  référence, sourcer chaque correction et mesurer chaque gain en A/B isolé.
 
 ---
 

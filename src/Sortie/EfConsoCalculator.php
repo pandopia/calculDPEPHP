@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Sortie;
 
+use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Engine\CalculationContext;
@@ -77,6 +78,9 @@ final class EfConsoCalculator implements CalculatorInterface
         // ── 2. Chauffage ──────────────────────────────────────────────────────
         [$buildingConsoChTotal, $buildingConsoChDepTotal, $cleRepartitionCh] =
             $this->aggregateChauffage($accessor, $node, $nbreAppt, $shImmeuble);
+        if ($cleRepartitionCh >= 1.0) {
+            $cleRepartitionCh = GeneratedApartment::surfaceShare($node, $accessor) ?? $cleRepartitionCh;
+        }
 
         $consoChEf    = $isZone ? $buildingConsoChTotal    * $cleRepartitionCh : $buildingConsoChTotal;
         $consoChDepEf = $isZone ? $buildingConsoChDepTotal * $cleRepartitionCh : $buildingConsoChDepTotal;

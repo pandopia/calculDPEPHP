@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Sortie;
 
+use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
 use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Common\Period;
@@ -75,6 +76,9 @@ final class EpConsoCalculator implements CalculatorInterface
         // ── 2. Chauffage EP ──────────────────────────────────────────────────
         [$epChTotal, $epChDepTotal, $cleRepartitionCh] =
             $this->aggregateChEp($accessor, $node, $nbreAppt, $epElec);
+        if ($cleRepartitionCh >= 1.0) {
+            $cleRepartitionCh = GeneratedApartment::surfaceShare($node, $accessor) ?? $cleRepartitionCh;
+        }
 
         $epConsoChEf    = $isZone ? $epChTotal * $cleRepartitionCh : $epChTotal;
         // EP dépensier chauffage = EP conventionnel (la méthode 3CL utilise toujours

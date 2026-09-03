@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Chauffage\Strategy;
 
+use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -145,7 +146,12 @@ final class InstallationClassique implements CalculatorInterface
         }
 
         // ── 6. Besoin de l'installation (fraction surfacique) ─────────────────
-        $surfaceRatio = $shImmeuble > 0.0 ? $de / $shImmeuble : 1.0;
+        // §17.2.2 : dans un DPE généré depuis l'immeuble, une installation
+        // collective conserve le besoin total de l'immeuble. La répartition à
+        // l'appartement intervient seulement dans les agrégateurs de sortie.
+        $surfaceRatio = GeneratedApartment::isGenerated($logementNode, $accessor) && $typeInstall === 2
+            ? 1.0
+            : ($shImmeuble > 0.0 ? $de / $shImmeuble : 1.0);
         $besoinInstall    = $bchImmeuble    * $surfaceRatio;
         $besoinInstallDep = $bchDepImmeuble * $surfaceRatio;
 
