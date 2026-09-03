@@ -1546,7 +1546,7 @@ l'observation des 73 cas où `pn` diverge :
 
 ### TASK-K18 — Écarts résiduels des appartements générés depuis l'immeuble
 
-- [~AI] Owner: AI  | Phase: K  | Estimation: 5h  | Priorité: haute
+- [x] Owner: AI  | Phase: K  | Estimation: 5h  | Priorité: haute
 - Analyser par famille, sur tout le corpus `appartement_issu_immeuble`, les écarts
   résiduels de rendement de génération, scénario dépensier et auxiliaires révélés
   notamment par `2659E2236995T`.
@@ -1558,6 +1558,23 @@ l'observation des 73 cas où `pn` diverge :
   Le besoin chauffage de la cible devient conforme. A/B strict sur 351 cas :
   `out_of_tolerance` 10 889 → 10 878, `missing` 77 → 77,
   `extra` 1 806 → 1 806, `string_mismatch` 34 → 34.
+- Analyse par moteur des rendements résiduels : les 15 exports
+  `3cl_tribu_1.4.25.1` imposent tous `Pn=370 kW` là où l'application de la
+  formule §13.2.2.4 aux données publiées conduit à 405 kW ; les deux exports
+  `3cl_bbs_V2025.11.1.0` imposent `Pn=195 kW` là où le même calcul atteint le
+  plafond réglementaire de 400 kW. Ces conventions éditeur contradictoires ne
+  sont pas reprises dans le moteur.
+- Les installations ECS d'échantillonnage strictement indiscernables mais
+  dotées de rendements de stockage différents rendent également leurs
+  `conso_ecs` et `conso_ecs_depensier` non reproductibles (§11.1). Le rapport
+  propage maintenant ce motif aux consommations dépendantes : 2 788 → 3 720
+  écarts de référence signalés, sans retirer aucun écart brut ; plafond
+  atteignable 91,12 % → 91,94 %.
+- Variante auxiliaires ECS générés conforme au §17.2.2.5.1 rejetée en A/B :
+  elle améliore `zone_post2026coefelec_diag2356755` de 6 écarts mais dégrade
+  chacun des deux exports BBS de 4 écarts, soit `out_of_tolerance` 10 878 →
+  10 880. Les auxiliaires nuls des BBS contredisent par ailleurs les §15.1,
+  §15.2 et §17.2.2 ; aucune calibration spécifique éditeur n'est conservée.
 
 ---
 

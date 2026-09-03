@@ -125,7 +125,7 @@ final class ReferenceDefects
 
     /**
      * Installations ECS aux données d'entrée identiques mais aux rendements de
-     * stockage différents.
+     * stockage — et donc aux consommations ECS — différents.
      *
      * Sur un DPE issu d'un échantillonnage §17, la référence publie plusieurs
      * `installation_ecs` strictement identiques — mêmes surface, même volume
@@ -138,7 +138,10 @@ final class ReferenceDefects
      *
      * L'écart n'est donc pas reproductible depuis les données publiées : des
      * entrées identiques doivent donner des sorties identiques. Toute règle qui
-     * y parviendrait devinerait l'appariement.
+     * y parviendrait devinerait l'appariement. `conso_ecs` et
+     * `conso_ecs_depensier` dépendent directement de ce rendement (§11.1) ; les
+     * écarts correspondants du même générateur sont donc signalés avec leur
+     * cause, sans être retirés du taux de conformité brut.
      *
      * @return array<string, string> chemin ⇒ motif
      */
@@ -184,7 +187,9 @@ final class ReferenceDefects
                 count($membres),
             );
             foreach ($membres as $membre) {
-                $suspects['rendement_stockage@' . $membre['index']] = $motif;
+                foreach (['rendement_stockage', 'conso_ecs', 'conso_ecs_depensier'] as $balise) {
+                    $suspects[$balise . '@' . $membre['index']] = $motif;
+                }
             }
         }
 

@@ -99,18 +99,24 @@ final class ReferenceDefectsTest extends TestCase
     /**
      * Échantillonnage §17 : la référence publie plusieurs installations ECS
      * aux entrées identiques et leur donne des rendements de stockage
-     * différents. Rien dans le XML ne les distingue — l'écart n'est pas
-     * reproductible, et une règle qui y parviendrait devinerait.
+     * différents. Rien dans le XML ne les distingue — le rendement et ses
+     * consommations ECS dépendantes ne sont pas reproductibles, et une règle
+     * qui y parviendrait devinerait.
      */
     public function testInstallationsEcsIdentiquesAuxRendementsDifferentsSontSignalees(): void
     {
         $suspects = ReferenceDefects::detect([], $this->docEcs(['0.79', '0.62', '0.78']));
 
         self::assertSame(
-            ['rendement_stockage@1', 'rendement_stockage@2', 'rendement_stockage@3'],
+            [
+                'rendement_stockage@1', 'conso_ecs@1', 'conso_ecs_depensier@1',
+                'rendement_stockage@2', 'conso_ecs@2', 'conso_ecs_depensier@2',
+                'rendement_stockage@3', 'conso_ecs@3', 'conso_ecs_depensier@3',
+            ],
             array_keys($suspects),
         );
         self::assertStringContainsString('3 rendements de stockage différents', $suspects['rendement_stockage@1']);
+        self::assertSame($suspects['rendement_stockage@1'], $suspects['conso_ecs_depensier@1']);
     }
 
     public function testInstallationsEcsIdentiquesAuMemeRendementNeSontPasSignalees(): void
