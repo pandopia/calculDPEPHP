@@ -1546,7 +1546,7 @@ l'observation des 73 cas où `pn` diverge :
 
 ### TASK-K18 — Écarts résiduels des appartements générés depuis l'immeuble
 
-- [ ] Owner: —  | Phase: K  | Estimation: 5h  | Priorité: haute
+- [~AI] Owner: AI  | Phase: K  | Estimation: 5h  | Priorité: haute
 - Analyser par famille, sur tout le corpus `appartement_issu_immeuble`, les écarts
   résiduels de rendement de génération, scénario dépensier et auxiliaires révélés
   notamment par `2659E2236995T`.
