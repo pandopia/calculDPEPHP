@@ -1552,6 +1552,12 @@ l'observation des 73 cas où `pn` diverge :
   notamment par `2659E2236995T`.
 - Distinguer les défauts reproductibles du moteur des conventions ou défauts de
   référence, sourcer chaque correction et mesurer chaque gain en A/B isolé.
+- Avancement `2659E2236157N` : pour les XML DPEWIN 9.x qui omettent
+  `position_volume_chauffe_stockage`, la position sérialisée du générateur sert
+  de fallback ; les autres formats conservent le défaut conventionnel existant.
+  Le besoin chauffage de la cible devient conforme. A/B strict sur 351 cas :
+  `out_of_tolerance` 10 889 → 10 878, `missing` 77 → 77,
+  `extra` 1 806 → 1 806, `string_mismatch` 34 → 34.
 
 ---
 
