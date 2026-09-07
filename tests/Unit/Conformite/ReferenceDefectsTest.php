@@ -136,6 +136,69 @@ final class ReferenceDefectsTest extends TestCase
         self::assertSame([], ReferenceDefects::detect([]));
     }
 
+    public function testBesoinsDepensiersReglementairementImpossiblesSontSignales(): void
+    {
+        $apport = 'dpe/logement/sortie/apport_et_besoin/';
+        $suspects = ReferenceDefects::detect([
+            $apport . 'besoin_ch' => '50050.58',
+            $apport . 'besoin_ch_depensier' => '7116',
+            $apport . 'besoin_ecs' => '17714.68',
+            $apport . 'besoin_ecs_depensier' => '8800',
+        ]);
+
+        self::assertArrayHasKey('besoin_ch_depensier', $suspects);
+        self::assertArrayHasKey('besoin_ecs_depensier', $suspects);
+        self::assertStringContainsString('79/56', $suspects['besoin_ecs_depensier']);
+    }
+
+    public function testBesoinsDepensiersCoherentsNeSontPasSignales(): void
+    {
+        $apport = 'dpe/logement/sortie/apport_et_besoin/';
+
+        self::assertSame([], ReferenceDefects::detect([
+            $apport . 'besoin_ch' => '10000',
+            $apport . 'besoin_ch_depensier' => '13000',
+            $apport . 'besoin_ecs' => '5600',
+            $apport . 'besoin_ecs_depensier' => '7900',
+        ]));
+    }
+
+    public function testTotalAuxiliaireDifferentDeSesPostesEstSignale(): void
+    {
+        $suspects = ReferenceDefects::detect([
+            self::EF . 'conso_auxiliaire_generation_ch' => '0',
+            self::EF . 'conso_auxiliaire_ventilation' => '316.8',
+            self::EF . 'conso_totale_auxiliaire' => '103.1',
+        ]);
+
+        self::assertArrayHasKey('conso_totale_auxiliaire', $suspects);
+        self::assertStringContainsString('316.8', $suspects['conso_totale_auxiliaire']);
+    }
+
+    public function testRendementStockageDepensierSerialiseEstSignale(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement><installation_ecs_collection><installation_ecs>
+  <donnee_intermediaire>
+    <rendement_distribution>0.93</rendement_distribution>
+    <besoin_ecs>1265.34</besoin_ecs><besoin_ecs_depensier>1785.03</besoin_ecs_depensier>
+    <conso_ecs>2069.42</conso_ecs><conso_ecs_depensier>2628.23</conso_ecs_depensier>
+  </donnee_intermediaire>
+  <generateur_ecs_collection><generateur_ecs>
+    <donnee_entree><enum_type_generateur_ecs_id>70</enum_type_generateur_ecs_id></donnee_entree>
+    <donnee_intermediaire><rendement_stockage>0.7303</rendement_stockage></donnee_intermediaire>
+  </generateur_ecs></generateur_ecs_collection>
+</installation_ecs></installation_ecs_collection></logement></dpe>
+XML);
+
+        $suspects = ReferenceDefects::detect([], $doc);
+
+        self::assertArrayHasKey('rendement_stockage', $suspects);
+        self::assertStringContainsString('dépensier', $suspects['rendement_stockage']);
+        self::assertStringContainsString('0.6575', $suspects['rendement_stockage']);
+    }
+
     /**
      * @param list<string> $rendements
      * @param list<string>|null $volumes

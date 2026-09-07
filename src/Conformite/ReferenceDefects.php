@@ -50,7 +50,18 @@ final class ReferenceDefects
 
     private const COUT_PREFIX = 'dpe/logement/sortie/cout/';
     private const EF_PREFIX = 'dpe/logement/sortie/ef_conso/';
+    private const APPORT_PREFIX = 'dpe/logement/sortie/apport_et_besoin/';
     private const CONFORT_ETE_PATH = 'dpe/logement/sortie/confort_ete';
+
+    /** Postes qui composent le total des auxiliaires en énergie finale. */
+    private const AUXILIAIRES_EF = [
+        'conso_auxiliaire_generation_ch',
+        'conso_auxiliaire_distribution_ch',
+        'conso_auxiliaire_generation_ecs',
+        'conso_auxiliaire_distribution_ecs',
+        'conso_auxiliaire_distribution_fr',
+        'conso_auxiliaire_ventilation',
+    ];
 
     /**
      * Contenu du bloc `<sortie><confort_ete>` déclaré par le schéma ADEME.
@@ -82,6 +93,12 @@ final class ReferenceDefects
     public static function detect(array $expected, ?DOMDocument $referenceDoc = null): array
     {
         $suspects = $referenceDoc === null ? [] : self::installationsEcsIndiscernables($referenceDoc);
+        if ($referenceDoc !== null) {
+            $suspects += self::rendementStockageDuScenarioDepensier($referenceDoc);
+        }
+
+        $suspects += self::besoinsDepensiersIncoherents($expected);
+        $suspects += self::totalAuxiliaireIncoherent($expected);
 
         // Bloc confort d'été présent mais vide : le contenu que nous produisons
         // est conforme au schéma, c'est la référence qui ne l'est pas.
@@ -117,6 +134,153 @@ final class ReferenceDefects
                 $coutDep,
                 $vConso,
                 $vConsoDep,
+            );
+        }
+
+        return $suspects;
+    }
+
+    /**
+     * Besoins dépensiers incompatibles avec leur définition réglementaire.
+     *
+     * §9.1 fixe une consigne de 21 °C pour le scénario dépensier, contre 19 °C
+     * pour le conventionnel : son besoin de chauffage ne peut pas être plus
+     * faible. §11.1 emploie respectivement 79 et 56 litres à 40 °C par unité
+     * d'occupation ; tous les autres termes étant communs, les besoins ECS
+     * annuels doivent respecter Becs_dep = Becs × 79/56.
+     *
+     * @param array<string, string> $expected
+     * @return array<string, string>
+     */
+    private static function besoinsDepensiersIncoherents(array $expected): array
+    {
+        $suspects = [];
+        $bch = self::num($expected, self::APPORT_PREFIX . 'besoin_ch');
+        $bchDep = self::num($expected, self::APPORT_PREFIX . 'besoin_ch_depensier');
+        if ($bch !== null && $bchDep !== null && $bch > 0.0 && $bchDep < $bch) {
+            $suspects['besoin_ch_depensier'] = sprintf(
+                'la référence publie un besoin de chauffage dépensier inférieur au conventionnel '
+                . '(%.0f vs %.0f), malgré les consignes réglementaires de 21 °C et 19 °C',
+                $bchDep,
+                $bch,
+            );
+        }
+
+        $becs = self::num($expected, self::APPORT_PREFIX . 'besoin_ecs');
+        $becsDep = self::num($expected, self::APPORT_PREFIX . 'besoin_ecs_depensier');
+        if ($becs !== null && $becsDep !== null && $becs > 0.0) {
+            $attendu = $becs * 79.0 / 56.0;
+            if (abs($becsDep - $attendu) / $attendu > 0.01) {
+                $suspects['besoin_ecs_depensier'] = sprintf(
+                    'la référence viole Becs_dep = Becs × 79/56 (§11.1) : %.0f publié au lieu de %.0f',
+                    $becsDep,
+                    $attendu,
+                );
+            }
+        }
+
+        return $suspects;
+    }
+
+    /**
+     * Total d'auxiliaires qui ne correspond pas à la somme de ses postes.
+     *
+     * @param array<string, string> $expected
+     * @return array<string, string>
+     */
+    private static function totalAuxiliaireIncoherent(array $expected): array
+    {
+        $total = self::num($expected, self::EF_PREFIX . 'conso_totale_auxiliaire');
+        if ($total === null) {
+            return [];
+        }
+
+        $somme = 0.0;
+        $trouves = 0;
+        foreach (self::AUXILIAIRES_EF as $poste) {
+            $valeur = self::num($expected, self::EF_PREFIX . $poste);
+            if ($valeur !== null) {
+                $somme += $valeur;
+                $trouves++;
+            }
+        }
+        if ($trouves === 0 || abs($total - $somme) <= max(0.1, abs($somme) * 0.001)) {
+            return [];
+        }
+
+        return [
+            'conso_totale_auxiliaire' => sprintf(
+                'la référence publie un total auxiliaire de %.1f kWh, incompatible avec la somme '
+                . 'de ses postes (%.1f kWh)',
+                $total,
+                $somme,
+            ),
+        ];
+    }
+
+    /**
+     * Rendement de stockage sérialisé pour le mauvais scénario.
+     *
+     * Pour un ballon électrique simple, les consommations publiées permettent
+     * de retrouver sans hypothèse Rs_conv = Becs/(Cecs×Rd) et
+     * Rs_dep = Becs_dep/(Cecs_dep×Rd). Si la balise unique `rendement_stockage`
+     * est égale au second alors qu'elle diffère du premier, la référence a
+     * conservé le résultat du dernier passage dépensier ; sa propre
+     * consommation conventionnelle contredit donc la valeur sérialisée.
+     *
+     * @return array<string, string>
+     */
+    private static function rendementStockageDuScenarioDepensier(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+        $installations = $xpath->query('//installation_ecs');
+        if ($installations === false) {
+            return [];
+        }
+
+        $suspects = [];
+        $nombreInstallations = $installations->length;
+        foreach ($installations as $index => $installation) {
+            if (!$installation instanceof DOMElement) {
+                continue;
+            }
+            $generateurs = $xpath->query('./generateur_ecs_collection/generateur_ecs', $installation);
+            if ($generateurs === false || $generateurs->length !== 1) {
+                continue;
+            }
+            $generateur = $generateurs->item(0);
+            if (!$generateur instanceof DOMElement) {
+                continue;
+            }
+            $type = (int)$xpath->evaluate('string(./donnee_entree/enum_type_generateur_ecs_id)', $generateur);
+            if (!in_array($type, [68, 69, 70, 71], true)) {
+                continue;
+            }
+
+            $rd = (float)$xpath->evaluate('string(./donnee_intermediaire/rendement_distribution)', $installation);
+            $becs = (float)$xpath->evaluate('string(./donnee_intermediaire/besoin_ecs)', $installation);
+            $becsDep = (float)$xpath->evaluate('string(./donnee_intermediaire/besoin_ecs_depensier)', $installation);
+            $cecs = (float)$xpath->evaluate('string(./donnee_intermediaire/conso_ecs)', $installation);
+            $cecsDep = (float)$xpath->evaluate('string(./donnee_intermediaire/conso_ecs_depensier)', $installation);
+            $rsPublie = (float)$xpath->evaluate('string(./donnee_intermediaire/rendement_stockage)', $generateur);
+            if (min($rd, $becs, $becsDep, $cecs, $cecsDep, $rsPublie) <= 0.0) {
+                continue;
+            }
+
+            $rsConv = $becs / ($cecs * $rd);
+            $rsDep = $becsDep / ($cecsDep * $rd);
+            $procheDep = abs($rsPublie - $rsDep) / $rsDep <= 0.001;
+            $loinConv = abs($rsPublie - $rsConv) / $rsConv > 0.01;
+            if (!$procheDep || !$loinConv) {
+                continue;
+            }
+
+            $cle = $nombreInstallations === 1 ? 'rendement_stockage' : 'rendement_stockage@' . ($index + 1);
+            $suspects[$cle] = sprintf(
+                'la référence sérialise Rs dépensier (%.4f) alors que sa consommation conventionnelle '
+                . 'implique Rs=%.4f (§11.2 et §11.6)',
+                $rsDep,
+                $rsConv,
             );
         }
 
