@@ -1576,6 +1576,15 @@ l'observation des 73 cas où `pn` diverge :
   10 880. Les auxiliaires nuls des BBS contredisent par ailleurs les §15.1,
   §15.2 et §17.2.2 ; aucune calibration spécifique éditeur n'est conservée.
 
+### TASK-K19 — Correction réglementaire du DPE 2659E2268156G
+
+- [~AI] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- Identifier le premier intermédiaire divergent du DPE `2659E2268156G` et
+  corriger sa cause racine uniquement si elle est justifiée par la méthode
+  3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
+- Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
+  sur le corpus complet avec `bin/official-test-report`.
+
 ---
 
 ## Validation par phase (gate)
