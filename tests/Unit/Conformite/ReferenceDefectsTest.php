@@ -199,6 +199,50 @@ XML);
         self::assertStringContainsString('0.6575', $suspects['rendement_stockage']);
     }
 
+    public function testQp0EnKilowattsMalgreLeXsdEnWattsEstSignale(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement><installation_chauffage><generateur_chauffage_collection><generateur_chauffage>
+  <donnee_intermediaire><pn>55000</pn><qp0>0.55</qp0></donnee_intermediaire>
+</generateur_chauffage></generateur_chauffage_collection></installation_chauffage></logement></dpe>
+XML);
+
+        $suspects = ReferenceDefects::detect([], $doc);
+
+        self::assertArrayHasKey('qp0', $suspects);
+        self::assertStringContainsString('550 W', $suspects['qp0']);
+    }
+
+    public function testQp0DejaEnWattsNestPasSignale(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement><installation_chauffage><generateur_chauffage_collection><generateur_chauffage>
+  <donnee_intermediaire><pn>55000</pn><qp0>550</qp0></donnee_intermediaire>
+</generateur_chauffage></generateur_chauffage_collection></installation_chauffage></logement></dpe>
+XML);
+
+        self::assertSame([], ReferenceDefects::detect([], $doc));
+    }
+
+    public function testStockageIntegreSerialiseCommeSepareEstSignale(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement><installation_ecs><generateur_ecs_collection><generateur_ecs>
+  <donnee_entree><enum_type_stockage_ecs_id>3</enum_type_stockage_ecs_id></donnee_entree>
+  <donnee_intermediaire><rendement_generation>0.83</rendement_generation><rendement_stockage>1</rendement_stockage></donnee_intermediaire>
+</generateur_ecs></generateur_ecs_collection></installation_ecs></logement></dpe>
+XML);
+
+        $suspects = ReferenceDefects::detect([], $doc);
+
+        self::assertArrayHasKey('rendement_generation', $suspects);
+        self::assertArrayHasKey('rendement_stockage', $suspects);
+        self::assertArrayHasKey('rendement_generation_stockage', $suspects);
+    }
+
     /**
      * @param list<string> $rendements
      * @param list<string>|null $volumes

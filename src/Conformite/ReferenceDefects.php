@@ -95,6 +95,8 @@ final class ReferenceDefects
         $suspects = $referenceDoc === null ? [] : self::installationsEcsIndiscernables($referenceDoc);
         if ($referenceDoc !== null) {
             $suspects += self::rendementStockageDuScenarioDepensier($referenceDoc);
+            $suspects += self::qp0SerialiseEnKilowatts($referenceDoc);
+            $suspects += self::stockageIntegreSerialiseCommeSepare($referenceDoc);
         }
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
@@ -135,6 +137,95 @@ final class ReferenceDefects
                 $vConso,
                 $vConsoDep,
             );
+        }
+
+        return $suspects;
+    }
+
+    /**
+     * QP0 publié en kW alors que le XSD impose des watts.
+     *
+     * Les pertes forfaitaires des chaudières valent typiquement 0,5 à 4 % de
+     * Pn. Un couple tel que Pn=55 000 et QP0=0,55 ne devient physiquement
+     * cohérent qu'après multiplication de QP0 par 1000 : l'éditeur a donc
+     * sérialisé des kW dans un champ documenté en W.
+     *
+     * @return array<string, string>
+     */
+    private static function qp0SerialiseEnKilowatts(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+        $generateurs = $xpath->query('//generateur_chauffage|//generateur_ecs');
+        if ($generateurs === false) {
+            return [];
+        }
+
+        foreach ($generateurs as $generateur) {
+            if (!$generateur instanceof DOMElement) {
+                continue;
+            }
+            $pn = (float)$xpath->evaluate('string(./donnee_intermediaire/pn)', $generateur);
+            $qp0 = (float)$xpath->evaluate('string(./donnee_intermediaire/qp0)', $generateur);
+            if ($pn < 1000.0 || $qp0 <= 0.0) {
+                continue;
+            }
+            $tauxPublie = $qp0 / $pn;
+            $tauxCorrige = 1000.0 * $qp0 / $pn;
+            if ($tauxPublie < 0.0001 && $tauxCorrige >= 0.001 && $tauxCorrige <= 0.10) {
+                return [
+                    'qp0' => sprintf(
+                        'la référence sérialise QP0 en kW (%.3f) malgré l’unité W imposée par le XSD ; '
+                        . 'la valeur cohérente avec Pn=%.0f W est %.0f W',
+                        $qp0,
+                        $pn,
+                        $qp0 * 1000.0,
+                    ),
+                ];
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Stockage intégré publié avec les champs réservés au stockage séparé.
+     *
+     * Le XSD définit enum_type_stockage_ecs_id=3 comme « stockage intégré à
+     * la production » et réserve alors `rendement_generation_stockage` au
+     * produit Rg×Rs. Publier à la place `rendement_generation` et
+     * `rendement_stockage` contredit les documentations de ces trois champs.
+     *
+     * @return array<string, string>
+     */
+    private static function stockageIntegreSerialiseCommeSepare(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+        $installations = $xpath->query('//installation_ecs');
+        if ($installations === false || $installations->length === 0) {
+            return [];
+        }
+
+        $motif = 'la référence déclare un stockage intégré (type 3) mais sérialise les rendements '
+            . 'dans les champs réservés par le XSD au stockage séparé, au lieu de rendement_generation_stockage';
+        $suspects = [];
+        foreach ($installations as $index => $installation) {
+            if (!$installation instanceof DOMElement) {
+                continue;
+            }
+            $noeuds = $xpath->query(
+                './/generateur_ecs[donnee_entree/enum_type_stockage_ecs_id="3" '
+                . 'and donnee_intermediaire/rendement_generation '
+                . 'and donnee_intermediaire/rendement_stockage '
+                . 'and not(donnee_intermediaire/rendement_generation_stockage)]',
+                $installation,
+            );
+            if ($noeuds === false || $noeuds->length === 0) {
+                continue;
+            }
+            $suffixe = $installations->length === 1 ? '' : '@' . ($index + 1);
+            foreach (['rendement_generation', 'rendement_stockage', 'rendement_generation_stockage'] as $tag) {
+                $suspects[$tag . $suffixe] = $motif;
+            }
         }
 
         return $suspects;

@@ -1622,12 +1622,23 @@ l'observation des 73 cas où `pn` diverge :
 
 ### TASK-K21 — Correction réglementaire du DPE 2659E2253310G
 
-- [~AI] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- [x] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
 - Identifier le premier intermédiaire divergent du DPE `2659E2253310G` et
   corriger sa cause racine uniquement si elle est justifiée par la méthode
   3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
 - Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
   sur le corpus complet avec `bin/official-test-report`.
+- Résultat : les générateurs chauffage/ECS mixtes qui partagent la même
+  `reference_generateur_mixte` sont désormais liés dans tous les modes, et pas
+  seulement en mode 33. En mode 34, le stockage intégré emprunte donc le canal
+  XSD `rendement_generation_stockage`. La référence BBS du cas sérialise en
+  outre `QP0=0,55` kW dans un champ imposé en watts et utilise les champs de
+  rendement réservés au stockage séparé ; ces défauts sont qualifiés sans
+  modifier les formules réglementaires. A/B isolé sur 354 cas : hors tolérance
+  `11086 → 11075`, chaînes `37 → 37`, balises manquantes `91 → 97` et
+  supplémentaires `1827 → 1830` (déplacement volontaire vers le chemin XSD),
+  références suspectes `3745 → 3824`, plafond atteignable
+  `91,80 % → 91,87 %`. Suite complète : 1239 tests, 2420 assertions.
 
 ---
 
