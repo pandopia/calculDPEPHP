@@ -260,8 +260,14 @@ final class BesoinChauffageCalculator implements CalculatorInterface
 
             $qgwInstall = 0.0;
             foreach ($install->getElementsByTagName('generateur_ecs') as $gen) {
-                $posStockage = $accessor->getIntOrNull('./donnee_entree/position_volume_chauffe_stockage', $gen) ?? 1;
-                if ($posStockage === 0) {
+                $posStockage = $accessor->getIntOrNull('./donnee_entree/position_volume_chauffe_stockage', $gen);
+                if ($posStockage === null) {
+                    $formatVersion = $context->document->documentElement?->getAttribute('version') ?? '';
+                    $posStockage = str_starts_with($formatVersion, '9.')
+                        ? ($accessor->getIntOrNull('./donnee_entree/position_volume_chauffe', $gen) ?? 1)
+                        : 1;
+                }
+                if ($posStockage !== 1) {
                     continue;
                 }
                 $qgwGen = (float) $context->get(\CalculDpePHP\Ecs\Rendement\StockageCalculator::qgwKey($gen), 0.0);

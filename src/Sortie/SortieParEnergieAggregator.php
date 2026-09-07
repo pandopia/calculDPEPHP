@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CalculDpePHP\Sortie;
 
 use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
+use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
@@ -302,6 +303,9 @@ final class SortieParEnergieAggregator implements CalculatorInterface
                 if ($isZone) {
                     $cle = $accessor->getFloatOrNull('./donnee_entree/' . $cleField, $install);
                     if ($cle !== null && $cle > 0.0) {
+                        if ($isCh && $cle >= 1.0) {
+                            $cle = GeneratedApartment::surfaceShare($logement, $accessor) ?? $cle;
+                        }
                         $scale *= $cle;
                     }
                 }

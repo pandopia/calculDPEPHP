@@ -99,18 +99,24 @@ final class ReferenceDefectsTest extends TestCase
     /**
      * Échantillonnage §17 : la référence publie plusieurs installations ECS
      * aux entrées identiques et leur donne des rendements de stockage
-     * différents. Rien dans le XML ne les distingue — l'écart n'est pas
-     * reproductible, et une règle qui y parviendrait devinerait.
+     * différents. Rien dans le XML ne les distingue — le rendement et ses
+     * consommations ECS dépendantes ne sont pas reproductibles, et une règle
+     * qui y parviendrait devinerait.
      */
     public function testInstallationsEcsIdentiquesAuxRendementsDifferentsSontSignalees(): void
     {
         $suspects = ReferenceDefects::detect([], $this->docEcs(['0.79', '0.62', '0.78']));
 
         self::assertSame(
-            ['rendement_stockage@1', 'rendement_stockage@2', 'rendement_stockage@3'],
+            [
+                'rendement_stockage@1', 'conso_ecs@1', 'conso_ecs_depensier@1',
+                'rendement_stockage@2', 'conso_ecs@2', 'conso_ecs_depensier@2',
+                'rendement_stockage@3', 'conso_ecs@3', 'conso_ecs_depensier@3',
+            ],
             array_keys($suspects),
         );
         self::assertStringContainsString('3 rendements de stockage différents', $suspects['rendement_stockage@1']);
+        self::assertSame($suspects['rendement_stockage@1'], $suspects['conso_ecs_depensier@1']);
     }
 
     public function testInstallationsEcsIdentiquesAuMemeRendementNeSontPasSignalees(): void
@@ -128,6 +134,171 @@ final class ReferenceDefectsTest extends TestCase
     public function testSansDocumentDeReferenceLaRegleNeSApplique(): void
     {
         self::assertSame([], ReferenceDefects::detect([]));
+    }
+
+    public function testBesoinsDepensiersReglementairementImpossiblesSontSignales(): void
+    {
+        $apport = 'dpe/logement/sortie/apport_et_besoin/';
+        $suspects = ReferenceDefects::detect([
+            $apport . 'besoin_ch' => '50050.58',
+            $apport . 'besoin_ch_depensier' => '7116',
+            $apport . 'besoin_ecs' => '17714.68',
+            $apport . 'besoin_ecs_depensier' => '8800',
+        ]);
+
+        self::assertArrayHasKey('besoin_ch_depensier', $suspects);
+        self::assertArrayHasKey('besoin_ecs_depensier', $suspects);
+        self::assertStringContainsString('79/56', $suspects['besoin_ecs_depensier']);
+    }
+
+    public function testBesoinsDepensiersCoherentsNeSontPasSignales(): void
+    {
+        $apport = 'dpe/logement/sortie/apport_et_besoin/';
+
+        self::assertSame([], ReferenceDefects::detect([
+            $apport . 'besoin_ch' => '10000',
+            $apport . 'besoin_ch_depensier' => '13000',
+            $apport . 'besoin_ecs' => '5600',
+            $apport . 'besoin_ecs_depensier' => '7900',
+        ]));
+    }
+
+    public function testTotalAuxiliaireDifferentDeSesPostesEstSignale(): void
+    {
+        $suspects = ReferenceDefects::detect([
+            self::EF . 'conso_auxiliaire_generation_ch' => '0',
+            self::EF . 'conso_auxiliaire_ventilation' => '316.8',
+            self::EF . 'conso_totale_auxiliaire' => '103.1',
+        ]);
+
+        self::assertArrayHasKey('conso_totale_auxiliaire', $suspects);
+        self::assertStringContainsString('316.8', $suspects['conso_totale_auxiliaire']);
+    }
+
+    public function testRendementStockageDepensierSerialiseEstSignale(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement><installation_ecs_collection><installation_ecs>
+  <donnee_intermediaire>
+    <rendement_distribution>0.93</rendement_distribution>
+    <besoin_ecs>1265.34</besoin_ecs><besoin_ecs_depensier>1785.03</besoin_ecs_depensier>
+    <conso_ecs>2069.42</conso_ecs><conso_ecs_depensier>2628.23</conso_ecs_depensier>
+  </donnee_intermediaire>
+  <generateur_ecs_collection><generateur_ecs>
+    <donnee_entree><enum_type_generateur_ecs_id>70</enum_type_generateur_ecs_id></donnee_entree>
+    <donnee_intermediaire><rendement_stockage>0.7303</rendement_stockage></donnee_intermediaire>
+  </generateur_ecs></generateur_ecs_collection>
+</installation_ecs></installation_ecs_collection></logement></dpe>
+XML);
+
+        $suspects = ReferenceDefects::detect([], $doc);
+
+        self::assertArrayHasKey('rendement_stockage', $suspects);
+        self::assertStringContainsString('dépensier', $suspects['rendement_stockage']);
+        self::assertStringContainsString('0.6575', $suspects['rendement_stockage']);
+    }
+
+    public function testQp0EnKilowattsMalgreLeXsdEnWattsEstSignale(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement><installation_chauffage><generateur_chauffage_collection><generateur_chauffage>
+  <donnee_intermediaire><pn>55000</pn><qp0>0.55</qp0></donnee_intermediaire>
+</generateur_chauffage></generateur_chauffage_collection></installation_chauffage></logement></dpe>
+XML);
+
+        $suspects = ReferenceDefects::detect([], $doc);
+
+        self::assertArrayHasKey('qp0', $suspects);
+        self::assertStringContainsString('550 W', $suspects['qp0']);
+    }
+
+    public function testQp0DejaEnWattsNestPasSignale(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement><installation_chauffage><generateur_chauffage_collection><generateur_chauffage>
+  <donnee_intermediaire><pn>55000</pn><qp0>550</qp0></donnee_intermediaire>
+</generateur_chauffage></generateur_chauffage_collection></installation_chauffage></logement></dpe>
+XML);
+
+        self::assertSame([], ReferenceDefects::detect([], $doc));
+    }
+
+    public function testStockageIntegreSerialiseCommeSepareEstSignale(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement><installation_ecs><generateur_ecs_collection><generateur_ecs>
+  <donnee_entree><enum_type_stockage_ecs_id>3</enum_type_stockage_ecs_id></donnee_entree>
+  <donnee_intermediaire><rendement_generation>0.83</rendement_generation><rendement_stockage>1</rendement_stockage></donnee_intermediaire>
+</generateur_ecs></generateur_ecs_collection></installation_ecs></logement></dpe>
+XML);
+
+        $suspects = ReferenceDefects::detect([], $doc);
+
+        self::assertArrayHasKey('rendement_generation', $suspects);
+        self::assertArrayHasKey('rendement_stockage', $suspects);
+        self::assertArrayHasKey('rendement_generation_stockage', $suspects);
+    }
+
+    public function testRepartitionEcsAppartementGenereNonReproductibleEstSignalee(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement>
+  <caracteristique_generale>
+    <enum_methode_application_dpe_log_id>33</enum_methode_application_dpe_log_id>
+    <surface_habitable_immeuble>1203</surface_habitable_immeuble>
+  </caracteristique_generale>
+  <installation_ecs_collection><installation_ecs>
+    <donnee_entree>
+      <enum_methode_calcul_conso_id>1</enum_methode_calcul_conso_id>
+      <enum_type_installation_id>1</enum_type_installation_id>
+      <surface_habitable>2.5</surface_habitable><rdim>20</rdim>
+      <cle_repartition_ecs>0.0415628</cle_repartition_ecs>
+    </donnee_entree>
+    <donnee_intermediaire><conso_ecs>1604.57</conso_ecs><conso_ecs_depensier>2168.73</conso_ecs_depensier></donnee_intermediaire>
+  </installation_ecs></installation_ecs_collection>
+</logement></dpe>
+XML);
+
+        $suspects = ReferenceDefects::detect([
+            self::EF . 'conso_ecs' => '1520.9',
+            self::EF . 'conso_ecs_depensier' => '2144.5',
+        ], $doc);
+
+        self::assertArrayHasKey(self::EF . 'conso_ecs', $suspects);
+        self::assertArrayHasKey(self::EF . 'conso_ecs_depensier', $suspects);
+        self::assertStringContainsString('1333.8', $suspects[self::EF . 'conso_ecs']);
+    }
+
+    public function testRepartitionEcsCoherenteNestPasSignalee(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement>
+  <caracteristique_generale>
+    <enum_methode_application_dpe_log_id>33</enum_methode_application_dpe_log_id>
+    <surface_habitable_immeuble>1203</surface_habitable_immeuble>
+  </caracteristique_generale>
+  <installation_ecs_collection><installation_ecs>
+    <donnee_entree>
+      <enum_methode_calcul_conso_id>1</enum_methode_calcul_conso_id>
+      <enum_type_installation_id>1</enum_type_installation_id>
+      <surface_habitable>1203</surface_habitable><rdim>20</rdim>
+      <cle_repartition_ecs>0.0415628</cle_repartition_ecs>
+    </donnee_entree>
+    <donnee_intermediaire><conso_ecs>1604.57</conso_ecs><conso_ecs_depensier>2168.73</conso_ecs_depensier></donnee_intermediaire>
+  </installation_ecs></installation_ecs_collection>
+</logement></dpe>
+XML);
+
+        self::assertSame([], ReferenceDefects::detect([
+            self::EF . 'conso_ecs' => '1520.9',
+            self::EF . 'conso_ecs_depensier' => '2144.5',
+        ], $doc));
     }
 
     /**

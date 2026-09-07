@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Ventilation;
 
+use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
@@ -102,7 +103,11 @@ final class VentilationAggregator implements CalculatorInterface
             $node
         );
         if ($shLogement !== null && $surfaceVentile !== null && $surfaceVentile > 0.0) {
-            $caux = $caux * $shLogement / $surfaceVentile;
+            $surfaceCalcul = GeneratedApartment::isGenerated($node, $accessor)
+                ? ($accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $node)
+                    ?? $surfaceVentile)
+                : $surfaceVentile;
+            $caux = $caux * $shLogement / $surfaceCalcul;
         }
 
         $sortie      = $accessor->ensureSortie($node);

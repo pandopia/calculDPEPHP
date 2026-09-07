@@ -62,7 +62,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
      * Dans ces modes, Pch est calculé à l'échelle de l'appartement moyen :
      *   Pch = 1.2 × (GV / Nblgt) × (19 − Tbase) / 0.95³
      */
-    private const MODES_IMMEUBLE_INDIVIDUEL = [6, 8, 10, 12];
+    private const MODES_IMMEUBLE_INDIVIDUEL = [6, 8, 10, 12, 33];
 
     public function id(): string
     {
@@ -139,7 +139,14 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         // Ratio de virtualisation pour installations collectives (§17.2)
         $ratioVirt = $this->getRatioVirtualisation($node, $accessor);
         $modeApp = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
-        $mixedHeatingMode = $modeApp !== null && in_array($modeApp, [26, 27, 28, 31, 32, 33, 34, 35, 38], true);
+        // Un mode DPE « chauffage mixte » décrit la combinaison des systèmes
+        // du bâtiment, pas la nature de chaque installation. Le traitement à
+        // l'échelle collective ne s'applique donc qu'à une installation
+        // effectivement collective ; en mode 33, l'installation individuelle
+        // échantillonnée reste dimensionnée comme une chaudière de logement.
+        $mixedHeatingMode = $modeApp !== null
+            && in_array($modeApp, [26, 27, 28, 31, 32, 33, 34, 35, 38], true)
+            && $this->isCollectiveInstallation($node, $accessor);
         // En chauffage mixte, ratio_virtualisation est une clé de couverture
         // entre parts collective et individuelle, pas un changement d'échelle
         // du générateur décrit pour le logement.
@@ -154,6 +161,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             $nblgt   = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement') ?? 1;
             $isImmeubleIndividuel = $modeApp !== null
                 && in_array($modeApp, self::MODES_IMMEUBLE_INDIVIDUEL, true)
+                && !$this->isCollectiveInstallation($node, $accessor)
                 && $nblgt > 1;
 
             $pchW = $this->computePnFromGv($context, $mixedHeatingMode ? 1.0 : $ratioVirt, $genId);
@@ -291,20 +299,28 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             return 0.0;
         }
 
-        // Trouver le générateur ECS dont reference_generateur_mixte pointe vers nous
+        // Deux sérialisations ADEME existent : `reference_generateur_mixte`
+        // peut pointer vers la `reference` propre du générateur chauffage, ou
+        // servir de clé commune aux deux générateurs dans le mode mixte 33.
+        // Essayer le pointeur historique en priorité, puis cette clé commune.
         $myRef = $accessor->getStringOrNull('./donnee_entree/reference', $genNode);
         $doc   = $genNode->ownerDocument;
-        if ($doc === null || $myRef === null) {
+        if ($doc === null) {
             return 0.0;
         }
 
         $xpath = new \DOMXPath($doc);
-        $matches = $xpath->query(
-            sprintf(
+        $matches = $myRef === null ? false : $xpath->query(sprintf(
+            '//generateur_ecs[donnee_entree/reference_generateur_mixte="%s"]',
+            addslashes($myRef),
+        ));
+        if (($matches === false || $matches->length === 0)
+            && $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id') === 33) {
+            $matches = $xpath->query(sprintf(
                 '//generateur_ecs[donnee_entree/reference_generateur_mixte="%s"]',
-                addslashes($myRef)
-            )
-        );
+                addslashes($refMixte),
+            ));
+        }
         if ($matches === false || $matches->length === 0) {
             return 0.0;
         }

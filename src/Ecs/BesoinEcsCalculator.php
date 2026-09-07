@@ -6,6 +6,7 @@ namespace CalculDpePHP\Ecs;
 
 use CalculDpePHP\Common\ClimaticSolicitations;
 use CalculDpePHP\Common\IntermediateEnergyUnit;
+use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -171,8 +172,13 @@ final class BesoinEcsCalculator implements CalculatorInterface
             $rdim     = $accessor->getFloatOrNull('./donnee_entree/rdim',              $inst) ?? 1.0;
             $rdim     = $rdim > 0.0 ? $rdim : 1.0;
             $surfInst = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $inst);
+            $typeId   = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $inst);
 
-            if ($isGeneratedFromImmeuble && $allIndividual && $nbApt > 1) {
+            if (GeneratedApartment::isGenerated($node, $accessor) && $typeId === 2) {
+                // §17.2.2.3.1 : le système collectif est d'abord calculé à
+                // l'échelle immeuble ; Cecs est réparti ensuite au logement.
+                $ratio = 1.0 / $rdim;
+            } elseif ($isGeneratedFromImmeuble && $allIndividual && $nbApt > 1) {
                 // Appartement moyen : besoin_install = besoin_total / nombre_appartement
                 $ratio = 1.0 / $nbApt;
             } elseif ($surfInst !== null && $surfInst > 0.0 && $surfImmeuble !== null && $surfImmeuble > 0.0) {

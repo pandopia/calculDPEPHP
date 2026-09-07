@@ -232,6 +232,47 @@ XML;
         $this->assertEqualsWithDelta(5000.0, (float)$doc->getElementsByTagName('pn')->item(0)->textContent, 0.1);
     }
 
+    /** Le mode mixte 33 ne transforme pas sa chaudière individuelle en chaudière collective. */
+    public function testGeneratedMixedApartmentSizesIndividualMixedBoilerAtApartmentScale(): void
+    {
+        $xml = <<<'XML'
+<logement>
+  <caracteristique_generale>
+    <enum_methode_application_dpe_log_id>33</enum_methode_application_dpe_log_id>
+    <surface_habitable_immeuble>1203</surface_habitable_immeuble>
+    <nombre_appartement>20</nombre_appartement>
+  </caracteristique_generale>
+  <meteo><enum_zone_climatique_id>1</enum_zone_climatique_id><enum_classe_altitude_id>1</enum_classe_altitude_id></meteo>
+  <installation_ecs_collection><installation_ecs><generateur_ecs_collection><generateur_ecs><donnee_entree>
+    <reference_generateur_mixte>mixte-1</reference_generateur_mixte><volume_stockage>0</volume_stockage>
+  </donnee_entree></generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection>
+  <installation_chauffage><donnee_entree><enum_type_installation_id>1</enum_type_installation_id></donnee_entree>
+    <generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+      <reference>chaudiere-1</reference><reference_generateur_mixte>mixte-1</reference_generateur_mixte>
+      <enum_type_generateur_ch_id>97</enum_type_generateur_ch_id><tv_generateur_combustion_id>13</tv_generateur_combustion_id>
+      <enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id><presence_ventouse>1</presence_ventouse>
+    </donnee_entree></generateur_chauffage></generateur_chauffage_collection>
+  </installation_chauffage>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $context = new CalculationContext(
+            document: $doc,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+            zoneClimatique: '1',
+            classeAltitude: '1',
+        );
+        $context->set('enveloppe.dp_parois', 2008.613);
+        $context->set('enveloppe.dp_pont_thermique', 0.0);
+        $context->set('ventilation.hvent', 0.0);
+        $context->set('ventilation.hperm', 0.0);
+
+        (new ChaudiereDefautCalculator())->calculate($doc->getElementsByTagName('generateur_chauffage')->item(0), $context);
+
+        self::assertEqualsWithDelta(24000.0, (float) $doc->getElementsByTagName('pn')->item(0)?->textContent, 0.1);
+    }
+
     public function testCollectiveVirtualizedGasBoilerUsesFourHundredKwBuildingPower(): void
     {
         $xml = <<<'XML'

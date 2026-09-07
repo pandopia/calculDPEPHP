@@ -44,11 +44,13 @@ final class InstallationClassiqueTest extends TestCase
         float   $rr,
         float   $rg,
         int     $cfgId = 1,
+        int     $applicationMethod = 0,
     ): array {
         $xml = <<<XML
 <?xml version="1.0"?>
 <logement>
     <caracteristique_generale>
+        <enum_methode_application_dpe_log_id>$applicationMethod</enum_methode_application_dpe_log_id>
         <hsp>$hsp</hsp>
         <surface_habitable_immeuble>$shImmeuble</surface_habitable_immeuble>
         <nombre_appartement>$nbreAppartement</nombre_appartement>
@@ -104,6 +106,43 @@ XML;
         $ctx->set('chauffage.besoin_ch_depensier', $bchDep);
         $ctx->set('chauffage.gv', $gv);
         return $ctx;
+    }
+
+    /**
+     * §17.2.2 : un système individuel échantillonné d'un DPE généré porte le
+     * besoin immeuble, puis rdim le ramène au logement moyen. La surface du
+     * logement ne doit pas le proratiser une seconde fois.
+     */
+    public function testGeneratedApartmentSampledIndividualKeepsBuildingNeed(): void
+    {
+        [$doc, $node] = $this->buildXml(
+            bchImmeuble: 72000.0,
+            bchDepImmeuble: 90000.0,
+            gv: 2000.0,
+            surfaceChauffee: 42.0,
+            shImmeuble: 1200.0,
+            hsp: 2.5,
+            nbreAppartement: 20,
+            rdim: 20.0,
+            ratioVirt: 1.0,
+            methode: 1,
+            typeInstall: 1,
+            nombreEchantillon: 1,
+            i0: 0.92,
+            re: 0.95,
+            rd: 0.95,
+            rr: 0.95,
+            rg: 0.99,
+            applicationMethod: 33,
+        );
+
+        (new InstallationClassique())->calculate($node, $this->makeContext($doc, 72000.0, 90000.0, 2000.0));
+
+        self::assertEqualsWithDelta(
+            72000.0,
+            (float) $doc->getElementsByTagName('besoin_ch')->item(0)?->textContent,
+            self::TOL,
+        );
     }
 
     public function testUsesDepensierGenerationYieldWhenAvailable(): void

@@ -269,9 +269,11 @@ XML;
 
     public function testMixedBoilerWithStorageIncludesQgwInCombinedYield(): void
     {
-        $doc = new DOMDocument();
-        $doc->loadXML(<<<'XML'
+        foreach ([33, 34] as $mode) {
+            $doc = new DOMDocument();
+            $doc->loadXML(<<<XML
 <logement>
+  <caracteristique_generale><enum_methode_application_dpe_log_id>$mode</enum_methode_application_dpe_log_id></caracteristique_generale>
   <installation_ecs><donnee_intermediaire><besoin_ecs>6206.35419852</besoin_ecs></donnee_intermediaire>
     <generateur_ecs_collection><generateur_ecs>
       <donnee_entree><enum_type_energie_id>2</enum_type_energie_id><enum_type_generateur_ecs_id>56</enum_type_generateur_ecs_id>
@@ -280,27 +282,29 @@ XML;
     </generateur_ecs></generateur_ecs_collection>
   </installation_ecs>
   <installation_chauffage><generateur_chauffage_collection><generateur_chauffage>
-    <donnee_entree><reference>mixed-ch</reference></donnee_entree>
+    <donnee_entree><reference>heating-generator</reference><reference_generateur_mixte>mixed-ch</reference_generateur_mixte></donnee_entree>
     <donnee_intermediaire><pn>18000</pn><qp0>180</qp0><rpn>0.922553</rpn></donnee_intermediaire>
   </generateur_chauffage></generateur_chauffage_collection></installation_chauffage>
 </logement>
 XML);
-        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+            $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
 
-        // Qg,w ne transite plus par le XML (le schéma ADEME ne déclare pas de
-        // balise `Qgw`) : StockageCalculator le publie dans le contexte.
-        $ctx = $this->makeContext($doc);
-        $ctx->set(\CalculDpePHP\Ecs\Rendement\StockageCalculator::qgwKey($gen), 1064620.987191);
+            // Qg,w ne transite plus par le XML (le schéma ADEME ne déclare pas de
+            // balise `Qgw`) : StockageCalculator le publie dans le contexte.
+            $ctx = $this->makeContext($doc);
+            $ctx->set(\CalculDpePHP\Ecs\Rendement\StockageCalculator::qgwKey($gen), 1064620.987191);
 
-        (new CombustionCalculator())->calculate($gen, $ctx);
+            (new CombustionCalculator())->calculate($gen, $ctx);
 
-        $this->assertEqualsWithDelta(
-            0.7648766444,
-            (float)$gen->getElementsByTagName('rendement_generation_stockage')->item(0)->textContent,
-            1e-9,
-        );
-        $this->assertSame(0, $gen->getElementsByTagName('rendement_stockage')->length);
-        $this->assertSame(0, $gen->getElementsByTagName('rendement_generation')->length);
+            $this->assertEqualsWithDelta(
+                0.7648766444,
+                (float)$gen->getElementsByTagName('rendement_generation_stockage')->item(0)->textContent,
+                1e-9,
+                "mode $mode",
+            );
+            $this->assertSame(0, $gen->getElementsByTagName('rendement_stockage')->length, "mode $mode");
+            $this->assertSame(0, $gen->getElementsByTagName('rendement_generation')->length, "mode $mode");
+        }
     }
 
     /**

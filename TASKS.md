@@ -1524,6 +1524,145 @@ l'observation des 73 cas où `pn` diverge :
   été calibrée sur d'autres cas (TASK-J03, TASK-J05) et n'est pas touchée ici,
   mais elle devine : à reconsidérer si elle coûte plus qu'elle ne rapporte.
 
+### TASK-K17 — Correction réglementaire du DPE 2659E2236995T
+
+- [x] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- Identifier le premier intermédiaire divergent du DPE `2659E2236995T` et
+  corriger sa cause racine uniquement si elle est justifiée par la méthode
+  3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
+- Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
+  avec `bin/official-test-report` sur le même corpus et le même arbre.
+- Validation : cible conforme en profil strict, suite unitaire verte, aucune
+  régression globale sur `out_of_tolerance`, `extra` et `missing`.
+- Fait : les modes appartement généré depuis l'immeuble utilisent désormais la
+  surface immeuble pour les intermédiaires de ventilation et les installations
+  collectives, puis la clé surfacique réglementaire pour les sorties logement.
+  Sur la cible, les 6 écarts de ventilation sont supprimés et les classes DPE/GES
+  redeviennent conformes. A/B strict sur 350 cas : `out_of_tolerance` 10 811 →
+  10 803, `string_mismatch` 36 → 34, `missing` 73 → 73, `extra` 1 799 → 1 799.
+> NOTE-AI: la cible conserve des écarts indépendants (rendements de génération,
+> scénario dépensier et auxiliaires). Ils ne sont pas calibrés sur ce cas isolé ;
+> ils devront être traités par famille sur le corpus conformément aux règles K.
+
+### TASK-K18 — Écarts résiduels des appartements générés depuis l'immeuble
+
+- [x] Owner: AI  | Phase: K  | Estimation: 5h  | Priorité: haute
+- Analyser par famille, sur tout le corpus `appartement_issu_immeuble`, les écarts
+  résiduels de rendement de génération, scénario dépensier et auxiliaires révélés
+  notamment par `2659E2236995T`.
+- Distinguer les défauts reproductibles du moteur des conventions ou défauts de
+  référence, sourcer chaque correction et mesurer chaque gain en A/B isolé.
+- Avancement `2659E2236157N` : pour les XML DPEWIN 9.x qui omettent
+  `position_volume_chauffe_stockage`, la position sérialisée du générateur sert
+  de fallback ; les autres formats conservent le défaut conventionnel existant.
+  Le besoin chauffage de la cible devient conforme. A/B strict sur 351 cas :
+  `out_of_tolerance` 10 889 → 10 878, `missing` 77 → 77,
+  `extra` 1 806 → 1 806, `string_mismatch` 34 → 34.
+- Analyse par moteur des rendements résiduels : les 15 exports
+  `3cl_tribu_1.4.25.1` imposent tous `Pn=370 kW` là où l'application de la
+  formule §13.2.2.4 aux données publiées conduit à 405 kW ; les deux exports
+  `3cl_bbs_V2025.11.1.0` imposent `Pn=195 kW` là où le même calcul atteint le
+  plafond réglementaire de 400 kW. Ces conventions éditeur contradictoires ne
+  sont pas reprises dans le moteur.
+- Les installations ECS d'échantillonnage strictement indiscernables mais
+  dotées de rendements de stockage différents rendent également leurs
+  `conso_ecs` et `conso_ecs_depensier` non reproductibles (§11.1). Le rapport
+  propage maintenant ce motif aux consommations dépendantes : 2 788 → 3 720
+  écarts de référence signalés, sans retirer aucun écart brut ; plafond
+  atteignable 91,12 % → 91,94 %.
+- Variante auxiliaires ECS générés conforme au §17.2.2.5.1 rejetée en A/B :
+  elle améliore `zone_post2026coefelec_diag2356755` de 6 écarts mais dégrade
+  chacun des deux exports BBS de 4 écarts, soit `out_of_tolerance` 10 878 →
+  10 880. Les auxiliaires nuls des BBS contredisent par ailleurs les §15.1,
+  §15.2 et §17.2.2 ; aucune calibration spécifique éditeur n'est conservée.
+
+### TASK-K19 — Correction réglementaire du DPE 2659E2268156G
+
+- [x] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- Identifier le premier intermédiaire divergent du DPE `2659E2268156G` et
+  corriger sa cause racine uniquement si elle est justifiée par la méthode
+  3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
+- Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
+  sur le corpus complet avec `bin/official-test-report`.
+- Fait : en mode mixte 33, le besoin de l'installation individuelle
+  échantillonnée conserve l'échelle immeuble avant la division par `rdim` ; la
+  double proratisation par `surface_chauffee / Sh` est supprimée. Le besoin
+  chauffage intermédiaire passe de 2 524 à 72 315,6 Wh, conforme à la
+  référence et au §17.2.2.
+- Fait : le caractère « mixte » du DPE ne transforme plus une installation
+  individuelle en chaudière collective. La puissance est dimensionnée sur le
+  logement moyen et `Pdim = max(Pch, Pecs)` sélectionne le palier 24 kW prévu
+  par le §13.2.2.4.
+- Fait : les deux formes de liaison XML d'un générateur mixte sont gérées :
+  pointeur historique vers `reference` en priorité, puis clé commune
+  `reference_generateur_mixte` pour le mode 33. Le rendement et les
+  consommations ECS de la cible deviennent conformes.
+- A/B strict isolé sur 352 cas : `out_of_tolerance` 10 966 → 10 955,
+  `missing` 82 → 82, `extra` 1 813 → 1 813, `string_mismatch` 35 → 35. Seul
+  `2659E2268156G` change : 88 → 77 écarts hors tolérance.
+
+### TASK-K20 — Correction réglementaire du DPE 2659E2277989L
+
+- [x] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- Identifier le premier intermédiaire divergent du DPE `2659E2277989L` et
+  corriger sa cause racine uniquement si elle est justifiée par la méthode
+  3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
+- Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
+  sur le corpus complet avec `bin/official-test-report`.
+- Résultat : le moteur calcule correctement `Rs_conv=0,6575` et les deux
+  consommations ECS. La référence BBS sérialise à tort `Rs_dep=0,7303`, publie
+  des besoins dépensiers incompatibles avec les règles 21 °C/19 °C et 79/56,
+  ainsi qu'un total auxiliaire inférieur à son seul poste ventilation.
+  `ReferenceDefects` qualifie désormais ces incohérences à partir des seules
+  valeurs du XML, sans règle liée au numéro ADEME ni modification des formules.
+  A/B isolé sur 353 cas : compteurs bruts strictement inchangés
+  (`11003` hors tolérance, `87` manquants, `1820` supplémentaires,
+  `35` chaînes), références suspectes `3720 → 3742`, plafond atteignable
+  `91,85 % → 91,87 %`. Suite complète : 1236 tests, 2411 assertions.
+
+### TASK-K21 — Correction réglementaire du DPE 2659E2253310G
+
+- [x] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- Identifier le premier intermédiaire divergent du DPE `2659E2253310G` et
+  corriger sa cause racine uniquement si elle est justifiée par la méthode
+  3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
+- Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
+  sur le corpus complet avec `bin/official-test-report`.
+- Résultat : les générateurs chauffage/ECS mixtes qui partagent la même
+  `reference_generateur_mixte` sont désormais liés dans tous les modes, et pas
+  seulement en mode 33. En mode 34, le stockage intégré emprunte donc le canal
+  XSD `rendement_generation_stockage`. La référence BBS du cas sérialise en
+  outre `QP0=0,55` kW dans un champ imposé en watts et utilise les champs de
+  rendement réservés au stockage séparé ; ces défauts sont qualifiés sans
+  modifier les formules réglementaires. A/B isolé sur 354 cas : hors tolérance
+  `11086 → 11075`, chaînes `37 → 37`, balises manquantes `91 → 97` et
+  supplémentaires `1827 → 1830` (déplacement volontaire vers le chemin XSD),
+  références suspectes `3745 → 3824`, plafond atteignable
+  `91,80 % → 91,87 %`. Suite complète : 1239 tests, 2420 assertions.
+
+### TASK-K22 — Correction réglementaire du DPE 2659E2268184I
+
+- [x] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- Identifier le premier intermédiaire divergent du DPE `2659E2268184I` et
+  corriger sa cause racine uniquement si elle est justifiée par la méthode
+  3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
+- Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
+  sur le corpus complet avec `bin/official-test-report`.
+- Résultat : l'export BBS renseigne `surface_habitable=2,5 m²` pour une
+  installation ECS qui doit décrire les `1 203 m²` de l'immeuble selon le XSD,
+  puis publie des consommations logement incompatibles avec sa propre
+  consommation intermédiaire, `rdim` et `cle_repartition_ecs`. Le rapport sait
+  désormais cibler un chemin exact et qualifie les deux sorties ECS comme non
+  reproductibles, sans contaminer les intermédiaires homonymes.
+- Variante réglementaire `Becs_appartement/Becs_immeuble` rejetée en A/B : elle
+  ramène l'écart ECS conventionnel de la cible de 12,30 % à 0,55 %, mais
+  dégrade le corpus complet de `11 152` à `11 392` écarts, faute des données
+  d'immeuble cachées nécessaires au calcul des clés éditeur.
+- A/B isolé sur 355 cas : compteurs bruts inchangés (`11 152` hors tolérance,
+  `102` manquants, `1 837` supplémentaires, `38` chaînes), références suspectes
+  `3 829 → 3 835`, plafond atteignable inchangé à `91,82 %`. Suite complète :
+  1 242 tests, 2 426 assertions.
+
 ---
 
 ## Validation par phase (gate)

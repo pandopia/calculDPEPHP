@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Ventilation;
 
+use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -54,6 +55,7 @@ final class HventCalculator implements CalculatorInterface
 
         $typeId = $accessor->getIntOrNull('./enum_type_ventilation_id', $entree);
         $sh = $accessor->getFloatOrNull('./surface_ventile', $entree);
+        $sh = GeneratedApartment::calculationSurface($node, $accessor, $sh);
         if ($typeId === null || $sh === null) {
             return;
         }
