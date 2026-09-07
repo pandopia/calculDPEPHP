@@ -454,12 +454,17 @@ final class CombustionCalculator implements CalculatorInterface
             return null;
         }
         $xpath = new \DOMXPath($doc);
-        $matches = $xpath->query(
-            sprintf(
-                '//generateur_chauffage[donnee_entree/reference="%s"]',
-                addslashes($refMixte)
-            )
-        );
+        $matches = $xpath->query(sprintf(
+            '//generateur_chauffage[donnee_entree/reference="%s"]',
+            addslashes($refMixte),
+        ));
+        if (($matches === false || $matches->length === 0)
+            && $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id') === 33) {
+            $matches = $xpath->query(sprintf(
+                '//generateur_chauffage[donnee_entree/reference_generateur_mixte="%s"]',
+                addslashes($refMixte),
+            ));
+        }
         if ($matches === false || $matches->length === 0) {
             return null;
         }

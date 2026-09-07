@@ -1578,12 +1578,28 @@ l'observation des 73 cas où `pn` diverge :
 
 ### TASK-K19 — Correction réglementaire du DPE 2659E2268156G
 
-- [~AI] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- [x] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
 - Identifier le premier intermédiaire divergent du DPE `2659E2268156G` et
   corriger sa cause racine uniquement si elle est justifiée par la méthode
   3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
 - Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
   sur le corpus complet avec `bin/official-test-report`.
+- Fait : en mode mixte 33, le besoin de l'installation individuelle
+  échantillonnée conserve l'échelle immeuble avant la division par `rdim` ; la
+  double proratisation par `surface_chauffee / Sh` est supprimée. Le besoin
+  chauffage intermédiaire passe de 2 524 à 72 315,6 Wh, conforme à la
+  référence et au §17.2.2.
+- Fait : le caractère « mixte » du DPE ne transforme plus une installation
+  individuelle en chaudière collective. La puissance est dimensionnée sur le
+  logement moyen et `Pdim = max(Pch, Pecs)` sélectionne le palier 24 kW prévu
+  par le §13.2.2.4.
+- Fait : les deux formes de liaison XML d'un générateur mixte sont gérées :
+  pointeur historique vers `reference` en priorité, puis clé commune
+  `reference_generateur_mixte` pour le mode 33. Le rendement et les
+  consommations ECS de la cible deviennent conformes.
+- A/B strict isolé sur 352 cas : `out_of_tolerance` 10 966 → 10 955,
+  `missing` 82 → 82, `extra` 1 813 → 1 813, `string_mismatch` 35 → 35. Seul
+  `2659E2268156G` change : 88 → 77 écarts hors tolérance.
 
 ---
 

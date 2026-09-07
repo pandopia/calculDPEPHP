@@ -146,10 +146,15 @@ final class InstallationClassique implements CalculatorInterface
         }
 
         // ── 6. Besoin de l'installation (fraction surfacique) ─────────────────
-        // §17.2.2 : dans un DPE généré depuis l'immeuble, une installation
-        // collective conserve le besoin total de l'immeuble. La répartition à
-        // l'appartement intervient seulement dans les agrégateurs de sortie.
-        $surfaceRatio = GeneratedApartment::isGenerated($logementNode, $accessor) && $typeInstall === 2
+        // §17.2.2 : dans un DPE généré depuis l'immeuble, les systèmes
+        // proviennent du calcul immeuble. L'installation conserve donc le
+        // besoin total de l'immeuble. C'est également le cas du composant
+        // individuel échantillonné du mode mixte 33, représenté avec rdim > 1.
+        // La division par rdim produit ensuite le besoin du logement moyen ;
+        // appliquer en plus surface_chauffee / Sh ferait une double
+        // proratisation.
+        $surfaceRatio = GeneratedApartment::isGenerated($logementNode, $accessor)
+            && ($typeInstall === 2 || $methodeLog === 33)
             ? 1.0
             : ($shImmeuble > 0.0 ? $de / $shImmeuble : 1.0);
         $besoinInstall    = $bchImmeuble    * $surfaceRatio;
