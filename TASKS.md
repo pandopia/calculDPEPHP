@@ -1601,6 +1601,15 @@ l'observation des 73 cas où `pn` diverge :
   `missing` 82 → 82, `extra` 1 813 → 1 813, `string_mismatch` 35 → 35. Seul
   `2659E2268156G` change : 88 → 77 écarts hors tolérance.
 
+### TASK-K20 — Correction réglementaire du DPE 2659E2277989L
+
+- [~AI] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- Identifier le premier intermédiaire divergent du DPE `2659E2277989L` et
+  corriger sa cause racine uniquement si elle est justifiée par la méthode
+  3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
+- Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
+  sur le corpus complet avec `bin/official-test-report`.
+
 ---
 
 ## Validation par phase (gate)
