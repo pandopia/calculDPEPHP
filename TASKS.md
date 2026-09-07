@@ -1642,12 +1642,26 @@ l'observation des 73 cas où `pn` diverge :
 
 ### TASK-K22 — Correction réglementaire du DPE 2659E2268184I
 
-- [~AI] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- [x] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
 - Identifier le premier intermédiaire divergent du DPE `2659E2268184I` et
   corriger sa cause racine uniquement si elle est justifiée par la méthode
   3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
 - Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
   sur le corpus complet avec `bin/official-test-report`.
+- Résultat : l'export BBS renseigne `surface_habitable=2,5 m²` pour une
+  installation ECS qui doit décrire les `1 203 m²` de l'immeuble selon le XSD,
+  puis publie des consommations logement incompatibles avec sa propre
+  consommation intermédiaire, `rdim` et `cle_repartition_ecs`. Le rapport sait
+  désormais cibler un chemin exact et qualifie les deux sorties ECS comme non
+  reproductibles, sans contaminer les intermédiaires homonymes.
+- Variante réglementaire `Becs_appartement/Becs_immeuble` rejetée en A/B : elle
+  ramène l'écart ECS conventionnel de la cible de 12,30 % à 0,55 %, mais
+  dégrade le corpus complet de `11 152` à `11 392` écarts, faute des données
+  d'immeuble cachées nécessaires au calcul des clés éditeur.
+- A/B isolé sur 355 cas : compteurs bruts inchangés (`11 152` hors tolérance,
+  `102` manquants, `1 837` supplémentaires, `38` chaînes), références suspectes
+  `3 829 → 3 835`, plafond atteignable inchangé à `91,82 %`. Suite complète :
+  1 242 tests, 2 426 assertions.
 
 ---
 

@@ -97,6 +97,7 @@ final class ReferenceDefects
             $suspects += self::rendementStockageDuScenarioDepensier($referenceDoc);
             $suspects += self::qp0SerialiseEnKilowatts($referenceDoc);
             $suspects += self::stockageIntegreSerialiseCommeSepare($referenceDoc);
+            $suspects += self::repartitionEcsAppartementNonReproductible($expected, $referenceDoc);
         }
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
@@ -226,6 +227,94 @@ final class ReferenceDefects
             foreach (['rendement_generation', 'rendement_stockage', 'rendement_generation_stockage'] as $tag) {
                 $suspects[$tag . $suffixe] = $motif;
             }
+        }
+
+        return $suspects;
+    }
+
+    /**
+     * Sortie ECS d'un appartement généré incompatible avec les données publiées.
+     *
+     * §17.2.2.3.1 impose Cecs_ap = Cecs_immeuble × Becs_ap/Becs. Le XSD
+     * documente `cle_repartition_ecs` comme la clé permettant précisément de
+     * passer de la consommation bâtiment à celle du logement, et impose dans
+     * ce cas que `surface_habitable` décrive l'installation à l'immeuble.
+     *
+     * Certains exports publient pourtant une surface d'installation ramenée à
+     * quelques m² et une sortie ECS incompatible avec leur consommation
+     * intermédiaire, `rdim` et leur clé. La vraie consommation bâtiment ou la
+     * distribution complète des logements n'étant pas dans le XML, la sortie
+     * ne peut pas être reconstruite sans données cachées de l'éditeur.
+     *
+     * @param array<string, string> $expected
+     * @return array<string, string>
+     */
+    private static function repartitionEcsAppartementNonReproductible(array $expected, DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+        $mode = (int)$xpath->evaluate('string(//logement/caracteristique_generale/enum_methode_application_dpe_log_id)');
+        if (!in_array($mode, [10, 11, 12, 13, 33, 34, 38, 39, 40], true)) {
+            return [];
+        }
+
+        $surfaceImmeuble = (float)$xpath->evaluate('string(//logement/caracteristique_generale/surface_habitable_immeuble)');
+        if ($surfaceImmeuble <= 0.0) {
+            return [];
+        }
+
+        $installations = $xpath->query('//logement/installation_ecs_collection/installation_ecs');
+        if ($installations === false || $installations->length === 0) {
+            return [];
+        }
+
+        $reconstruit = ['conso_ecs' => 0.0, 'conso_ecs_depensier' => 0.0];
+        $surfaceIncompatible = false;
+        foreach ($installations as $installation) {
+            if (!$installation instanceof DOMElement) {
+                continue;
+            }
+            $methode = (int)$xpath->evaluate('string(./donnee_entree/enum_methode_calcul_conso_id)', $installation);
+            $type = (int)$xpath->evaluate('string(./donnee_entree/enum_type_installation_id)', $installation);
+            if ($methode !== 1 || $type !== 1) {
+                return [];
+            }
+            $surface = (float)$xpath->evaluate('string(./donnee_entree/surface_habitable)', $installation);
+            $rdim = (float)$xpath->evaluate('string(./donnee_entree/rdim)', $installation);
+            $cle = (float)$xpath->evaluate('string(./donnee_entree/cle_repartition_ecs)', $installation);
+            if (min($surface, $rdim, $cle) <= 0.0) {
+                return [];
+            }
+            $surfaceIncompatible = $surfaceIncompatible
+                || abs($surface - $surfaceImmeuble) / $surfaceImmeuble > 0.01;
+            foreach (array_keys($reconstruit) as $tag) {
+                $conso = (float)$xpath->evaluate('string(./donnee_intermediaire/' . $tag . ')', $installation);
+                if ($conso <= 0.0) {
+                    return [];
+                }
+                $reconstruit[$tag] += $conso * $rdim * $cle;
+            }
+        }
+        if (!$surfaceIncompatible) {
+            return [];
+        }
+
+        $motif = 'la sortie ECS de l’appartement généré n’est pas reproductible depuis le XML : '
+            . 'surface_habitable ne décrit pas l’installation à l’immeuble comme l’impose le XSD, '
+            . 'et consommation intermédiaire × rdim × cle_repartition_ecs ne retrouve pas la sortie';
+        $suspects = [];
+        foreach ($reconstruit as $tag => $valeurReconstituee) {
+            $path = self::EF_PREFIX . $tag;
+            $publie = self::num($expected, $path);
+            if ($publie === null || $publie <= 0.0
+                || abs($publie - $valeurReconstituee) / $publie <= 0.01) {
+                continue;
+            }
+            $suspects[$path] = sprintf(
+                '%s (%.1f kWh publiés contre %.1f kWh reconstitués)',
+                $motif,
+                $publie,
+                $valeurReconstituee,
+            );
         }
 
         return $suspects;

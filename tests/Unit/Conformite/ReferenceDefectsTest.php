@@ -243,6 +243,64 @@ XML);
         self::assertArrayHasKey('rendement_generation_stockage', $suspects);
     }
 
+    public function testRepartitionEcsAppartementGenereNonReproductibleEstSignalee(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement>
+  <caracteristique_generale>
+    <enum_methode_application_dpe_log_id>33</enum_methode_application_dpe_log_id>
+    <surface_habitable_immeuble>1203</surface_habitable_immeuble>
+  </caracteristique_generale>
+  <installation_ecs_collection><installation_ecs>
+    <donnee_entree>
+      <enum_methode_calcul_conso_id>1</enum_methode_calcul_conso_id>
+      <enum_type_installation_id>1</enum_type_installation_id>
+      <surface_habitable>2.5</surface_habitable><rdim>20</rdim>
+      <cle_repartition_ecs>0.0415628</cle_repartition_ecs>
+    </donnee_entree>
+    <donnee_intermediaire><conso_ecs>1604.57</conso_ecs><conso_ecs_depensier>2168.73</conso_ecs_depensier></donnee_intermediaire>
+  </installation_ecs></installation_ecs_collection>
+</logement></dpe>
+XML);
+
+        $suspects = ReferenceDefects::detect([
+            self::EF . 'conso_ecs' => '1520.9',
+            self::EF . 'conso_ecs_depensier' => '2144.5',
+        ], $doc);
+
+        self::assertArrayHasKey(self::EF . 'conso_ecs', $suspects);
+        self::assertArrayHasKey(self::EF . 'conso_ecs_depensier', $suspects);
+        self::assertStringContainsString('1333.8', $suspects[self::EF . 'conso_ecs']);
+    }
+
+    public function testRepartitionEcsCoherenteNestPasSignalee(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement>
+  <caracteristique_generale>
+    <enum_methode_application_dpe_log_id>33</enum_methode_application_dpe_log_id>
+    <surface_habitable_immeuble>1203</surface_habitable_immeuble>
+  </caracteristique_generale>
+  <installation_ecs_collection><installation_ecs>
+    <donnee_entree>
+      <enum_methode_calcul_conso_id>1</enum_methode_calcul_conso_id>
+      <enum_type_installation_id>1</enum_type_installation_id>
+      <surface_habitable>1203</surface_habitable><rdim>20</rdim>
+      <cle_repartition_ecs>0.0415628</cle_repartition_ecs>
+    </donnee_entree>
+    <donnee_intermediaire><conso_ecs>1604.57</conso_ecs><conso_ecs_depensier>2168.73</conso_ecs_depensier></donnee_intermediaire>
+  </installation_ecs></installation_ecs_collection>
+</logement></dpe>
+XML);
+
+        self::assertSame([], ReferenceDefects::detect([
+            self::EF . 'conso_ecs' => '1520.9',
+            self::EF . 'conso_ecs_depensier' => '2144.5',
+        ], $doc));
+    }
+
     /**
      * @param list<string> $rendements
      * @param list<string>|null $volumes

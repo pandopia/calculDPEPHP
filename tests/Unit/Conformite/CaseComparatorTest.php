@@ -97,4 +97,21 @@ final class CaseComparatorTest extends TestCase
         self::assertSame('reference_illisible', $result['status']);
         self::assertNotNull($result['error']);
     }
+
+    public function testSuspicionPeutViserUnCheminExact(): void
+    {
+        $method = new \ReflectionMethod(CaseComparator::class, 'suspectFor');
+        $path = 'dpe/logement/sortie/ef_conso/conso_ecs';
+
+        self::assertSame('motif ciblé', $method->invoke(
+            $this->comparator(),
+            [$path => 'motif ciblé'],
+            ['path' => $path, 'tag' => 'conso_ecs'],
+        ));
+        self::assertNull($method->invoke(
+            $this->comparator(),
+            [$path => 'motif ciblé'],
+            ['path' => 'dpe/logement/installation_ecs/conso_ecs', 'tag' => 'conso_ecs'],
+        ));
+    }
 }

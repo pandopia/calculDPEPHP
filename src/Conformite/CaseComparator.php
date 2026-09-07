@@ -122,8 +122,8 @@ final class CaseComparator
     /**
      * Motif de suspicion applicable à un delta, s'il y en a un.
      *
-     * Une règle vise soit une balise entière (`cout_ch_depensier`), soit une
-     * occurrence précise dans une collection
+     * Une règle vise soit un chemin exact, soit une balise entière
+     * (`cout_ch_depensier`), soit une occurrence précise dans une collection
      * (`rendement_stockage@3` pour la troisième `installation_ecs`).
      *
      * @param array<string, string> $suspects
@@ -131,12 +131,17 @@ final class CaseComparator
      */
     private function suspectFor(array $suspects, array $delta): ?string
     {
+        $path = (string) $delta['path'];
+        if (isset($suspects[$path])) {
+            return $suspects[$path];
+        }
+
         $tag = (string) $delta['tag'];
         if (isset($suspects[$tag])) {
             return $suspects[$tag];
         }
 
-        if (preg_match('/installation_ecs\[(\d+)\]/', (string) $delta['path'], $m) === 1) {
+        if (preg_match('/installation_ecs\[(\d+)\]/', $path, $m) === 1) {
             return $suspects[$tag . '@' . $m[1]] ?? null;
         }
 
