@@ -1704,6 +1704,15 @@ l'observation des 73 cas où `pn` diverge :
   39 → 39 ; cinq DPE s'améliorent. Suite complète : 1 245 tests,
   2 433 assertions.
 
+### TASK-K25 — Correction réglementaire du DPE 2238E1985046L
+
+- [~AI] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- Identifier le premier intermédiaire divergent du DPE `2238E1985046L` et
+  corriger sa cause racine uniquement si elle est justifiée par la méthode
+  3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
+- Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
+  sur le corpus complet avec `bin/official-test-report`.
+
 ---
 
 ## Validation par phase (gate)
