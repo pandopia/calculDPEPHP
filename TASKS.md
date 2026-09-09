@@ -1665,12 +1665,22 @@ l'observation des 73 cas où `pn` diverge :
 
 ### TASK-K23 — Correction réglementaire du DPE 2662E2292441K
 
-- [~AI] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- [x] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
 - Identifier le premier intermédiaire divergent du DPE `2662E2292441K` et
   corriger sa cause racine uniquement si elle est justifiée par la méthode
   3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
 - Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
   sur le corpus complet avec `bin/official-test-report`.
+- Résultat : `paroi_lourde` est aussi un indicateur d'inertie et ne suffit pas
+  à neutraliser un pont thermique. Lorsque les caractéristiques constructives
+  décrivent un mur en brique pleine d'au moins 10,5 cm, il est lourd selon le
+  §7.3 p.54 même si ce drapeau vaut zéro (notamment avec une ITI). Les huit
+  liaisons plancher béton / mur en brique pleine retrouvent ainsi leur valeur
+  tabulée `K=0,31` sans réactiver les liaisons réellement légères.
+- La cible passe de 74 à 15 écarts hors tolérance et de 71,48 % à 92,78 % de
+  conformité. A/B isolé sur 356 cas : hors tolérance `11 226 → 11 167`,
+  `missing` 107 → 107, `extra` 1 837 → 1 837, chaînes 38 → 38 ; seul le DPE
+  ciblé change. Suite complète : 1 244 tests, 2 430 assertions.
 
 ---
 

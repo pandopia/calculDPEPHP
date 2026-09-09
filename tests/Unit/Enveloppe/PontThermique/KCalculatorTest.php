@@ -178,6 +178,60 @@ XML);
         self::assertSame('0.71', $document->getElementsByTagName('k')->item(0)?->textContent);
     }
 
+    public function testKeepsLowFloorJunctionForStructurallyHeavyFullBrickWall(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<dpe version="0.1.0"><logement><enveloppe>
+  <plancher_bas><donnee_entree><reference>pb</reference><paroi_lourde>0</paroi_lourde><enum_type_plancher_bas_id>9</enum_type_plancher_bas_id></donnee_entree></plancher_bas>
+  <mur><donnee_entree><reference>mur</reference><paroi_lourde>0</paroi_lourde><enum_materiaux_structure_mur_id>8</enum_materiaux_structure_mur_id><epaisseur_structure>34</epaisseur_structure></donnee_entree></mur>
+  <pont_thermique><donnee_entree>
+    <reference_1>pb</reference_1><reference_2>mur</reference_2>
+    <tv_pont_thermique_id>5</tv_pont_thermique_id>
+    <enum_methode_saisie_pont_thermique_id>1</enum_methode_saisie_pont_thermique_id>
+    <enum_type_liaison_id>1</enum_type_liaison_id>
+  </donnee_entree></pont_thermique>
+</enveloppe></logement></dpe>
+XML);
+        $context = new CalculationContext(
+            document: $document,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        );
+        $pont = $document->getElementsByTagName('pont_thermique')->item(0);
+        self::assertInstanceOf(DOMElement::class, $pont);
+
+        (new KCalculator())->calculate($pont, $context);
+
+        self::assertSame('0.31', $document->getElementsByTagName('k')->item(0)?->textContent);
+    }
+
+    public function testStillNeglectsFullBrickJunctionWithLightweightFloor(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<dpe version="0.1.0"><logement><enveloppe>
+  <plancher_bas><donnee_entree><reference>pb</reference><paroi_lourde>0</paroi_lourde><enum_type_plancher_bas_id>10</enum_type_plancher_bas_id></donnee_entree></plancher_bas>
+  <mur><donnee_entree><reference>mur</reference><paroi_lourde>0</paroi_lourde><enum_materiaux_structure_mur_id>8</enum_materiaux_structure_mur_id><epaisseur_structure>34</epaisseur_structure></donnee_entree></mur>
+  <pont_thermique><donnee_entree>
+    <reference_1>pb</reference_1><reference_2>mur</reference_2>
+    <tv_pont_thermique_id>5</tv_pont_thermique_id>
+    <enum_methode_saisie_pont_thermique_id>1</enum_methode_saisie_pont_thermique_id>
+    <enum_type_liaison_id>1</enum_type_liaison_id>
+  </donnee_entree></pont_thermique>
+</enveloppe></logement></dpe>
+XML);
+        $context = new CalculationContext(
+            document: $document,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        );
+        $pont = $document->getElementsByTagName('pont_thermique')->item(0);
+        self::assertInstanceOf(DOMElement::class, $pont);
+
+        (new KCalculator())->calculate($pont, $context);
+
+        self::assertSame('0', $document->getElementsByTagName('k')->item(0)?->textContent);
+    }
+
     public function testKeepsHighFloorJunctionBetweenLightweightParois(): void
     {
         $document = new DOMDocument();

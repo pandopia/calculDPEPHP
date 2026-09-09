@@ -29,6 +29,7 @@ use RuntimeException;
  * @spec-pages 32-37
  * @spec-source resources/specsplitted/03-enveloppe-deperditions/04-ponts-thermiques/00-overview.md
  * @xml-input  pont_thermique.donnee_entree.{enum_type_liaison_id, reference_1, reference_2, presence_retour_isolation, enum_type_pose_id, largeur_dormant, k_saisi}
+ * @xml-input  enveloppe.{mur,plancher_bas}.donnee_entree.{paroi_lourde, enum_materiaux_structure_mur_id, epaisseur_structure, enum_type_plancher_bas_id}
  * @xml-output pont_thermique.donnee_intermediaire.k
  * @tables tv_pont_thermique
  */
@@ -181,6 +182,8 @@ final class KCalculator implements CalculatorInterface
 
         $xpath = new DOMXPath($document);
         $heavyFlags = [];
+        $fullBrickWall = false;
+        $concreteSlab = false;
         foreach (['reference_1', 'reference_2'] as $field) {
             $reference = $accessor->getStringOrNull('./' . $field, $entree);
             if ($reference === null) {
@@ -191,10 +194,66 @@ final class KCalculator implements CalculatorInterface
             if ($paroi === null) {
                 return false;
             }
+            // `paroi_lourde` sert aussi au calcul d'inertie et peut valoir 0
+            // lorsqu'une maçonnerie lourde est isolée par l'intérieur. Pour
+            // l'existence du pont thermique, les natures constructives directes
+            // priment : brique pleine épaisse et dalle béton forment deux
+            // parois lourdes malgré ces indicateurs d'inertie nuls.
+            $fullBrickWall = $fullBrickWall
+                || ($paroi->nodeName === 'mur' && $this->isFullBrickWallHeavy($paroi));
+            $concreteSlab = $concreteSlab
+                || ($paroi->nodeName === 'plancher_bas' && $this->isConcreteSlab($paroi));
             $heavyFlags[] = $this->readHeavyFlagOfParoi($paroi);
         }
 
-        return $heavyFlags === [0, 0];
+        return $heavyFlags === [0, 0] && !($fullBrickWall && $concreteSlab);
+    }
+
+    /**
+     * §7.3 p.54 : un mur en brique pleine ou perforée d'au moins 10,5 cm est lourd.
+     *
+     * Les enums 8 et 9 du XSD désignent respectivement les murs en briques
+     * pleines simples et doubles avec lame d'air.
+     *
+     * @spec-formula F-7.3-paroi-verticale-lourde-brique
+     */
+    private function isFullBrickWallHeavy(DOMElement $wall): bool
+    {
+        $entry = $wall->getElementsByTagName('donnee_entree')->item(0);
+        if (!$entry instanceof DOMElement) {
+            return false;
+        }
+
+        $material = null;
+        $thickness = null;
+        foreach ($entry->childNodes as $child) {
+            if (!$child instanceof DOMElement) {
+                continue;
+            }
+            if ($child->nodeName === 'enum_materiaux_structure_mur_id' && is_numeric(trim($child->textContent))) {
+                $material = (int)trim($child->textContent);
+            } elseif ($child->nodeName === 'epaisseur_structure' && is_numeric(trim($child->textContent))) {
+                $thickness = (float)trim($child->textContent);
+            }
+        }
+
+        return in_array($material, [8, 9], true) && $thickness !== null && $thickness >= 10.5;
+    }
+
+    /** XSD : enum_type_plancher_bas_id=9 désigne une dalle béton. */
+    private function isConcreteSlab(DOMElement $floor): bool
+    {
+        $entry = $floor->getElementsByTagName('donnee_entree')->item(0);
+        if (!$entry instanceof DOMElement) {
+            return false;
+        }
+        foreach ($entry->childNodes as $child) {
+            if ($child instanceof DOMElement && $child->nodeName === 'enum_type_plancher_bas_id') {
+                return is_numeric(trim($child->textContent)) && (int)trim($child->textContent) === 9;
+            }
+        }
+
+        return false;
     }
 
     private function readHeavyFlagOfParoi(DOMElement $paroi): ?int
