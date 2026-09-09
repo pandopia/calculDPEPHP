@@ -24,7 +24,7 @@ Le CLI cible : `bin/calcul-dpe input.xml` → enrichit le XML avec les balises `
 | `bin/fetch-official-corpus` | Construit un jeu de cas stratifié depuis l'open data ADEME, avec manifeste de provenance. |
 | `resources/XML/official/` | Jeux de tests documentés (manifestes suivis en git, XML non versionnés). |
 | `src/Conformite/` | Outillage de mesure d'écart (extraction, familles, tolérances, rapport). |
-| `TASKS.md` | Liste des tâches à faire, organisées en phases A→G, avec checkboxes. |
+| `TASKS.md` | Liste concise des seules tâches non terminées ou différées. |
 
 ## Workflow de calcul
 
@@ -91,14 +91,21 @@ return [
 
 ## Workflow multi-IA (TASKS.md)
 
-Plusieurs agents IA travaillent en parallèle sur ce repo. Pour éviter les collisions :
+`TASKS.md` est une file d'attente concise, pas un historique. Pour limiter le
+contexte consommé à chaque lecture :
 
-1. **Avant de prendre une tâche** dans `TASKS.md`, change la checkbox de `[ ]` à `[~ABC]` (ABC = tes initiales) et commit ce changement seul.
-2. **Une seule tâche `[~]` à la fois par agent.**
-3. **Ne touche jamais une tâche `[~XYZ]` qui n'est pas la tienne** — même pour "améliorer".
-4. Quand tu termines : passe à `[x]`, commit avec message `[TASK-xxx] description courte`.
-5. Si tu découvres qu'une tâche est mal spécifiée : ajoute un commentaire `> NOTE-ABC: …` sous la tâche, et ouvre une nouvelle tâche à la fin du fichier plutôt que de modifier la spec d'une tâche existante.
-6. **Ne dépasse jamais le scope d'une tâche.** Si tu vois un problème ailleurs, crée une tâche `TASK-Xnn` à la fin, ne corrige pas en passant.
+1. **N'y ajoute pas le travail demandé par l'utilisateur que tu réalises dans
+   la foulée.** Travaille directement, teste et commit sans créer de TASK.
+2. Ajoute une TASK uniquement pour un travail non terminé, différé ou découvert
+   hors scope qui devra être repris plus tard.
+3. Avant de reprendre une TASK existante : `[ ]` → `[~ABC]` (initiales), puis
+   commit cette réservation seule. Une seule tâche `[~]` par agent à la fois.
+4. Ne touche jamais une tâche `[~XYZ]` appartenant à un autre agent.
+5. Quand une TASK existante est terminée, **supprime entièrement son bloc de
+   `TASKS.md`** au lieu de la conserver en `[x]`. Le commit et l'historique Git
+   assurent la traçabilité du travail accompli.
+6. Si le travail courant révèle un problème hors scope, ajoute une nouvelle
+   tâche concise seulement si tu ne le corriges pas immédiatement.
 
 ## Architecture PHP (résumé)
 
