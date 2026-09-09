@@ -1663,6 +1663,15 @@ l'observation des 73 cas où `pn` diverge :
   `3 829 → 3 835`, plafond atteignable inchangé à `91,82 %`. Suite complète :
   1 242 tests, 2 426 assertions.
 
+### TASK-K23 — Correction réglementaire du DPE 2662E2292441K
+
+- [~AI] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- Identifier le premier intermédiaire divergent du DPE `2662E2292441K` et
+  corriger sa cause racine uniquement si elle est justifiée par la méthode
+  3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
+- Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
+  sur le corpus complet avec `bin/official-test-report`.
+
 ---
 
 ## Validation par phase (gate)
