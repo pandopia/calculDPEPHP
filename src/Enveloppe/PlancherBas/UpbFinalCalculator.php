@@ -16,7 +16,9 @@ use RuntimeException;
  * Pour les planchers donnant sur extérieur ou local non chauffé (hors sous-sol),
  * Upb_final = Upb (le plancher est traité comme une paroi déperditive classique).
  *
- * Pour les planchers sur **vide sanitaire** (adj=3), **sous-sol non chauffé** (adj=6),
+ * Si le coefficient Ue calculé est fourni mais que sa reconstruction est impossible
+ * faute de surface ou de périmètre Ue, la valeur publiée est utilisée.
+ * Sinon, pour les planchers sur **vide sanitaire** (adj=3), **sous-sol non chauffé** (adj=6),
  * **terre-plein** (adj=5) ou **paroi enterrée** (adj=2), un coefficient Ue est calculé
  * via les tableaux §3.2.2.1 (p.18-19) en fonction de di.upb (Uiso) et 2S/P.
  *
@@ -30,7 +32,7 @@ use RuntimeException;
  * @spec-section 3.2.2.1
  * @spec-pages 18-19
  * @spec-source resources/specsplitted/03-enveloppe-deperditions/02-parois-opaques/02-upb/00-calcul.md
- * @xml-input  plancher_bas.donnee_entree.{enum_type_adjacence_id, surface_ue, perimetre_ue} + donnee_intermediaire.upb
+ * @xml-input  plancher_bas.donnee_entree.{enum_type_adjacence_id, calcul_ue, ue, surface_ue, perimetre_ue} + donnee_intermediaire.upb
  * @xml-output plancher_bas.donnee_intermediaire.upb_final
  * @depends-on \CalculDpePHP\Enveloppe\PlancherBas\UpbCalculator
  * @tables tv_ue_vide_sanitaire, tv_ue_terre_plein
@@ -69,7 +71,18 @@ final class UpbFinalCalculator implements CalculatorInterface
 
         $adjacence = $accessor->getIntOrNull('./enum_type_adjacence_id', $entree);
 
-        $upbFinal = match ($adjacence) {
+        // Le XSD ADEME définit `ue` comme le « coefficient remplaçant Upb ».
+        // Il constitue le seul résultat reproductible lorsque les données de
+        // géométrie nécessaires à la table ne sont pas toutes publiées. La spec
+        // précise en outre que le Ue d'un plancher d'immeuble est calculé à
+        // l'immeuble, y compris pour un DPE réalisé sur un seul appartement.
+        $geometryIncomplete = $accessor->getFloatOrNull('./surface_ue', $entree) === null
+            || $accessor->getFloatOrNull('./perimetre_ue', $entree) === null;
+        $ueSaisi = $geometryIncomplete && $accessor->getIntOrNull('./calcul_ue', $entree) === 1
+            ? $accessor->getFloatOrNull('./ue', $entree)
+            : null;
+
+        $upbFinal = $ueSaisi ?? match ($adjacence) {
             3, 6    => $this->ueViaTableau('enveloppe/tv_ue_vide_sanitaire', $upb, $entree, $accessor, $context),
             2, 5    => $this->ueTerrePlein($upb, $entree, $accessor, $context),
             default => $upb,

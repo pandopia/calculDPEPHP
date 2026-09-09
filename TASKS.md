@@ -1706,12 +1706,27 @@ l'observation des 73 cas où `pn` diverge :
 
 ### TASK-K25 — Correction réglementaire du DPE 2238E1985046L
 
-- [~AI] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- [x] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
 - Identifier le premier intermédiaire divergent du DPE `2238E1985046L` et
   corriger sa cause racine uniquement si elle est justifiée par la méthode
   3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
 - Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
   sur le corpus complet avec `bin/official-test-report`.
+- Résultat : ce DPE d'appartement publie `calcul_ue=1`, `ue=0,17333` et le
+  périmètre du terre-plein, mais omet `surface_ue`. Le moteur ne pouvait donc
+  pas reconstruire le rapport `2S/P` et retombait à tort sur `Upb=0,23`. Le
+  XSD définit pourtant `ue` comme le coefficient remplaçant Upb et le §3.2.2.1
+  p.18 précise que ce coefficient est calculé à l'échelle de l'immeuble, même
+  pour un DPE d'appartement. La valeur publiée sert désormais de repli lorsque
+  la géométrie Ue est incomplète ; si elle est complète, le calcul tabulé reste
+  inchangé.
+- La cible passe de 114 à 112 écarts hors tolérance et de 55,77 % à 56,54 %
+  de conformité. Les grands écarts restants (notamment besoins et apports
+  sérialisés ×1 000) proviennent du moteur de référence
+  `3cl_tribu_1.4.24.0` et ne sont pas reproduits. A/B isolé sur 358 cas : hors
+  tolérance `11 264 → 11 262`, `missing` 107 → 107, `extra` 1 838 → 1 838,
+  chaînes 39 → 39 ; seul le DPE ciblé change. Suite complète : 1 247 tests,
+  2 439 assertions.
 
 ---
 
