@@ -1684,12 +1684,25 @@ l'observation des 73 cas où `pn` diverge :
 
 ### TASK-K24 — Correction réglementaire du DPE 2662E2297364T
 
-- [~AI] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
+- [x] Owner: AI  | Phase: K  | Estimation: 3h  | Priorité: haute
 - Identifier le premier intermédiaire divergent du DPE `2662E2297364T` et
   corriger sa cause racine uniquement si elle est justifiée par la méthode
   3CL, le XSD ADEME ou une incohérence démontrée de l'implémentation.
 - Ajouter un test unitaire de non-régression et mesurer le gain en A/B isolé
   sur le corpus complet avec `bin/official-test-report`.
+- Résultat : la stratégie §9.3 moyennait les caractéristiques des émetteurs
+  principal et d'appoint avant de calculer les consommations des deux
+  générateurs. Or la spec p.62-63 définit `Cch1` et `Cch2` avec leurs propres
+  `INTi` et `Ichi`, et distingue explicitement l'émetteur associé au chauffage
+  principal de celui du poêle ou de l'insert. Chaque générateur utilise
+  désormais l'émetteur portant le même `enum_lien_generateur_emetteur_id`, avec
+  repli sur la moyenne uniquement lorsque ce lien n'est pas publié.
+- La cible passe de 55 à 39 écarts hors tolérance et de 79,18 % à 85,13 % de
+  conformité ; ses consommations conventionnelles gaz et bois retrouvent la
+  référence à moins de 0,000 02 %. A/B isolé sur 357 cas : hors tolérance
+  `11 222 → 11 150`, `missing` 107 → 107, `extra` 1 837 → 1 837, chaînes
+  39 → 39 ; cinq DPE s'améliorent. Suite complète : 1 245 tests,
+  2 433 assertions.
 
 ---
 

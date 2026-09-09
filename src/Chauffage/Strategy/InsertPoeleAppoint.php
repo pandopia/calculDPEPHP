@@ -21,8 +21,8 @@ use DOMElement;
  *
  * enum_cfg_installation_ch_id = 3 → 1 installation, 2 générateurs :
  *   installation/besoin_ch   = Bch (full)
- *   générateur 1 (principal): Cch1 = 0.75 × Bch × INT / (Rg1 × Re × Rd × Rr)
- *   générateur 2 (insert)   : Cch2 = 0.25 × Bch × INT / (Rg2 × Re × Rd × Rr)
+ *   générateur 1 (principal): Cch1 = 0.75 × Bch × INT1 / (Rg1 × Re1 × Rd1 × Rr1)
+ *   générateur 2 (insert)   : Cch2 = 0.25 × Bch × INT2 / (Rg2 × Re2 × Rd2 × Rr2)
  *   installation/conso_ch   = Cch1 + Cch2
  *
  * @spec-section 9.3
@@ -75,13 +75,6 @@ final class InsertPoeleAppoint implements CalculatorInterface
         $shImmeuble = $this->getShImmeuble($accessor, $node);
         $hsp        = $this->getHsp($accessor, $node);
         $g          = ($hsp * $shImmeuble) > 0.0 ? $gv / ($hsp * $shImmeuble) : 1.0;
-        $i0         = $this->weightedEmetteurFloat($accessor, $node, 'i0') ?? 1.0;
-        $int        = $i0 / (1.0 + 0.1 * ($g - 1.0));
-
-        $re = $this->weightedEmetteurFloat($accessor, $node, 'rendement_emission')    ?? 1.0;
-        $rd = $this->weightedEmetteurFloat($accessor, $node, 'rendement_distribution') ?? 1.0;
-        $rr = $this->weightedEmetteurFloat($accessor, $node, 'rendement_regulation')  ?? 1.0;
-
         // Each generator gets its own fraction of bch and its own rg
         $genCollection = $this->getChildByTag($node, 'generateur_chauffage_collection');
         $genPos        = 0;
@@ -96,6 +89,19 @@ final class InsertPoeleAppoint implements CalculatorInterface
                 $genPos++;
                 $factor = self::FACTORS[$genPos] ?? (1.0 / max(1, $genPos));
                 $rg     = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen) ?? 1.0;
+                $i0     = $this->linkedEmetteurFloat($accessor, $node, $gen, 'i0')
+                    ?? $this->weightedEmetteurFloat($accessor, $node, 'i0')
+                    ?? 1.0;
+                $re     = $this->linkedEmetteurFloat($accessor, $node, $gen, 'rendement_emission')
+                    ?? $this->weightedEmetteurFloat($accessor, $node, 'rendement_emission')
+                    ?? 1.0;
+                $rd     = $this->linkedEmetteurFloat($accessor, $node, $gen, 'rendement_distribution')
+                    ?? $this->weightedEmetteurFloat($accessor, $node, 'rendement_distribution')
+                    ?? 1.0;
+                $rr     = $this->linkedEmetteurFloat($accessor, $node, $gen, 'rendement_regulation')
+                    ?? $this->weightedEmetteurFloat($accessor, $node, 'rendement_regulation')
+                    ?? 1.0;
+                $int    = $i0 / (1.0 + 0.1 * ($g - 1.0));
                 $denom  = max(1e-9, $rg * $re * $rd * $rr);
 
                 $genConso    = $factor * $bch    * $int / $denom;
@@ -116,6 +122,41 @@ final class InsertPoeleAppoint implements CalculatorInterface
         $accessor->setChildValue($di, 'besoin_ch_depensier', $bchDep);
         $accessor->setChildValue($di, 'conso_ch',            $totalConso);
         $accessor->setChildValue($di, 'conso_ch_depensier',  $totalConsoDep);
+    }
+
+    /**
+     * §9.3 p.62-63 : INTi et Ichi sont ceux de l'installation alimentée par
+     * l'équipement i ; l'émetteur de base est associé au chauffage principal
+     * et l'émetteur d'appoint au poêle ou à l'insert.
+     *
+     * @spec-formula F-9.3-Cchi
+     */
+    private function linkedEmetteurFloat(
+        NodeAccessor $accessor,
+        DOMElement $installNode,
+        DOMElement $generator,
+        string $field,
+    ): ?float {
+        $linkId = $accessor->getIntOrNull('./donnee_entree/enum_lien_generateur_emetteur_id', $generator);
+        $collection = $this->getChildByTag($installNode, 'emetteur_chauffage_collection');
+        if ($linkId === null || $collection === null) {
+            return null;
+        }
+
+        foreach ($collection->childNodes as $emitter) {
+            if (!($emitter instanceof DOMElement) || $emitter->nodeName !== 'emetteur_chauffage') {
+                continue;
+            }
+            $emitterLinkId = $accessor->getIntOrNull(
+                './donnee_entree/enum_lien_generateur_emetteur_id',
+                $emitter,
+            );
+            if ($emitterLinkId === $linkId) {
+                return $accessor->getFloatOrNull("./donnee_intermediaire/{$field}", $emitter);
+            }
+        }
+
+        return null;
     }
 
     private function cfgId(DOMElement $node): ?int

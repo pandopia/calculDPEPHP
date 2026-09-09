@@ -196,6 +196,48 @@ XML;
         $this->assertEqualsWithDelta(1000.0, $this->besoinCh($node), self::TOL, 'installation/besoin_ch = full Bch');
     }
 
+    /** §9.3 p.62-63 — chaque générateur utilise INTi et Ichi de son émetteur associé. */
+    public function testInsertPoeleAppoint_usesEachGeneratorsLinkedEmitter(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale><hsp>2.5</hsp><surface_habitable_immeuble>200</surface_habitable_immeuble></caracteristique_generale>
+    <installation_chauffage_collection>
+        <installation_chauffage>
+            <donnee_entree><enum_cfg_installation_ch_id>3</enum_cfg_installation_ch_id></donnee_entree>
+            <emetteur_chauffage_collection>
+                <emetteur_chauffage>
+                    <donnee_entree><surface_chauffee>100</surface_chauffee><enum_lien_generateur_emetteur_id>1</enum_lien_generateur_emetteur_id></donnee_entree>
+                    <donnee_intermediaire><i0>0.9</i0><rendement_emission>0.95</rendement_emission><rendement_distribution>0.91</rendement_distribution><rendement_regulation>0.9</rendement_regulation></donnee_intermediaire>
+                </emetteur_chauffage>
+                <emetteur_chauffage>
+                    <donnee_entree><surface_chauffee>100</surface_chauffee><enum_lien_generateur_emetteur_id>2</enum_lien_generateur_emetteur_id></donnee_entree>
+                    <donnee_intermediaire><i0>0.86</i0><rendement_emission>0.95</rendement_emission><rendement_distribution>1</rendement_distribution><rendement_regulation>0.8</rendement_regulation></donnee_intermediaire>
+                </emetteur_chauffage>
+            </emetteur_chauffage_collection>
+            <generateur_chauffage_collection>
+                <generateur_chauffage><donnee_entree><enum_lien_generateur_emetteur_id>1</enum_lien_generateur_emetteur_id></donnee_entree><donnee_intermediaire><rendement_generation>1</rendement_generation></donnee_intermediaire></generateur_chauffage>
+                <generateur_chauffage><donnee_entree><enum_lien_generateur_emetteur_id>2</enum_lien_generateur_emetteur_id></donnee_entree><donnee_intermediaire><rendement_generation>0.5</rendement_generation></donnee_intermediaire></generateur_chauffage>
+            </generateur_chauffage_collection>
+        </installation_chauffage>
+    </installation_chauffage_collection>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $node = $doc->getElementsByTagName('installation_chauffage')->item(0);
+
+        (new InsertPoeleAppoint())->calculate($node, $this->makeContext($doc, 1000.0));
+
+        $generators = $doc->getElementsByTagName('generateur_chauffage');
+        $principal = (float)$generators->item(0)?->getElementsByTagName('conso_ch')->item(0)?->textContent;
+        $appoint = (float)$generators->item(1)?->getElementsByTagName('conso_ch')->item(0)?->textContent;
+        self::assertEqualsWithDelta(750.0 * 0.9 / (0.95 * 0.91 * 0.9), $principal, self::TOL);
+        self::assertEqualsWithDelta(250.0 * 0.86 / (0.5 * 0.95 * 0.8), $appoint, self::TOL);
+        self::assertEqualsWithDelta($principal + $appoint, $this->consoCh($node), self::TOL);
+    }
+
     /** cfg_id=3 does NOT apply to cfg_id=1 */
     public function testInsertPoeleAppoint_doesNotApplyToCfg1(): void
     {
