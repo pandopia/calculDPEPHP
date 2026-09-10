@@ -25,6 +25,15 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Vérifier la cohérence interne et le moteur éditeur avant toute modification :
   le moteur reste en kWh ; une référence en Wh doit être classée comme défaut de
   référence, jamais reproduite dans les calculs.
+- Cas mesuré : `2676E2269868T` (`<dpe version="8.0.2">`, moteur « Moteur DPE:
+  DPE_2025.11.1.0 ») publie `besoin_ecs`, `apport_interne_ch`,
+  `pertes_distribution_ecs_recup{,_depensier}` et `pertes_stockage_ecs_recup`
+  exactement ×1 000 par rapport à notre sortie, alors que le XSD documente ces
+  cinq balises en kWh — donc défaut de référence à déclarer dans
+  `ReferenceDefects`, pas une convention à reproduire. `IntermediateEnergyUnit`
+  reproduit aujourd'hui le ×1 000 pour les versions `0.1.0` et `9.x` : trancher
+  les deux sens dans la même tâche, la version `8.0.2` n'ayant qu'un seul cas au
+  corpus, ce qui ne suffit pas à étendre la liste de versions.
 
 ### TASK-H04 — Besoin et consommation ECS des fichiers collectifs
 
@@ -91,6 +100,41 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   hétérogènes. Isoler les causes par configuration, sans règle globale déduite
   d'un seul fichier.
 - Objectif : famille « Génération ECS » au-dessus de 92 % en profil strict.
+
+### TASK-K26 — §17.1.2 : Shmoy_système est une moyenne, pas une somme
+
+- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
+- `StockageCalculator::sampledIndividualAdjustment` divise la surface de
+  l'appartement « moyen » par la **somme** des surfaces des logements visités du
+  groupe. Le §17.1.2 p.107 définit
+  `Shmoy_système_i = Σ_j Sh_système_i,appartement_j / Nblgt_système_i`, soit la
+  **moyenne** : avec la somme, le facteur décroît avec la taille de
+  l'échantillon (20 visites → ÷19), ce qui est dimensionnellement faux.
+- La référence est pourtant contradictoire d'un cas à l'autre, à moteur
+  identique (`BBS_Slama_2025.11.1.0`). Facteur d'échelle déduit de son
+  `rendement_stockage` (script de sondage : reconstruire `scale` depuis
+  `Rs = k / (1 + Qgw·scale·Rd/Becs)`) :
+  - `2688E0016745Q` (méthode 10, 1 installation) : `scale_ref = 1,0000`
+    exactement, ce que la **moyenne** reproduit au chiffre près ;
+  - `2659E2297555Z` (méthode 10, 1 installation) : `scale_ref = 1,0000`
+    exactement, que ni la somme (0,0526) ni la moyenne (1,0526) ne donnent ;
+  - `2657E1981571R` / `2657E1989142W` (méthode 11, 2 installations) : la
+    **somme** reproduit la référence à 0,004–0,09 %, la moyenne s'en écarte de
+    20 à 31 %.
+- A/B mesuré sur le corpus complet (360 cas, révision `eaeb72e`) : passer à la
+  moyenne donne +15 exactes et +7 dans-tolérance, mais fait basculer 98 valeurs
+  de dans-tolérance à hors-tolérance sur les deux cas méthode 11 — conformité
+  88,36 % → 88,30 %. **Correction non retenue en l'état**, la variable cachée
+  restant l'affectation des logements visités aux sous-ensembles ECS quand une
+  installation ne couvre pas tout l'immeuble (le découpage `$offset`/`$count`
+  actuel est une hypothèse).
+- Enjeu : sur `2659E2297555Z`, ce seul facteur explique la totalité des écarts
+  du fichier — `rendement_stockage` (0,979 contre 0,710), donc `conso_ecs`
+  (−27,5 %), donc `pertes_stockage_ecs_recup` et `besoin_ch` (+10,3 %, l'écart
+  de besoin vaut exactement celui des pertes récupérées), puis les coûts
+  électriques (−2,0 %, simple effet du terme fixe d'abonnement réparti sur un
+  Cef plus faible), les GES, l'EP et les étiquettes.
+- Traiter avec TASK-K06 et TASK-H04, qui portent sur les mêmes grandeurs.
 
 ## Validation obligatoire
 
