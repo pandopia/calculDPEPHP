@@ -25,15 +25,12 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Vérifier la cohérence interne et le moteur éditeur avant toute modification :
   le moteur reste en kWh ; une référence en Wh doit être classée comme défaut de
   référence, jamais reproduite dans les calculs.
-- Cas mesuré : `2676E2269868T` (`<dpe version="8.0.2">`, moteur « Moteur DPE:
-  DPE_2025.11.1.0 ») publie `besoin_ecs`, `apport_interne_ch`,
-  `pertes_distribution_ecs_recup{,_depensier}` et `pertes_stockage_ecs_recup`
-  exactement ×1 000 par rapport à notre sortie, alors que le XSD documente ces
-  cinq balises en kWh — donc défaut de référence à déclarer dans
-  `ReferenceDefects`, pas une convention à reproduire. `IntermediateEnergyUnit`
-  reproduit aujourd'hui le ×1 000 pour les versions `0.1.0` et `9.x` : trancher
-  les deux sens dans la même tâche, la version `8.0.2` n'ayant qu'un seul cas au
-  corpus, ce qui ne suffit pas à étendre la liste de versions.
+- Précédent tranché : `2676E2269868T` publiait `besoin_ecs` deux fois, en kWh
+  et en Wh, sur un logement à une seule installation ECS. Référence démontrée
+  fausse, retirée du corpus (`CorpusLocator::REFERENCES_INVALIDES`) plutôt que
+  reproduite. `IntermediateEnergyUnit` reproduit encore le ×1 000 pour les
+  versions `0.1.0` et `9.x` : c'est ce sens-là qui reste à trancher, en
+  vérifiant d'abord si ces fichiers se contredisent de la même façon.
 
 ### TASK-H04 — Besoin et consommation ECS des fichiers collectifs
 
@@ -135,6 +132,43 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   électriques (−2,0 %, simple effet du terme fixe d'abonnement réparti sur un
   Cef plus faible), les GES, l'EP et les étiquettes.
 - Traiter avec TASK-K06 et TASK-H04, qui portent sur les mêmes grandeurs.
+
+### TASK-K27 — Circulateur d'un immeuble à plusieurs installations de chauffage
+
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- Depuis la correction de l'émetteur 5 (§15.2.1, « Autres cas »),
+  `conso_auxiliaire_distribution_ch` est exacte sur les maisons et les immeubles
+  à une installation, mais surévaluée quand l'immeuble en porte plusieurs :
+  `2600E0000098Z` 4061 contre 1875,7 attendu (3 installations, Sh = 1728,98,
+  l'installation aéraulique n'en couvre que 879,88), `2600E0081026P` 258 contre
+  132,9, `2600E0062930P` 222 contre 168,7.
+- `computeChDistribution` dimensionne le circulateur à l'échelle bâtiment
+  (`Lem`, `shFactor` et `Pnc` sur Sh entier) puis applique
+  `ratioSurf = surface_chauffee / Sh` au seul débit. §15.2.1 ne dit pas à quelle
+  échelle prendre Sh quand une installation ne desservit qu'une partie de
+  l'immeuble : chercher la source, puis mesurer en A/B les variantes (Sh de
+  l'installation, plancher de 30 W par circulateur, prorata final).
+- Non reproductible en l'état : `2600E0000098Z` porte un budget E2E relevé de
+  50 à 52 par cette correction, à resserrer une fois la tâche traitée.
+
+### TASK-K28 — Auxiliaires de génération d'une chaudière charbon ou bois
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
+- `AuxGenerationCalculator` ne reconnaît pas les chaudières charbon (enums
+  120-126) : elles retombent sur `GH_DEFAULT` et publient
+  `conso_auxiliaire_generation_ch = 0`. Or §15.1 p.97 n'énonce que deux cas nuls
+  (PAC, réseau de chaleur) : le zéro n'est pas sourcé.
+- §13.2.2.3 p.89 dit « les chaudières au charbon sont traitées comme des
+  chaudières bois bûche », ce qui les renvoie vers les lignes bois — mais le
+  tableau §15.1 en distingue deux, « atmosphérique » (0/0) et « assistée par
+  ventilateur » (73,3/10,5), sans qu'aucun champ du XSD permette de trancher.
+  Notre code applique aujourd'hui la ligne ventilateur à tout 55-74, ce qui
+  n'est pas sourcé non plus.
+- **Non mesurable sur les corpus actuels** : ils ne contiennent qu'une seule
+  chaudière charbon et aucune chaudière bois. Ne pas trancher sur ce cas isolé.
+  Pour information, sa référence applique G=20 / H=1,6 (ligne « chaudière au gaz
+  ou au fioul ») et publie 56,371 kWh ; la ligne bois-ventilateur donnerait
+  313,9 kWh. Élargir le corpus avant de décider.
 
 ## Validation obligatoire
 

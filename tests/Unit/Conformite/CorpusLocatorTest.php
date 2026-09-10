@@ -55,6 +55,36 @@ final class CorpusLocatorTest extends TestCase
         self::assertSame(CorpusLocator::LEGACY_CORPUS, $cases[1]['corpus']);
     }
 
+    /**
+     * Une référence démontrée fausse est hors mesure, y compris si un nouveau
+     * `bin/fetch-dpe` la réécrit sur le disque.
+     */
+    public function testReferenceDemontreeFausseEstEcartee(): void
+    {
+        $invalide = array_key_first(CorpusLocator::REFERENCES_INVALIDES);
+        self::assertIsString($invalide);
+
+        $this->write('/resources/XML/input/' . $invalide);
+        $this->write('/resources/XML/verif/' . $invalide);
+        $this->write('/resources/XML/input/valide.xml');
+        $this->write('/resources/XML/verif/valide.xml');
+
+        $cases = (new CorpusLocator($this->root))->locate();
+
+        self::assertCount(1, $cases);
+        self::assertSame('valide.xml', $cases[0]['name']);
+    }
+
+    /** Chaque exclusion porte sa preuve, établie sur le fichier de référence seul. */
+    public function testChaqueReferenceInvalidePorteSaPreuve(): void
+    {
+        self::assertNotSame([], CorpusLocator::REFERENCES_INVALIDES);
+        foreach (CorpusLocator::REFERENCES_INVALIDES as $nom => $preuve) {
+            self::assertMatchesRegularExpression('/\.xml$/', $nom);
+            self::assertGreaterThan(40, strlen($preuve), "Preuve trop courte pour $nom");
+        }
+    }
+
     public function testInputSansReferenceEstIgnore(): void
     {
         $this->write('/resources/XML/input/orphelin.xml');
