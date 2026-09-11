@@ -41,14 +41,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Examiner séparément les pertes de distribution ECS parfois sérialisées en Wh.
 - Cibles : `src/Ecs/BesoinEcsCalculator.php`, `src/Collectif/`.
 
-### TASK-H06 — Puissance de ventilation VMC SF Hygro B post-2012
-
-- [~CLD] Owner: CLD  | Phase: H  | Estimation: 1h
-- Plusieurs références anciennes attendent `pvent_moy=0` contre 15 W pour
-  `enum_type_ventilation_id=15`, `ventilation_post_2012=1`.
-- Vérifier la table officielle et open3cl avant de décider si la référence ou
-  `resources/tables/ventilation/tv_pvent_moy.php` est fautive.
-
 ### TASK-H08 — Upb des planchers bas en dalle béton
 
 - [ ] Owner: __  | Phase: H  | Estimation: 2h

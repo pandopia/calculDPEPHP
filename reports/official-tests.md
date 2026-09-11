@@ -1,7 +1,7 @@
 # Conformité du moteur — jeux de tests DPE 3CL
 
-_Généré le 2026-09-11T07:39:20+00:00 — profil de tolérance : `strict`_
-_Révision mesurée : `feed4ad` — arbre de travail modifié : 1 fichier(s) src/ non commités_
+_Généré le 2026-09-11T07:52:45+00:00 — profil de tolérance : `strict`_
+_Révision mesurée : `c6df4ae` — arbre de travail modifié : 4 fichier(s) src/ non commités_
 
 Comparaison balise à balise de la totalité de `<donnee_intermediaire>` et
 `<sortie>` entre la sortie du moteur et la référence du cas. Aucune balise
@@ -17,9 +17,9 @@ Totalement conformes     : 0
 Partiellement conformes  : 360
 
 Valeurs comparées        : 114 947
-Exactes                  : 86 707
+Exactes                  : 86 700
 Dans tolérance           : 14 980
-Hors tolérance           : 11 267
+Hors tolérance           : 11 274
 Balises manquantes       : 107
 Balises supplémentaires  : 1 846
 Écarts non numériques    : 40
@@ -27,20 +27,20 @@ Balises supplémentaires  : 1 846
 Conformité               : 88,46 %
 ```
 
-Sur ces écarts, **3 845 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **91,81 %**. Détail plus bas.
+Sur ces écarts, **3 857 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **91,81 %**. Détail plus bas.
 
 ## Écarts par famille fonctionnelle
 
 | Famille | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Suppl. | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | Enveloppe | 44847 | 43152 | 1316 | 252 | 7 | 120 | 99,15 % |
-| Ventilation | 2466 | 1598 | 860 | 8 | 0 | 0 | 99,68 % |
+| Ventilation | 2466 | 1594 | 860 | 12 | 0 | 0 | 99,51 % |
 | Apports | 11485 | 9909 | 985 | 310 | 0 | 281 | 94,85 % |
 | Besoin chauffage | 1766 | 14 | 1466 | 282 | 4 | 0 | 83,81 % |
 | Besoin ECS | 3412 | 3212 | 187 | 13 | 0 | 0 | 99,62 % |
 | Génération chauffage | 7216 | 2887 | 2485 | 1794 | 26 | 24 | 74,45 % |
 | Génération ECS | 7562 | 4776 | 992 | 1765 | 14 | 15 | 76,28 % |
-| Auxiliaires | 12240 | 7802 | 2303 | 2135 | 0 | 0 | 82,56 % |
+| Auxiliaires | 12240 | 7799 | 2303 | 2138 | 0 | 0 | 82,53 % |
 | Froid | 4460 | 4128 | 28 | 248 | 56 | 0 | 93,18 % |
 | PV | 2526 | 2517 | 0 | 9 | 0 | 0 | 99,64 % |
 | Sorties énergie finale | 2362 | 1232 | 636 | 494 | 0 | 0 | 79,09 % |
@@ -57,17 +57,17 @@ Périmètres du règlement d'évaluation CSTB §1.1, déduits de
 
 | Périmètre | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| immeuble_collectif | 236 | 79126 | 61231 | 10763 | 5599 | 22 | 90,72 % |
+| immeuble_collectif | 236 | 79126 | 61232 | 10763 | 5598 | 22 | 90,72 % |
 | appartement_issu_immeuble | 45 | 15543 | 10489 | 1545 | 3185 | 34 | 77,20 % |
-| maison_individuelle | 39 | 10872 | 8119 | 1319 | 1355 | 23 | 86,50 % |
-| appartement_individuel | 40 | 9406 | 6868 | 1353 | 1128 | 28 | 87,03 % |
+| maison_individuelle | 39 | 10872 | 8116 | 1319 | 1358 | 23 | 86,47 % |
+| appartement_individuel | 40 | 9406 | 6863 | 1353 | 1133 | 28 | 86,98 % |
 
 ## Écarts par régime du coefficient EP électricité
 
 | Régime | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| post_2026 | 282 | 87373 | 66594 | 12477 | 6655 | 67 | 90,21 % |
-| pre_2026 | 78 | 27574 | 20113 | 2503 | 4612 | 40 | 81,79 % |
+| post_2026 | 282 | 87373 | 66589 | 12477 | 6660 | 67 | 90,20 % |
+| pre_2026 | 78 | 27574 | 20111 | 2503 | 4614 | 40 | 81,78 % |
 
 ## Écarts par moteur de calcul de la référence
 
@@ -77,15 +77,15 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 | Moteur | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | BBS_Slama_2025.11.1.0 | 271 | 84561 | 64953 | 11930 | 6137 | 15 | 90,63 % |
-| 3cl_tribu_1.4.25.1 | 64 | 23040 | 16818 | 2036 | 3897 | 24 | 81,60 % |
+| 3cl_tribu_1.4.25.1 | 64 | 23040 | 16821 | 2036 | 3894 | 24 | 81,62 % |
 | 3cl_tribu_2024.6.1.0 | 7 | 2711 | 2066 | 265 | 352 | 0 | 85,76 % |
 | 3cl_bbs_V2025.11.1.0 | 7 | 1800 | 961 | 292 | 460 | 37 | 69,34 % |
-| inconnu | 3 | 799 | 538 | 197 | 48 | 15 | 91,65 % |
-| 3cl-2024.6.1.0 | 3 | 644 | 441 | 81 | 106 | 12 | 80,68 % |
+| inconnu | 3 | 799 | 532 | 197 | 54 | 15 | 90,90 % |
+| 3cl-2024.6.1.0 | 3 | 644 | 435 | 81 | 112 | 12 | 79,75 % |
 | BBS_Slama_2024.6.1.0 | 2 | 640 | 457 | 87 | 96 | 0 | 84,74 % |
-| 3cl_tribu_1.4.25.0 | 1 | 279 | 185 | 33 | 49 | 4 | 77,86 % |
+| 3cl_tribu_1.4.25.0 | 1 | 279 | 186 | 33 | 48 | 4 | 78,21 % |
 | 3cl_tribu_1.4.24.0 | 1 | 260 | 146 | 1 | 112 | 0 | 56,32 % |
-| 3cl_BBS_2025.11.1.0 | 1 | 213 | 142 | 58 | 10 | 0 | 93,46 % |
+| 3cl_BBS_2025.11.1.0 | 1 | 213 | 143 | 58 | 9 | 0 | 93,93 % |
 
 ## Principales sources d'écart (par balise)
 
@@ -156,6 +156,8 @@ reproduire le défaut d'un logiciel tiers éloignerait le moteur de la méthode.
 | `cout_auxiliaire_generation_ch_depensier` | 182 | la référence recopie cout_auxiliaire_generation_ch dans cout_auxiliaire_generation_ch_depensier alors que les consommations diffèrent (39 vs 87 kWh) |
 | `conso_totale_auxiliaire` | 8 | la référence publie un total auxiliaire de 103.1 kWh, incompatible avec la somme de ses postes (316.8 kWh) |
 | `besoin_ch_depensier` | 8 | la référence publie un besoin de chauffage dépensier inférieur au conventionnel (7116 vs 50051), malgré les consignes réglementaires de 21 °C et 19 °C |
+| `conso_auxiliaire_ventilation` | 6 | la référence publie pvent_moy = 0 alors que le même fichier déclare une consommation d'auxiliaires de ventilation non nulle dans sortie/ef_conso, ce que §5 p.41 (Caux_vent = 8760 × Pventmoy / 1000) interdit |
+| `pvent_moy` | 6 | la référence publie pvent_moy = 0 alors que le même fichier déclare une consommation d'auxiliaires de ventilation non nulle dans sortie/ef_conso, ce que §5 p.41 (Caux_vent = 8760 × Pventmoy / 1000) interdit |
 | `conso_ecs` | 469 | la référence publie 3 rendements de stockage différents pour 3 installations ECS aux données d'entrée identiques, sans qu'aucun élément du XML ne les distingue |
 | `conso_ecs_depensier` | 469 | la référence publie 3 rendements de stockage différents pour 3 installations ECS aux données d'entrée identiques, sans qu'aucun élément du XML ne les distingue |
 | `rendement_stockage` | 272 | la référence publie 3 rendements de stockage différents pour 3 installations ECS aux données d'entrée identiques, sans qu'aucun élément du XML ne les distingue |

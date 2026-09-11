@@ -226,6 +226,63 @@ XML);
         self::assertSame([], ReferenceDefects::detect([], $doc));
     }
 
+    /**
+     * §5 p.41 lie Caux_vent à Pventmoy : une puissance nulle ne peut pas
+     * consommer. Le constat se fait sur le fichier de référence seul.
+     */
+    public function testVentilationSansPuissanceMaisConsommatriceEstSignalee(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(
+            '<dpe><logement><ventilation_collection><ventilation><donnee_intermediaire>'
+            . '<pvent_moy>0</pvent_moy><conso_auxiliaire_ventilation>1</conso_auxiliaire_ventilation>'
+            . '</donnee_intermediaire></ventilation></ventilation_collection></logement></dpe>'
+        );
+
+        $suspects = ReferenceDefects::detect(
+            [self::EF . 'conso_auxiliaire_ventilation' => '131.4'],
+            $doc,
+        );
+
+        self::assertArrayHasKey('pvent_moy', $suspects);
+        self::assertArrayHasKey('conso_auxiliaire_ventilation', $suspects);
+        self::assertStringContainsString('8760', $suspects['pvent_moy']);
+    }
+
+    public function testVentilationSansPuissanceEtSansConsommationNestPasSignalee(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(
+            '<dpe><logement><ventilation_collection><ventilation><donnee_intermediaire>'
+            . '<pvent_moy>0</pvent_moy><conso_auxiliaire_ventilation>0</conso_auxiliaire_ventilation>'
+            . '</donnee_intermediaire></ventilation></ventilation_collection></logement></dpe>'
+        );
+
+        $suspects = ReferenceDefects::detect(
+            [self::EF . 'conso_auxiliaire_ventilation' => '0'],
+            $doc,
+        );
+
+        self::assertArrayNotHasKey('pvent_moy', $suspects);
+    }
+
+    public function testVentilationDePuissanceNonNulleNestPasSignalee(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(
+            '<dpe><logement><ventilation_collection><ventilation><donnee_intermediaire>'
+            . '<pvent_moy>65</pvent_moy><conso_auxiliaire_ventilation>569.4</conso_auxiliaire_ventilation>'
+            . '</donnee_intermediaire></ventilation></ventilation_collection></logement></dpe>'
+        );
+
+        $suspects = ReferenceDefects::detect(
+            [self::EF . 'conso_auxiliaire_ventilation' => '569.4'],
+            $doc,
+        );
+
+        self::assertArrayNotHasKey('pvent_moy', $suspects);
+    }
+
     public function testStockageIntegreSerialiseCommeSepareEstSignale(): void
     {
         $doc = new DOMDocument();

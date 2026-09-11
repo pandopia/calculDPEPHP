@@ -98,6 +98,7 @@ final class ReferenceDefects
             $suspects += self::qp0SerialiseEnKilowatts($referenceDoc);
             $suspects += self::stockageIntegreSerialiseCommeSepare($referenceDoc);
             $suspects += self::repartitionEcsAppartementNonReproductible($expected, $referenceDoc);
+            $suspects += self::ventilationSansPuissanceMaisConsommatrice($expected, $referenceDoc);
         }
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
@@ -186,6 +187,73 @@ final class ReferenceDefects
         }
 
         return [];
+    }
+
+    /**
+     * Ventilation de puissance moyenne nulle mais qui consomme.
+     *
+     * §5 p.41 lie les deux grandeurs : `Caux_vent = 8760 × Pventmoy / 1000`.
+     * Une référence qui publie `pvent_moy = 0` tout en déclarant une
+     * consommation d'auxiliaires de ventilation non nulle dans
+     * `sortie/ef_conso` se contredit donc elle-même — le constat se fait sur le
+     * fichier de référence seul, sans invoquer notre calcul.
+     *
+     * Le corpus montre le motif sur les exports du format natif ADEME, qui
+     * écrivent la paire sentinelle `pvent_moy = 0` / `conso_auxiliaire_
+     * ventilation = 1` dans `donnee_intermediaire` en laissant la vraie
+     * consommation dans `sortie` : six ventilations sur les dix de ce format,
+     * les quatre autres publiant des valeurs cohérentes. Ce n'est donc pas une
+     * convention de format mais un défaut, à ne pas reproduire.
+     *
+     * @param array<string, string> $expected
+     * @return array<string, string>
+     */
+    private static function ventilationSansPuissanceMaisConsommatrice(
+        array $expected,
+        DOMDocument $doc,
+    ): array {
+        $consoSortie = self::num($expected, self::EF_PREFIX . 'conso_auxiliaire_ventilation');
+        if ($consoSortie === null || $consoSortie <= 0.0) {
+            return [];
+        }
+
+        $xpath = new DOMXPath($doc);
+        $ventilations = $xpath->query('//logement/ventilation_collection/ventilation');
+        if ($ventilations === false || $ventilations->length === 0) {
+            return [];
+        }
+
+        $motif = 'la référence publie pvent_moy = 0 alors que le même fichier déclare une '
+            . 'consommation d\'auxiliaires de ventilation non nulle dans sortie/ef_conso, '
+            . 'ce que §5 p.41 (Caux_vent = 8760 × Pventmoy / 1000) interdit';
+
+        $suspects = [];
+        foreach ($ventilations as $index => $ventilation) {
+            if (!$ventilation instanceof DOMElement) {
+                continue;
+            }
+            $pvent = self::nodeNum($xpath, './donnee_intermediaire/pvent_moy', $ventilation);
+            if ($pvent === null || $pvent != 0.0) {
+                continue;
+            }
+            $suffixe = $ventilations->length === 1 ? '' : '@' . ($index + 1);
+            $suspects['pvent_moy' . $suffixe] = $motif;
+            $suspects['conso_auxiliaire_ventilation' . $suffixe] = $motif;
+        }
+
+        return $suspects;
+    }
+
+    private static function nodeNum(DOMXPath $xpath, string $query, DOMElement $context): ?float
+    {
+        $node = $xpath->query($query, $context);
+        if ($node === false || $node->length === 0) {
+            return null;
+        }
+
+        $texte = trim((string) $node->item(0)?->textContent);
+
+        return $texte === '' ? null : (float) str_replace(',', '.', $texte);
     }
 
     /**
