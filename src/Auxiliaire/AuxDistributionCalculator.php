@@ -18,6 +18,8 @@ use DOMElement;
  *   ΔPemnom = 0.15 × Lem + ΔPem
  *   Pnc = 10^-3 × GV_total × (20 − Tbase)   (kW)
  *   qvemnom = Pnc × rat / (1.163 × δθdim)    (m³/h)
+ *     δθdim = 15 °C en régime haut ou sans réseau de distribution d'eau,
+ *             7,5 °C en régime moyen ou bas
  *   Pcircem = max(30; 6.44 × (ΔPemnom × qvemnom / max(1;Sh/400))^0.676 × max(1;Sh/400))  (W)
  *   Caux_dist_ch = Pcircem × Nref / 1000  (kWh)
  *
@@ -503,10 +505,17 @@ final class AuxDistributionCalculator implements CalculatorInterface
 
             $hasHydraulic = true;
 
-            // δθdim from temperature distribution
+            // δθdim, chute nominale de température de dimensionnement §15.2.1
+            // p.99. Le tableau n'a que deux lignes : « Moyenne / Basse » 7,5 °C
+            // et « Haute » 15 °C — soit les valeurs 2, 3 et 4 de
+            // enum_temp_distribution_ch_id. La valeur 1, « absence de réseau de
+            // distribution », n'y figure pas : sans réseau d'eau il n'y a pas
+            // de régime de température basse ou moyenne à invoquer, et c'est le
+            // δθdim le plus large qui s'applique. Un réseau aéraulique déclaré
+            // sans réseau de distribution d'eau relève de ce cas.
             $emDt = match ($tempId) {
-                4 => 15.0,  // haute
-                default => 7.5,
+                4, 1    => 15.0,  // haute ; absence de réseau de distribution
+                default => 7.5,   // moyenne ou basse
             };
 
             // ΔPem and Fcot from emitter type

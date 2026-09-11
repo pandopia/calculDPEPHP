@@ -133,23 +133,32 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   Cef plus faible), les GES, l'EP et les étiquettes.
 - Traiter avec TASK-K06 et TASK-H04, qui portent sur les mêmes grandeurs.
 
-### TASK-K27 — Circulateur d'un immeuble à plusieurs installations de chauffage
+### TASK-K27 — Circulateur d'une installation qui ne couvre qu'une partie du bâti
 
-- [~CLD] Owner: CLD  | Phase: K  | Estimation: 3h  | Priorité: moyenne
-- Depuis la correction de l'émetteur 5 (§15.2.1, « Autres cas »),
-  `conso_auxiliaire_distribution_ch` est exacte sur les maisons et les immeubles
-  à une installation, mais surévaluée quand l'immeuble en porte plusieurs :
-  `2600E0000098Z` 4061 contre 1875,7 attendu (3 installations, Sh = 1728,98,
-  l'installation aéraulique n'en couvre que 879,88), `2600E0081026P` 258 contre
-  132,9, `2600E0062930P` 222 contre 168,7.
-- `computeChDistribution` dimensionne le circulateur à l'échelle bâtiment
-  (`Lem`, `shFactor` et `Pnc` sur Sh entier) puis applique
-  `ratioSurf = surface_chauffee / Sh` au seul débit. §15.2.1 ne dit pas à quelle
-  échelle prendre Sh quand une installation ne desservit qu'une partie de
-  l'immeuble : chercher la source, puis mesurer en A/B les variantes (Sh de
-  l'installation, plancher de 30 W par circulateur, prorata final).
-- Non reproductible en l'état : `2600E0000098Z` porte un budget E2E relevé de
-  50 à 52 par cette correction, à resserrer une fois la tâche traitée.
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
+- Acquis : `δθdim` vaut 15 °C quand `enum_temp_distribution_ch_id = 1`
+  (« absence de réseau de distribution »), valeur absente du tableau §15.2.1
+  p.99 et qui retombait sur 7,5 °C. `conso_auxiliaire_distribution_ch` est
+  désormais exacte sur `2400E0046693A`, `2600E0035103I`, `2600E0045286Z`,
+  `2600E0045287A`, `2600E0046158N`, `2600E0062930P`, et dans la tolérance sur
+  `2600E0099076V`, `2662E2307275Y`, `2688E0016745Q`.
+- Reste deux cas, tous deux avec un circulateur dimensionné à l'échelle du
+  bâtiment alors que l'installation n'en couvre qu'une partie :
+  - `2600E0000098Z` : 2542,0 contre 1875,7 attendu (Pcircem 596,8 contre
+    440,5 W). Trois installations, une seule aéraulique, couvrant 879,88 des
+    1728,98 m².
+  - `2600E0081026P` : 161,4 contre 132,9 (Pcircem 37,9 contre 31,2 W). Une
+    installation, deux émetteurs (5 aéraulique + 21 poêle) et deux générateurs
+    (3 PAC air/air + 39 insert) ; `emetteurParams` retient le pire ΔPem et le
+    δθdim du dernier émetteur lu.
+- Piste écartée : `rat` calculé sur le besoin plutôt que sur la surface. §15.2.1
+  dit « ratio du besoin couvert par l'équipement », mais les `besoin_ch`
+  publiés par installation donnent exactement les mêmes ratios que les surfaces
+  (0,50890 sur `2600E0000098Z`) — aucun effet sur ces deux cas.
+- Restent à départager : l'échelle de `Sh` dans `Lem` et `shFactor`, et le
+  traitement d'une installation à plusieurs émetteurs. §15.2.1 dit « Sh :
+  surface habitable du bâtiment », ce que le code applique déjà : chercher la
+  source avant de s'en écarter, et mesurer en A/B.
 
 ### TASK-K28 — Auxiliaires de génération d'une chaudière charbon ou bois
 

@@ -92,13 +92,12 @@ return [
     '2592E0655586O.xml'                            => 31,
     '2593E3377930D.xml'                            => 45,
     '2594E0486196Q.xml'                            => 69,
-    // 2600E0000098Z : 50 → 52. Avant, conso_auxiliaire_distribution_ch valait 0
-    // pour 1875,7 attendu ; elle vaut désormais 4061,3 — du bon ordre de
-    // grandeur mais encore surévaluée, ce qui décale deux valeurs entières en
-    // aval (emission_ges_5_usages_m2, cout_fr). L'immeuble porte trois
-    // installations et le dimensionnement du circulateur y reste à l'échelle
-    // bâtiment : cf. TASK-K27.
-    '2600E0000098Z.xml'                            => 52,
+    // 2600E0000098Z : 50 → 51. conso_auxiliaire_distribution_ch valait 0 pour
+    // 1875,7 attendu, puis 4061,3, et désormais 2542,0 : encore surévaluée, ce
+    // qui décale une valeur entière en aval. L'immeuble porte trois
+    // installations dont une seule aéraulique, et le dimensionnement du
+    // circulateur y reste à l'échelle bâtiment : cf. TASK-K27.
+    '2600E0000098Z.xml'                            => 51,
     '2600E0000300T.xml'                            => 4,
     '2600E0006037K.xml'                            => 78,
     '2600E0009068Z.xml'                            => 47,
@@ -114,14 +113,14 @@ return [
     '2600E0025586H.xml'                            => 78,
     '2600E0031311M.xml'                            => 9,
     '2600E0033082P.xml'                            => 34,
-    '2600E0035103I.xml'                            => 109,
+    '2600E0035103I.xml'                            => 105,
     '2600E0045286Z.xml'                            => 15,
     '2600E0045287A.xml'                            => 15,
-    '2600E0046158N.xml'                            => 48,
+    '2600E0046158N.xml'                            => 41,
     '2600E0048277A.xml'                            => 35,
     '2600E0050155G.xml'                            => 4,
     '2600E0051526Z.xml'                            => 1,
-    '2600E0062930P.xml'                            => 33,
+    '2600E0062930P.xml'                            => 15,
     '2600E0063965K.xml'                            => 6,
     '2600E0070819A.xml'                            => 7,
     '2600E0080950R.xml'                            => 71,
@@ -129,7 +128,7 @@ return [
     '2600E0083091A.xml'                            => 5,
     '2600E0083964P.xml'                            => 50,
     '2600E0096759S.xml'                            => 1,
-    '2600E0099076V.xml'                            => 54,
+    '2600E0099076V.xml'                            => 46,
     '2600E0105050P.xml'                            => 50,
     '2600E0130851Y.xml'                            => 11,
     '2600E0169766R.xml'                            => 3,
@@ -363,7 +362,7 @@ return [
     '2684E0966131I.xml'                            => 12,
     '2684E0967126P.xml'                            => 11,
     '2684E0967391U.xml'                            => 11,
-    '2688E0016745Q.xml'                            => 75,
+    '2688E0016745Q.xml'                            => 67,
     '2691E0779836K.xml'                            => 21,
     '2691E0788361H.xml'                            => 0,
     '2691E0821030U.xml'                            => 0,
