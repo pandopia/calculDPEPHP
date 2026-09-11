@@ -135,7 +135,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K27 — Circulateur d'un immeuble à plusieurs installations de chauffage
 
-- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- [~CLD] Owner: CLD  | Phase: K  | Estimation: 3h  | Priorité: moyenne
 - Depuis la correction de l'émetteur 5 (§15.2.1, « Autres cas »),
   `conso_auxiliaire_distribution_ch` est exacte sur les maisons et les immeubles
   à une installation, mais surévaluée quand l'immeuble en porte plusieurs :
