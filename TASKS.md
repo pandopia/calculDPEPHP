@@ -43,7 +43,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-H06 — Puissance de ventilation VMC SF Hygro B post-2012
 
-- [ ] Owner: __  | Phase: H  | Estimation: 1h
+- [~CLD] Owner: CLD  | Phase: H  | Estimation: 1h
 - Plusieurs références anciennes attendent `pvent_moy=0` contre 15 W pour
   `enum_type_ventilation_id=15`, `ventilation_post_2012=1`.
 - Vérifier la table officielle et open3cl avant de décider si la référence ou
