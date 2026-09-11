@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CalculDpePHP\Ventilation;
 
 use CalculDpePHP\Collectif\GeneratedApartment;
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -77,8 +78,14 @@ final class PventMoyCalculator implements CalculatorInterface
             ? (float)$row['pvent_maison']
             : (float)$row['pvent_immeuble'] * (float)$row['qvarep'] * $sh;
 
-        if ($pventMoy === 0.0) {
-            return; // Ventilation naturelle — pas de moteur
+        // Ventilation naturelle : aucun moteur, donc aucune puissance. Le XSD
+        // rend `pvent_moy` facultative et nillable, et les deux formats du
+        // corpus en tirent des conclusions opposées : le format natif ADEME
+        // publie le zéro (2 ventilations sur 2), les exports LICIEL omettent la
+        // balise (24 ventilations de type 1, 2, 25 ou 34). On suit le format du
+        // fichier, faute de règle dans la méthode.
+        if ($pventMoy === 0.0 && !IntermediateEnergyUnit::isNativeAdeme($context->document)) {
+            return;
         }
 
         $intermediaire = $accessor->ensureDonneeIntermediaire($node);

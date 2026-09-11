@@ -231,6 +231,16 @@ Cinq leçons à retenir de ces corrections :
    dépensier recopié du conventionnel, bloc `<confort_ete>` vide, rendements
    de stockage non reproductibles depuis les données publiées.
    `ReferenceDefects` les isole. **Ne les « corrige » pas.**
+
+   Deux granularités, à ne pas confondre :
+   - `ReferenceDefects` isole des **balises** : l'écart est imputé à la
+     référence mais reste compté, la mesure brute ne se maquille pas ;
+   - `CorpusLocator::REFERENCES_INVALIDES` retire un **fichier entier**, quand
+     sa sortie se contredit elle-même ou contredit le schéma ADEME au point de
+     ne plus être une référence exploitable. Le critère est la **preuve** sur
+     le fichier de référence seul : un désaccord avec notre moteur, ou avec le
+     reste du corpus, n'en est pas une. Chaque entrée porte sa preuve et le cas
+     reste écarté après un nouveau `bin/fetch-dpe`.
 4. **Une donnée saisie prime sur un forfait — et elle est en
    `donnee_intermediaire`** (K06). Les logiciels diagnostiqueurs y écrivent
    `pn`, `pveilleuse`, `qp0`… et c'est là que `OutputPurger` les préserve. Ne

@@ -10,6 +10,7 @@ use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
 use DOMXPath;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class AuxDistributionCalculatorTest extends TestCase
@@ -104,6 +105,106 @@ XML;
 
         $this->assertEqualsWithDelta(917.64117746449062, $this->efValue($doc, 'conso_auxiliaire_distribution_ch'), 1.0);
         $this->assertEqualsWithDelta(0.0, $this->efValue($doc, 'conso_auxiliaire_distribution_ecs'), 0.001);
+    }
+
+    /**
+     * §15.2.1 — l'émetteur 5 « soufflage d'air chaud avec distribution par
+     * réseau aéraulique » relève des « Autres cas » du tableau ΔPem
+     * (ΔPem = 35, Fcot = 0,802) : il possède un réseau de distribution, donc un
+     * circulateur. La consommation n'est pas nulle.
+     *
+     * Cas de référence 2662E2307275Y (maison, chaudière charbon sur réseau
+     * aéraulique) : Sh = 91,4 m², Niv = 2, zone H1a, distribution haute
+     * température (δθdim = 15 °C), GV = 194,08 + 24,30 + 49,155 + 37,206
+     * + 10,792 + 38,292 + 69,299 + 38,009 = 461,138 W/K
+     * → conso_auxiliaire_distribution_ch attendue 383,403 kWh.
+     */
+    public function testSoufflageAirChaudReleveDesAutresCas(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<logement><caracteristique_generale>
+<surface_habitable_logement>91.4</surface_habitable_logement>
+</caracteristique_generale><installation_chauffage_collection><installation_chauffage><donnee_entree>
+<surface_chauffee>91.4</surface_chauffee><nombre_niveau_installation_ch>2</nombre_niveau_installation_ch>
+<enum_type_installation_id>1</enum_type_installation_id>
+</donnee_entree><emetteur_chauffage_collection><emetteur_chauffage><donnee_entree>
+<enum_type_emission_distribution_id>5</enum_type_emission_distribution_id>
+<enum_temp_distribution_ch_id>4</enum_temp_distribution_ch_id>
+</donnee_entree></emetteur_chauffage></emetteur_chauffage_collection></installation_chauffage></installation_chauffage_collection>
+<installation_ecs_collection/><sortie/></logement>
+XML);
+        $context = $this->buildCtx($document, [
+            'enveloppe.dp_parois'         => 315.5274580004,
+            'enveloppe.dp_pont_thermique' => 38.292,
+            'ventilation.hvent'           => 69.29948,
+            'ventilation.hperm'           => 38.008771414803,
+            'ecs.besoin_ecs_mensuel'      => [],
+        ]);
+
+        (new AuxDistributionCalculator())->calculate($document->documentElement, $context);
+
+        self::assertEqualsWithDelta(383.403, $this->efValue($document, 'conso_auxiliaire_distribution_ch'), 0.05);
+    }
+
+    /**
+     * §15.2.1 p.99 — le tableau δθdim n'a que « Moyenne / Basse » (7,5 °C) et
+     * « Haute » (15 °C). `enum_temp_distribution_ch_id = 1`, « absence de
+     * réseau de distribution », n'y figure pas : sans réseau d'eau, c'est le
+     * δθdim le plus large qui s'applique.
+     *
+     * Cas de référence 2600E0099076V (maison, PAC air/air sur réseau
+     * aéraulique) : Sh = 155,93 m², Niv = 1, zone H2c, GV = 262,497 W/K
+     * → Pnc = 6,9562 kW, Nref = 4987 h.
+     * Avec δθdim = 15 : Pcircem = 44,05 W → 219,679 kWh, la valeur publiée.
+     * Avec δθdim = 7,5 : 70,38 W → 350,98 kWh, soit +60 %.
+     *
+     * @return iterable<string, array{int, float}>
+     */
+    public static function temperaturesDistribution(): iterable
+    {
+        yield 'absence de réseau de distribution' => [1, 219.679];
+        yield 'régime haut' => [4, 219.679];
+        yield 'régime moyen' => [3, 350.983];
+        yield 'régime bas' => [2, 350.983];
+    }
+
+    #[DataProvider('temperaturesDistribution')]
+    public function testDeltaThetaDimSansReseauDeDistribution(int $tempId, float $attendu): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(sprintf(<<<'XML'
+<logement><caracteristique_generale>
+<surface_habitable_logement>155.93</surface_habitable_logement>
+</caracteristique_generale><installation_chauffage_collection><installation_chauffage><donnee_entree>
+<surface_chauffee>155.93</surface_chauffee><nombre_niveau_installation_ch>1</nombre_niveau_installation_ch>
+<enum_type_installation_id>1</enum_type_installation_id>
+</donnee_entree><emetteur_chauffage_collection><emetteur_chauffage><donnee_entree>
+<enum_type_emission_distribution_id>5</enum_type_emission_distribution_id>
+<enum_temp_distribution_ch_id>%d</enum_temp_distribution_ch_id>
+</donnee_entree></emetteur_chauffage></emetteur_chauffage_collection></installation_chauffage></installation_chauffage_collection>
+<installation_ecs_collection/><sortie/></logement>
+XML, $tempId));
+        $context = new CalculationContext(
+            document: $document,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+            period: Period::POST_2026,
+            zoneClimatique: '6',
+            classeAltitude: '1',
+        );
+        foreach ([
+            'enveloppe.dp_parois'         => 200.0,
+            'enveloppe.dp_pont_thermique' => 20.0,
+            'ventilation.hvent'           => 32.497,
+            'ventilation.hperm'           => 10.0,
+            'ecs.besoin_ecs_mensuel'      => [],
+        ] as $k => $v) {
+            $context->set($k, $v);
+        }
+
+        (new AuxDistributionCalculator())->calculate($document->documentElement, $context);
+
+        self::assertEqualsWithDelta($attendu, $this->efValue($document, 'conso_auxiliaire_distribution_ch'), 0.05);
     }
 
     public function testMixedApartmentSizesHeatingPumpAtApartmentScale(): void

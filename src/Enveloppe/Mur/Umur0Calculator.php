@@ -153,14 +153,22 @@ final class Umur0Calculator implements CalculatorInterface
             $epaisseur /= 10.0;
         }
 
-        // La première ligne avec epaisseur_max_cm >= epaisseur_demandée
+        // Les en-têtes de colonnes des tableaux §3.2.1.2 sont des **épaisseurs
+        // tabulées discrètes**, pas des bornes de plages : la spec ne marque
+        // d'inégalité que les colonnes extrêmes (« ≤ 9 », « ≥ 70 »). Une
+        // épaisseur intermédiaire est donc ramenée à la plus grande épaisseur
+        // tabulée qui lui soit inférieure ou égale — vers le mur le plus
+        // déperditif, sens des valeurs par défaut de la méthode. En dessous du
+        // premier point, la première ligne s'applique (colonne « ≤ N »).
+        $umur0 = (float)$matching[0]['umur0'];
         foreach ($matching as $row) {
-            if ($epaisseur <= (float)$row['epaisseur_max_cm']) {
-                return (float)$row['umur0'];
+            if ($epaisseur < (float)$row['epaisseur_cm']) {
+                break;
             }
+            $umur0 = (float)$row['umur0'];
         }
-        // Aucune borne trouvée → dernière ligne (devrait être PHP_FLOAT_MAX)
-        return (float)$matching[count($matching) - 1]['umur0'];
+
+        return $umur0;
     }
 
     private function resolveSaisiDirect(DOMElement $entree, NodeAccessor $accessor): float

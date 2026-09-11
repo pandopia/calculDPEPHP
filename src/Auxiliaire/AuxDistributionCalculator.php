@@ -18,6 +18,8 @@ use DOMElement;
  *   ΔPemnom = 0.15 × Lem + ΔPem
  *   Pnc = 10^-3 × GV_total × (20 − Tbase)   (kW)
  *   qvemnom = Pnc × rat / (1.163 × δθdim)    (m³/h)
+ *     δθdim = 15 °C en régime haut ou sans réseau de distribution d'eau,
+ *             7,5 °C en régime moyen ou bas
  *   Pcircem = max(30; 6.44 × (ΔPemnom × qvemnom / max(1;Sh/400))^0.676 × max(1;Sh/400))  (W)
  *   Caux_dist_ch = Pcircem × Nref / 1000  (kWh)
  *
@@ -74,11 +76,25 @@ final class AuxDistributionCalculator implements CalculatorInterface
         8 => [-3.5, -5.5,  -7.5],  // H3
     ];
 
-    /** enum_type_emission_distribution_id → [type: 'plancher'|'radiateur'|'autre', monotube: bool] */
+    /**
+     * enum_type_emission_distribution_id → ligne du tableau ΔPem/Fcot §15.2.1.
+     *
+     * La spec n'y donne que trois lignes — « Radiateurs » (30 en monotube,
+     * 10 sinon), « Plancher/plafond chauffant » (15) et « Autres cas » (35) —
+     * et §15.2.2 ne prévoit aucune consommation nulle pour le chauffage,
+     * contrairement à §15.2.3 qui l'énonce explicitement pour l'ECS
+     * individuelle. `none` est donc réservé aux émetteurs sans réseau de
+     * distribution du tout (effet joule direct, poêles, radiateurs à gaz) :
+     * il n'y a alors pas de circuit à faire circuler.
+     *
+     * L'émetteur 5 « soufflage d'air chaud avec distribution par **réseau
+     * aéraulique** » possède, lui, un réseau de distribution : il relève de
+     * « Autres cas ».
+     */
     private const EMETTEUR_TYPE = [
-        // Sans réseau hydraulique (émission individuelle sans circuit eau) → pas de circulateur
-        // IDs 1-10 (direct, convecteur, panneau rayonnant, etc.), 19-23, 40-41, 50, 5 (aéraulique)
-         1 => 'none',  2 => 'none',  3 => 'none',  4 => 'none',  5 => 'none',
+        // Sans réseau de distribution (émission individuelle) → pas de circulateur
+        // IDs 1-4, 6-10 (direct, convecteur, panneau/plancher rayonnant électrique), 19-23, 40-41, 50
+         1 => 'none',  2 => 'none',  3 => 'none',  4 => 'none',  5 => 'autre',
          6 => 'none',  7 => 'none',  8 => 'none',  9 => 'none', 10 => 'none',
         19 => 'none', 20 => 'none', 21 => 'none', 22 => 'none', 23 => 'none',
         40 => 'none', 41 => 'none', 50 => 'none',
@@ -489,10 +505,17 @@ final class AuxDistributionCalculator implements CalculatorInterface
 
             $hasHydraulic = true;
 
-            // δθdim from temperature distribution
+            // δθdim, chute nominale de température de dimensionnement §15.2.1
+            // p.99. Le tableau n'a que deux lignes : « Moyenne / Basse » 7,5 °C
+            // et « Haute » 15 °C — soit les valeurs 2, 3 et 4 de
+            // enum_temp_distribution_ch_id. La valeur 1, « absence de réseau de
+            // distribution », n'y figure pas : sans réseau d'eau il n'y a pas
+            // de régime de température basse ou moyenne à invoquer, et c'est le
+            // δθdim le plus large qui s'applique. Un réseau aéraulique déclaré
+            // sans réseau de distribution d'eau relève de ce cas.
             $emDt = match ($tempId) {
-                4 => 15.0,  // haute
-                default => 7.5,
+                4, 1    => 15.0,  // haute ; absence de réseau de distribution
+                default => 7.5,   // moyenne ou basse
             };
 
             // ΔPem and Fcot from emitter type

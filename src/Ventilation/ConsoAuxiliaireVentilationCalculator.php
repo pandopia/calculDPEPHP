@@ -53,20 +53,16 @@ final class ConsoAuxiliaireVentilationCalculator implements CalculatorInterface
 
         $pventMoy = $accessor->getFloatOrNull('./pvent_moy', $intermediaire) ?? 0.0;
         $caux = 8760.0 * $pventMoy / 1000.0;
-        if (IntermediateEnergyUnit::isNativeAdeme($context->document)) {
-            // Le format natif conserve des sentinelles dans la ventilation,
-            // mais la sortie globale doit recevoir la consommation calculée.
-            $context->set(
-                'ventilation.caux_reel',
-                (float)$context->get('ventilation.caux_reel', 0.0) + $caux,
-            );
-            $accessor->setChildValue($intermediaire, 'pvent_moy', 0.0);
-            $accessor->setChildValue($intermediaire, 'conso_auxiliaire_ventilation', 1.0);
-            return;
-        }
-        // LICIEL arrondit la copie donnee_intermediaire à l'entier (la valeur
-        // pleine précision va dans sortie/ef_conso via VentilationAggregator,
-        // qui recalcule depuis pvent_moy).
-        $accessor->setChildValue($intermediaire, 'conso_auxiliaire_ventilation', round($caux));
+
+        // Les exports LICIEL (`dpe version="2"`) arrondissent la copie
+        // donnee_intermediaire à l'entier — 287 des 288 ventilations du corpus
+        // à ce format — alors que le format natif ADEME la publie en pleine
+        // précision. La valeur exacte va de toute façon dans sortie/ef_conso
+        // via VentilationAggregator, qui recalcule depuis pvent_moy.
+        $accessor->setChildValue(
+            $intermediaire,
+            'conso_auxiliaire_ventilation',
+            IntermediateEnergyUnit::isNativeAdeme($context->document) ? $caux : round($caux),
+        );
     }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace CalculDpePHP\Ventilation;
 
 use CalculDpePHP\Collectif\GeneratedApartment;
-use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -90,10 +89,6 @@ final class VentilationAggregator implements CalculatorInterface
             if ($de !== null && $surfaceVentile === null) {
                 $surfaceVentile = $accessor->getFloatOrNull('./surface_ventile', $de);
             }
-        }
-
-        if (IntermediateEnergyUnit::isNativeAdeme($context->document)) {
-            $caux = (float)$context->get('ventilation.caux_reel', $caux);
         }
 
         // conso_auxiliaire_ventilation in sortie is prorated by logement share when
