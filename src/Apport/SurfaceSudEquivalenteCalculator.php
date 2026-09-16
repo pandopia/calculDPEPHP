@@ -20,7 +20,8 @@ use DOMElement;
  * Les valeurs mensuelles Ssej sont aussi stockées dans le contexte (clé
  * `apport.sse_mensuel`) pour que FCalculator puisse les lire mois par mois.
  *
- * La surface vitrée des portes n'est pas incluse (§6.2 p.45).
+ * La surface vitrée des portes n'est pas incluse (§6.2 p.45), pas plus que
+ * les baies qui ne donnent pas sur l'extérieur (b < 1).
  *
  * Mapping enum_orientation_id → clé C1 :
  *   1=sud, 2=nord, 3=est, 4=ouest, 5→ skipped (horizontal géré par inclinaison)
@@ -32,7 +33,7 @@ use DOMElement;
  * @spec-pages   45
  * @spec-source  resources/specsplitted/06-apports-gratuits/02-surface-sud-equivalente/00-overview.md
  * @xml-input    logement.enveloppe.baie_vitree_collection.baie_vitree.donnee_entree.{surface_totale_baie, enum_type_adjacence_id, enum_orientation_id, enum_inclinaison_vitrage_id}
- * @xml-input    logement.enveloppe.baie_vitree_collection.baie_vitree.donnee_intermediaire.{sw, fe1, fe2}
+ * @xml-input    logement.enveloppe.baie_vitree_collection.baie_vitree.donnee_intermediaire.{sw, fe1, fe2, b}
  * @xml-output   context:apport.sse_annuel (annual sum), context:apport.sse_mensuel (monthly array)
  * @depends-on   \CalculDpePHP\Enveloppe\BaieVitree\SwCalculator, \CalculDpePHP\Enveloppe\BaieVitree\Fe1Calculator, \CalculDpePHP\Enveloppe\BaieVitree\Fe2Calculator
  * @tables       apports/tv_c1
@@ -95,9 +96,27 @@ final class SurfaceSudEquivalenteCalculator implements CalculatorInterface
                 continue;
             }
 
-            // §6.3 handles bays facing a solar buffer space separately. They do
-            // not transmit incident solar energy directly into the dwelling.
+            // §6.3 traite à part les baies donnant sur un espace tampon
+            // solarisé : elles ne transmettent pas directement l'énergie
+            // solaire incidente au logement.
             if ($accessor->getIntOrNull('./enum_type_adjacence_id', $de) === 10) {
+                continue;
+            }
+
+            // §6.2 somme Ai × Swi × Fei × C1i,j, où C1 est le « coefficient
+            // d'orientation et d'inclinaison » du §18.5 : orientation et
+            // inclinaison ne portent de sens que pour une baie exposée au
+            // rayonnement. Une baie donnant sur un garage, une circulation ou un
+            // comble n'en reçoit pas et n'apporte rien à la surface sud
+            // équivalente.
+            //
+            // Le critère est `b` et non `enum_type_adjacence_id` : §3.1 définit b
+            // comme le coefficient de réduction des déperditions, b = 1 signifiant
+            // que la paroi donne directement sur l'extérieur. C'est déjà lui qui
+            // pilote les déperditions, et l'enum d'adjacence le contredit parfois
+            // — 2600E0080950R déclare « paroi enterrée » des baies dont le b vaut
+            // 1, ce qu'aucune baie enterrée ne pourrait valoir.
+            if (($accessor->getFloatOrNull('./b', $di) ?? 1.0) < 1.0) {
                 continue;
             }
 

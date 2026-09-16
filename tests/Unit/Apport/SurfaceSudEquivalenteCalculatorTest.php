@@ -134,7 +134,42 @@ final class SurfaceSudEquivalenteCalculatorTest extends TestCase
     }
 
     /**
-     * @param list<array{0: float, 1: int, 2: int, 3: float|null, 4: float, 5: float, 6?: int}> $baies
+     * §6.2 ne somme que les baies exposées au rayonnement : le coefficient
+     * d'orientation et d'inclinaison C1 (§18.5) n'a pas de sens pour une baie
+     * donnant sur un garage ou une circulation. Le critère est `b` (§3.1),
+     * qui vaut 1 pour une paroi donnant directement sur l'extérieur.
+     */
+    public function testIgnoreLesBaiesQuiNeDonnentPasSurLExterieur(): void
+    {
+        $exposee = [[10.0, 1, 3, 0.5, 1.0, 1.0, 1, 1.0]];
+        $abritee = [[10.0, 1, 3, 0.5, 1.0, 1.0, 21, 0.45]];
+
+        $ctx = $this->makeContext($doc = $this->buildDoc($exposee), '1');
+        (new SurfaceSudEquivalenteCalculator())->calculate($doc->getElementsByTagName('logement')->item(0), $ctx);
+        $sseExposee = (float) $ctx->get('apport.sse_annuel');
+
+        $ctx = $this->makeContext($doc = $this->buildDoc($abritee), '1');
+        (new SurfaceSudEquivalenteCalculator())->calculate($doc->getElementsByTagName('logement')->item(0), $ctx);
+
+        self::assertGreaterThan(0.0, $sseExposee);
+        self::assertEqualsWithDelta(0.0, (float) $ctx->get('apport.sse_annuel'), self::TOL);
+    }
+
+    /**
+     * L'adjacence déclarée ne prime pas sur `b` : 2600E0080950R déclare
+     * « paroi enterrée » des baies dont le b vaut 1, ce qu'aucune baie enterrée
+     * ne pourrait valoir. C'est b qui pilote déjà les déperditions.
+     */
+    public function testAdjacenceIncoherenteAvecBNeFaitPasFoi(): void
+    {
+        $ctx = $this->makeContext($doc = $this->buildDoc([[10.0, 1, 3, 0.5, 1.0, 1.0, 2, 1.0]]), '1');
+        (new SurfaceSudEquivalenteCalculator())->calculate($doc->getElementsByTagName('logement')->item(0), $ctx);
+
+        self::assertGreaterThan(0.0, (float) $ctx->get('apport.sse_annuel'));
+    }
+
+    /**
+     * @param list<array{0: float, 1: int, 2: int, 3: float|null, 4: float, 5: float, 6?: int, 7?: float}> $baies
      */
     private function buildDoc(array $baies): DOMDocument
     {
@@ -142,6 +177,7 @@ final class SurfaceSudEquivalenteCalculatorTest extends TestCase
         foreach ($baies as $b) {
             [$surface, $orient, $incl, $sw, $fe1, $fe2] = $b;
             $adjacenceXml = isset($b[6]) ? "<enum_type_adjacence_id>{$b[6]}</enum_type_adjacence_id>" : '';
+            $bXml = isset($b[7]) ? "<b>{$b[7]}</b>" : '';
             $swXml = $sw !== null ? "<sw>{$sw}</sw>" : '';
             $baiesXml .= <<<XML
     <baie_vitree>
@@ -152,6 +188,7 @@ final class SurfaceSudEquivalenteCalculatorTest extends TestCase
         {$adjacenceXml}
       </donnee_entree>
       <donnee_intermediaire>
+        {$bXml}
         {$swXml}
         <fe1>{$fe1}</fe1>
         <fe2>{$fe2}</fe2>
