@@ -197,6 +197,31 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   - `upb = 2,0` contre 0,25 : même motif que TASK-H08.
 - Ne rouvrir qu'avec de nouveaux cas de méthode 33 au corpus.
 
+### TASK-K30 — Réseau de chaleur ECS multi-bâtiment : 0,9 ou 0,75 ?
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
+- §14.3 p.95 remplace Rs × Rg par le rendement d'échange de la sous-station :
+  0,9 si l'installation est isolée, 0,75 sinon. Le XSD ne porte ce qualificatif
+  que sur les réseaux urbains 72/73 ; les types 74-77 et 134, « chaudière(s) …
+  multi bâtiment modélisée comme un réseau de chaleur », n'en ont pas.
+- **La référence se contredit sur des entrées identiques.** Trois cas de type 76
+  au corpus, tous `enum_type_installation_id = 2` :
+
+  | Cas | `reseau_distribution_isole` | bouclage | stockage | volume | Rs×Rg publié |
+  |---|---|---|---|---|---|
+  | `2513E0566835A` | 0 | 1 | 1 | 0 | 0,90 |
+  | `2673E0034873H` | 1 | 2 | 3 | 1500 | 0,90 |
+  | `2513E0192986F` | 1 | 2 | 3 | 1000 | **0,75** |
+
+  Les deux derniers ne diffèrent que par le volume du ballon, que §14.3 ne fait
+  pas intervenir. Aucune discriminante n'est dérivable des données publiées.
+- 0,90 est retenu : il reproduit deux cas sur trois et mesure mieux sur le
+  corpus complet (exactes 88 846 contre 88 834, hors tolérance 10 696 contre
+  10 710 avec 0,75). `reseau_distribution_isole` a été écarté comme
+  discriminante — il décrit le réseau de distribution interne, et vaut 0 sur un
+  cas à 0,90.
+- Ne rouvrir qu'avec de nouveaux cas de types 74-77 ou 134 au corpus.
+
 ## Validation obligatoire
 
 - Toute correction doit être sourcée (spec/XSD/règlement), testée unitairement

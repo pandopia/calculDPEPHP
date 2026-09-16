@@ -47,8 +47,14 @@ final class StockageCalculator implements CalculatorInterface
     /** Identifiants CET — §14.2 traite leur Rs différemment */
     private const CET_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-    /** Réseaux de chaleur : Rs × Rg est traité globalement au §14.3. */
-    private const RESEAU_CHALEUR_IDS = [72, 73, 107, 108, 119];
+    /**
+     * Réseaux de chaleur : §14.3 p.95 remplace **les deux** rendements, de
+     * stockage et de génération, par le rendement d'échange de la sous-station.
+     * Aucun `rendement_stockage` ne doit donc être publié, y compris pour les
+     * types 74-77 et 134, « chaudière(s) … multi bâtiment modélisée comme un
+     * réseau de chaleur » (cf. ReseauChaleurCalculator).
+     */
+    private const RESEAU_CHALEUR_IDS = [72, 73, 74, 75, 76, 77, 107, 108, 119, 134];
 
     public function id(): string
     {
