@@ -171,6 +171,28 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   ou au fioul ») et publie 56,371 kWh ; la ligne bois-ventilateur donnerait
   313,9 kWh. Élargir le corpus avant de décider.
 
+### TASK-K29 — Écarts non reproductibles de 2313E3593911Y (méthode 33)
+
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
+- Cas d'immeuble mixte dont les écarts résiduels ont tous été instruits et
+  renvoient à la référence plutôt qu'au moteur. Consigné pour éviter de les
+  réinstruire :
+  - `q4pa_conv` : le fichier déclare `enum_methode_saisie_q4pa_conv_id = 2`
+    (« mesure d'étanchéité à l'air de moins de deux ans ») et
+    `q4pa_conv_saisi = 1,700`, mais publie 1,500, soit le forfait
+    `tv_q4pa_conv[3]`. La référence ignore sa propre mesure.
+  - `sortie/deperdition/hvent = 0` alors que sa propre
+    `ventilation/donnee_intermediaire/hvent = 1573,568` égale la nôtre au
+    chiffre près. Ce n'est pas une convention de méthode 33 : les trois autres
+    cas de cette méthode au corpus publient un `hvent` non nul.
+  - `k` des ponts thermiques : la référence multiplie `k` par
+    `pourcentage_valeur_pont_thermique` (0,92 → 0,46). Appliquer ce facteur à
+    `k` corrigerait 7 comparaisons au corpus et en casserait environ 177 ;
+    notre `deperdition_pont_thermique` est d'ailleurs exacte sur ce cas.
+  - Les apports et pertes récupérées sont sérialisés ×1 000 : cf. TASK-H03.
+  - `upb = 2,0` contre 0,25 : même motif que TASK-H08.
+- Ne rouvrir qu'avec de nouveaux cas de méthode 33 au corpus.
+
 ## Validation obligatoire
 
 - Toute correction doit être sourcée (spec/XSD/règlement), testée unitairement
