@@ -256,6 +256,75 @@ XML;
     }
 
     /**
+     * §17.1.2 p.107 : l'appartement « moyen » a pour surface Shmoy = Sh / Nblgt,
+     * et « la surface de cet appartement ne dépend pas de la taille des
+     * appartements visités » — ni de celle du logement pour lequel le DPE est
+     * généré. L'ajustement d'échantillonnage part donc de Shmoy, pas de
+     * `surface_habitable_logement`.
+     *
+     * Ici Shmoy = 6550 / 100 = 65,5 et non le studio de 9 m² : le facteur
+     * appliqué à Qg,w vaut 65,5 / 130 et non 9 / 130.
+     */
+    public function testEchantillonnagePartDeLAppartementMoyenEtNonDuLogement(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<dpe>
+    <logement>
+        <caracteristique_generale>
+            <surface_habitable_logement>9</surface_habitable_logement>
+            <surface_habitable_immeuble>6550</surface_habitable_immeuble>
+            <nombre_appartement>100</nombre_appartement>
+        </caracteristique_generale>
+        <installation_ecs_collection>
+            <installation_ecs>
+                <donnee_entree>
+                    <enum_type_installation_id>1</enum_type_installation_id>
+                    <enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id>
+                    <surface_habitable>6550</surface_habitable>
+                </donnee_entree>
+                <donnee_intermediaire>
+                    <rendement_distribution>0.93</rendement_distribution>
+                    <besoin_ecs>1239.75128050234</besoin_ecs>
+                </donnee_intermediaire>
+                <generateur_ecs_collection>
+                    <generateur_ecs>
+                        <donnee_entree>
+                            <enum_type_energie_id>1</enum_type_energie_id>
+                            <enum_type_generateur_ecs_id>70</enum_type_generateur_ecs_id>
+                            <tv_pertes_stockage_id>3</tv_pertes_stockage_id>
+                            <volume_stockage>100</volume_stockage>
+                        </donnee_entree>
+                    </generateur_ecs>
+                </generateur_ecs_collection>
+            </installation_ecs>
+        </installation_ecs_collection>
+    </logement>
+    <dpe_immeuble>
+        <logement_visite_collection>
+            <logement_visite><surface_habitable_logement>60</surface_habitable_logement></logement_visite>
+            <logement_visite><surface_habitable_logement>70</surface_habitable_logement></logement_visite>
+        </logement_visite_collection>
+    </dpe_immeuble>
+</dpe>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $node = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        $ctx = $this->makeContext($doc);
+
+        (new StockageCalculator())->calculate($node, $ctx);
+
+        // Cr = 0,27 pour tv_pertes_stockage_id = 3 ; Qg,w brut = 8592 × 45/24 × 100 × 0,27.
+        $qgwBrut = 8592.0 * 45.0 / 24.0 * 100.0 * 0.27;
+        $this->assertEqualsWithDelta(
+            $qgwBrut * (6550.0 / 100.0) / 130.0,
+            (float) $ctx->get(StockageCalculator::qgwKey($node)),
+            0.5,
+        );
+    }
+
+    /**
      * Ballon non-électrique avec stockage → Qg,w = 67662 × VS^0.55.
      */
     public function testNonElectricStorageFormula(): void

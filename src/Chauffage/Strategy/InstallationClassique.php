@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Chauffage\Strategy;
 
+use CalculDpePHP\Collectif\ChauffageInstallationMultiplicity;
 use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Engine\CalculationContext;
@@ -136,7 +137,8 @@ final class InstallationClassique implements CalculatorInterface
         } elseif ($typeInstall === 1) {
             // ZONE individuel : extrapolation échantillon → immeuble. The
             // installation surface describes the sampling group, not its scale.
-            $rdimEffective = $nbreAppt * $ratioVirt / $sumEchantillon;
+            $rdimEffective = ChauffageInstallationMultiplicity::sampledOrNull($node, $accessor)
+                ?? ($nbreAppt * $ratioVirt / $sumEchantillon);
         } else {
             // ZONE collectif : un unique système collectif, rdim=1
             $rdimEffective = $rdim;

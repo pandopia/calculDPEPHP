@@ -132,6 +132,37 @@ final class StockageCalculator implements CalculatorInterface
     }
 
     /**
+     * Shmoy = Sh_immeuble / Nblgt — §17.1.2 p.107.
+     *
+     * Repli sur la surface du logement quand l'immeuble n'est pas décrit : un
+     * DPE hors périmètre collectif n'a alors qu'un logement.
+     */
+    private static function surfaceAppartementMoyen(DOMElement $logement, NodeAccessor $accessor): ?float
+    {
+        $surfaceImmeuble = $accessor->getFloatOrNull(
+            './caracteristique_generale/surface_habitable_immeuble',
+            $logement,
+        );
+        $nombreAppartement = $accessor->getFloatOrNull(
+            './caracteristique_generale/nombre_appartement',
+            $logement,
+        );
+
+        if ($surfaceImmeuble !== null && $surfaceImmeuble > 0.0
+            && $nombreAppartement !== null && $nombreAppartement > 0.0
+        ) {
+            return $surfaceImmeuble / $nombreAppartement;
+        }
+
+        $surfaceLogement = $accessor->getFloatOrNull(
+            './caracteristique_generale/surface_habitable_logement',
+            $logement,
+        );
+
+        return ($surfaceLogement !== null && $surfaceLogement > 0.0) ? $surfaceLogement : null;
+    }
+
+    /**
      * Volume du ballon réel et quote-part de l'appartement.
      *
      * Le XSD définit `ratio_virtualisation` comme « ratio de virtualisation de
@@ -252,11 +283,14 @@ final class StockageCalculator implements CalculatorInterface
             return [1.0, false];
         }
 
-        $representativeSurface = $accessor->getFloatOrNull(
-            './caracteristique_generale/surface_habitable_logement',
-            $logement,
-        );
-        if ($representativeSurface === null || $representativeSurface <= 0.0) {
+        // §17.1.2 p.107 : Shmoy = Sh / Nblgt, et « la surface de cet appartement
+        // ne dépend pas de la taille des appartements visités » — ni, donc, de
+        // celle du logement pour lequel le DPE est généré. Lire
+        // surface_habitable_logement ici revenait à dimensionner l'appartement
+        // « moyen » sur le logement réel, un studio de 9 m² dans un immeuble
+        // dont la moyenne est de 63,7 m² sur le cas 2675E2152874Y.
+        $representativeSurface = self::surfaceAppartementMoyen($logement, $accessor);
+        if ($representativeSurface === null) {
             return [1.0, false];
         }
 
