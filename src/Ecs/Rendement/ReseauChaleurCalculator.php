@@ -30,13 +30,28 @@ use DOMElement;
  */
 final class ReseauChaleurCalculator implements CalculatorInterface
 {
-    // enum_type_generateur_ecs_id → réseau de chaleur isolé (=0.9) ou non (=0.75)
+    /**
+     * enum_type_generateur_ecs_id → Rs × Rg (§14.3 p.95).
+     *
+     * Le § distingue l'installation isolée (0,9) de celle qui ne l'est pas
+     * (0,75), et le XSD ne porte ce qualificatif que sur les réseaux urbains
+     * 72/73 (et leurs équivalents « logement neuf » 107/108). Les types
+     * 74-77 et 134, « chaudière(s) … multi bâtiment modélisée comme un réseau
+     * de chaleur », désignent un générateur d'un bâtiment voisin : il n'y a pas
+     * de réseau primaire non isolé à pénaliser, donc l'échange isolé s'applique.
+     * Le type 119, « non répertorié ou inconnu », garde la valeur pénalisante.
+     */
     private const RG_BY_TYPE = [
         72  => 0.75,  // réseau de chaleur non isolé (logement existant)
         73  => 0.90,  // réseau de chaleur isolé (logement existant)
+        74  => 0.90,  // chaudière(s) bois multi bâtiment en réseau de chaleur
+        75  => 0.90,  // chaudière(s) fioul multi bâtiment en réseau de chaleur
+        76  => 0.90,  // chaudière(s) gaz multi bâtiment en réseau de chaleur
+        77  => 0.90,  // pompe(s) à chaleur multi bâtiment en réseau de chaleur
         107 => 0.75,  // réseau de chaleur non isolé (logement neuf)
         108 => 0.90,  // réseau de chaleur isolé (logement neuf)
         119 => 0.75,  // réseau de chaleur non répertorié ou inconnu (XSD 2.6)
+        134 => 0.90,  // chaudière(s) charbon multi bâtiment en réseau de chaleur
     ];
 
     public function id(): string

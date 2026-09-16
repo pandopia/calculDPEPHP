@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Sortie;
 
+use CalculDpePHP\Collectif\ChauffageInstallationMultiplicity;
 use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
 use CalculDpePHP\Common\IntermediateEnergyUnit;
@@ -341,7 +342,8 @@ final class EpConsoCalculator implements CalculatorInterface
         if ($methode === 1) {
             $rdimEff = $rdim;
         } elseif ($typeInstall === 1) {
-            $rdimEff = $nbreAppt * $ratioVirt / $sumEchantillon;
+            $rdimEff = ChauffageInstallationMultiplicity::sampledOrNull($install, $accessor)
+                ?? ($nbreAppt * $ratioVirt / $sumEchantillon);
         } else {
             $rdimEff = $rdim;
         }

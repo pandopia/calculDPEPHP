@@ -47,8 +47,14 @@ final class StockageCalculator implements CalculatorInterface
     /** Identifiants CET — §14.2 traite leur Rs différemment */
     private const CET_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-    /** Réseaux de chaleur : Rs × Rg est traité globalement au §14.3. */
-    private const RESEAU_CHALEUR_IDS = [72, 73, 107, 108, 119];
+    /**
+     * Réseaux de chaleur : §14.3 p.95 remplace **les deux** rendements, de
+     * stockage et de génération, par le rendement d'échange de la sous-station.
+     * Aucun `rendement_stockage` ne doit donc être publié, y compris pour les
+     * types 74-77 et 134, « chaudière(s) … multi bâtiment modélisée comme un
+     * réseau de chaleur » (cf. ReseauChaleurCalculator).
+     */
+    private const RESEAU_CHALEUR_IDS = [72, 73, 74, 75, 76, 77, 107, 108, 119, 134];
 
     public function id(): string
     {
@@ -88,17 +94,24 @@ final class StockageCalculator implements CalculatorInterface
             $rd           = $this->resolveRd($node, $accessor, $context);
             $becsWh       = $this->resolveBecsWh($node, $accessor, $context);
 
+            // Installation collective virtualisée : le volume publié est déjà la
+            // quote-part de l'appartement. Les lois de §11.6 décrivent un ballon
+            // réel — on les évalue donc sur le ballon réel, puis on en prend la
+            // quote-part. Cf. realVolumeStockage().
+            [$vsReel, $partVirtualisation] = $this->realVolumeStockage($vs, $node, $accessor);
+
             if ($becsWh > 0.0) {
                 if ($isBallonElec) {
                     [$sampleScale, $reclassifyVolume] = $this->sampledIndividualAdjustment($node, $accessor, $context);
                     $qgw = $reclassifyVolume
-                        ? $this->qgwElectrique($vs * $sampleScale, $node, $accessor, $context, true)
-                        : $this->qgwElectrique($vs, $node, $accessor, $context) * $sampleScale;
+                        ? $this->qgwElectrique($vsReel * $sampleScale, $node, $accessor, $context, true)
+                        : $this->qgwElectrique($vsReel, $node, $accessor, $context) * $sampleScale;
+                    $qgw  *= $partVirtualisation;
                     $catC  = $this->isCatCVertical($node, $accessor, $context);
                     $denom = 1.0 + $qgw * $rd / $becsWh;
                     $rs    = ($catC ? 1.08 : 1.0) / $denom;
                 } else {
-                    $qgw   = 67662.0 * ($vs ** 0.55);
+                    $qgw   = 67662.0 * ($vsReel ** 0.55) * $partVirtualisation;
                     $denom = 1.0 + $qgw * $rd / $becsWh;
                     $rs    = 1.0 / $denom;
                 }
@@ -122,6 +135,72 @@ final class StockageCalculator implements CalculatorInterface
 
         $ref = $accessor->getStringOrNull('./donnee_entree/reference', $node) ?? '';
         $context->set('ecs.rendement_stockage.' . $ref, $rs);
+    }
+
+    /**
+     * Shmoy = Sh_immeuble / Nblgt — §17.1.2 p.107.
+     *
+     * Repli sur la surface du logement quand l'immeuble n'est pas décrit : un
+     * DPE hors périmètre collectif n'a alors qu'un logement.
+     */
+    private static function surfaceAppartementMoyen(DOMElement $logement, NodeAccessor $accessor): ?float
+    {
+        $surfaceImmeuble = $accessor->getFloatOrNull(
+            './caracteristique_generale/surface_habitable_immeuble',
+            $logement,
+        );
+        $nombreAppartement = $accessor->getFloatOrNull(
+            './caracteristique_generale/nombre_appartement',
+            $logement,
+        );
+
+        if ($surfaceImmeuble !== null && $surfaceImmeuble > 0.0
+            && $nombreAppartement !== null && $nombreAppartement > 0.0
+        ) {
+            return $surfaceImmeuble / $nombreAppartement;
+        }
+
+        $surfaceLogement = $accessor->getFloatOrNull(
+            './caracteristique_generale/surface_habitable_logement',
+            $logement,
+        );
+
+        return ($surfaceLogement !== null && $surfaceLogement > 0.0) ? $surfaceLogement : null;
+    }
+
+    /**
+     * Volume du ballon réel et quote-part de l'appartement.
+     *
+     * Le XSD définit `ratio_virtualisation` comme « ratio de virtualisation de
+     * l'installation collective lorsque l'on rapporte des usages collectifs à
+     * un appartement (a = Shabappartement/Shabtotale) » : dans une telle
+     * installation, `volume_stockage` est déjà la quote-part du logement, pas
+     * le ballon installé.
+     *
+     * Or §11.6 décrit les pertes d'un **ballon réel** — de façon non linéaire
+     * pour le cas général (Qg,w = 67 662 × Vs^0,55), et par tranches de volume
+     * pour les ballons électriques (Cr lu dans tv_pertes_stockage). Évaluer ces
+     * lois sur une fraction de ballon n'a pas de sens physique : un quart de
+     * ballon de 200 L n'est pas un ballon de 50 L. L'ordre correct est donc
+     * d'évaluer la loi sur le ballon réel, puis d'en prendre la quote-part.
+     *
+     * @return array{float, float} [volume du ballon réel (L), quote-part]
+     * @spec-section 11.6
+     * @spec-pages   74-75
+     */
+    private function realVolumeStockage(float $vs, DOMElement $genNode, NodeAccessor $accessor): array
+    {
+        $installation = $this->findParentInstallation($genNode);
+        if ($installation === null) {
+            return [$vs, 1.0];
+        }
+
+        $ratio = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation', $installation);
+        if ($ratio === null || $ratio <= 0.0 || $ratio >= 1.0) {
+            return [$vs, 1.0];
+        }
+
+        return [$vs / $ratio, $ratio];
     }
 
     /**
@@ -210,11 +289,14 @@ final class StockageCalculator implements CalculatorInterface
             return [1.0, false];
         }
 
-        $representativeSurface = $accessor->getFloatOrNull(
-            './caracteristique_generale/surface_habitable_logement',
-            $logement,
-        );
-        if ($representativeSurface === null || $representativeSurface <= 0.0) {
+        // §17.1.2 p.107 : Shmoy = Sh / Nblgt, et « la surface de cet appartement
+        // ne dépend pas de la taille des appartements visités » — ni, donc, de
+        // celle du logement pour lequel le DPE est généré. Lire
+        // surface_habitable_logement ici revenait à dimensionner l'appartement
+        // « moyen » sur le logement réel, un studio de 9 m² dans un immeuble
+        // dont la moyenne est de 63,7 m² sur le cas 2675E2152874Y.
+        $representativeSurface = self::surfaceAppartementMoyen($logement, $accessor);
+        if ($representativeSurface === null) {
             return [1.0, false];
         }
 

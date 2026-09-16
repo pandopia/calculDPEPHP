@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Sortie;
 
+use CalculDpePHP\Collectif\ChauffageInstallationMultiplicity;
 use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
 use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Common\IntermediateEnergyUnit;
@@ -292,7 +293,8 @@ final class SortieParEnergieAggregator implements CalculatorInterface
                     $rdimEff = EcsInstallationMultiplicity::sampledOrNull($install, $accessor)
                         ?? ($nbreAppt * $ratioVirt / $sumEchantillon);
                 } elseif ($typeInstall === 1) {
-                    $rdimEff = $nbreAppt * $ratioVirt / $sumEchantillon;
+                    $rdimEff = ($isCh ? ChauffageInstallationMultiplicity::sampledOrNull($install, $accessor) : null)
+                        ?? ($nbreAppt * $ratioVirt / $sumEchantillon);
                 } else {
                     $rdimEff = $rdim;
                 }
