@@ -88,17 +88,24 @@ final class StockageCalculator implements CalculatorInterface
             $rd           = $this->resolveRd($node, $accessor, $context);
             $becsWh       = $this->resolveBecsWh($node, $accessor, $context);
 
+            // Installation collective virtualisée : le volume publié est déjà la
+            // quote-part de l'appartement. Les lois de §11.6 décrivent un ballon
+            // réel — on les évalue donc sur le ballon réel, puis on en prend la
+            // quote-part. Cf. realVolumeStockage().
+            [$vsReel, $partVirtualisation] = $this->realVolumeStockage($vs, $node, $accessor);
+
             if ($becsWh > 0.0) {
                 if ($isBallonElec) {
                     [$sampleScale, $reclassifyVolume] = $this->sampledIndividualAdjustment($node, $accessor, $context);
                     $qgw = $reclassifyVolume
-                        ? $this->qgwElectrique($vs * $sampleScale, $node, $accessor, $context, true)
-                        : $this->qgwElectrique($vs, $node, $accessor, $context) * $sampleScale;
+                        ? $this->qgwElectrique($vsReel * $sampleScale, $node, $accessor, $context, true)
+                        : $this->qgwElectrique($vsReel, $node, $accessor, $context) * $sampleScale;
+                    $qgw  *= $partVirtualisation;
                     $catC  = $this->isCatCVertical($node, $accessor, $context);
                     $denom = 1.0 + $qgw * $rd / $becsWh;
                     $rs    = ($catC ? 1.08 : 1.0) / $denom;
                 } else {
-                    $qgw   = 67662.0 * ($vs ** 0.55);
+                    $qgw   = 67662.0 * ($vsReel ** 0.55) * $partVirtualisation;
                     $denom = 1.0 + $qgw * $rd / $becsWh;
                     $rs    = 1.0 / $denom;
                 }
@@ -122,6 +129,41 @@ final class StockageCalculator implements CalculatorInterface
 
         $ref = $accessor->getStringOrNull('./donnee_entree/reference', $node) ?? '';
         $context->set('ecs.rendement_stockage.' . $ref, $rs);
+    }
+
+    /**
+     * Volume du ballon réel et quote-part de l'appartement.
+     *
+     * Le XSD définit `ratio_virtualisation` comme « ratio de virtualisation de
+     * l'installation collective lorsque l'on rapporte des usages collectifs à
+     * un appartement (a = Shabappartement/Shabtotale) » : dans une telle
+     * installation, `volume_stockage` est déjà la quote-part du logement, pas
+     * le ballon installé.
+     *
+     * Or §11.6 décrit les pertes d'un **ballon réel** — de façon non linéaire
+     * pour le cas général (Qg,w = 67 662 × Vs^0,55), et par tranches de volume
+     * pour les ballons électriques (Cr lu dans tv_pertes_stockage). Évaluer ces
+     * lois sur une fraction de ballon n'a pas de sens physique : un quart de
+     * ballon de 200 L n'est pas un ballon de 50 L. L'ordre correct est donc
+     * d'évaluer la loi sur le ballon réel, puis d'en prendre la quote-part.
+     *
+     * @return array{float, float} [volume du ballon réel (L), quote-part]
+     * @spec-section 11.6
+     * @spec-pages   74-75
+     */
+    private function realVolumeStockage(float $vs, DOMElement $genNode, NodeAccessor $accessor): array
+    {
+        $installation = $this->findParentInstallation($genNode);
+        if ($installation === null) {
+            return [$vs, 1.0];
+        }
+
+        $ratio = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation', $installation);
+        if ($ratio === null || $ratio <= 0.0 || $ratio >= 1.0) {
+            return [$vs, 1.0];
+        }
+
+        return [$vs / $ratio, $ratio];
     }
 
     /**

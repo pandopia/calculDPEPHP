@@ -275,6 +275,58 @@ XML;
     }
 
     /**
+     * Installation collective virtualisée : Qg,w se calcule sur le ballon réel,
+     * puis on en prend la quote-part de l'appartement.
+     *
+     * Le XSD définit `ratio_virtualisation` comme a = Shab_appartement /
+     * Shab_totale : `volume_stockage` y est déjà la quote-part. §11.6.1 décrit
+     * les pertes d'un ballon réel de façon non linéaire (Vs^0,55), donc
+     * l'évaluer sur la fraction sous-estime — un quart de ballon de 200 L n'est
+     * pas un ballon de 50 L.
+     *
+     * Cas de référence 2657E2331017X : ballon de 200 L partagé, a = 0,25, donc
+     * `volume_stockage` = 50. Qg,w attendu = 67 662 × 200^0,55 × 0,25.
+     */
+    public function testInstallationVirtualiseeCalculeQgwSurLeBallonReel(): void
+    {
+        $rd = 0.87;
+        $becsKwh = 763.21744744;
+        [$doc, $node] = $this->buildGen(50.0, 2, 48, null, $rd, $becsKwh);
+
+        $installation = $doc->getElementsByTagName('installation_ecs')->item(0);
+        $de = $doc->createElement('donnee_entree');
+        $de->appendChild($doc->createElement('ratio_virtualisation', '0.25'));
+        $installation->insertBefore($de, $installation->firstChild);
+
+        $ctx = $this->makeContext($doc);
+        (new StockageCalculator())->calculate($node, $ctx);
+
+        $qgwAttendu = 67662.0 * (200.0 ** 0.55) * 0.25;
+        $this->assertEqualsWithDelta(
+            $qgwAttendu,
+            (float) $ctx->get(StockageCalculator::qgwKey($node)),
+            0.5,
+        );
+
+        // Le calcul naïf sur les 50 L publiés donnerait près du double.
+        $this->assertGreaterThan($qgwAttendu * 1.8, 67662.0 * (50.0 ** 0.55));
+    }
+
+    /** Sans virtualisation, le volume publié est celui du ballon. */
+    public function testInstallationNonVirtualiseeUtiliseLeVolumePublie(): void
+    {
+        [$doc, $node] = $this->buildGen(200.0, 2, 48, null, 0.87, 763.21744744);
+        $ctx = $this->makeContext($doc);
+        (new StockageCalculator())->calculate($node, $ctx);
+
+        $this->assertEqualsWithDelta(
+            67662.0 * (200.0 ** 0.55),
+            (float) $ctx->get(StockageCalculator::qgwKey($node)),
+            0.5,
+        );
+    }
+
+    /**
      * CET (chauffe-eau thermodynamique, id 1-12) → pas de Rs écrit (§14.2 traite séparément).
      */
     public function testCetNotHandled(): void
