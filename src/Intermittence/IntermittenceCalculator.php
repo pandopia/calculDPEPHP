@@ -123,6 +123,15 @@ final class IntermittenceCalculator implements CalculatorInterface
         return (float)($row[$equipementId] ?? $row[1] ?? 1.0);
     }
 
+    /**
+     * `enum_type_installation_id` dont le chauffage est entièrement collectif :
+     * 2 « installation collective » et 3 « collective multi-bâtiment modélisée
+     * comme un réseau de chaleur ». La valeur 1 est individuelle ; la 4,
+     * « hybride collective-individuelle », mêle les deux et se tranche alors
+     * émetteur par émetteur sur `enum_equipement_intermittence_id`.
+     */
+    private const INSTALLATION_COLLECTIVE_IDS = [2, 3];
+
     private function batimentType(
         DOMElement $node,
         CalculationContext $context,
@@ -133,9 +142,19 @@ final class IntermittenceCalculator implements CalculatorInterface
         // §8 p.57 : la table « immeuble collectif / chauffage collectif » est
         // déterminée par l'installation commune, même lorsque l'équipement
         // d'intermittence est codé « absent » (ID 1) dans l'export ADEME.
+        //
+        // `enum_type_installation_id` 3, « collective multi-bâtiment modélisée
+        // comme un réseau de chaleur », y ouvre droit au même titre que 2 : la
+        // table officielle range les deux sous « immeuble collectif chauffage
+        // collectif ». La 4, hybride, se tranche émetteur par émetteur.
         $installation = $node->parentNode?->parentNode;
         if ($installation instanceof DOMElement
-            && $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $installation) === 2) {
+            && in_array(
+                $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $installation),
+                self::INSTALLATION_COLLECTIVE_IDS,
+                true,
+            )
+        ) {
             return 'collectif_collectif';
         }
 
