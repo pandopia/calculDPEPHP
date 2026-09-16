@@ -15,6 +15,10 @@ declare(strict_types=1);
  * @spec-pages 17
  * @spec-source resources/specsplitted/03-enveloppe-deperditions/02-parois-opaques/02-upb/00-calcul.md
  * @generated-on 2026-04-29
+ * @corrected-on 2026-09-16 — la colonne H3/Autres portait les valeurs de la
+ *   colonne H3/Joule sur les périodes 78-82 et 83-88 (0,89 et 0,78 au lieu de
+ *   1 et 0,89). La colonne H3/Autres de la spec p.17 se lit
+ *   2 | 1 | 1 | 0,89 | 0,56 | 0,47 | 0,4 | 0,25.
  */
 return [
     'H1' => [
@@ -73,14 +77,14 @@ return [
             9  => 0.25, 10 => 0.25,
         ],
         'autres' => [
-            1  => 2.00,  2  => 2.00,
-            3  => 1.00,
-            4  => 0.89,
-            5  => 0.78,
-            6  => 0.56,
-            7  => 0.47,
-            8  => 0.40,
-            9  => 0.25, 10 => 0.25,
+            1  => 2.00,  2  => 2.00,         // ≤74 ou inconnu
+            3  => 1.00,                       // 75-77
+            4  => 1.00,                       // 78-82
+            5  => 0.89,                       // 83-88
+            6  => 0.56,                       // 89-00
+            7  => 0.47,                       // 01-05
+            8  => 0.40,                       // 06-12
+            9  => 0.25, 10 => 0.25,           // ≥13
         ],
     ],
 ];
