@@ -153,10 +153,21 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
 
         // Cdimref = 1000 × Pngen_kW / (GV_building × (Tcons - Tbase)).
         // Le profil conventionnel utilise 19 °C et le profil dépensier 21 °C.
-        $gvBuilding = $this->resolveGvBuilding($node, $accessor, $context);
+        [$gvBuilding, $gvRameneAuLogementMoyen] = $this->resolveGvBuilding($node, $accessor, $context);
         $tbase      = $this->resolveTbase($context, $accessor);
-        // §13.2.1.2 : le taux de charge se juge sur la puissance installée.
-        $pnCumule   = $this->puissanceCombustionCumulee($accessor, $context);
+        // §13.2.1.2 : le taux de charge se juge sur la puissance installée, et
+        // Cdimref rapporte cette puissance au GV. Les deux doivent donc couvrir
+        // le même périmètre. Quand resolveGvBuilding ramène le GV à
+        // l'appartement « moyen » (§17.1.4.2), la puissance à lui comparer est
+        // celle de la seule installation du générateur : sommer les chaudières
+        // de tous les appartements visités face au GV d'un seul les confondrait.
+        // Sinon le GV reste celui du bâtiment entier et la puissance installée
+        // est le cumul de tous ses générateurs.
+        $pnCumule   = $this->puissanceCombustionCumulee(
+            $accessor,
+            $context,
+            $gvRameneAuLogementMoyen ? $this->installationParente($node) : null,
+        );
 
         // Calcul QPx selon le type de chaudière
         $boilerCat = $this->boilerCategory($genId);
@@ -393,33 +404,38 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
      * a été testé et écarté : il dégrade l'ensemble du corpus (+30 écarts hors
      * tolérance) et ne correspond pas au Nblgt de la spec.
      */
-    private function resolveGvBuilding(DOMElement $node, NodeAccessor $accessor, CalculationContext $context): float
+    /** @return array{float, bool} [GV retenu (W/K), GV ramené à l'appartement moyen] */
+    private function resolveGvBuilding(DOMElement $node, NodeAccessor $accessor, CalculationContext $context): array
     {
         $gv = (float)($context->get('chauffage.gv') ?? 0.0);
         if ($gv <= 0.0) {
-            return 0.0;
+            return [0.0, false];
         }
 
         $modeApp = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
         if ($modeApp !== null && in_array($modeApp, [6, 8, 10, 12], true)) {
             $nblgt = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement');
             if ($nblgt !== null && $nblgt > 1) {
-                return $gv / $nblgt;
+                return [$gv / $nblgt, true];
             }
         }
 
-        return $gv;
+        return [$gv, false];
     }
 
     /**
-     * Puissance nominale cumulée (W) des générateurs à combustion du logement.
+     * Puissance nominale cumulée (W) des générateurs à combustion.
+     *
+     * Portée : l'installation passée en argument, ou le document entier à
+     * défaut (installation introuvable).
      *
      * @spec-section 13.2.1.2
      */
-    private function puissanceCombustionCumulee(NodeAccessor $accessor, CalculationContext $context): float
+    private function puissanceCombustionCumulee(NodeAccessor $accessor, CalculationContext $context, ?DOMElement $installation = null): float
     {
         $total = 0.0;
-        foreach ($context->document->getElementsByTagName('generateur_chauffage') as $gen) {
+        $portee = $installation ?? $context->document;
+        foreach ($portee->getElementsByTagName('generateur_chauffage') as $gen) {
             if (!$gen instanceof DOMElement) {
                 continue;
             }
@@ -434,6 +450,20 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         }
 
         return $total;
+    }
+
+    /** Installation de chauffage à laquelle appartient le générateur. */
+    private function installationParente(DOMElement $genNode): ?DOMElement
+    {
+        $courant = $genNode->parentNode;
+        while ($courant instanceof DOMElement) {
+            if ($courant->nodeName === 'installation_chauffage') {
+                return $courant;
+            }
+            $courant = $courant->parentNode;
+        }
+
+        return null;
     }
 
     /**
