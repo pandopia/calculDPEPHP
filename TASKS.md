@@ -171,10 +171,14 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   ou au fioul ») et publie 56,371 kWh ; la ligne bois-ventilateur donnerait
   313,9 kWh. Élargir le corpus avant de décider.
 
-### TASK-K29 — Écarts non reproductibles de 2313E3593911Y (méthode 33)
+### TASK-K29 — Écarts non reproductibles des appartements 2313E359… (méthode 33)
 
 - [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
-- Cas d'immeuble mixte dont les écarts résiduels ont tous été instruits et
+- Deux cas au corpus, `2313E3593911Y` et `2313E3593866F` : deux appartements du
+  même immeuble, même diagnostiqueur, même `3cl_tribu_1.4.25.1`. Leurs 103
+  balises en écart sont identiques ; le second ajoute seulement
+  `classe_emission_ges`, conséquence directe de l'intensité GES.
+- Écarts résiduels tous instruits et
   renvoient à la référence plutôt qu'au moteur. Consigné pour éviter de les
   réinstruire :
   - `q4pa_conv` : le fichier déclare `enum_methode_saisie_q4pa_conv_id = 2`
