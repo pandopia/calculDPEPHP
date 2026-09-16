@@ -51,6 +51,21 @@ final class CorpusLocator
         '2676E2269868T.xml' => "besoin_ecs publié deux fois, en kWh et en Wh (×1 000), "
             . 'sur un logement à une seule installation ECS — sortie contradictoire '
             . 'avec elle-même et avec les unités documentées par le XSD',
+
+        // Le fichier ne décrit aucune paroi : `mur_collection`,
+        // `plancher_bas_collection`, `plancher_haut_collection`,
+        // `baie_vitree_collection` et `porte_collection` manquent sous
+        // <enveloppe>, tout comme <ventilation_collection> sous <logement>.
+        // Le XSD les déclare toutes sans `minOccurs`, donc obligatoires. Il
+        // publie pourtant leurs déperditions : deperdition_mur = 55,44,
+        // deperdition_plancher_bas = 38,54, deperdition_plancher_haut = 17,38,
+        // deperdition_baie_vitree = 18,344, deperdition_porte = 6,3,
+        // hvent = 59,08 et hperm = 28,03. Seul <pont_thermique_collection>
+        // subsiste. Aucun logiciel ne peut recalculer ces sorties : leurs
+        // entrées ne sont pas dans le fichier.
+        '2133E0639551K.xml' => 'cinq collections de parois et la collection de ventilation, '
+            . 'toutes obligatoires au XSD, sont absentes, alors que le fichier publie '
+            . 'les déperditions de ces mêmes parois — les sorties n\'ont pas d\'entrées',
     ];
 
     public function __construct(private readonly string $projectRoot)
