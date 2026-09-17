@@ -219,7 +219,14 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
         if ($zoneId !== null) {
             return (int)$zoneId;
         }
-        $id = $accessor->getIntOrNull('//caracteristique_generale/enum_zone_climatique_id');
+        // La zone climatique est publiée sous <meteo> par le schéma ADEME ;
+        // `caracteristique_generale` ne la porte que dans d'anciens exports.
+        // Ne lire que ce second emplacement faisait retomber sur H1 — et donc
+        // sur la colonne SCOP H1/H2 — tous les fichiers au schéma courant.
+        $id = $context->zoneClimatique !== null
+            ? (int)$context->zoneClimatique
+            : ($accessor->getIntOrNull('//meteo/enum_zone_climatique_id')
+                ?? $accessor->getIntOrNull('//caracteristique_generale/enum_zone_climatique_id'));
         $context->set('logement.zone_climatique_id', $id);
         return (int)($id ?? 1);
     }
