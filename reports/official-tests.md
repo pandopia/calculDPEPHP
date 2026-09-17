@@ -1,7 +1,7 @@
 # Conformité du moteur — jeux de tests DPE 3CL
 
-_Généré le 2026-09-17T06:45:34+00:00 — profil de tolérance : `strict`_
-_Révision mesurée : `21679f4` — arbre de travail modifié : 1 fichier(s) src/ non commités_
+_Généré le 2026-09-17T06:48:35+00:00 — profil de tolérance : `strict`_
+_Révision mesurée : `aaa6f32` — arbre de travail modifié : 1 fichier(s) src/ non commités_
 
 Comparaison balise à balise de la totalité de `<donnee_intermediaire>` et
 `<sortie>` entre la sortie du moteur et la référence du cas. Aucune balise
@@ -10,44 +10,44 @@ n'est exclue : une balise attendue mais non produite compte comme non conforme.
 ## Synthèse
 
 ```
-Cas                      : 374
-Exécutés                 : 374
+Cas                      : 375
+Exécutés                 : 375
 Crash                    : 0
 Totalement conformes     : 0
-Partiellement conformes  : 374
+Partiellement conformes  : 375
 
-Valeurs comparées        : 119 405
-Exactes                  : 90 040
-Dans tolérance           : 16 572
-Hors tolérance           : 10 700
+Valeurs comparées        : 119 684
+Exactes                  : 90 286
+Dans tolérance           : 16 629
+Hors tolérance           : 10 678
 Balises manquantes       : 122
-Balises supplémentaires  : 1 920
-Écarts non numériques    : 51
+Balises supplémentaires  : 1 926
+Écarts non numériques    : 43
 
-Conformité               : 89,29 %
+Conformité               : 89,33 %
 ```
 
-Sur ces écarts, **3 353 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **92,09 %**. Détail plus bas.
+Sur ces écarts, **3 361 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **92,14 %**. Détail plus bas.
 
 ## Écarts par famille fonctionnelle
 
 | Famille | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Suppl. | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Enveloppe | 46414 | 44670 | 1360 | 255 | 7 | 122 | 99,17 % |
-| Ventilation | 2561 | 1650 | 889 | 22 | 0 | 0 | 99,14 % |
-| Apports | 11879 | 10327 | 1044 | 215 | 0 | 293 | 95,72 % |
-| Besoin chauffage | 1850 | 14 | 1685 | 147 | 4 | 0 | 91,84 % |
-| Besoin ECS | 3552 | 3344 | 193 | 15 | 0 | 0 | 99,58 % |
-| Génération chauffage | 7609 | 3101 | 2735 | 1722 | 26 | 25 | 76,70 % |
-| Génération ECS | 7868 | 4961 | 1625 | 1253 | 15 | 14 | 83,71 % |
-| Auxiliaires | 12716 | 8076 | 2378 | 2262 | 0 | 0 | 82,21 % |
-| Froid | 4640 | 4296 | 29 | 251 | 64 | 0 | 93,21 % |
-| PV | 2630 | 2615 | 0 | 9 | 6 | 0 | 99,43 % |
-| Sorties énergie finale | 2456 | 1288 | 669 | 499 | 0 | 0 | 79,68 % |
-| Sorties énergie primaire | 2992 | 1378 | 878 | 708 | 0 | 0 | 75,40 % |
-| GES | 4993 | 2335 | 1473 | 1162 | 0 | 0 | 76,27 % |
-| Coûts | 4245 | 886 | 1420 | 1939 | 0 | 0 | 54,32 % |
-| Confort d'été | 2154 | 616 | 0 | 72 | 0 | 1466 | 28,60 % |
+| Enveloppe | 46524 | 44780 | 1360 | 255 | 7 | 122 | 99,17 % |
+| Ventilation | 2568 | 1656 | 890 | 22 | 0 | 0 | 99,14 % |
+| Apports | 11907 | 10352 | 1046 | 215 | 0 | 294 | 95,73 % |
+| Besoin chauffage | 1854 | 14 | 1689 | 147 | 4 | 0 | 91,86 % |
+| Besoin ECS | 3559 | 3351 | 193 | 15 | 0 | 0 | 99,58 % |
+| Génération chauffage | 7621 | 3106 | 2742 | 1722 | 26 | 25 | 76,74 % |
+| Génération ECS | 7879 | 4970 | 1627 | 1253 | 15 | 14 | 83,73 % |
+| Auxiliaires | 12750 | 8102 | 2384 | 2264 | 0 | 0 | 82,24 % |
+| Froid | 4652 | 4308 | 29 | 251 | 64 | 0 | 93,23 % |
+| PV | 2637 | 2622 | 0 | 9 | 6 | 0 | 99,43 % |
+| Sorties énergie finale | 2463 | 1292 | 672 | 499 | 0 | 0 | 79,74 % |
+| Sorties énergie primaire | 3000 | 1387 | 881 | 708 | 0 | 0 | 75,60 % |
+| GES | 5007 | 2355 | 1499 | 1134 | 0 | 0 | 76,97 % |
+| Coûts | 4257 | 891 | 1423 | 1943 | 0 | 0 | 54,36 % |
+| Confort d'été | 2160 | 617 | 0 | 72 | 0 | 1471 | 28,56 % |
 | Autre | 846 | 483 | 194 | 169 | 0 | 0 | 80,02 % |
 
 ## Écarts par périmètre d'évaluation
@@ -58,7 +58,7 @@ Périmètres du règlement d'évaluation CSTB §1.1, déduits de
 | Périmètre | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | immeuble_collectif | 236 | 79126 | 61264 | 11028 | 5303 | 22 | 91,09 % |
-| appartement_issu_immeuble | 57 | 19570 | 13333 | 2658 | 3153 | 49 | 81,47 % |
+| appartement_issu_immeuble | 58 | 19849 | 13579 | 2715 | 3131 | 49 | 81,85 % |
 | maison_individuelle | 39 | 10872 | 8167 | 1333 | 1293 | 23 | 87,07 % |
 | appartement_individuel | 42 | 9837 | 7276 | 1553 | 951 | 28 | 89,37 % |
 
@@ -66,8 +66,8 @@ Périmètres du règlement d'évaluation CSTB §1.1, déduits de
 
 | Régime | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| post_2026 | 285 | 88138 | 67264 | 12729 | 6494 | 66 | 90,47 % |
-| pre_2026 | 89 | 31267 | 22776 | 3843 | 4206 | 56 | 84,89 % |
+| post_2026 | 285 | 88138 | 67270 | 12733 | 6486 | 66 | 90,48 % |
+| pre_2026 | 90 | 31546 | 23016 | 3896 | 4192 | 56 | 85,07 % |
 
 ## Écarts par moteur de calcul de la référence
 
@@ -76,9 +76,9 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 
 | Moteur | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| BBS_Slama_2025.11.1.0 | 274 | 85326 | 65623 | 12182 | 5976 | 14 | 90,89 % |
+| BBS_Slama_2025.11.1.0 | 274 | 85326 | 65629 | 12186 | 5968 | 14 | 90,91 % |
 | 3cl_tribu_1.4.25.1 | 67 | 23980 | 17486 | 2989 | 3179 | 40 | 85,15 % |
-| 3cl_tribu_2024.6.1.0 | 14 | 5167 | 3840 | 643 | 606 | 0 | 86,53 % |
+| 3cl_tribu_2024.6.1.0 | 15 | 5446 | 4080 | 696 | 592 | 0 | 87,46 % |
 | 3cl_bbs_V2025.11.1.0 | 7 | 1800 | 961 | 292 | 460 | 37 | 69,34 % |
 | BBS_Slama_2024.6.1.0 | 3 | 937 | 677 | 96 | 155 | 0 | 82,23 % |
 | inconnu | 3 | 799 | 536 | 197 | 50 | 15 | 91,40 % |
@@ -94,33 +94,33 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 | 1 | Génération chauffage | `conso_ch` | 663 | 140 | 2 900,0 % | hors-tol×657 manquante×6 |
 | 2 | Génération ECS | `conso_ecs` | 560 | 85 | 1 098,9 % | hors-tol×560 |
 | 3 | Génération chauffage | `conso_ch_depensier` | 542 | 141 | 2 900,0 % | hors-tol×536 manquante×6 |
-| 4 | Coûts | `cout_5_usages` | 500 | 226 | 882,3 % | hors-tol×500 |
+| 4 | Coûts | `cout_5_usages` | 502 | 227 | 882,3 % | hors-tol×502 |
 | 5 | Génération ECS | `conso_ecs_depensier` | 480 | 83 | 845,3 % | hors-tol×480 |
-| 6 | GES | `emission_ges_5_usages` | 381 | 163 | 19 178,9 % | hors-tol×381 |
+| 6 | GES | `emission_ges_5_usages` | 376 | 162 | 19 178,9 % | hors-tol×376 |
 | 7 | Sorties énergie finale | `conso_5_usages` | 369 | 155 | 19 918,0 % | hors-tol×369 |
-| 8 | Coûts | `cout_ecs_depensier` | 363 | 363 | 207,9 % | hors-tol×363 |
-| 9 | Coûts | `cout_ch_depensier` | 362 | 362 | 268,0 % | hors-tol×362 |
+| 8 | Coûts | `cout_ecs_depensier` | 364 | 364 | 207,9 % | hors-tol×364 |
+| 9 | Coûts | `cout_ch_depensier` | 363 | 363 | 268,0 % | hors-tol×363 |
 | 10 | Coûts | `cout_ch` | 338 | 165 | 533,1 % | hors-tol×338 |
-| 11 | Confort d'été | `isolation_toiture` | 330 | 330 | 100,0 % | hors-tol×36 suppl×294 |
-| 12 | Confort d'été | `protection_solaire_exterieure` | 306 | 306 | 100,0 % | hors-tol×13 suppl×293 |
-| 13 | Confort d'été | `aspect_traversant` | 305 | 305 | — | hors-tol×12 suppl×293 |
-| 14 | GES | `emission_ges_ch` | 304 | 148 | 810,8 % | hors-tol×304 |
-| 15 | Confort d'été | `enum_indicateur_confort_ete_id` | 304 | 304 | 100,0 % | hors-tol×11 suppl×293 |
-| 16 | Coûts | `cout_ecs` | 299 | 166 | 559,4 % | hors-tol×299 |
-| 17 | Apports | `inertie_lourde` | 294 | 294 | — | suppl×293 hors-tol×1 |
-| 18 | Confort d'été | `brasseur_air` | 293 | 293 | — | suppl×293 |
+| 11 | Confort d'été | `isolation_toiture` | 331 | 331 | 100,0 % | hors-tol×36 suppl×295 |
+| 12 | Confort d'été | `protection_solaire_exterieure` | 307 | 307 | 100,0 % | hors-tol×13 suppl×294 |
+| 13 | Confort d'été | `aspect_traversant` | 306 | 306 | — | hors-tol×12 suppl×294 |
+| 14 | Confort d'été | `enum_indicateur_confort_ete_id` | 305 | 305 | 100,0 % | hors-tol×11 suppl×294 |
+| 15 | Coûts | `cout_ecs` | 299 | 166 | 559,4 % | hors-tol×299 |
+| 16 | Apports | `inertie_lourde` | 295 | 295 | — | suppl×294 hors-tol×1 |
+| 17 | GES | `emission_ges_ch` | 294 | 143 | 810,8 % | hors-tol×294 |
+| 18 | Confort d'été | `brasseur_air` | 294 | 294 | — | suppl×294 |
 | 19 | Auxiliaires | `cout_auxiliaire_generation_ch_depensier` | 215 | 215 | 346,7 % | hors-tol×215 |
 | 20 | Génération chauffage | `rendement_generation` | 166 | 126 | 39,1 % | hors-tol×140 suppl×23 manquante×3 |
 | 21 | Auxiliaires | `cout_auxiliaire_generation_ecs_depensier` | 166 | 166 | 225,0 % | hors-tol×166 |
 | 22 | Génération ECS | `rendement_stockage` | 165 | 52 | 40,5 % | hors-tol×153 manquante×12 |
-| 23 | GES | `emission_ges_ecs` | 152 | 76 | 616,5 % | hors-tol×152 |
-| 24 | Sorties énergie primaire | `ep_conso_5_usages` | 151 | 151 | 519,8 % | hors-tol×151 |
-| 25 | GES | `emission_ges_ch_depensier` | 147 | 147 | 154,0 % | hors-tol×147 |
+| 23 | Sorties énergie primaire | `ep_conso_5_usages` | 151 | 151 | 519,8 % | hors-tol×151 |
+| 24 | GES | `emission_ges_ecs` | 148 | 74 | 616,5 % | hors-tol×148 |
+| 25 | GES | `emission_ges_ch_depensier` | 142 | 142 | 154,0 % | hors-tol×142 |
 | 26 | Sorties énergie primaire | `ep_conso_5_usages_m2` | 140 | 140 | 519,0 % | hors-tol×140 |
 | 27 | Sorties énergie primaire | `ep_conso_ch` | 136 | 136 | 142,9 % | hors-tol×136 |
 | 28 | Sorties énergie primaire | `ep_conso_ch_depensier` | 136 | 136 | 142,9 % | hors-tol×136 |
 | 29 | Sorties énergie finale | `conso_5_usages_m2` | 128 | 128 | 242,6 % | hors-tol×128 |
-| 30 | Auxiliaires | `cout_total_auxiliaire` | 119 | 119 | 3 213,8 % | hors-tol×119 |
+| 30 | Auxiliaires | `cout_total_auxiliaire` | 120 | 120 | 3 213,8 % | hors-tol×120 |
 | 31 | Auxiliaires | `cout_auxiliaire_generation_ch` | 115 | 115 | 100,0 % | hors-tol×115 |
 | 32 | Auxiliaires | `conso_auxiliaire_generation_ch` | 101 | 101 | 100,0 % | hors-tol×101 |
 | 33 | Auxiliaires | `conso_auxiliaire_generation_ch_depensier` | 101 | 101 | 100,0 % | hors-tol×101 |
@@ -129,8 +129,8 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 | 36 | Auxiliaires | `ep_conso_auxiliaire_generation_ch` | 101 | 101 | 100,0 % | hors-tol×101 |
 | 37 | Auxiliaires | `ep_conso_auxiliaire_generation_ch_depensier` | 101 | 101 | 100,0 % | hors-tol×101 |
 | 38 | Génération chauffage | `qp0` | 97 | 85 | 205 028,2 % | hors-tol×96 manquante×1 |
-| 39 | GES | `emission_ges_5_usages_m2` | 94 | 94 | 152,9 % | hors-tol×94 |
-| 40 | Génération chauffage | `pn` | 93 | 79 | 1 328,6 % | hors-tol×89 manquante×4 |
+| 39 | Génération chauffage | `pn` | 93 | 79 | 1 328,6 % | hors-tol×89 manquante×4 |
+| 40 | GES | `emission_ges_5_usages_m2` | 92 | 92 | 152,9 % | hors-tol×92 |
 
 ## Écarts imputables à la référence
 
@@ -141,17 +141,17 @@ reproduire le défaut d'un logiciel tiers éloignerait le moteur de la méthode.
 
 | Balise | Occurrences | Motif |
 |---|---:|---|
-| `aspect_traversant` | 280 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
-| `brasseur_air` | 280 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
-| `enum_indicateur_confort_ete_id` | 280 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
-| `inertie_lourde` | 280 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
-| `isolation_toiture` | 280 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
-| `protection_solaire_exterieure` | 280 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
+| `aspect_traversant` | 281 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
+| `brasseur_air` | 281 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
+| `enum_indicateur_confort_ete_id` | 281 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
+| `inertie_lourde` | 281 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
+| `isolation_toiture` | 281 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
+| `protection_solaire_exterieure` | 281 | la référence écrit un bloc <confort_ete> vide, alors que son schéma y rend protection_solaire_exterieure obligatoire |
 | `besoin_ecs_depensier` | 13 | la référence viole Becs_dep = Becs × 79/56 (§11.1) : 8800 publié au lieu de 24990 |
 | `qp0` | 15 | la référence sérialise QP0 en kW (0.120) malgré l’unité W imposée par le XSD ; la valeur cohérente avec Pn=24000 W est 120 W |
 | `cout_fr_depensier` | 19 | la référence recopie cout_fr dans cout_fr_depensier alors que les consommations diffèrent (51 vs 129 kWh) |
-| `cout_ecs_depensier` | 309 | la référence recopie cout_ecs dans cout_ecs_depensier alors que les consommations diffèrent (2217 vs 2879 kWh) |
-| `cout_ch_depensier` | 309 | la référence recopie cout_ch dans cout_ch_depensier alors que les consommations diffèrent (4934 vs 6434 kWh) |
+| `cout_ecs_depensier` | 310 | la référence recopie cout_ecs dans cout_ecs_depensier alors que les consommations diffèrent (2217 vs 2879 kWh) |
+| `cout_ch_depensier` | 310 | la référence recopie cout_ch dans cout_ch_depensier alors que les consommations diffèrent (4934 vs 6434 kWh) |
 | `cout_auxiliaire_generation_ecs_depensier` | 147 | la référence recopie cout_auxiliaire_generation_ecs dans cout_auxiliaire_generation_ecs_depensier alors que les consommations diffèrent (7 vs 10 kWh) |
 | `cout_auxiliaire_generation_ch_depensier` | 184 | la référence recopie cout_auxiliaire_generation_ch dans cout_auxiliaire_generation_ch_depensier alors que les consommations diffèrent (39 vs 87 kWh) |
 | `conso_totale_auxiliaire` | 10 | la référence publie un total auxiliaire de 103.1 kWh, incompatible avec la somme de ses postes (316.8 kWh) |
@@ -187,8 +187,6 @@ Aucun chemin produit hors de ceux déclarés par `resources/ademe_DPE.xsd`.
 | `2659E2268156G.xml` | appartement_issu_immeuble | post_2026 | 229 | 90 | 60,70 % |
 | `2659E2268184I.xml` | appartement_issu_immeuble | post_2026 | 229 | 90 | 60,70 % |
 | `2675E0942311V.xml` | immeuble_collectif | post_2026 | 410 | 90 | 78,05 % |
-| `2420E4488869S.xml` | appartement_issu_immeuble | pre_2026 | 316 | 89 | 71,84 % |
-| `2420E4488915M.xml` | appartement_issu_immeuble | pre_2026 | 316 | 89 | 71,84 % |
 | `2659E2236995T.xml` | appartement_issu_immeuble | post_2026 | 283 | 89 | 68,55 % |
 | `2675E2152874Y.xml` | appartement_issu_immeuble | post_2026 | 335 | 89 | 73,43 % |
 | `2400E0333876N.xml` | appartement_issu_immeuble | pre_2026 | 403 | 86 | 78,66 % |
@@ -197,6 +195,8 @@ Aucun chemin produit hors de ceux déclarés par `resources/ademe_DPE.xsd`.
 | `2400E0333883U.xml` | appartement_issu_immeuble | pre_2026 | 403 | 86 | 78,66 % |
 | `2400E0333885W.xml` | appartement_issu_immeuble | pre_2026 | 403 | 86 | 78,66 % |
 | `2400E0333888Z.xml` | appartement_issu_immeuble | pre_2026 | 403 | 86 | 78,66 % |
+| `2400E0333891C.xml` | appartement_issu_immeuble | pre_2026 | 403 | 86 | 78,66 % |
+| `2400E0333892D.xml` | appartement_issu_immeuble | pre_2026 | 403 | 86 | 78,66 % |
 
 ## Cas totalement conformes
 
