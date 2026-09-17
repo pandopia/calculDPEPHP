@@ -401,6 +401,22 @@ final class StockageCalculator implements CalculatorInterface
             }
         }
 
+        // §17.1.2 p.107 : les appartements « moyens » équipés d'un même type
+        // d'installation forment un « sous ensemble de l'immeuble », et le
+        // facteur Shmoy / Shmoy_système_i sert à ramener la caractéristique
+        // pondérée d'un sous-ensemble à celle de l'appartement moyen. Avec un
+        // seul sous-ensemble, il n'y a rien à répartir : Shmoy_système_i est
+        // alors l'estimation, sur l'échantillon, de Shmoy lui-même, et le
+        // rapport vaut 1 par construction. C'est aussi la seule valeur qui
+        // respecte la phrase qui définit Shmoy — « la surface de cet
+        // appartement ne dépend pas de la taille des appartements visités » :
+        // diviser par une surface relevée chez les visités la ferait dépendre
+        // d'eux. La répartition heuristique ci-dessous ne concerne donc que les
+        // immeubles à plusieurs sous-ensembles d'ECS.
+        if (count($installations) === 1) {
+            return [1.0, false];
+        }
+
         $offset = 0;
         $remainingVisits = count($visitedSurfaces);
         $lastIndex = count($installations) - 1;

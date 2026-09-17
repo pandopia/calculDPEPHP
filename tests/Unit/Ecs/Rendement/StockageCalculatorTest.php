@@ -262,8 +262,9 @@ XML;
      * généré. L'ajustement d'échantillonnage part donc de Shmoy, pas de
      * `surface_habitable_logement`.
      *
-     * Ici Shmoy = 6550 / 100 = 65,5 et non le studio de 9 m² : le facteur
-     * appliqué à Qg,w vaut 65,5 / 130 et non 9 / 130.
+     * Ici Shmoy = 6550 / 100 = 65,5 et non le studio de 9 m². L'immeuble porte
+     * deux sous-ensembles d'ECS de même surface : chacun reçoit un logement
+     * visité, et le facteur appliqué à Qg,w vaut 65,5 / 60 — pas 9 / 60.
      */
     public function testEchantillonnagePartDeLAppartementMoyenEtNonDuLogement(): void
     {
@@ -281,7 +282,7 @@ XML;
                 <donnee_entree>
                     <enum_type_installation_id>1</enum_type_installation_id>
                     <enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id>
-                    <surface_habitable>6550</surface_habitable>
+                    <surface_habitable>3275</surface_habitable>
                 </donnee_entree>
                 <donnee_intermediaire>
                     <rendement_distribution>0.93</rendement_distribution>
@@ -297,6 +298,13 @@ XML;
                         </donnee_entree>
                     </generateur_ecs>
                 </generateur_ecs_collection>
+            </installation_ecs>
+            <installation_ecs>
+                <donnee_entree>
+                    <enum_type_installation_id>1</enum_type_installation_id>
+                    <enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id>
+                    <surface_habitable>3275</surface_habitable>
+                </donnee_entree>
             </installation_ecs>
         </installation_ecs_collection>
     </logement>
@@ -318,9 +326,83 @@ XML;
         // Cr = 0,27 pour tv_pertes_stockage_id = 3 ; Qg,w brut = 8592 × 45/24 × 100 × 0,27.
         $qgwBrut = 8592.0 * 45.0 / 24.0 * 100.0 * 0.27;
         $this->assertEqualsWithDelta(
-            $qgwBrut * (6550.0 / 100.0) / 130.0,
+            $qgwBrut * (6550.0 / 100.0) / 60.0,
             (float) $ctx->get(StockageCalculator::qgwKey($node)),
             0.5,
+        );
+    }
+
+    /**
+     * §17.1.2 p.107 : les appartements « moyens » équipés d'un même type
+     * d'installation forment un sous-ensemble de l'immeuble, et le facteur
+     * Shmoy / Shmoy_système_i ramène la caractéristique pondérée d'un
+     * sous-ensemble à celle de l'appartement moyen. Avec un seul sous-ensemble
+     * il n'y a rien à répartir : Shmoy_système_i estime Shmoy lui-même, le
+     * rapport vaut 1, et Qg,w reste celui du ballon déclaré. Diviser par une
+     * surface relevée chez les logements visités ferait de surcroît dépendre le
+     * résultat de leur taille, ce que la définition de Shmoy exclut.
+     */
+    public function testSingleEcsSubsetIsNotRescaledBySampledSurfaces(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<dpe>
+    <logement>
+        <caracteristique_generale>
+            <surface_habitable_logement>80.83</surface_habitable_logement>
+            <surface_habitable_immeuble>1648.68</surface_habitable_immeuble>
+            <nombre_appartement>25</nombre_appartement>
+        </caracteristique_generale>
+        <installation_ecs_collection>
+            <installation_ecs>
+                <donnee_entree>
+                    <enum_type_installation_id>1</enum_type_installation_id>
+                    <enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id>
+                    <surface_habitable>1648.68</surface_habitable>
+                </donnee_entree>
+                <donnee_intermediaire>
+                    <rendement_distribution>0.87</rendement_distribution>
+                    <besoin_ecs>1233.1965336781</besoin_ecs>
+                </donnee_intermediaire>
+                <generateur_ecs_collection>
+                    <generateur_ecs>
+                        <donnee_entree>
+                            <enum_type_energie_id>1</enum_type_energie_id>
+                            <enum_type_generateur_ecs_id>69</enum_type_generateur_ecs_id>
+                            <tv_pertes_stockage_id>6</tv_pertes_stockage_id>
+                            <volume_stockage>176</volume_stockage>
+                        </donnee_entree>
+                    </generateur_ecs>
+                </generateur_ecs_collection>
+            </installation_ecs>
+        </installation_ecs_collection>
+    </logement>
+    <dpe_immeuble>
+        <logement_visite_collection>
+            <logement_visite><surface_habitable_logement>44.25</surface_habitable_logement></logement_visite>
+            <logement_visite><surface_habitable_logement>80.55</surface_habitable_logement></logement_visite>
+            <logement_visite><surface_habitable_logement>69.92</surface_habitable_logement></logement_visite>
+            <logement_visite><surface_habitable_logement>64.95</surface_habitable_logement></logement_visite>
+        </logement_visite_collection>
+    </dpe_immeuble>
+</dpe>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $node = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        $ctx = $this->makeContext($doc);
+
+        (new StockageCalculator())->calculate($node, $ctx);
+
+        // Cr = 0,23 pour tv_pertes_stockage_id = 6, ballon non cat. C.
+        $qgw = 8592.0 * 45.0 / 24.0 * 176.0 * 0.23;
+        self::assertEqualsWithDelta($qgw, (float) $ctx->get(StockageCalculator::qgwKey($node)), 0.5);
+
+        $rs = (float)$doc->getElementsByTagName('rendement_stockage')->item(0)->textContent;
+        self::assertEqualsWithDelta(
+            1.0 / (1.0 + $qgw * 0.87 / (1233.1965336781 * 1000.0)),
+            $rs,
+            self::TOL,
         );
     }
 
