@@ -73,18 +73,41 @@ final class PuissanceDimensionnementTest extends TestCase
         self::assertEqualsWithDelta($expected, PuissanceDimensionnement::pnFromPdimKw($pdim, $post2006), 1e-9);
     }
 
-    public function testPost2006NeedsBothMuraleAndYear(): void
+    public function testDataComplementairesNeedsBothMuraleAndYear(): void
     {
-        self::assertTrue(self::gen('1', '2010'));
-        self::assertFalse(self::gen('1', '2004'));
-        self::assertFalse(self::gen('0', '2010'));
-        self::assertFalse(self::gen('1', ''));
-        self::assertFalse(self::gen(null, null));
+        self::assertTrue(self::gen(null, '1', '2010'));
+        self::assertFalse(self::gen(null, '1', '2004'));
+        self::assertFalse(self::gen(null, '0', '2010'));
+        self::assertFalse(self::gen(null, '1', ''));
+        self::assertFalse(self::gen(null, null, null));
     }
 
-    private static function gen(?string $murale, ?string $annee): bool
+    /**
+     * Les attributs data_complementaires n'appartiennent ni à la méthode ni au
+     * schéma ADEME et manquent sur une partie du corpus. Le millésime porté par
+     * le libellé XSD du type de générateur suffit alors : « chaudière gaz à
+     * condensation après 2015 » (97) est installée après 2006.
+     */
+    public function testXsdVintageAloneOpensTheSecondColumn(): void
+    {
+        self::assertTrue(self::gen(97, null, null));   // gaz condensation après 2015
+        self::assertTrue(self::gen(80, null, null));   // fioul standard après 2015
+        self::assertFalse(self::gen(89, null, null));  // gaz standard 2001-2015
+        self::assertFalse(self::gen(85, null, null));  // gaz classique avant 1981
+    }
+
+    /** Un millésime 2001-2015 reste éligible via les attributs du logiciel. */
+    public function testVintageAndDataComplementairesAreAlternatives(): void
+    {
+        self::assertTrue(self::gen(89, '1', '2010'));
+    }
+
+    private static function gen(?int $typeId, ?string $murale, ?string $annee): bool
     {
         $doc = new DOMDocument();
+        $type = $typeId === null
+            ? ''
+            : "<enum_type_generateur_ch_id>$typeId</enum_type_generateur_ch_id>";
         $attrs = $murale === null
             ? ''
             : sprintf(
@@ -92,7 +115,7 @@ final class PuissanceDimensionnementTest extends TestCase
                 $murale,
                 $annee ?? '',
             );
-        $doc->loadXML("<generateur_chauffage><donnee_entree>$attrs</donnee_entree></generateur_chauffage>");
+        $doc->loadXML("<generateur_chauffage><donnee_entree>$type$attrs</donnee_entree></generateur_chauffage>");
         $node = $doc->documentElement;
         self::assertInstanceOf(DOMElement::class, $node);
 

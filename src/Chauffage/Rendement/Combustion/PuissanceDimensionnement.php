@@ -74,8 +74,27 @@ final class PuissanceDimensionnement
     }
 
     /**
-     * Détecte une chaudière murale installée à partir de 2006 via
-     * data_complementaires, qui seule ouvre la colonne 2 de la table.
+     * Types de générateurs de chauffage dont le libellé XSD situe lui-même
+     * l'installation après 2015 — donc après 2006 (chaudières fioul et gaz
+     * standard / basse température / à condensation « après 2015 »).
+     */
+    private const CH_VINTAGE_POST_2006 = [80, 82, 84, 90, 93, 97];
+
+    /** Idem côté ECS (enum_type_generateur_ecs_id), y compris les alias GPL. */
+    private const ECS_VINTAGE_POST_2006 = [40, 42, 44, 50, 53, 57, 67, 97, 100, 104, 114];
+
+    /**
+     * Vrai lorsque la chaudière relève de la colonne 2 de la table §13.2.2.4,
+     * « chaudières murales installées à partir de 2006 ».
+     *
+     * Deux signaux, l'un suffisant à l'autre :
+     *
+     *  - `enum_type_generateur_{ch,ecs}_id` quand le libellé XSD situe déjà
+     *    l'installation après 2015 : c'est la donnée native de la spec, elle
+     *    existe toujours ;
+     *  - à défaut, les attributs `data_complementaires` que certains logiciels
+     *    diagnostiqueurs ajoutent. Ils n'appartiennent ni à la méthode ni au
+     *    schéma et sont souvent absents — d'où le premier critère.
      */
     public static function isChaudierePost2006(DOMElement $genNode): bool
     {
@@ -83,7 +102,19 @@ final class PuissanceDimensionnement
         if ($doc === null) {
             return false;
         }
-        $nodes = (new DOMXPath($doc))->query('./donnee_entree/data_complementaires', $genNode);
+        $xpath = new DOMXPath($doc);
+
+        foreach ([
+            'enum_type_generateur_ch_id'  => self::CH_VINTAGE_POST_2006,
+            'enum_type_generateur_ecs_id' => self::ECS_VINTAGE_POST_2006,
+        ] as $tag => $ids) {
+            $node = $xpath->query("./donnee_entree/$tag", $genNode)?->item(0);
+            if ($node !== null && in_array((int)$node->textContent, $ids, true)) {
+                return true;
+            }
+        }
+
+        $nodes = $xpath->query('./donnee_entree/data_complementaires', $genNode);
         if ($nodes === false || $nodes->length === 0) {
             return false;
         }
