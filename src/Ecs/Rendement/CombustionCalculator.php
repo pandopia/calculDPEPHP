@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Ecs\Rendement;
 
+use CalculDpePHP\Chauffage\Rendement\Combustion\PuissanceDimensionnement;
 use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
@@ -250,6 +251,20 @@ final class CombustionCalculator implements CalculatorInterface
 
         $ratioVirt = $this->getRatioVirtEcs($node, $accessor);
         $pnW  = $this->computePnW($node, $accessor, $context, $ratioVirt);
+        if (self::pnSaisie($node, $accessor) === null) {
+            // §13.2.2.4 p.92 : la puissance de dimensionnement est
+            // Pdim = max(Pch ; Pecs), et Pn se lit ensuite dans la table
+            // Pdim → Pn. Sans ces deux étapes, le générateur d'ECS publiait le
+            // Pch brut tiré du GV : une valeur continue, hors des paliers
+            // nominaux, qui ignorait la puissance réellement nécessaire à la
+            // production d'ECS — laquelle vaut 21 kW dès qu'elle est instantanée.
+            $vs     = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $node) ?? 0.0;
+            $pdimKw = max($pnW, PuissanceDimensionnement::pecsW($vs)) / 1000.0;
+            $pnW    = PuissanceDimensionnement::pnFromPdimKw(
+                $pdimKw,
+                PuissanceDimensionnement::isChaudierePost2006($node),
+            ) * 1000.0;
+        }
         $pnKw = $pnW / 1000.0;
 
         // Sélectionne le palier selon pn_max_kw
@@ -311,6 +326,19 @@ final class CombustionCalculator implements CalculatorInterface
             $hasPnSaisie = $accessor->getFloatOrNull('./donnee_entree/pn', $node) !== null;
             $ratioVirt   = $this->getRatioVirtEcs($node, $accessor);
             $pnW         = $this->computePnW($node, $accessor, $context, $ratioVirt);
+            if (!$hasPnSaisie) {
+                // §13.2.2.4 p.92 : la puissance de dimensionnement d'un générateur
+                // est Pdim = max(Pch ; Pecs), et Pn se lit dans la table Pdim → Pn.
+                // Sans ces deux étapes, un générateur d'ECS publiait Pch brut —
+                // une valeur continue, hors des paliers nominaux, et qui ignorait
+                // la puissance réellement nécessaire à la production d'ECS.
+                $vs     = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $node) ?? 0.0;
+                $pdimKw = max($pnW, PuissanceDimensionnement::pecsW($vs)) / 1000.0;
+                $pnW    = PuissanceDimensionnement::pnFromPdimKw(
+                    $pdimKw,
+                    PuissanceDimensionnement::isChaudierePost2006($node),
+                ) * 1000.0;
+            }
             $ventose     = $accessor->getIntOrNull('./donnee_entree/presence_ventouse', $node) ?? 0;
             $e = [0 => 2.5, 1 => 1.75][$ventose] ?? 2.5;
             $f = [0 => -0.8, 1 => -0.55][$ventose] ?? -0.8;

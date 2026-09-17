@@ -331,16 +331,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
 
         $vs = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $ecsNode) ?? 0.0;
 
-        if ($vs <= 0.0) {
-            return 21000.0; // Instantanée
-        }
-        if ($vs <= 20.0) {
-            return (21.0 - 0.8 * $vs) * 1000.0;
-        }
-        if ($vs <= 150.0) {
-            return (5.0 - 1.751 * ($vs - 20.0) / 65.0) * 1000.0; // Semi-accumulation
-        }
-        return (7.14 * $vs + 428.0); // Accumulation : déjà en W
+        return PuissanceDimensionnement::pecsW($vs);
     }
 
     /**
@@ -353,45 +344,12 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
      */
     private function lookupPnFromPdim(float $pdimKw, DOMElement $genNode, NodeAccessor $accessor): float
     {
-        $isPost2006 = $this->isChaudierePost2006($genNode, $accessor);
-
-        // Table §13.2.2.4 p.92
-        // Colonne 1 : chaudières murales avant 2005 OU chaudières sur sol
-        // Colonne 2 : chaudières murales à partir de 2006
-        if ($pdimKw <= 5.0)       return $isPost2006 ? 5.0  : 18.0;
-        if ($pdimKw <= 10.0)      return $isPost2006 ? 10.0 : 18.0;
-        if ($pdimKw <= 13.0)      return $isPost2006 ? 13.0 : 18.0;
-        if ($pdimKw <= 18.0)      return 18.0;
-        if ($pdimKw <= 24.0)      return 24.0;
-        if ($pdimKw <= 28.0)      return 28.0;
-        if ($pdimKw <= 32.0)      return 32.0;
-        if ($pdimKw <= 40.0)      return 40.0;
-        // Pdim > 40 : (partie entière(Pdim/5) + 1) × 5
-        return ((int)floor($pdimKw / 5.0) + 1) * 5.0;
+        return PuissanceDimensionnement::pnFromPdimKw(
+            $pdimKw,
+            PuissanceDimensionnement::isChaudierePost2006($genNode),
+        );
     }
 
-    /**
-     * Détecte une chaudière murale installée à partir de 2006 via data_complementaires.
-     */
-    private function isChaudierePost2006(DOMElement $genNode, NodeAccessor $accessor): bool
-    {
-        $doc = $genNode->ownerDocument;
-        if ($doc === null) {
-            return false;
-        }
-        $xpath = new \DOMXPath($doc);
-        $nodes = $xpath->query('./donnee_entree/data_complementaires', $genNode);
-        if ($nodes === false || $nodes->length === 0) {
-            return false;
-        }
-        $dc = $nodes->item(0);
-        if (!$dc instanceof DOMElement) {
-            return false;
-        }
-        $murale = $dc->getAttribute('data-chaudiere-murale');
-        $annee  = $dc->getAttribute('data-annee-installation');
-        return $murale === '1' && $annee !== '' && (int)$annee >= 2006;
-    }
 
     /**
      * Retourne le plafond de Pn (W) selon le type de générateur.

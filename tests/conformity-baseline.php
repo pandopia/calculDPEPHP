@@ -102,7 +102,7 @@ return [
     '2569E1054960F.xml'                            => 50,
     '2571E1547842H.xml'                            => 0,
     '2576E3388094K.xml'                            => 42,
-    '2592E0655586O.xml'                            => 30,
+    '2592E0655586O.xml'                            => 31,
     '2593E3377930D.xml'                            => 43,
     '2594E0486196Q.xml'                            => 69,
     // 2600E0000098Z : 50 → 51. conso_auxiliaire_distribution_ch valait 0 pour
