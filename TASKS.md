@@ -123,6 +123,13 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   de besoin vaut exactement celui des pertes récupérées), puis les coûts
   électriques (−2,0 %, simple effet du terme fixe d'abonnement réparti sur un
   Cef plus faible), les GES, l'EP et les étiquettes.
+- Quatrième sens observé, `2483E3258186E` (méthode 10, ballon de 175 L, 25
+  logements) : la référence y reproduit **exactement** le Qg,w non ajusté de
+  §11.6.2 (Rs = 0,629875 au chiffre près), donc un facteur 1 — l'inverse de
+  `2513E1578589Q`, de même méthode et de même configuration.
+- Variante mesurée et écartée : supprimer complètement l'ajustement
+  d'échantillonnage donne +264 exactes mais **+1 452 hors tolérance**
+  (89,33 % → 88,13 %). L'ajustement reste nécessaire sur le corpus.
 - Troisième sens observé, `2513E1578589Q` (méthode 10, ballon électrique de
   100 L cat. B, 18 logements) : la référence implique un Qg,w de 24 kWh/an là
   où §11.6.2 en donne 435 pour ce ballon, et nous 217 via l'ajustement
