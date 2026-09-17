@@ -61,11 +61,10 @@ final class CorpusLocatorTest extends TestCase
      */
     public function testReferenceDemontreeFausseEstEcartee(): void
     {
-        $invalide = array_key_first(CorpusLocator::REFERENCES_INVALIDES);
-        self::assertIsString($invalide);
-
-        $this->write('/resources/XML/input/' . $invalide);
-        $this->write('/resources/XML/verif/' . $invalide);
+        foreach (array_keys(CorpusLocator::REFERENCES_INVALIDES) as $invalide) {
+            $this->write('/resources/XML/input/' . $invalide);
+            $this->write('/resources/XML/verif/' . $invalide);
+        }
         $this->write('/resources/XML/input/valide.xml');
         $this->write('/resources/XML/verif/valide.xml');
 

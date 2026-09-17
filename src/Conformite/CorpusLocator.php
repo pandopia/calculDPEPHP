@@ -66,6 +66,19 @@ final class CorpusLocator
         '2133E0639551K.xml' => 'cinq collections de parois et la collection de ventilation, '
             . 'toutes obligatoires au XSD, sont absentes, alors que le fichier publie '
             . 'les déperditions de ces mêmes parois — les sorties n\'ont pas d\'entrées',
+
+        // Même défaut, sur un autre fichier du même émetteur : sous
+        // <enveloppe> ne subsiste que <pont_thermique_collection>, et
+        // <ventilation_collection> manque également sous <logement>. Les
+        // déperditions publiées sont pourtant complètes :
+        // deperdition_mur = 23,7334, deperdition_plancher_bas = 33,74,
+        // deperdition_plancher_haut = 15,29, deperdition_baie_vitree = 25,938,
+        // deperdition_porte = 11,832, hvent = 41,24 et hperm = 19,55, pour un
+        // deperdition_enveloppe de 178,90 et un ubat de 0,574. Aucune de ces
+        // sorties n'a d'entrée dans le fichier.
+        '2133E0741159K.xml' => 'cinq collections de parois et la collection de ventilation, '
+            . 'toutes obligatoires au XSD, sont absentes, alors que le fichier publie '
+            . 'les déperditions de ces mêmes parois, son ubat et son besoin de chauffage',
     ];
 
     public function __construct(private readonly string $projectRoot)
