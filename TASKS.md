@@ -123,6 +123,13 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   de besoin vaut exactement celui des pertes récupérées), puis les coûts
   électriques (−2,0 %, simple effet du terme fixe d'abonnement réparti sur un
   Cef plus faible), les GES, l'EP et les étiquettes.
+- Troisième sens observé, `2513E1578589Q` (méthode 10, ballon électrique de
+  100 L cat. B, 18 logements) : la référence implique un Qg,w de 24 kWh/an là
+  où §11.6.2 en donne 435 pour ce ballon, et nous 217 via l'ajustement
+  d'échantillonnage. Ses pertes récupérées à l'immeuble valent exactement celles
+  d'**un seul** ballon alors que l'immeuble en compte 18. Aucune des trois
+  lectures ne se recoupe ; la valeur publiée y est de surcroît physiquement
+  impossible.
 - Traiter avec TASK-K06 et TASK-H04, qui portent sur les mêmes grandeurs.
 
 ### TASK-K27 — Circulateur d'une installation qui ne couvre qu'une partie du bâti
