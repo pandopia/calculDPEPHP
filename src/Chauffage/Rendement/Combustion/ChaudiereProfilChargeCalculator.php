@@ -138,11 +138,8 @@ final class ChaudiereProfilChargeCalculator implements CalculatorInterface
         // Type de chaudière
         $boilerType = $this->boilerType($genId);
 
-        // Température de distribution de l'émetteur lié
-        $tempDistId = $this->resolveEmetteurTempDist($node, $accessor);
-        // enum_temp_distribution_ch_id : 1=absent→basse, 2=basse, 3=moyenne, 4=haute
-        // On remplace "absent" (1) par "basse" (2) pour les tables Tfonc
-        $tempKey = max(2, $tempDistId ?? 3); // défaut: moyenne
+        // Ligne du tableau Tfonc, lue sur la nature des émetteurs desservis
+        $tempKey = $this->resolveLigneTfonc($node, $accessor);
 
         // Période des émetteurs : on lit d'abord l'enum dédié, puis on retombe sur l'année
         $periodeEm = $this->resolvePeriodeEmetteur($node, $accessor);
@@ -165,18 +162,75 @@ final class ChaudiereProfilChargeCalculator implements CalculatorInterface
         return 'standard';
     }
 
-    /** Lit enum_temp_distribution_ch_id depuis le premier emetteur de l'installation parente. */
-    private function resolveEmetteurTempDist(DOMElement $node, NodeAccessor $accessor): ?int
+    /**
+     * Planchers et plafonds chauffants sur réseau d'eau chaude basse ou moyenne
+     * température, et leurs équivalents à détente directe : ligne « Basse /
+     * Plancher ou plafond basse température ».
+     */
+    private const EMETTEURS_BASSE = [12, 14, 16, 18, 43, 44];
+
+    /**
+     * Radiateurs et ventilo-convecteurs sur réseau d'eau chaude basse ou
+     * moyenne température (< 65 °C) : ligne « Moyenne / Radiateur à chaleur
+     * douce ». Leurs homologues sur réseau haute température (≥ 65 °C) tombent
+     * dans « Autres émetteurs ».
+     */
+    private const EMETTEURS_MOYENNE = [25, 27, 29, 31, 33, 35, 37, 39, 45, 47, 49];
+
+    /**
+     * Ligne du tableau Tfonc (§13.2.1.5 p.81), indexée comme les tables
+     * ci-dessus : 2 = basse, 3 = moyenne, 4 = haute.
+     *
+     * Le tableau de la spec porte sur « Température de distribution / Type
+     * d'émetteur » : la ligne basse est celle des planchers et plafonds basse
+     * température, la ligne moyenne celle des radiateurs à chaleur douce, et
+     * tout le reste relève d'« Autres émetteurs ». Lire le seul
+     * enum_temp_distribution_ch_id classait en basse un radiateur bitube posé
+     * sur un réseau à moins de 65 °C, qui est un radiateur à chaleur douce.
+     *
+     * « Si un système de génération alimente des réseaux de distribution de
+     * températures différentes, la température de fonctionnement est prise
+     * égale à la température maximale » : tous les émetteurs de l'installation
+     * sont donc parcourus et le maximum retenu.
+     */
+    private function resolveLigneTfonc(DOMElement $node, NodeAccessor $accessor): int
     {
         // Remonte : generateur → generateur_collection → installation_chauffage
         $parent = $node->parentNode?->parentNode;
         if (!$parent instanceof DOMElement) {
-            return null;
+            return 3;
         }
-        return $accessor->getIntOrNull(
-            './emetteur_chauffage_collection/emetteur_chauffage/donnee_entree/enum_temp_distribution_ch_id',
-            $parent,
-        );
+
+        $doc = $node->ownerDocument;
+        if ($doc === null) {
+            return 3;
+        }
+        $emetteurs = (new \DOMXPath($doc))
+            ->query('./emetteur_chauffage_collection/emetteur_chauffage', $parent);
+        if ($emetteurs === false || $emetteurs->length === 0) {
+            return 3;
+        }
+
+        $ligne = null;
+        foreach ($emetteurs as $emetteur) {
+            if (!$emetteur instanceof DOMElement) {
+                continue;
+            }
+            $type = $accessor->getIntOrNull('./donnee_entree/enum_type_emission_distribution_id', $emetteur);
+            if ($type !== null) {
+                $courante = match (true) {
+                    in_array($type, self::EMETTEURS_BASSE, true)   => 2,
+                    in_array($type, self::EMETTEURS_MOYENNE, true) => 3,
+                    default                                        => 4,
+                };
+            } else {
+                // Repli : enum_temp_distribution_ch_id (1=absent, 2=basse, 3=moyenne, 4=haute)
+                $courante = max(2, $accessor->getIntOrNull('./donnee_entree/enum_temp_distribution_ch_id', $emetteur) ?? 3);
+            }
+            $ligne = $ligne === null ? $courante : max($ligne, $courante);
+        }
+
+        return $ligne ?? 3;
     }
 
     /**
