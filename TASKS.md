@@ -61,23 +61,29 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase K — Conformité au corpus ADEME
 
-### TASK-K04 — Écarts résiduels de chauffage
+### TASK-K31 — Pn des chaudières : trois régimes d'arrondi inconciliables
 
-- [~CLD] Owner: CLD  | Phase: K  | Estimation: 8h  | Priorité: haute
-- Premier amont à traiter : `pn`, puis `qp0`, températures de fonctionnement,
-  `rpn`, `rendement_generation` et seulement ensuite `conso_ch`.
-- Acquis à ne pas refaire :
-  - la formule §13.2.2.4 de `Pch` est déjà implémentée ;
-  - grosses chaudières collectives : cluster 2400E03338xx, référence 370 kW
-    contre 405 kW, sans grandeur publiée expliquant encore 370 kW ;
-  - petites chaudières : le choix murale ≥2006 (5/10/13 kW) contre sur sol ou
-    ancienne (minimum 18 kW) n'est pas dérivable du XSD standard ; seul
-    `data_complementaires/@data-chaudiere-murale` le porte parfois ;
-  - installations à plusieurs générateurs : répartir Pch par surface desservie
-    conformément au §13.2.2.4 ;
-  - le taux de charge utilise déjà la puissance installée totale.
-- Traiter les trois groupes séparément, mesurer chaque hypothèse en A/B complet
-  et classer non reproductibles les sorties dépendant de données cachées.
+- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: basse
+- Sortie de TASK-K04. Notre `Pdim` est juste : sur tous les cas litigieux, le GV
+  que nous calculons égale au bit près le `deperdition_enveloppe` publié par la
+  référence, et Tbase est conforme à la table §18.1. Le désaccord porte
+  uniquement sur le passage `Pdim → Pn`, où la spec §13.2.2.4 p.92 impose
+  `(partie entière(Pdim/5) + 1) × 5` au-delà de 40 kW.
+- Sur 81 générateurs mesurés, la référence suit trois régimes incompatibles, au
+  même `version_moteur_calcul` (`BBS_Slama_2025.11.1.0`), même mode
+  d'application et même zone climatique :
+  - 15 suivent la règle de la spec ;
+  - 19 arrondissent à l'inférieur (`floor(Pdim/5) × 5`) ;
+  - 11 appliquent en plus un facteur ≈ 0,85 à `Pdim` avant d'arrondir.
+- Aucun facteur multiplicatif unique ne réconcilie l'ensemble : le meilleur
+  (0,981) n'explique que 39 cas sur 81. « Arrondi au plus proche » en explique
+  23. Écarté faute de source et de cohérence.
+- Reste documenté à part : le cluster 2400E03338xx (`Pdim` 465,6 pour une
+  référence à 370 kW, ratio 0,7946, 18 écarts de `pn`) et 2400E0669425G /
+  2400E0669495Y, qui déclarent `nombre_appartement = 1` pour un immeuble de
+  822 m² desservi par sept installations d'ECS.
+- Ne rien changer sans une source : la table de la spec est explicite et notre
+  lecture est celle qui colle aux 15 cas conformes.
 
 ### TASK-K06 — Écarts résiduels de génération ECS
 
