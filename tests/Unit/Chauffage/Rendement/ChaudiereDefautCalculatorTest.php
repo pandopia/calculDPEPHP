@@ -273,6 +273,71 @@ XML;
         self::assertEqualsWithDelta(24000.0, (float) $doc->getElementsByTagName('pn')->item(0)?->textContent, 0.1);
     }
 
+    /**
+     * §15.1 p.97 plafonne Pn, pas Pch : un Pch de 500 kW traverse la table
+     * Pdim → Pn de §13.2.2.4 puis est ramené à 400 kW exactement. Plafonner Pch
+     * en amont ferait lire la ligne « 40 < » à Pdim = 400 et rendrait
+     * (partie entière(400/5) + 1) × 5 = 405 kW.
+     */
+    public function testGasBoilerCapIsAppliedToPnNotToPch(): void
+    {
+        $xml = <<<'XML'
+<logement>
+  <caracteristique_generale><enum_methode_application_dpe_log_id>1</enum_methode_application_dpe_log_id></caracteristique_generale>
+  <meteo><enum_zone_climatique_id>1</enum_zone_climatique_id><enum_classe_altitude_id>1</enum_classe_altitude_id></meteo>
+  <installation_chauffage><donnee_entree>
+    <enum_type_installation_id>1</enum_type_installation_id>
+  </donnee_entree><generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+    <enum_type_generateur_ch_id>88</enum_type_generateur_ch_id><tv_generateur_combustion_id>4</tv_generateur_combustion_id>
+    <enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id><presence_ventouse>0</presence_ventouse>
+  </donnee_entree></generateur_chauffage></generateur_chauffage_collection></installation_chauffage>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $context = $this->makeContext($doc);
+        // Tbase = -9,5 (H1, altitude < 400 m) : Pch = 1,2 × 12535 × 28,5 / 0,95³ ≈ 500 kW.
+        $context->set('enveloppe.dp_parois', 12535.0);
+        $context->set('enveloppe.dp_pont_thermique', 0.0);
+        $context->set('ventilation.hvent', 0.0);
+        $context->set('ventilation.hperm', 0.0);
+
+        (new ChaudiereDefautCalculator())->calculate($doc->getElementsByTagName('generateur_chauffage')->item(0), $context);
+
+        self::assertEqualsWithDelta(400000.0, (float)$doc->getElementsByTagName('pn')->item(0)->textContent, 1e-6);
+    }
+
+    /**
+     * Sous le plafond, la table §13.2.2.4 p.92 garde sa règle « 40 < Pdim :
+     * (partie entière(Pdim/5) + 1) × 5 ». Pch ≈ 52,1 kW → Pn = 55 kW.
+     */
+    public function testGasBoilerBelowCapStillRoundsUpOnTheNominalPowerTable(): void
+    {
+        $xml = <<<'XML'
+<logement>
+  <caracteristique_generale><enum_methode_application_dpe_log_id>1</enum_methode_application_dpe_log_id></caracteristique_generale>
+  <meteo><enum_zone_climatique_id>1</enum_zone_climatique_id><enum_classe_altitude_id>1</enum_classe_altitude_id></meteo>
+  <installation_chauffage><donnee_entree>
+    <enum_type_installation_id>1</enum_type_installation_id>
+  </donnee_entree><generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+    <enum_type_generateur_ch_id>88</enum_type_generateur_ch_id><tv_generateur_combustion_id>4</tv_generateur_combustion_id>
+    <enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id><presence_ventouse>0</presence_ventouse>
+  </donnee_entree></generateur_chauffage></generateur_chauffage_collection></installation_chauffage>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $context = $this->makeContext($doc);
+        $context->set('enveloppe.dp_parois', 1306.0);
+        $context->set('enveloppe.dp_pont_thermique', 0.0);
+        $context->set('ventilation.hvent', 0.0);
+        $context->set('ventilation.hperm', 0.0);
+
+        (new ChaudiereDefautCalculator())->calculate($doc->getElementsByTagName('generateur_chauffage')->item(0), $context);
+
+        self::assertEqualsWithDelta(55000.0, (float)$doc->getElementsByTagName('pn')->item(0)->textContent, 1e-6);
+    }
+
     public function testCollectiveVirtualizedGasBoilerUsesFourHundredKwBuildingPower(): void
     {
         $xml = <<<'XML'

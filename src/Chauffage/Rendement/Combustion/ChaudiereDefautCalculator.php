@@ -164,7 +164,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
                 && !$this->isCollectiveInstallation($node, $accessor)
                 && $nblgt > 1;
 
-            $pchW = $this->computePnFromGv($context, $mixedHeatingMode ? 1.0 : $ratioVirt, $genId);
+            $pchW = $this->computePnFromGv($context, $mixedHeatingMode ? 1.0 : $ratioVirt);
             if ($isImmeubleIndividuel) {
                 // §17.1.4.2 : a DPE generated from an apartment building still
                 // models individual heating at the average-apartment scale. The
@@ -179,7 +179,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             // Les exports de référence portent donc pn = 400000 × ratio.
             $pnCap = $this->getPnCap($genId);
             if ($mixedHeatingMode) {
-                $pnW = $pchW;
+                $pnW = min($pchW, $pnCap);
             } elseif ($ratioVirt > 0.0 && $ratioVirt < 1.0
                 && $pnCap < PHP_FLOAT_MAX
                 && $this->isCollectiveInstallation($node, $accessor)) {
@@ -196,6 +196,8 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
                     // arbitrary calculated value between two nominal ranges).
                     $pnW = $this->lookupPnFromPdim($pchW / 1000.0, $node, $accessor) * 1000.0;
                 }
+                // §15.1 p.97 : le plafond porte sur Pn, donc après la table.
+                $pnW = min($pnW, $pnCap);
             }
         }
         $pnKw = $pnW / 1000.0;
@@ -213,7 +215,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             $pnBuildingKw = $pnKw;
             $pnApartmentW = $pnW;
             if ($ratioForCharacteristics > 0.0 && $ratioForCharacteristics < 1.0 && $pnSaisi === null) {
-                // pnW ici = pn_bâtiment (déjà plaffonné dans computePnFromGv)
+                // pnW ici = pn_bâtiment (déjà plafonné après la table Pdim → Pn)
                 $pnBuildingKw = $mixedHeatingMode
                     ? $pnW / $ratioForCharacteristics / 1000.0
                     : $pnW / 1000.0;
@@ -243,13 +245,18 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
     }
 
     /**
-     * Calcule Pn depuis GV et la temperature de base (§13.2.2 p.87).
-     *   Pn = 1.2 × GV × (19 − Tbase) / 0.95³
+     * Calcule Pch depuis GV et la temperature de base (§13.2.2.4 p.87).
+     *   Pch = 1.2 × GV × (19 − Tbase) / (1000 × 0.95³)
      * Pour les installations collectives (ratio_virt < 1) : GV est mis à l'échelle du bâtiment
-     * (GV_logement / ratio_virt), Pn plaffonné selon le type, puis retourné comme Pn_bâtiment.
+     * (GV_logement / ratio_virt) et Pch est retourné à l'échelle du bâtiment.
      * La conversion en Pn_logement = Pn_bâtiment × ratio_virt se fait dans calculate().
+     *
+     * Aucun plafonnement ici : §15.1 p.97 plafonne **Pn**, pas Pch. Plafonner Pch
+     * avant la table Pdim → Pn de §13.2.2.4 fait retomber un Pdim de 400 kW sur la
+     * ligne « 40 < » qui rend (partie entière(400/5) + 1) × 5 = 405 kW, c'est-à-dire
+     * une valeur que le plafond lui-même ne peut jamais produire.
      */
-    private function computePnFromGv(CalculationContext $context, float $ratioVirt, ?int $genId): float
+    private function computePnFromGv(CalculationContext $context, float $ratioVirt): float
     {
         $dpParois = (float)$context->get('enveloppe.dp_parois',        0.0);
         $dpPT     = (float)$context->get('enveloppe.dp_pont_thermique', 0.0);
@@ -269,15 +276,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         $altId      = $context->classeAltitude !== null ? (int)$context->classeAltitude : 1;
         $tbase      = self::TBASE[$zoneIdx][$altId] ?? -9.5;
 
-        $pnBuilding = (1.2 * $gvEffectif * (19.0 - $tbase)) / (0.95 ** 3);
-
-        // Plafonnement Pn §13.2.2.4 p.92 : 400 kW pour chaudières gaz/fioul, quel
-        // que soit le ratio_virtualisation. LICIEL applique ce cap pour tout immeuble.
-        if ($genId !== null) {
-            $pnBuilding = min($pnBuilding, $this->getPnCap($genId));
-        }
-
-        return $pnBuilding;
+        return (1.2 * $gvEffectif * (19.0 - $tbase)) / (0.95 ** 3);
     }
 
     /**
