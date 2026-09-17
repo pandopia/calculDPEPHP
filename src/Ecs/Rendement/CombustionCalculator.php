@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Ecs\Rendement;
 
+use CalculDpePHP\Chauffage\Rendement\Combustion\PuissanceDimensionnement;
 use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
@@ -250,6 +251,20 @@ final class CombustionCalculator implements CalculatorInterface
 
         $ratioVirt = $this->getRatioVirtEcs($node, $accessor);
         $pnW  = $this->computePnW($node, $accessor, $context, $ratioVirt);
+        if (self::pnSaisie($node, $accessor) === null) {
+            // §13.2.2.4 p.92 : la puissance de dimensionnement est
+            // Pdim = max(Pch ; Pecs), et Pn se lit ensuite dans la table
+            // Pdim → Pn. Sans ces deux étapes, le générateur d'ECS publiait le
+            // Pch brut tiré du GV : une valeur continue, hors des paliers
+            // nominaux, qui ignorait la puissance réellement nécessaire à la
+            // production d'ECS — laquelle vaut 21 kW dès qu'elle est instantanée.
+            $vs     = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $node) ?? 0.0;
+            $pdimKw = max($pnW, PuissanceDimensionnement::pecsW($vs)) / 1000.0;
+            $pnW    = PuissanceDimensionnement::pnFromPdimKw(
+                $pdimKw,
+                PuissanceDimensionnement::isChaudierePost2006($node),
+            ) * 1000.0;
+        }
         $pnKw = $pnW / 1000.0;
 
         // Sélectionne le palier selon pn_max_kw
@@ -311,6 +326,19 @@ final class CombustionCalculator implements CalculatorInterface
             $hasPnSaisie = $accessor->getFloatOrNull('./donnee_entree/pn', $node) !== null;
             $ratioVirt   = $this->getRatioVirtEcs($node, $accessor);
             $pnW         = $this->computePnW($node, $accessor, $context, $ratioVirt);
+            if (!$hasPnSaisie) {
+                // §13.2.2.4 p.92 : la puissance de dimensionnement d'un générateur
+                // est Pdim = max(Pch ; Pecs), et Pn se lit dans la table Pdim → Pn.
+                // Sans ces deux étapes, un générateur d'ECS publiait Pch brut —
+                // une valeur continue, hors des paliers nominaux, et qui ignorait
+                // la puissance réellement nécessaire à la production d'ECS.
+                $vs     = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $node) ?? 0.0;
+                $pdimKw = max($pnW, PuissanceDimensionnement::pecsW($vs)) / 1000.0;
+                $pnW    = PuissanceDimensionnement::pnFromPdimKw(
+                    $pdimKw,
+                    PuissanceDimensionnement::isChaudierePost2006($node),
+                ) * 1000.0;
+            }
             $ventose     = $accessor->getIntOrNull('./donnee_entree/presence_ventouse', $node) ?? 0;
             $e = [0 => 2.5, 1 => 1.75][$ventose] ?? 2.5;
             $f = [0 => -0.8, 1 => -0.55][$ventose] ?? -0.8;
@@ -405,6 +433,19 @@ final class CombustionCalculator implements CalculatorInterface
 
         $gvEffectif = ($ratioVirt > 0.0 && $ratioVirt < 1.0) ? $gv / $ratioVirt : $gv;
 
+        // §17.1.4.2 : un DPE décrit à l'échelle de l'immeuble (ou un DPE
+        // d'appartement généré depuis les données immeuble) porte un GV
+        // d'immeuble, alors qu'une ECS individuelle est produite par un
+        // générateur par logement. Pch se ramène donc à l'appartement moyen.
+        // C'est la transposition, côté ECS, de la règle déjà appliquée au
+        // chauffage individuel par ChaudiereDefautCalculator.
+        if ($this->isEcsIndividuelleEchelleImmeuble($node, $accessor)) {
+            $nblgt = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement') ?? 1;
+            if ($nblgt > 1) {
+                $gvEffectif /= $nblgt;
+            }
+        }
+
         $zoneGroupe = CalculationContext::zoneGroupeFromId($context->zoneClimatique);
         $zoneIdx    = match($zoneGroupe) { 'H1' => 1, 'H2' => 2, 'H3' => 3, default => 1 };
         $altId      = $context->classeAltitude !== null ? (int)$context->classeAltitude : 1;
@@ -418,6 +459,38 @@ final class CombustionCalculator implements CalculatorInterface
         }
 
         return $pnBuilding;
+    }
+
+    /**
+     * Modes d'application où le GV décrit l'immeuble alors que l'ECS est
+     * individuelle — un générateur par logement (XSD
+     * enum_methode_application_dpe_log_id) :
+     *    6 immeuble collectif, chauffage individuel, ECS individuelle
+     *    7 immeuble collectif, chauffage collectif,  ECS individuelle
+     *   10 appartement généré depuis l'immeuble, chauffage individuel, ECS individuelle
+     *   11 appartement généré depuis l'immeuble, chauffage collectif,  ECS individuelle
+     */
+    private const MODES_ECS_INDIVIDUELLE_IMMEUBLE = [6, 7, 10, 11];
+
+    /**
+     * Vrai lorsque le générateur décrit une ECS individuelle dans un DPE dont
+     * l'enveloppe est celle de l'immeuble. Une installation déclarée collective
+     * est exclue : elle dessert réellement tout le bâtiment.
+     */
+    private function isEcsIndividuelleEchelleImmeuble(DOMElement $node, NodeAccessor $accessor): bool
+    {
+        $mode = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
+        if ($mode === null || !in_array($mode, self::MODES_ECS_INDIVIDUELLE_IMMEUBLE, true)) {
+            return false;
+        }
+
+        $inst = $this->findParentInstallation($node);
+        if ($inst === null) {
+            return false;
+        }
+        $typeInst = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $inst);
+
+        return $typeInst === null || $typeInst === 1;
     }
 
     /** Vérifie si la veilleuse est présente (open3cl: pveil=0 si absence). */

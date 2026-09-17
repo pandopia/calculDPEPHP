@@ -493,9 +493,31 @@ XML;
      * typiquement réseau de chauffage urbain modélisé en multi-bâtiment §17.3),
      * il n'y a pas de circulateur côté utilisateur → conso_aux_distribution_ch = 0.
      */
-    public function testInstallationMultiBatimentReseauNoCirculator(): void
+    /**
+     * Une installation multi-bâtiment (type 3) alimentée par un **vrai** réseau
+     * de chaleur urbain ne compte pas de circulateur : la distribution amont
+     * appartient à l'opérateur. Les générateurs 107, 108 et 142 désignent ces
+     * réseaux.
+     *
+     * @return iterable<string, array{int, bool}>
+     */
+    public static function generateursMultiBatiment(): iterable
     {
-        $xml = <<<'XML'
+        yield 'réseau de chaleur non isolé' => [107, false];
+        yield 'réseau de chaleur isolé' => [108, false];
+        yield 'réseau de chaleur inconnu' => [142, false];
+        // 109-112 et 171 : « chaudière(s) … multi bâtiment modélisée comme un
+        // réseau de chaleur », donc un générateur d'un bâtiment voisin qui garde
+        // sa distribution hydraulique jusqu'aux émetteurs.
+        yield 'chaudière gaz multi bâtiment' => [111, true];
+        yield 'chaudière bois multi bâtiment' => [109, true];
+        yield 'PAC multi bâtiment' => [112, true];
+    }
+
+    #[DataProvider('generateursMultiBatiment')]
+    public function testInstallationMultiBatimentReseauNoCirculator(int $generateurId, bool $attendCirculateur): void
+    {
+        $xml = <<<XML
 <?xml version="1.0"?>
 <logement>
     <caracteristique_generale>
@@ -521,6 +543,7 @@ XML;
                 <generateur_chauffage>
                     <donnee_entree>
                         <enum_type_energie_id>8</enum_type_energie_id>
+                        <enum_type_generateur_ch_id>{$generateurId}</enum_type_generateur_ch_id>
                     </donnee_entree>
                 </generateur_chauffage>
             </generateur_chauffage_collection>
@@ -539,9 +562,15 @@ XML;
 
         (new AuxDistributionCalculator())->calculate($doc->documentElement, $ctx);
 
+        if ($attendCirculateur) {
+            self::assertGreaterThan(0.0, $this->efValue($doc, 'conso_auxiliaire_distribution_ch'));
+
+            return;
+        }
+
         $val = $this->efValue($doc, 'conso_auxiliaire_distribution_ch');
         $this->assertSame(0.0, $val,
-            'Réseau de chauffage multi-bâtiment (type_install=3) ne consomme pas de circulateur local');
+            'Un vrai réseau de chaleur urbain ne fait pas circuler d\'eau côté logement');
     }
 
     public function testSampledIndividualHeatingUsesEffectiveMultiplicity(): void

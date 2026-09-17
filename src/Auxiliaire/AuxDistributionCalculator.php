@@ -61,6 +61,13 @@ final class AuxDistributionCalculator implements CalculatorInterface
     /** Puissance minimale pompe chauffage (W) — §15.2.1 */
     private const PCIRCEM_MIN = 30.0;
 
+    /**
+     * Vrais réseaux de chaleur urbains : `enum_type_generateur_ch_id` 107
+     * « réseau de chaleur non isolé », 108 « isolé », 142 « non répertorié ou
+     * inconnu ». La distribution amont y appartient à l'opérateur.
+     */
+    private const RESEAU_CHALEUR_URBAIN_IDS = [107, 108, 142];
+
     /** Puissance minimale circulateur bouclage ECS hors puisage (W) — §15.2.3 */
     private const PCIRB_MIN = 20.0;
 
@@ -213,11 +220,19 @@ final class AuxDistributionCalculator implements CalculatorInterface
                 continue;
             }
 
-            // Installation collective multi-bâtiment (enum_type_installation_id=3, ex.
-            // réseau de chauffage urbain modélisé en multi-bâtiment §17.3) :
-            // pas de circulateur local — distribution centralisée par le réseau.
             $typeInstall = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $install);
-            if ($typeInstall === 3) {
+
+            // Installation collective multi-bâtiment (type 3) alimentée par un
+            // **vrai** réseau de chaleur urbain : la distribution en amont est
+            // celle de l'opérateur, il n'y a pas de circulateur à compter côté
+            // logement. Le type 3 seul ne suffit pas : le schéma y range aussi
+            // les générateurs 109-112 et 171, « chaudière(s) … multi bâtiment
+            // modélisée comme un réseau de chaleur », qui désignent la chaudière
+            // d'un bâtiment voisin — elle garde sa distribution hydraulique
+            // jusqu'aux émetteurs, et les références lui comptent bien un
+            // circulateur (cinq cas au corpus, contre deux à zéro pour les
+            // réseaux urbains).
+            if ($typeInstall === 3 && $this->estReseauDeChaleurUrbain($accessor, $install)) {
                 continue;
             }
 
@@ -461,6 +476,29 @@ final class AuxDistributionCalculator implements CalculatorInterface
      * distribution se fait par le réseau et il n'y a pas de circulateur côté
      * utilisateur — pas de conso d'aux distribution chauffage.
      */
+    /** Tous les générateurs de l'installation sont-ils de vrais réseaux urbains ? */
+    private function estReseauDeChaleurUrbain(NodeAccessor $accessor, DOMElement $install): bool
+    {
+        $collection = $this->getChild($install, 'generateur_chauffage_collection');
+        if ($collection === null) {
+            return false;
+        }
+
+        $generateurs = 0;
+        foreach ($collection->childNodes as $gen) {
+            if (!$gen instanceof DOMElement || $gen->nodeName !== 'generateur_chauffage') {
+                continue;
+            }
+            $generateurs++;
+            $type = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $gen);
+            if ($type === null || !in_array($type, self::RESEAU_CHALEUR_URBAIN_IDS, true)) {
+                return false;
+            }
+        }
+
+        return $generateurs > 0;
+    }
+
     private function isReseauChaleurUrbain(NodeAccessor $accessor, DOMElement $install): bool
     {
         foreach ($install->getElementsByTagName('generateur_chauffage') as $gen) {

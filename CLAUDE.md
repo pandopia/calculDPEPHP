@@ -205,15 +205,21 @@ Le rapport par défaut couvre les deux — 349 cas.
 | K07 — seuils des étiquettes DPE et GES | −45 écarts de classe | | 88,63 % |
 | K11 — usages collectifs d'un appartement | −57 | | 88,68 % |
 | K06 — puissance saisie du générateur ECS | −71 | | 88,75 % |
-| **Actuel — 349 cas** | **10 718** | **1 792** | **88,75 %** |
+| K04 — plafond de 400 kW après la table Pdim → Pn | −86 | | 89,40 % |
+| K04 — générateur ECS dimensionné sur max(Pch ; Pecs) | −15 | | 89,42 % |
+| K04 — Pch ramené à l'appartement moyen (ECS individuelle) | −140 | | 89,54 % |
+| K04 — millésime de la chaudière lu dans le type XSD | −25 | | 89,56 % |
+| K04 — ligne Tfonc lue sur la nature de l'émetteur | −1 285 | | 90,63 % |
+| **Actuel — 375 cas** | **9 124** | **1 926** | **90,63 %** |
 
-**Le corpus historique flattait le chiffre.** Sur le jeu stratifié seul, la
-conformité est de 84,1 % : immeuble collectif 87,9 %, appartement individuel
-87,0 %, maison individuelle 84,6 %, **appartement issu de l'immeuble 76,1 %**.
-Ne juge jamais une correction sur le seul corpus historique.
+**Le corpus historique flatte le chiffre.** Par périmètre CSTB : immeuble
+collectif 92,3 %, appartement individuel 90,1 %, maison individuelle 87,6 %,
+**appartement issu de l'immeuble 84,4 %** — et par régime, pré-2026 87,1 %
+contre post-2026 91,5 %. Ne juge jamais une correction sur le seul corpus
+historique.
 
-Sur les écarts restants, **2 788 sont imputables à la référence** : le plafond
-atteignable sur ces corpus est de **91,24 %**. Le rapport l'affiche.
+Sur les écarts restants, **3 357 sont imputables à la référence** : le plafond
+atteignable sur ces corpus est de **93,44 %**. Le rapport l'affiche.
 
 Cinq leçons à retenir de ces corrections :
 

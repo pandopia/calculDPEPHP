@@ -99,6 +99,94 @@ XML;
     }
 
     /**
+     * XML minimal d'un générateur ECS mixte gaz standard (type 49) dont la
+     * puissance n'est pas saisie : Pn est alors dérivé de Pdim.
+     */
+    private function buildGvSizedGen(int $mode, int $nblgt, float $gv, float $vs = 0.0): array
+    {
+        $xml = <<<XML
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale>
+        <enum_methode_application_dpe_log_id>$mode</enum_methode_application_dpe_log_id>
+        <nombre_appartement>$nblgt</nombre_appartement>
+    </caracteristique_generale>
+    <meteo><enum_zone_climatique_id>1</enum_zone_climatique_id><enum_classe_altitude_id>1</enum_classe_altitude_id></meteo>
+    <installation_ecs>
+        <donnee_entree><enum_type_installation_id>1</enum_type_installation_id></donnee_entree>
+        <donnee_intermediaire><besoin_ecs>22349.057</besoin_ecs></donnee_intermediaire>
+        <generateur_ecs_collection>
+            <generateur_ecs>
+                <donnee_entree>
+                    <enum_type_energie_id>2</enum_type_energie_id>
+                    <enum_type_generateur_ecs_id>49</enum_type_generateur_ecs_id>
+                    <enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id>
+                    <reference_generateur_mixte>mixte-1</reference_generateur_mixte>
+                    <volume_stockage>$vs</volume_stockage>
+                </donnee_entree>
+            </generateur_ecs>
+        </generateur_ecs_collection>
+    </installation_ecs>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $ctx = new CalculationContext(
+            document: $doc,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+            zoneClimatique: '1',
+            classeAltitude: '1',
+        );
+        $ctx->set('enveloppe.dp_parois', $gv);
+        $ctx->set('enveloppe.dp_pont_thermique', 0.0);
+        $ctx->set('ventilation.hvent', 0.0);
+        $ctx->set('ventilation.hperm', 0.0);
+
+        return [$doc, $doc->getElementsByTagName('generateur_ecs')->item(0), $ctx];
+    }
+
+    /**
+     * §13.2.2.4 p.92 : Pdim = max(Pch ; Pecs). Avec un GV de maison donnant
+     * Pch ≈ 4,3 kW et une production instantanée (Pecs = 21 kW), c'est Pecs qui
+     * dimensionne — ligne « 18 < Pdim ≤ 24 » de la table, donc Pn = 24 kW.
+     * L'ancien chemin publiait les 4 348 W de Pch, hors des paliers nominaux.
+     */
+    public function testPecsSizesTheGeneratorWhenHeatingLoadIsSmaller(): void
+    {
+        [$doc, $node, $ctx] = $this->buildGvSizedGen(mode: 1, nblgt: 1, gv: 109.0);
+        (new CombustionCalculator())->calculate($node, $ctx);
+
+        self::assertEqualsWithDelta(24000.0, (float)$doc->getElementsByTagName('pn')->item(0)->textContent, 1e-6);
+    }
+
+    /**
+     * §17.1.4.2 : en mode 6 (immeuble collectif, ECS individuelle), le GV décrit
+     * l'immeuble alors qu'un générateur dessert un logement. Pch se ramène à
+     * l'appartement moyen : 993 kW pour 73 logements → 13,6 kW, que Pecs = 21 kW
+     * domine → Pn = 24 kW. Sans cette mise à l'échelle, Pn valait 995 kW.
+     */
+    public function testBuildingScaleHeatingLoadIsBroughtBackToTheAverageApartment(): void
+    {
+        [$doc, $node, $ctx] = $this->buildGvSizedGen(mode: 6, nblgt: 73, gv: 24900.0);
+        (new CombustionCalculator())->calculate($node, $ctx);
+
+        self::assertEqualsWithDelta(24000.0, (float)$doc->getElementsByTagName('pn')->item(0)->textContent, 1e-6);
+    }
+
+    /**
+     * La mise à l'échelle ne vaut que pour une ECS individuelle : en mode 9
+     * (ECS collective), un seul générateur dessert tout l'immeuble et Pch reste
+     * à l'échelle du bâtiment.
+     */
+    public function testCollectiveEcsKeepsTheBuildingScale(): void
+    {
+        [$doc, $node, $ctx] = $this->buildGvSizedGen(mode: 9, nblgt: 73, gv: 24900.0);
+        (new CombustionCalculator())->calculate($node, $ctx);
+
+        self::assertGreaterThan(900000.0, (float)$doc->getElementsByTagName('pn')->item(0)->textContent);
+    }
+
+    /**
      * Générateur électrique → Rg = 1.
      */
     public function testElectricGeneratorRgEqualsOne(): void

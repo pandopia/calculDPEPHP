@@ -131,8 +131,13 @@ final class BesoinAnnuelCalculator implements CalculatorInterface
             ? ($context->tables->load('reference/tv_sollicitations_froid')[$zoneId][$altId] ?? null)
             : null;
 
-        // Apport interne forfaitaire (§6.1) — identique chauffage/refroidissement
-        $aiBase = 3.52 * $sh + 90.0 * (132.0 / 168.0) * $nadeq; // W
+        // Apport interne forfaitaire (§6.1) — identique chauffage et
+        // refroidissement, donc repris tel quel de FCalculator plutôt que
+        // redérivé ici. La surface à retenir dépend de la méthode d'application
+        // du DPE : pour un appartement généré depuis l'immeuble, Nadeq est
+        // calculé à l'immeuble et doit se combiner à la surface de l'immeuble,
+        // pas à celle du logement.
+        $aiBase = (float)$context->get('apport.ai_base', 3.52 * $sh + 90.0 * (132.0 / 168.0) * $nadeq); // W
 
         // ── 6. Boucle mensuelle ─────────────────────────────────────────────────
         $bfrTotal       = 0.0;
@@ -165,9 +170,15 @@ final class BesoinAnnuelCalculator implements CalculatorInterface
             $bfrTotal    += $this->besoinMensuel($asFr28 + $aiFr28, $gv, $dh28j, $a);
             $bfrDepTotal += $this->besoinMensuel($asFr26 + $aiFr26, $gv, $dh26j, $a);
 
-            // Apports annuels (kWh) — consigne conventionnelle (28°C)
-            $apportSolaireFr += $ssej * $eFr28j;          // Asj_kWh = Ssej × E_fr_28_j
-            $apportInterneFr += $aiFr28 / 1000.0;          // Aij_kWh
+            // Apports annuels (kWh) — consigne conventionnelle (28 °C).
+            // Un mois sans degré-heure de refroidissement (DH28 = 0) n'est pas
+            // dans la saison de froid : il n'y apporte rien, même si la table
+            // lui laisse quelques heures de Nref28 (octobre en zone H3 : 2 h
+            // pour DH28 = 0).
+            if ($dh28j > 0.0) {
+                $apportSolaireFr += $ssej * $eFr28j;      // Asj_kWh = Ssej × E_fr_28_j
+                $apportInterneFr += $aiFr28 / 1000.0;      // Aij_kWh
+            }
         }
 
         $this->writeOutputs($accessor, $node, $bfrTotal, $bfrDepTotal, $apportSolaireFr, $apportInterneFr);

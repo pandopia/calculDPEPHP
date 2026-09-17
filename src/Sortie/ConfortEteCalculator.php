@@ -17,7 +17,7 @@ use DOMElement;
  *   - isolation_toiture : 0 si un PH extérieur est non-isolé/inconnu, 1 sinon
  *   - aspect_traversant : 1 si les baies couvrent ≥ 2 orientations, 0 sinon
  *   - protection_solaire_exterieure : 0 si une baie non-nord manque de fermeture, 1 sinon
- *   - inertie_lourde : 1 si classe_inertie ∈ {lourde, très lourde}, 0 sinon
+ *   - inertie_lourde : 1 si classe_inertie ∈ {très lourde (1), lourde (2)}, 0 sinon
  *   - brasseur_air : 0 (pas de brasseur dans les cas conventionnels couverts)
  *   - nv_confort : "insuffisant" si protection=0 ou toiture=0 ;
  *                  "bon" si (inertie+traversant+brasseur) ≥ 2 ; "moyen" sinon
@@ -113,10 +113,16 @@ final class ConfortEteCalculator implements CalculatorInterface
         $accessor->setChildValue($confortEte, 'inertie_lourde',                  $inertieLourde);
     }
 
+    /**
+     * `enum_classe_inertie_id` se lit du plus lourd au plus léger dans le XSD :
+     * 1 très lourde, 2 lourde, 3 moyenne, 4 légère. Le classement était inversé
+     * ici, si bien qu'une inertie moyenne ou légère était déclarée lourde et
+     * réciproquement. `IntermittenceCalculator::inertieKey` applique déjà le
+     * bon sens.
+     */
     private function resolveInertieLourde(?int $inertieId): int
     {
-        // InertieCalculator: 1=légère, 2=moyenne, 3=lourde, 4=très lourde
-        return ($inertieId !== null && $inertieId >= 3) ? 1 : 0;
+        return ($inertieId !== null && $inertieId <= 2) ? 1 : 0;
     }
 
     /**

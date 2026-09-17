@@ -164,7 +164,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
                 && !$this->isCollectiveInstallation($node, $accessor)
                 && $nblgt > 1;
 
-            $pchW = $this->computePnFromGv($context, $mixedHeatingMode ? 1.0 : $ratioVirt, $genId);
+            $pchW = $this->computePnFromGv($context, $mixedHeatingMode ? 1.0 : $ratioVirt);
             if ($isImmeubleIndividuel) {
                 // §17.1.4.2 : a DPE generated from an apartment building still
                 // models individual heating at the average-apartment scale. The
@@ -179,7 +179,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             // Les exports de référence portent donc pn = 400000 × ratio.
             $pnCap = $this->getPnCap($genId);
             if ($mixedHeatingMode) {
-                $pnW = $pchW;
+                $pnW = min($pchW, $pnCap);
             } elseif ($ratioVirt > 0.0 && $ratioVirt < 1.0
                 && $pnCap < PHP_FLOAT_MAX
                 && $this->isCollectiveInstallation($node, $accessor)) {
@@ -196,6 +196,8 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
                     // arbitrary calculated value between two nominal ranges).
                     $pnW = $this->lookupPnFromPdim($pchW / 1000.0, $node, $accessor) * 1000.0;
                 }
+                // §15.1 p.97 : le plafond porte sur Pn, donc après la table.
+                $pnW = min($pnW, $pnCap);
             }
         }
         $pnKw = $pnW / 1000.0;
@@ -213,7 +215,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             $pnBuildingKw = $pnKw;
             $pnApartmentW = $pnW;
             if ($ratioForCharacteristics > 0.0 && $ratioForCharacteristics < 1.0 && $pnSaisi === null) {
-                // pnW ici = pn_bâtiment (déjà plaffonné dans computePnFromGv)
+                // pnW ici = pn_bâtiment (déjà plafonné après la table Pdim → Pn)
                 $pnBuildingKw = $mixedHeatingMode
                     ? $pnW / $ratioForCharacteristics / 1000.0
                     : $pnW / 1000.0;
@@ -243,13 +245,18 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
     }
 
     /**
-     * Calcule Pn depuis GV et la temperature de base (§13.2.2 p.87).
-     *   Pn = 1.2 × GV × (19 − Tbase) / 0.95³
+     * Calcule Pch depuis GV et la temperature de base (§13.2.2.4 p.87).
+     *   Pch = 1.2 × GV × (19 − Tbase) / (1000 × 0.95³)
      * Pour les installations collectives (ratio_virt < 1) : GV est mis à l'échelle du bâtiment
-     * (GV_logement / ratio_virt), Pn plaffonné selon le type, puis retourné comme Pn_bâtiment.
+     * (GV_logement / ratio_virt) et Pch est retourné à l'échelle du bâtiment.
      * La conversion en Pn_logement = Pn_bâtiment × ratio_virt se fait dans calculate().
+     *
+     * Aucun plafonnement ici : §15.1 p.97 plafonne **Pn**, pas Pch. Plafonner Pch
+     * avant la table Pdim → Pn de §13.2.2.4 fait retomber un Pdim de 400 kW sur la
+     * ligne « 40 < » qui rend (partie entière(400/5) + 1) × 5 = 405 kW, c'est-à-dire
+     * une valeur que le plafond lui-même ne peut jamais produire.
      */
-    private function computePnFromGv(CalculationContext $context, float $ratioVirt, ?int $genId): float
+    private function computePnFromGv(CalculationContext $context, float $ratioVirt): float
     {
         $dpParois = (float)$context->get('enveloppe.dp_parois',        0.0);
         $dpPT     = (float)$context->get('enveloppe.dp_pont_thermique', 0.0);
@@ -269,15 +276,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         $altId      = $context->classeAltitude !== null ? (int)$context->classeAltitude : 1;
         $tbase      = self::TBASE[$zoneIdx][$altId] ?? -9.5;
 
-        $pnBuilding = (1.2 * $gvEffectif * (19.0 - $tbase)) / (0.95 ** 3);
-
-        // Plafonnement Pn §13.2.2.4 p.92 : 400 kW pour chaudières gaz/fioul, quel
-        // que soit le ratio_virtualisation. LICIEL applique ce cap pour tout immeuble.
-        if ($genId !== null) {
-            $pnBuilding = min($pnBuilding, $this->getPnCap($genId));
-        }
-
-        return $pnBuilding;
+        return (1.2 * $gvEffectif * (19.0 - $tbase)) / (0.95 ** 3);
     }
 
     /**
@@ -332,16 +331,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
 
         $vs = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $ecsNode) ?? 0.0;
 
-        if ($vs <= 0.0) {
-            return 21000.0; // Instantanée
-        }
-        if ($vs <= 20.0) {
-            return (21.0 - 0.8 * $vs) * 1000.0;
-        }
-        if ($vs <= 150.0) {
-            return (5.0 - 1.751 * ($vs - 20.0) / 65.0) * 1000.0; // Semi-accumulation
-        }
-        return (7.14 * $vs + 428.0); // Accumulation : déjà en W
+        return PuissanceDimensionnement::pecsW($vs);
     }
 
     /**
@@ -354,45 +344,12 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
      */
     private function lookupPnFromPdim(float $pdimKw, DOMElement $genNode, NodeAccessor $accessor): float
     {
-        $isPost2006 = $this->isChaudierePost2006($genNode, $accessor);
-
-        // Table §13.2.2.4 p.92
-        // Colonne 1 : chaudières murales avant 2005 OU chaudières sur sol
-        // Colonne 2 : chaudières murales à partir de 2006
-        if ($pdimKw <= 5.0)       return $isPost2006 ? 5.0  : 18.0;
-        if ($pdimKw <= 10.0)      return $isPost2006 ? 10.0 : 18.0;
-        if ($pdimKw <= 13.0)      return $isPost2006 ? 13.0 : 18.0;
-        if ($pdimKw <= 18.0)      return 18.0;
-        if ($pdimKw <= 24.0)      return 24.0;
-        if ($pdimKw <= 28.0)      return 28.0;
-        if ($pdimKw <= 32.0)      return 32.0;
-        if ($pdimKw <= 40.0)      return 40.0;
-        // Pdim > 40 : (partie entière(Pdim/5) + 1) × 5
-        return ((int)floor($pdimKw / 5.0) + 1) * 5.0;
+        return PuissanceDimensionnement::pnFromPdimKw(
+            $pdimKw,
+            PuissanceDimensionnement::isChaudierePost2006($genNode),
+        );
     }
 
-    /**
-     * Détecte une chaudière murale installée à partir de 2006 via data_complementaires.
-     */
-    private function isChaudierePost2006(DOMElement $genNode, NodeAccessor $accessor): bool
-    {
-        $doc = $genNode->ownerDocument;
-        if ($doc === null) {
-            return false;
-        }
-        $xpath = new \DOMXPath($doc);
-        $nodes = $xpath->query('./donnee_entree/data_complementaires', $genNode);
-        if ($nodes === false || $nodes->length === 0) {
-            return false;
-        }
-        $dc = $nodes->item(0);
-        if (!$dc instanceof DOMElement) {
-            return false;
-        }
-        $murale = $dc->getAttribute('data-chaudiere-murale');
-        $annee  = $dc->getAttribute('data-annee-installation');
-        return $murale === '1' && $annee !== '' && (int)$annee >= 2006;
-    }
 
     /**
      * Retourne le plafond de Pn (W) selon le type de générateur.
