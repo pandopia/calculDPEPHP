@@ -212,10 +212,11 @@ Le rapport par défaut couvre les deux — 349 cas.
 | K04 — ligne Tfonc lue sur la nature de l'émetteur | −1 285 | | 90,63 % |
 | **Actuel — 375 cas** | **9 124** | **1 926** | **90,63 %** |
 
-**Le corpus historique flattait le chiffre.** Sur le jeu stratifié seul, la
-conformité est de 84,1 % : immeuble collectif 87,9 %, appartement individuel
-87,0 %, maison individuelle 84,6 %, **appartement issu de l'immeuble 76,1 %**.
-Ne juge jamais une correction sur le seul corpus historique.
+**Le corpus historique flatte le chiffre.** Par périmètre CSTB : immeuble
+collectif 92,3 %, appartement individuel 90,1 %, maison individuelle 87,6 %,
+**appartement issu de l'immeuble 84,4 %** — et par régime, pré-2026 87,1 %
+contre post-2026 91,5 %. Ne juge jamais une correction sur le seul corpus
+historique.
 
 Sur les écarts restants, **3 357 sont imputables à la référence** : le plafond
 atteignable sur ces corpus est de **93,44 %**. Le rapport l'affiche.
