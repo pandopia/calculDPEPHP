@@ -63,7 +63,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K04 — Écarts résiduels de chauffage
 
-- [ ] Owner: __  | Phase: K  | Estimation: 8h  | Priorité: haute
+- [~CLD] Owner: CLD  | Phase: K  | Estimation: 8h  | Priorité: haute
 - Premier amont à traiter : `pn`, puis `qp0`, températures de fonctionnement,
   `rpn`, `rendement_generation` et seulement ensuite `conso_ch`.
 - Acquis à ne pas refaire :
