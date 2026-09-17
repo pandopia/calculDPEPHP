@@ -433,6 +433,19 @@ final class CombustionCalculator implements CalculatorInterface
 
         $gvEffectif = ($ratioVirt > 0.0 && $ratioVirt < 1.0) ? $gv / $ratioVirt : $gv;
 
+        // §17.1.4.2 : un DPE décrit à l'échelle de l'immeuble (ou un DPE
+        // d'appartement généré depuis les données immeuble) porte un GV
+        // d'immeuble, alors qu'une ECS individuelle est produite par un
+        // générateur par logement. Pch se ramène donc à l'appartement moyen.
+        // C'est la transposition, côté ECS, de la règle déjà appliquée au
+        // chauffage individuel par ChaudiereDefautCalculator.
+        if ($this->isEcsIndividuelleEchelleImmeuble($node, $accessor)) {
+            $nblgt = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement') ?? 1;
+            if ($nblgt > 1) {
+                $gvEffectif /= $nblgt;
+            }
+        }
+
         $zoneGroupe = CalculationContext::zoneGroupeFromId($context->zoneClimatique);
         $zoneIdx    = match($zoneGroupe) { 'H1' => 1, 'H2' => 2, 'H3' => 3, default => 1 };
         $altId      = $context->classeAltitude !== null ? (int)$context->classeAltitude : 1;
@@ -446,6 +459,38 @@ final class CombustionCalculator implements CalculatorInterface
         }
 
         return $pnBuilding;
+    }
+
+    /**
+     * Modes d'application où le GV décrit l'immeuble alors que l'ECS est
+     * individuelle — un générateur par logement (XSD
+     * enum_methode_application_dpe_log_id) :
+     *    6 immeuble collectif, chauffage individuel, ECS individuelle
+     *    7 immeuble collectif, chauffage collectif,  ECS individuelle
+     *   10 appartement généré depuis l'immeuble, chauffage individuel, ECS individuelle
+     *   11 appartement généré depuis l'immeuble, chauffage collectif,  ECS individuelle
+     */
+    private const MODES_ECS_INDIVIDUELLE_IMMEUBLE = [6, 7, 10, 11];
+
+    /**
+     * Vrai lorsque le générateur décrit une ECS individuelle dans un DPE dont
+     * l'enveloppe est celle de l'immeuble. Une installation déclarée collective
+     * est exclue : elle dessert réellement tout le bâtiment.
+     */
+    private function isEcsIndividuelleEchelleImmeuble(DOMElement $node, NodeAccessor $accessor): bool
+    {
+        $mode = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
+        if ($mode === null || !in_array($mode, self::MODES_ECS_INDIVIDUELLE_IMMEUBLE, true)) {
+            return false;
+        }
+
+        $inst = $this->findParentInstallation($node);
+        if ($inst === null) {
+            return false;
+        }
+        $typeInst = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $inst);
+
+        return $typeInst === null || $typeInst === 1;
     }
 
     /** Vérifie si la veilleuse est présente (open3cl: pveil=0 si absence). */
