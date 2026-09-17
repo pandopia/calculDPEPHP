@@ -214,6 +214,12 @@ final class FCalculator implements CalculatorInterface
         $context->set('apport.fraction_ch',         $fractionCh);
         $context->set('apport.fraction_ch_depensier', $fractionChDepensier);
         $context->set('apport.nadeq',               $nadeq);
+        // §6.1 : les apports internes forfaitaires sont les mêmes en chauffage
+        // et en refroidissement. La base Ai (W) est publiée pour que le calcul
+        // du besoin de froid n'ait pas à la redériver — et surtout pas à en
+        // redériver la surface, dont le périmètre dépend de la méthode
+        // d'application du DPE (cf. le choix de $sh ci-dessus).
+        $context->set('apport.ai_base',             $aiBase);
         // Fj mensuels — utilisés par BesoinChauffageCalculator pour les pertes
         // récupérées des générateurs (Bch_hp_j = GV × (1−Fj) × DHj)
         $context->set('apport.fj_mensuel',     $fjMensuel19);
