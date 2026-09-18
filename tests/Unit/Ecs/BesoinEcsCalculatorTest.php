@@ -301,6 +301,108 @@ XML;
      *
      * Cas du diag utilisateur (mode 6 immeuble individuel, 78 apts, rdim=78).
      */
+    /**
+     * Le XSD documente `installation_ecs/nombre_logement` comme « le nombre de
+     * logements qui sont équipés de ce type d'installation d'ECS ». Quand les
+     * surfaces des installations, pondérées par ce nombre, reconstituent la
+     * surface de l'immeuble — ici 62,83 × 6 + 61 × 2 = 498,98 pour 499 m² —,
+     * `surface_habitable` est la surface d'UN logement équipé. Le nombre de
+     * logements est alors déjà porté par cette pondération : diviser en plus
+     * par `rdim` le recompte et rend un besoin N fois trop faible.
+     *
+     * Le besoin publié pour chaque installation est donc celui d'un logement
+     * de ce type, proportionnel à sa surface.
+     */
+    public function testSurfacesParLogementNeSontPasDiviseesParRdim(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale>
+        <surface_habitable_immeuble>499</surface_habitable_immeuble>
+        <nombre_appartement>8</nombre_appartement>
+        <enum_methode_application_dpe_log_id>26</enum_methode_application_dpe_log_id>
+    </caracteristique_generale>
+    <installation_ecs_collection>
+        <installation_ecs>
+            <donnee_entree>
+                <enum_type_installation_id>1</enum_type_installation_id>
+                <surface_habitable>62.83</surface_habitable>
+                <nombre_logement>6</nombre_logement>
+                <rdim>6</rdim>
+            </donnee_entree>
+        </installation_ecs>
+        <installation_ecs>
+            <donnee_entree>
+                <enum_type_installation_id>1</enum_type_installation_id>
+                <surface_habitable>61</surface_habitable>
+                <nombre_logement>2</nombre_logement>
+                <rdim>2</rdim>
+            </donnee_entree>
+        </installation_ecs>
+    </installation_ecs_collection>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $node = $doc->getElementsByTagName('logement')->item(0);
+        $ctx = $this->makeContext($doc, ['apport.nadeq' => 8.0]);
+
+        (new BesoinEcsCalculator())->calculate($node, $ctx);
+
+        $becsTotal = (float)$ctx->get('ecs.besoin_ecs', 0.0);
+        $lu = [];
+        foreach ($doc->getElementsByTagName('installation_ecs') as $inst) {
+            $di = $inst->getElementsByTagName('donnee_intermediaire')->item(0);
+            $lu[] = (float)$di->getElementsByTagName('besoin_ecs')->item(0)->textContent;
+        }
+
+        self::assertEqualsWithDelta($becsTotal * 62.83 / 499.0, $lu[0], 0.01);
+        self::assertEqualsWithDelta($becsTotal * 61.0 / 499.0, $lu[1], 0.01);
+    }
+
+    /**
+     * Sans cette pondération, `surface_habitable` décrit la surface desservie
+     * et `rdim` reste le diviseur : une installation unique couvrant tout
+     * l'immeuble pour 78 logements garde besoin_total / 78.
+     */
+    public function testSurfaceDesservieGardeLeDiviseurRdim(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale>
+        <surface_habitable_immeuble>5180</surface_habitable_immeuble>
+        <nombre_appartement>78</nombre_appartement>
+        <enum_methode_application_dpe_log_id>26</enum_methode_application_dpe_log_id>
+    </caracteristique_generale>
+    <installation_ecs_collection>
+        <installation_ecs>
+            <donnee_entree>
+                <enum_type_installation_id>1</enum_type_installation_id>
+                <surface_habitable>5180</surface_habitable>
+                <nombre_logement>78</nombre_logement>
+                <rdim>78</rdim>
+            </donnee_entree>
+        </installation_ecs>
+    </installation_ecs_collection>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $node = $doc->getElementsByTagName('logement')->item(0);
+        $ctx = $this->makeContext($doc, ['apport.nadeq' => 146.958]);
+
+        (new BesoinEcsCalculator())->calculate($node, $ctx);
+
+        $becsTotal = (float)$ctx->get('ecs.besoin_ecs', 0.0);
+        $inst = $doc->getElementsByTagName('installation_ecs')->item(0);
+        $di = $inst->getElementsByTagName('donnee_intermediaire')->item(0);
+        $becsInst = (float)$di->getElementsByTagName('besoin_ecs')->item(0)->textContent;
+
+        self::assertEqualsWithDelta($becsTotal / 78.0, $becsInst, 0.01);
+    }
+
     public function testRdimDividesBesoinEcsPerInstallation(): void
     {
         $xml = <<<'XML'

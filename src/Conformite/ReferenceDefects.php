@@ -53,14 +53,31 @@ final class ReferenceDefects
     private const APPORT_PREFIX = 'dpe/logement/sortie/apport_et_besoin/';
     private const CONFORT_ETE_PATH = 'dpe/logement/sortie/confort_ete';
 
-    /** Postes qui composent le total des auxiliaires en énergie finale. */
-    private const AUXILIAIRES_EF = [
-        'conso_auxiliaire_generation_ch',
-        'conso_auxiliaire_distribution_ch',
-        'conso_auxiliaire_generation_ecs',
-        'conso_auxiliaire_distribution_ecs',
-        'conso_auxiliaire_distribution_fr',
-        'conso_auxiliaire_ventilation',
+    /**
+     * Postes qui composent le total des auxiliaires, et nom du total, dans
+     * chacun des quatre blocs de sortie qui les publient.
+     *
+     * Le suffixe des postes est commun ; seuls le préfixe du bloc et le nom du
+     * total changent (`cout_total_auxiliaire` au singulier, les trois autres
+     * `…_totale_auxiliaire`).
+     *
+     * @var list<array{0: string, 1: string, 2: string}> [préfixe de bloc, préfixe de poste, nom du total]
+     */
+    private const BLOCS_AUXILIAIRES = [
+        ['dpe/logement/sortie/ef_conso/',     'conso_',        'conso_totale_auxiliaire'],
+        ['dpe/logement/sortie/cout/',         'cout_',         'cout_total_auxiliaire'],
+        ['dpe/logement/sortie/emission_ges/', 'emission_ges_', 'emission_ges_totale_auxiliaire'],
+        ['dpe/logement/sortie/ep_conso/',     'ep_conso_',     'ep_conso_totale_auxiliaire'],
+    ];
+
+    /** Suffixes des postes qui composent le total des auxiliaires. */
+    private const AUXILIAIRES_POSTES = [
+        'auxiliaire_generation_ch',
+        'auxiliaire_distribution_ch',
+        'auxiliaire_generation_ecs',
+        'auxiliaire_distribution_ecs',
+        'auxiliaire_distribution_fr',
+        'auxiliaire_ventilation',
     ];
 
     /**
@@ -433,37 +450,50 @@ final class ReferenceDefects
     /**
      * Total d'auxiliaires qui ne correspond pas à la somme de ses postes.
      *
+     * Le contrôle porte sur les quatre blocs qui publient ces totaux —
+     * consommation finale, coût, émissions de GES et énergie primaire. Un total
+     * qui contredit ses propres addendes est un défaut de la référence quel que
+     * soit le bloc : la contradiction s'établit sur le fichier seul, sans
+     * référence à notre calcul.
+     *
      * @param array<string, string> $expected
      * @return array<string, string>
      */
     private static function totalAuxiliaireIncoherent(array $expected): array
     {
-        $total = self::num($expected, self::EF_PREFIX . 'conso_totale_auxiliaire');
-        if ($total === null) {
-            return [];
-        }
+        $suspects = [];
 
-        $somme = 0.0;
-        $trouves = 0;
-        foreach (self::AUXILIAIRES_EF as $poste) {
-            $valeur = self::num($expected, self::EF_PREFIX . $poste);
-            if ($valeur !== null) {
-                $somme += $valeur;
-                $trouves++;
+        foreach (self::BLOCS_AUXILIAIRES as [$prefixe, $prefixePoste, $nomTotal]) {
+            $total = self::num($expected, $prefixe . $nomTotal);
+            if ($total === null) {
+                continue;
             }
-        }
-        if ($trouves === 0 || abs($total - $somme) <= max(0.1, abs($somme) * 0.001)) {
-            return [];
-        }
 
-        return [
-            'conso_totale_auxiliaire' => sprintf(
-                'la référence publie un total auxiliaire de %.1f kWh, incompatible avec la somme '
-                . 'de ses postes (%.1f kWh)',
+            $somme = 0.0;
+            $trouves = 0;
+            foreach (self::AUXILIAIRES_POSTES as $poste) {
+                $valeur = self::num($expected, $prefixe . $prefixePoste . $poste);
+                if ($valeur !== null) {
+                    $somme += $valeur;
+                    $trouves++;
+                }
+            }
+            // Les coûts et les émissions sont publiés arrondis : la tolérance
+            // absolue couvre l'arrondi de chaque poste sommé.
+            $tolerance = max(count(self::AUXILIAIRES_POSTES) * 0.05, abs($somme) * 0.001);
+            if ($trouves === 0 || abs($total - $somme) <= $tolerance) {
+                continue;
+            }
+
+            $suspects[$nomTotal] = sprintf(
+                'la référence publie un total auxiliaire de %.1f, incompatible avec la somme '
+                . 'de ses postes (%.1f)',
                 $total,
                 $somme,
-            ),
-        ];
+            );
+        }
+
+        return $suspects;
     }
 
     /**
