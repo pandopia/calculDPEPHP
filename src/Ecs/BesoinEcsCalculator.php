@@ -168,6 +168,16 @@ final class BesoinEcsCalculator implements CalculatorInterface
         $isGeneratedFromImmeuble = $modeAppId !== null
             && in_array($modeAppId, [10, 11, 12, 13, 33, 34, 38, 39, 40], true);
 
+        // Le XSD documente `installation_ecs/nombre_logement` comme « le nombre
+        // de logements qui sont équipés de ce type d'installation d'ECS ».
+        // Quand les surfaces des installations, pondérées par ce nombre,
+        // reconstituent la surface de l'immeuble, `surface_habitable` est donc
+        // la surface d'UN logement équipé, pas celle desservie par le système.
+        // Le nombre de logements est alors déjà porté par cette pondération :
+        // diviser en plus par `rdim`, qui les recompte, donne un besoin N fois
+        // trop faible.
+        $surfacesParLogement = $this->surfacesSontParLogement($instalNodes, $accessor, $surfImmeuble);
+
         foreach ($instalNodes as $inst) {
             $rdim     = $accessor->getFloatOrNull('./donnee_entree/rdim',              $inst) ?? 1.0;
             $rdim     = $rdim > 0.0 ? $rdim : 1.0;
@@ -183,7 +193,9 @@ final class BesoinEcsCalculator implements CalculatorInterface
                 $ratio = 1.0 / $nbApt;
             } elseif ($surfInst !== null && $surfInst > 0.0 && $surfImmeuble !== null && $surfImmeuble > 0.0) {
                 // Partition par surface : besoin_install = besoin × surface_install / (surface_immeuble × rdim)
-                $ratio = $surfInst / ($surfImmeuble * $rdim);
+                $ratio = $surfacesParLogement
+                    ? $surfInst / $surfImmeuble
+                    : $surfInst / ($surfImmeuble * $rdim);
             } elseif ($isImmeubleEcsIndividuels) {
                 // Plusieurs installs ECS individuelles sans surface saisie : chaque install ≃ 1 apt-moyen
                 $ratio = 1.0 / $nbApt;
@@ -352,6 +364,44 @@ final class BesoinEcsCalculator implements CalculatorInterface
             return 1.75 - 0.01875 * (70.0 - $sh);
         }
         return 0.025 * $sh;
+    }
+
+    /**
+     * Vrai lorsque les `surface_habitable` des installations d'ECS sont des
+     * surfaces par logement équipé : leur somme pondérée par `nombre_logement`
+     * reconstitue la surface de l'immeuble, alors que leur somme brute non.
+     *
+     * @param list<DOMElement> $instalNodes
+     * @spec-section 17.1.3.2
+     * @spec-pages   108
+     */
+    private function surfacesSontParLogement(
+        array $instalNodes,
+        NodeAccessor $accessor,
+        ?float $surfImmeuble,
+    ): bool {
+        if ($surfImmeuble === null || $surfImmeuble <= 0.0) {
+            return false;
+        }
+
+        $brute = 0.0;
+        $ponderee = 0.0;
+        foreach ($instalNodes as $inst) {
+            $surface = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $inst);
+            if ($surface === null || $surface <= 0.0) {
+                return false;
+            }
+            $nombre = $accessor->getFloatOrNull('./donnee_entree/nombre_logement', $inst) ?? 1.0;
+            if ($nombre <= 0.0) {
+                return false;
+            }
+            $brute += $surface;
+            $ponderee += $surface * $nombre;
+        }
+
+        $proche = static fn (float $a): bool => abs($a - $surfImmeuble) <= $surfImmeuble * 0.01;
+
+        return $proche($ponderee) && !$proche($brute);
     }
 
     private function ensureChild(\DOMDocument $doc, DOMElement $parent, string $tag): DOMElement
