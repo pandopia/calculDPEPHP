@@ -161,14 +161,18 @@ final class CombustionCalculator implements CalculatorInterface
                     + self::H_VEIL * $pveilActif / $becsWh
                 );
             } elseif ($typeEcsId !== null && in_array($typeEcsId, self::TYPE_ACCUMULATEUR_GAZ, true)) {
-                // §14.1.3 Accumulateur gaz : 8592×QP0/Becs + 6970×Pveil/Becs
-                $qp0Acc = 0.015 * $pn; // override §14.1.3
+                // §14.1.3 p.94 : la formule rend **Rg × Rs**, pertes de stockage
+                // comprises — « (8592 × QP0 + Qg,w) / Becs ». Le rendement de
+                // stockage n'est donc pas un facteur séparé à appliquer en plus :
+                // l'omettre ici puis multiplier par Rs comptait Qg,w deux fois.
+                $qp0Acc = 0.015 * $pn; // QP0 = 1,5 × Pn / 100
                 $rg = 1.0 / (
                     1.0 / $rpn
-                    + self::H_ACC * $qp0Acc / $becsWh
+                    + (self::H_ACC * $qp0Acc + $qgw) / $becsWh
                     + self::H_VEIL * $pveilActif / $becsWh
                 );
                 $qp0 = $qp0Acc;
+                $usesCombinedYield = true;
             } else {
                 // §14.1.2 p.94 — chaudière mixte : le rendement publié est le
                 // produit Rg×Rs et Qgw doit donc être intégré au même dénominateur.
@@ -259,7 +263,7 @@ final class CombustionCalculator implements CalculatorInterface
             // nominaux, qui ignorait la puissance réellement nécessaire à la
             // production d'ECS — laquelle vaut 21 kW dès qu'elle est instantanée.
             $vs     = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $node) ?? 0.0;
-            $pdimKw = max($pnW, PuissanceDimensionnement::pecsW($vs)) / 1000.0;
+            $pdimKw = $this->puissanceDimensionnementKw($pnW, $vs, $node, $accessor);
             $pnW    = PuissanceDimensionnement::pnFromPdimKw(
                 $pdimKw,
                 PuissanceDimensionnement::isChaudierePost2006($node),
@@ -333,7 +337,7 @@ final class CombustionCalculator implements CalculatorInterface
                 // une valeur continue, hors des paliers nominaux, et qui ignorait
                 // la puissance réellement nécessaire à la production d'ECS.
                 $vs     = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $node) ?? 0.0;
-                $pdimKw = max($pnW, PuissanceDimensionnement::pecsW($vs)) / 1000.0;
+                $pdimKw = $this->puissanceDimensionnementKw($pnW, $vs, $node, $accessor);
                 $pnW    = PuissanceDimensionnement::pnFromPdimKw(
                     $pdimKw,
                     PuissanceDimensionnement::isChaudierePost2006($node),
@@ -491,6 +495,33 @@ final class CombustionCalculator implements CalculatorInterface
         $typeInst = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $inst);
 
         return $typeInst === null || $typeInst === 1;
+    }
+
+    /**
+     * Pdim (kW) du générateur d'ECS — §13.2.2.4 p.92 : `Pdim = max(Pch ; Pecs)`.
+     *
+     * Ce maximum suppose que le générateur assure aussi le chauffage. Quand le
+     * XSD le déclare à l'usage « ecs » seul (`enum_usage_generateur_id = 2`) et
+     * qu'aucune référence de générateur mixte ne le rattache à une installation
+     * de chauffage, il n'y a pas de Pch à comparer : Pdim vaut Pecs. Prendre le
+     * Pch tiré du GV revenait à dimensionner un accumulateur gaz sur les
+     * déperditions du logement.
+     */
+    private function puissanceDimensionnementKw(
+        float $pchW,
+        float $volumeStockage,
+        DOMElement $node,
+        NodeAccessor $accessor,
+    ): float {
+        $pecsW = PuissanceDimensionnement::pecsW($volumeStockage);
+
+        $usage = $accessor->getIntOrNull('./donnee_entree/enum_usage_generateur_id', $node);
+        $mixte = $accessor->getStringOrNull('./donnee_entree/reference_generateur_mixte', $node);
+        if ($usage === 2 && ($mixte === null || $mixte === '')) {
+            return $pecsW / 1000.0;
+        }
+
+        return max($pchW, $pecsW) / 1000.0;
     }
 
     /** Vérifie si la veilleuse est présente (open3cl: pveil=0 si absence). */

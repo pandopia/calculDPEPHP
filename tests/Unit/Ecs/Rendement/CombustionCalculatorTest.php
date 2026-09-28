@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Ecs\Rendement;
 
 use CalculDpePHP\Ecs\Rendement\CombustionCalculator;
+use CalculDpePHP\Ecs\Rendement\StockageCalculator;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
@@ -435,6 +436,120 @@ XML);
         self::assertEqualsWithDelta(
             0.843107,
             (float) $di->getElementsByTagName('rendement_generation')->item(0)->textContent,
+            1e-6,
+        );
+    }
+
+    /**
+     * §14.1.3 p.94 — accumulateur gaz. La formule de la spec rend **Rg × Rs**,
+     * pertes de stockage comprises :
+     *
+     *   Rg × Rs = 1 / (1/Rpn + (8592 × QP0 + Qg,w) / Becs + 6970 × Pveil / Becs)
+     *
+     * Le rendement de stockage n'est donc pas un facteur séparé à appliquer en
+     * plus. La sortie porte un seul `rendement_generation_stockage`, et ni
+     * `rendement_generation` ni `rendement_stockage`.
+     *
+     * Avec Rpn = 0,84, Pn = 18 kW (donc QP0 = 1,5 × Pn / 100 = 270 W), un ballon
+     * de 200 L (Qg,w = 67 662 × 200^0,55) et Becs = 1 310,9211 kWh, la spec
+     * donne 0,25566.
+     */
+    public function testAccumulateurGazPublishesTheCombinedYieldIncludingStorage(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale><surface_habitable_logement>103.67</surface_habitable_logement></caracteristique_generale>
+    <installation_ecs>
+        <donnee_entree><enum_type_installation_id>1</enum_type_installation_id></donnee_entree>
+        <donnee_intermediaire>
+            <rendement_distribution>0.87</rendement_distribution>
+            <besoin_ecs>1310.9211350823</besoin_ecs>
+        </donnee_intermediaire>
+        <generateur_ecs_collection>
+            <generateur_ecs>
+                <donnee_entree>
+                    <enum_type_energie_id>2</enum_type_energie_id>
+                    <enum_type_generateur_ecs_id>59</enum_type_generateur_ecs_id>
+                    <enum_usage_generateur_id>2</enum_usage_generateur_id>
+                    <enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id>
+                    <enum_type_stockage_ecs_id>3</enum_type_stockage_ecs_id>
+                    <volume_stockage>200</volume_stockage>
+                    <presence_ventouse>1</presence_ventouse>
+                </donnee_entree>
+            </generateur_ecs>
+        </generateur_ecs_collection>
+    </installation_ecs>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $node = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        $ctx = $this->makeContext($doc);
+        // Qg,w du ballon réel, publié par StockageCalculator via le contexte.
+        $ctx->set(StockageCalculator::qgwKey($node), 67662.0 * 200.0 ** 0.55);
+
+        (new CombustionCalculator())->calculate($node, $ctx);
+
+        self::assertSame(0, $doc->getElementsByTagName('rendement_generation')->length);
+        self::assertSame(0, $doc->getElementsByTagName('rendement_stockage')->length);
+
+        $combine = $doc->getElementsByTagName('rendement_generation_stockage')->item(0);
+        self::assertNotNull($combine);
+        self::assertEqualsWithDelta(0.25566, (float)$combine->textContent, 1e-5);
+    }
+
+    /**
+     * §13.2.2.4 p.92 pose `Pdim = max(Pch ; Pecs)`, ce qui suppose que le
+     * générateur assure aussi le chauffage. Déclaré à l'usage « ecs » seul
+     * (`enum_usage_generateur_id = 2`) et sans référence de générateur mixte, il
+     * n'a pas de Pch : Pdim vaut Pecs, soit ici (7,14 × 200 + 428) / 1000 =
+     * 1,856 kW, que la table rend à 18 kW.
+     */
+    public function testEcsOnlyGeneratorIsSizedOnPecsAlone(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale><surface_habitable_logement>103.67</surface_habitable_logement></caracteristique_generale>
+    <meteo><enum_zone_climatique_id>1</enum_zone_climatique_id><enum_classe_altitude_id>1</enum_classe_altitude_id></meteo>
+    <installation_ecs>
+        <donnee_entree><enum_type_installation_id>1</enum_type_installation_id></donnee_entree>
+        <donnee_intermediaire>
+            <rendement_distribution>0.87</rendement_distribution>
+            <besoin_ecs>1310.9211350823</besoin_ecs>
+        </donnee_intermediaire>
+        <generateur_ecs_collection>
+            <generateur_ecs>
+                <donnee_entree>
+                    <enum_type_energie_id>2</enum_type_energie_id>
+                    <enum_type_generateur_ecs_id>59</enum_type_generateur_ecs_id>
+                    <enum_usage_generateur_id>2</enum_usage_generateur_id>
+                    <enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id>
+                    <enum_type_stockage_ecs_id>3</enum_type_stockage_ecs_id>
+                    <volume_stockage>200</volume_stockage>
+                    <presence_ventouse>1</presence_ventouse>
+                </donnee_entree>
+            </generateur_ecs>
+        </generateur_ecs_collection>
+    </installation_ecs>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $node = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        $ctx = $this->makeContext($doc);
+        // Un GV de maison : sans le garde, Pch dominerait et rendrait 24 kW.
+        $ctx->set('enveloppe.dp_parois', 600.0);
+        $ctx->set('enveloppe.dp_pont_thermique', 0.0);
+        $ctx->set('ventilation.hvent', 0.0);
+        $ctx->set('ventilation.hperm', 0.0);
+
+        (new CombustionCalculator())->calculate($node, $ctx);
+
+        self::assertEqualsWithDelta(
+            18000.0,
+            (float)$doc->getElementsByTagName('pn')->item(0)?->textContent,
             1e-6,
         );
     }

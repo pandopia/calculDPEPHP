@@ -210,8 +210,7 @@ final class EpConsoCalculator implements CalculatorInterface
             $conso    = $accessor->getFloatOrNull('./donnee_intermediaire/conso_ch',           $install) ?? 0.0;
             $consoDep = $accessor->getFloatOrNull('./donnee_intermediaire/conso_ch_depensier', $install) ?? 0.0;
 
-            $energyId = $this->firstGeneratorEnergyType($accessor, $install, 'generateur_chauffage');
-            $epCoeff  = $this->epCoeffForEnergyType($energyId, $epElec);
+            $epCoeff = $this->coefficientPondereParGenerateur($accessor, $install, $conso, $epElec);
 
             $totalEp    += $conso    * $rdimEff * $epCoeff;
             $totalEpDep += $consoDep * $rdimEff * $epCoeff;
@@ -290,6 +289,57 @@ final class EpConsoCalculator implements CalculatorInterface
         }
 
         return [$totalEp, $totalEpDep, $cleRepartition];
+    }
+
+    /**
+     * Coefficient d'énergie primaire de l'installation, pondéré par la
+     * consommation de chaque générateur.
+     *
+     * §9.3 à §9.5 décrivent des installations dont les générateurs n'utilisent
+     * pas la même énergie — un poêle bois et un convecteur électrique de salle
+     * de bains, par exemple. Retenir l'énergie du premier générateur appliquait
+     * son coefficient à toute l'installation, donc 1 à une part électrique.
+     *
+     * Les consommations publiées par générateur servent de poids. Avec un seul
+     * générateur, ou lorsqu'ils portent tous la même consommation et la même
+     * énergie, le résultat est identique au précédent.
+     */
+    private function coefficientPondereParGenerateur(
+        NodeAccessor $accessor,
+        DOMElement $install,
+        float $consoInstallation,
+        float $epElec,
+    ): float {
+        $poidsTotal = 0.0;
+        $somme = 0.0;
+        foreach ($install->getElementsByTagName('generateur_chauffage') as $gen) {
+            if (!$gen instanceof DOMElement) {
+                continue;
+            }
+            $conso = $accessor->getFloatOrNull('./donnee_intermediaire/conso_ch', $gen);
+            if ($conso === null || $conso <= 0.0) {
+                continue;
+            }
+            $energie = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $gen) ?? 2;
+            $poidsTotal += $conso;
+            $somme += $conso * $this->epCoeffForEnergyType($energie, $epElec);
+        }
+
+        // Les consommations par générateur ne sont des poids valides que si
+        // elles répartissent celle de l'installation. Plusieurs stratégies de
+        // §9 recopient encore la même valeur sur chaque générateur : leur somme
+        // vaut alors N fois celle de l'installation, et la pondération
+        // reviendrait à répartir à parts égales, ce qui n'est pas la méthode.
+        $repartissent = $consoInstallation > 0.0
+            && abs($poidsTotal - $consoInstallation) <= $consoInstallation * 0.001;
+        if (!$repartissent) {
+            return $this->epCoeffForEnergyType(
+                $this->firstGeneratorEnergyType($accessor, $install, 'generateur_chauffage'),
+                $epElec,
+            );
+        }
+
+        return $somme / $poidsTotal;
     }
 
     private function firstGeneratorEnergyType(
