@@ -357,4 +357,100 @@ XML;
         (new ConvecteurBijonction())->calculate($node, $this->makeContext($doc, 1000.0));
         $this->assertEqualsWithDelta(400.0, $this->besoinCh($node), self::TOL);
     }
+
+    /**
+     * §9.4 p.63 : `Cch1 = 0,9 × Bch × INT1 × Ich1` pour le poêle ou l'insert,
+     * `Cch2 = 0,1 × Bch × INT2 × Ich2` pour le chauffage électrique de la salle
+     * de bains. Les deux branches vivent dans une seule installation et se
+     * distinguent par `enum_lien_generateur_emetteur_id` — 1 pour l'émetteur de
+     * base, 3 pour celui de salle de bains.
+     *
+     * Chaque branche garde ses propres rendements : ici 0,5 de génération pour
+     * le poêle et 1 pour le convecteur. `besoin_ch` reste celui du logement
+     * entier, les parts ne portant que sur les consommations.
+     */
+    public function testInsertElecSdbSplitsWithinASingleInstallation(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<dpe><logement>
+  <caracteristique_generale><surface_habitable_logement>100</surface_habitable_logement></caracteristique_generale>
+  <installation_chauffage_collection>
+    <installation_chauffage>
+      <donnee_entree>
+        <enum_cfg_installation_ch_id>4</enum_cfg_installation_ch_id>
+        <surface_chauffee>100</surface_chauffee><rdim>1</rdim>
+      </donnee_entree>
+      <emetteur_chauffage_collection>
+        <emetteur_chauffage>
+          <donnee_entree><surface_chauffee>100</surface_chauffee>
+            <enum_lien_generateur_emetteur_id>1</enum_lien_generateur_emetteur_id></donnee_entree>
+          <donnee_intermediaire><i0>1</i0><rendement_emission>0.95</rendement_emission>
+            <rendement_distribution>1</rendement_distribution><rendement_regulation>0.8</rendement_regulation></donnee_intermediaire>
+        </emetteur_chauffage>
+        <emetteur_chauffage>
+          <donnee_entree><surface_chauffee>100</surface_chauffee>
+            <enum_lien_generateur_emetteur_id>3</enum_lien_generateur_emetteur_id></donnee_entree>
+          <donnee_intermediaire><i0>1</i0><rendement_emission>0.95</rendement_emission>
+            <rendement_distribution>1</rendement_distribution><rendement_regulation>1</rendement_regulation></donnee_intermediaire>
+        </emetteur_chauffage>
+      </emetteur_chauffage_collection>
+      <generateur_chauffage_collection>
+        <generateur_chauffage>
+          <donnee_entree><enum_lien_generateur_emetteur_id>1</enum_lien_generateur_emetteur_id></donnee_entree>
+          <donnee_intermediaire><rendement_generation>0.5</rendement_generation></donnee_intermediaire>
+        </generateur_chauffage>
+        <generateur_chauffage>
+          <donnee_entree><enum_lien_generateur_emetteur_id>3</enum_lien_generateur_emetteur_id></donnee_entree>
+          <donnee_intermediaire><rendement_generation>1</rendement_generation></donnee_intermediaire>
+        </generateur_chauffage>
+      </generateur_chauffage_collection>
+    </installation_chauffage>
+  </installation_chauffage_collection>
+</logement></dpe>
+XML);
+
+        $context = new CalculationContext(
+            document: $document,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        );
+        $context->set('chauffage.besoin_ch', 10000.0);
+        $context->set('chauffage.besoin_ch_depensier', 12000.0);
+        $context->set('chauffage.gv', 1.0);
+
+        $install = $document->getElementsByTagName('installation_chauffage')->item(0);
+        self::assertInstanceOf(DOMElement::class, $install);
+        (new InsertElecSdb())->calculate($install, $context);
+
+        $generateurs = $document->getElementsByTagName('generateur_chauffage');
+        $cch1 = (float)$generateurs->item(0)?->getElementsByTagName('conso_ch')->item(0)?->textContent;
+        $cch2 = (float)$generateurs->item(1)?->getElementsByTagName('conso_ch')->item(0)?->textContent;
+
+        // INT est commun aux deux branches : leur rapport ne dépend que des
+        // parts et des rendements, soit (0,9 / 0,1) × (0,95 / (0,5 × 0,95 × 0,8)) = 22,5.
+        self::assertGreaterThan(0.0, $cch2);
+        self::assertEqualsWithDelta(22.5, $cch1 / $cch2, 1e-6);
+
+        $di = null;
+        foreach ($install->childNodes as $enfant) {
+            if ($enfant instanceof DOMElement && $enfant->nodeName === 'donnee_intermediaire') {
+                $di = $enfant;
+            }
+        }
+        self::assertInstanceOf(DOMElement::class, $di);
+
+        $lire = static function (DOMElement $di, string $tag): float {
+            foreach ($di->childNodes as $enfant) {
+                if ($enfant instanceof DOMElement && $enfant->nodeName === $tag) {
+                    return (float)$enfant->textContent;
+                }
+            }
+
+            return 0.0;
+        };
+
+        // besoin_ch reste celui du logement entier, non amputé des 10 %.
+        self::assertEqualsWithDelta(10000.0, $lire($di, 'besoin_ch'), 0.001);
+        self::assertEqualsWithDelta($cch1 + $cch2, $lire($di, 'conso_ch'), 0.001);
+    }
 }

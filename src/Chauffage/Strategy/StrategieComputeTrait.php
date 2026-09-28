@@ -63,6 +63,152 @@ trait StrategieComputeTrait
     }
 
     /**
+     * Répartit la consommation entre les branches d'une même installation,
+     * identifiées par `enum_lien_generateur_emetteur_id` (§9.3 à §9.5).
+     *
+     * Ces configurations décrivent un émetteur de base et un émetteur d'appoint
+     * — ou de salle de bains — qui ont chacun leur générateur, donc leur propre
+     * rendement de génération, leur propre intermittence et leurs propres
+     * rendements d'émission, de distribution et de régulation. Moyenner le tout
+     * sur l'installation efface précisément la distinction que ces paragraphes
+     * établissent : sur un poêle bois à 0,5 de rendement doublé d'un convecteur
+     * électrique à 1, la moyenne ne décrit aucun des deux.
+     *
+     * `besoin_ch` reste celui de l'installation entière : les parts ne portent
+     * que sur les consommations, conformément aux formules
+     * `Cch_i = part_i × Bch × INT_i × Ich_i`.
+     *
+     * @param array<int, float> $partsParLien enum_lien_generateur_emetteur_id ⇒ part de Bch
+     * @return bool faux si l'installation ne porte pas ces branches, l'appelant
+     *              retombant alors sur le calcul moyenné
+     */
+    private function computeAndWriteParLien(
+        array $partsParLien,
+        float $besoin,
+        float $besoinDep,
+        DOMElement $node,
+        CalculationContext $context,
+    ): bool {
+        $accessor = new NodeAccessor($context->document);
+
+        $emetteursParLien = $this->groupByLien($accessor, $node, 'emetteur_chauffage_collection', 'emetteur_chauffage');
+        $generateursParLien = $this->groupByLien($accessor, $node, 'generateur_chauffage_collection', 'generateur_chauffage');
+
+        $liensUtiles = array_intersect(array_keys($partsParLien), array_keys($generateursParLien));
+        if (count($liensUtiles) < 2) {
+            return false;
+        }
+
+        $gv = (float)$context->get('chauffage.gv', 1.0);
+        $shImmeuble = $this->getShImmeuble($accessor, $node);
+        $hsp = $this->getHsp($accessor, $node);
+        $g = ($hsp * $shImmeuble) > 0.0 ? $gv / ($hsp * $shImmeuble) : 1.0;
+
+        $consoTotale = 0.0;
+        $consoTotaleDep = 0.0;
+        foreach ($liensUtiles as $lien) {
+            $emetteurs = $emetteursParLien[$lien] ?? [];
+            $generateurs = $generateursParLien[$lien];
+            $part = $partsParLien[$lien];
+
+            $i0 = $this->moyennePonderee($accessor, $emetteurs, 'i0') ?? 1.0;
+            $int = $i0 / (1.0 + 0.1 * ($g - 1.0));
+            $re = $this->moyennePonderee($accessor, $emetteurs, 'rendement_emission') ?? 1.0;
+            $rd = $this->moyennePonderee($accessor, $emetteurs, 'rendement_distribution') ?? 1.0;
+            $rr = $this->moyennePonderee($accessor, $emetteurs, 'rendement_regulation') ?? 1.0;
+            $rg = $this->moyenneSimple($accessor, $generateurs, 'rendement_generation') ?? 1.0;
+
+            $denom = max(1e-9, $rg * $re * $rd * $rr);
+            $conso = $part * $besoin * $int / $denom;
+            $consoDep = $part * $besoinDep * $int / $denom;
+            $consoTotale += $conso;
+            $consoTotaleDep += $consoDep;
+
+            $parGenerateur = max(1, count($generateurs));
+            foreach ($generateurs as $generateur) {
+                $genDi = $accessor->ensureDonneeIntermediaire($generateur);
+                $accessor->setChildValue($genDi, 'conso_ch', $conso / $parGenerateur);
+                $accessor->setChildValue($genDi, 'conso_ch_depensier', $consoDep / $parGenerateur);
+            }
+        }
+
+        $di = $accessor->ensureDonneeIntermediaire($node);
+        $accessor->setChildValue($di, 'besoin_ch', $besoin);
+        $accessor->setChildValue($di, 'besoin_ch_depensier', $besoinDep);
+        $accessor->setChildValue($di, 'conso_ch', $consoTotale);
+        $accessor->setChildValue($di, 'conso_ch_depensier', $consoTotaleDep);
+
+        return true;
+    }
+
+    /**
+     * @return array<int, list<DOMElement>> enum_lien_generateur_emetteur_id ⇒ nœuds
+     */
+    private function groupByLien(
+        NodeAccessor $accessor,
+        DOMElement $installNode,
+        string $collection,
+        string $tag,
+    ): array {
+        $col = $this->getChildByTag($installNode, $collection);
+        if ($col === null) {
+            return [];
+        }
+        $groupes = [];
+        foreach ($col->childNodes as $child) {
+            if (!($child instanceof DOMElement) || $child->nodeName !== $tag) {
+                continue;
+            }
+            $lien = $accessor->getIntOrNull('./donnee_entree/enum_lien_generateur_emetteur_id', $child);
+            if ($lien === null) {
+                continue;
+            }
+            $groupes[$lien][] = $child;
+        }
+
+        return $groupes;
+    }
+
+    /**
+     * Moyenne pondérée par la surface chauffée des émetteurs d'une branche.
+     *
+     * @param list<DOMElement> $emetteurs
+     */
+    private function moyennePonderee(NodeAccessor $accessor, array $emetteurs, string $field): ?float
+    {
+        $surfaceTotale = 0.0;
+        $somme = 0.0;
+        foreach ($emetteurs as $emetteur) {
+            $valeur = $accessor->getFloatOrNull("./donnee_intermediaire/{$field}", $emetteur);
+            if ($valeur === null) {
+                continue;
+            }
+            $surface = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $emetteur) ?? 1.0;
+            $surfaceTotale += $surface;
+            $somme += $surface * $valeur;
+        }
+
+        return $surfaceTotale > 0.0 ? $somme / $surfaceTotale : null;
+    }
+
+    /** @param list<DOMElement> $generateurs */
+    private function moyenneSimple(NodeAccessor $accessor, array $generateurs, string $field): ?float
+    {
+        $somme = 0.0;
+        $n = 0;
+        foreach ($generateurs as $generateur) {
+            $valeur = $accessor->getFloatOrNull("./donnee_intermediaire/{$field}", $generateur);
+            if ($valeur === null) {
+                continue;
+            }
+            $somme += $valeur;
+            $n++;
+        }
+
+        return $n > 0 ? $somme / $n : null;
+    }
+
+    /**
      * Position de ce nœud dans sa collection parent (1 = premier, 2 = second…).
      */
     private function positionInCollection(DOMElement $node): int
