@@ -113,14 +113,18 @@ XML);
     /** @return iterable<string, array{string, string, string}> */
     public static function paroiWeightCases(): iterable
     {
+        // §3.4.1 p.35 : « Seuls les murs ET planchers bas constitués d'un
+        // matériau lourd sont considérés ici. Pour les autres cas ce pont
+        // thermique est pris nul. » Une seule paroi légère suffit donc.
         yield 'deux parois légères' => ['0', '0', '0'];
-        yield 'plancher léger et mur lourd' => ['0', '1', '0.31'];
-        yield 'plancher lourd et mur léger' => ['1', '0', '0.31'];
+        yield 'plancher léger et mur lourd' => ['0', '1', '0'];
+        yield 'plancher lourd et mur léger' => ['1', '0', '0'];
+        yield 'deux parois lourdes' => ['1', '1', '0.31'];
         yield 'nature du mur inconnue conservée' => ['1', '', '0.31'];
     }
 
     #[DataProvider('paroiWeightCases')]
-    public function testNeglectsJunctionOnlyWhenBothOpaqueParoisAreExplicitlyLightweight(
+    public function testNeglectsJunctionAsSoonAsOneOpaqueParoiIsLightweight(
         string $plancherLourd,
         string $murLourd,
         string $expected,
@@ -149,6 +153,73 @@ XML, $plancherLourd, $murLourd));
         (new KCalculator())->calculate($pont, $context);
 
         self::assertSame($expected, $document->getElementsByTagName('k')->item(0)?->textContent);
+    }
+
+    /**
+     * §7.3 p.54 range les blocs de béton creux d'au moins 11 cm parmi les
+     * parois lourdes. `paroi_lourde` décrivant l'inertie, il vaut 0 sur une
+     * telle maçonnerie isolée par l'intérieur : c'est le matériau qui tranche,
+     * et le pont thermique est conservé.
+     */
+    public function testHeavyWallMaterialOverridesTheInertiaFlag(): void
+    {
+        self::assertSame('0.31', $this->kAvecMur('<enum_materiaux_structure_mur_id>12</enum_materiaux_structure_mur_id>'
+            . '<epaisseur_structure>20</epaisseur_structure>'));
+    }
+
+    /** Sous le seuil de §7.3, le bloc creux n'est plus une paroi lourde. */
+    public function testHeavyMaterialBelowItsThicknessThresholdIsLightweight(): void
+    {
+        self::assertSame('0', $this->kAvecMur('<enum_materiaux_structure_mur_id>12</enum_materiaux_structure_mur_id>'
+            . '<epaisseur_structure>8</epaisseur_structure>'));
+    }
+
+    /**
+     * Un matériau « inconnu » (enum 1) ne figure dans aucune des catégories
+     * lourdes de §7.3 : le drapeau d'inertie reprend la main, et il vaut 0.
+     */
+    public function testUnknownWallMaterialFallsBackToTheInertiaFlag(): void
+    {
+        self::assertSame('0', $this->kAvecMur('<enum_materiaux_structure_mur_id>1</enum_materiaux_structure_mur_id>'
+            . '<epaisseur_structure>20</epaisseur_structure>'));
+    }
+
+    /** Un matériau ancien lourd (pierre, pisé…) est lourd sans seuil d'épaisseur. */
+    public function testAncientHeavyMaterialNeedsNoThickness(): void
+    {
+        self::assertSame('0.31', $this->kAvecMur('<enum_materiaux_structure_mur_id>2</enum_materiaux_structure_mur_id>'));
+    }
+
+    /**
+     * Plancher bas en dalle béton (lourd) contre un mur dont seul le matériau
+     * varie ; `paroi_lourde` du mur vaut 0 dans tous les cas.
+     */
+    private function kAvecMur(string $champsMur): string
+    {
+        $document = new DOMDocument();
+        $document->loadXML(sprintf(<<<'XML'
+<dpe version="0.1.0"><logement><enveloppe>
+  <plancher_bas><donnee_entree><reference>pb</reference><paroi_lourde>1</paroi_lourde></donnee_entree></plancher_bas>
+  <mur><donnee_entree><reference>mur</reference><paroi_lourde>0</paroi_lourde>%s</donnee_entree></mur>
+  <pont_thermique><donnee_entree>
+    <reference_1>pb</reference_1><reference_2>mur</reference_2>
+    <tv_pont_thermique_id>5</tv_pont_thermique_id>
+    <enum_methode_saisie_pont_thermique_id>1</enum_methode_saisie_pont_thermique_id>
+    <enum_type_liaison_id>1</enum_type_liaison_id>
+  </donnee_entree></pont_thermique>
+</enveloppe></logement></dpe>
+XML, $champsMur));
+
+        $context = new CalculationContext(
+            document: $document,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        );
+        $pont = $document->getElementsByTagName('pont_thermique')->item(0);
+        self::assertInstanceOf(DOMElement::class, $pont);
+
+        (new KCalculator())->calculate($pont, $context);
+
+        return (string)$document->getElementsByTagName('k')->item(0)?->textContent;
     }
 
     public function testKeepsLowFloorJunctionBetweenLightweightParoisInVersion2(): void

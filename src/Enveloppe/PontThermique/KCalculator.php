@@ -173,17 +173,18 @@ final class KCalculator implements CalculatorInterface
             return false;
         }
 
-        // Le cas observé par la convention ADEME ne concerne que la liaison
-        // plancher bas / mur. Les liaisons de plancher haut, intermédiaire et
-        // refend restent comptées même lorsque les indicateurs de masse valent 0.
-        if ($accessor->getIntOrNull('./enum_type_liaison_id', $entree) !== 1) {
+        // §3.4 p.32 énonce la règle pour toutes les liaisons entre parois
+        // opaques. Les liaisons menuiserie / mur (type 5) en sont exclues par le
+        // texte lui-même : « ou entre une paroi et une menuiserie ».
+        // Élargir de la seule liaison plancher bas / mur aux liaisons de
+        // plancher intermédiaire, plancher haut et refend est sans effet mesuré
+        // sur le corpus : leurs parois intérieures ne sont le plus souvent pas
+        // décrites, et une référence introuvable laisse le pont compté.
+        if (!in_array($accessor->getIntOrNull('./enum_type_liaison_id', $entree), [1, 2, 3, 4], true)) {
             return false;
         }
 
         $xpath = new DOMXPath($document);
-        $heavyFlags = [];
-        $fullBrickWall = false;
-        $concreteSlab = false;
         foreach (['reference_1', 'reference_2'] as $field) {
             $reference = $accessor->getStringOrNull('./' . $field, $entree);
             if ($reference === null) {
@@ -194,19 +195,103 @@ final class KCalculator implements CalculatorInterface
             if ($paroi === null) {
                 return false;
             }
-            // `paroi_lourde` sert aussi au calcul d'inertie et peut valoir 0
-            // lorsqu'une maçonnerie lourde est isolée par l'intérieur. Pour
-            // l'existence du pont thermique, les natures constructives directes
-            // priment : brique pleine épaisse et dalle béton forment deux
-            // parois lourdes malgré ces indicateurs d'inertie nuls.
-            $fullBrickWall = $fullBrickWall
-                || ($paroi->nodeName === 'mur' && $this->isFullBrickWallHeavy($paroi));
-            $concreteSlab = $concreteSlab
-                || ($paroi->nodeName === 'plancher_bas' && $this->isConcreteSlab($paroi));
-            $heavyFlags[] = $this->readHeavyFlagOfParoi($paroi);
+            if (!$this->estParoiLourde($paroi)) {
+                return true;
+            }
         }
 
-        return $heavyFlags === [0, 0] && !($fullBrickWall && $concreteSlab);
+        return false;
+    }
+
+    /**
+     * Matériaux de mur que §7.3 p.54 range parmi les parois lourdes, avec
+     * l'épaisseur minimale exigée (cm) lorsqu'elle est donnée :
+     *
+     *   « Béton plein (banché, bloc, préfabriqué) de 7 cm ou plus ; bloc agglo
+     *     béton 11 cm ou plus ; bloc perforé en béton (ou autres matériaux
+     *     lourds) 10 cm ou plus ; bloc creux béton 11 cm ou plus ; brique
+     *     pleine ou perforée 10,5 cm ou plus ; tout matériau ancien lourd
+     *     (pierre, brique ancienne, terre, pisé…) ; mur sandwich
+     *     (béton / isolant / béton). »
+     *
+     * Les matériaux anciens lourds ne portent pas de seuil : 2 et 3 (pierre de
+     * taille et moellons), 4 (pisé ou béton de terre), 14 (béton de mâchefer).
+     * Les ossatures et remplissages bois, la cloison de plâtre et les libellés
+     * « inconnu » ou « autre » n'y figurent pas.
+     *
+     * @var array<int, float> enum_materiaux_structure_mur_id ⇒ épaisseur minimale (cm)
+     * @spec-section 7.3
+     * @spec-pages   54
+     */
+    private const MURS_MATERIAU_LOURD = [
+        2  => 0.0,   // pierre de taille et moellons, un seul matériau
+        3  => 0.0,   // pierre de taille et moellons avec remplissage
+        4  => 0.0,   // pisé ou béton de terre stabilisé
+        8  => 10.5,  // briques pleines simples
+        9  => 10.5,  // briques pleines doubles avec lame d'air
+        11 => 7.0,   // blocs de béton pleins
+        12 => 11.0,  // blocs de béton creux
+        13 => 7.0,   // béton banché
+        14 => 0.0,   // béton de mâchefer
+        19 => 0.0,   // sandwich béton / isolant / béton
+        21 => 0.0,   // autre matériau traditionnel ancien
+    ];
+
+    /**
+     * §3.4 p.32 : « Seuls les ponts thermiques entre parois lourdes ou entre
+     * une paroi et une menuiserie sont conservés », et §3.4.1 p.35 : « Seuls
+     * les murs et planchers bas constitués d'un matériau lourd (béton,
+     * brique, …) sont considérés ici. Pour les autres cas ce pont thermique
+     * est pris nul. »
+     *
+     * La nature constructive prime, parce que `paroi_lourde` décrit l'inertie
+     * et vaut 0 sur une maçonnerie lourde isolée par l'intérieur. Le drapeau ne
+     * sert de repli que lorsque le matériau ne tranche pas — « inconnu »,
+     * « autre matériau », ou absence de la balise.
+     *
+     * @spec-formula F-3.4-negligence-parois-legeres
+     */
+    private function estParoiLourde(DOMElement $paroi): bool
+    {
+        if ($paroi->nodeName === 'mur') {
+            $materiau = $this->intChild($paroi, 'enum_materiaux_structure_mur_id');
+            if ($materiau !== null && isset(self::MURS_MATERIAU_LOURD[$materiau])) {
+                $epaisseur = $this->floatChild($paroi, 'epaisseur_structure');
+                $minimum = self::MURS_MATERIAU_LOURD[$materiau];
+
+                return $minimum <= 0.0 || ($epaisseur !== null && $epaisseur >= $minimum);
+            }
+        }
+
+        if ($paroi->nodeName === 'plancher_bas' && $this->isConcreteSlab($paroi)) {
+            return true;
+        }
+
+        return $this->readHeavyFlagOfParoi($paroi) !== 0;
+    }
+
+    private function intChild(DOMElement $paroi, string $tag): ?int
+    {
+        $valeur = $this->floatChild($paroi, $tag);
+
+        return $valeur === null ? null : (int)$valeur;
+    }
+
+    private function floatChild(DOMElement $paroi, string $tag): ?float
+    {
+        $entree = $paroi->getElementsByTagName('donnee_entree')->item(0);
+        if (!$entree instanceof DOMElement) {
+            return null;
+        }
+        foreach ($entree->childNodes as $child) {
+            if ($child instanceof DOMElement && $child->nodeName === $tag) {
+                $valeur = trim($child->textContent ?? '');
+
+                return is_numeric($valeur) ? (float)$valeur : null;
+            }
+        }
+
+        return null;
     }
 
     /**
