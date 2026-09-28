@@ -385,4 +385,90 @@ XML;
         $this->assertTrue($calc->appliesTo($logNode));
         $this->assertFalse($calc->appliesTo($metaNode));
     }
+
+    /**
+     * Construit un logement dont l'unique installation de chauffage porte deux
+     * générateurs d'énergies différentes — bois puis électricité — avec les
+     * consommations données.
+     */
+    private function buildInstallationBiEnergie(float $consoBois, float $consoElec, float $consoInstallation): DOMDocument
+    {
+        $efCh = $consoBois + $consoElec;
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<XML
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale><surface_habitable_logement>55.9</surface_habitable_logement></caracteristique_generale>
+    <installation_chauffage_collection>
+        <installation_chauffage>
+            <donnee_entree><rdim>1</rdim></donnee_entree>
+            <donnee_intermediaire>
+                <conso_ch>$consoInstallation</conso_ch>
+                <conso_ch_depensier>$consoInstallation</conso_ch_depensier>
+            </donnee_intermediaire>
+            <generateur_chauffage_collection>
+                <generateur_chauffage>
+                    <donnee_entree><enum_type_energie_id>4</enum_type_energie_id></donnee_entree>
+                    <donnee_intermediaire><conso_ch>$consoBois</conso_ch></donnee_intermediaire>
+                </generateur_chauffage>
+                <generateur_chauffage>
+                    <donnee_entree><enum_type_energie_id>1</enum_type_energie_id></donnee_entree>
+                    <donnee_intermediaire><conso_ch>$consoElec</conso_ch></donnee_intermediaire>
+                </generateur_chauffage>
+            </generateur_chauffage_collection>
+        </installation_chauffage>
+    </installation_chauffage_collection>
+    <installation_ecs_collection/>
+    <sortie><ef_conso>
+        <conso_ch>$efCh</conso_ch><conso_ch_depensier>$efCh</conso_ch_depensier>
+        <conso_eclairage>0</conso_eclairage><conso_fr>0</conso_fr><conso_fr_depensier>0</conso_fr_depensier>
+    </ef_conso></sortie>
+</logement>
+XML);
+
+        return $doc;
+    }
+
+    /**
+     * §9.3 à §9.5 décrivent des installations dont les générateurs n'utilisent
+     * pas la même énergie. Retenir celle du premier générateur appliquait son
+     * coefficient à toute l'installation : ici, 1,0 au poêle bois comme à la
+     * part électrique. Les consommations par générateur servent de poids.
+     *
+     * 32 792,86 kWh de bois à 1,0 et 1 472,18 kWh d'électricité à 1,9
+     * (post-2026) donnent 35 590,0 kWh d'énergie primaire.
+     */
+    public function testEpCoefficientIsWeightedByEachGeneratorConsumption(): void
+    {
+        $doc = $this->buildInstallationBiEnergie(32792.8569495644, 1472.18213017124, 34265.0390797356);
+        $node = $doc->getElementsByTagName('logement')->item(0);
+
+        (new EpConsoCalculator())->calculate($node, $this->makeContext($doc, Period::POST_2026));
+
+        $epCh = (float)$doc->getElementsByTagName('ep_conso_ch')->item(0)->textContent;
+        self::assertEqualsWithDelta(35590.0, $epCh, 0.1);
+    }
+
+    /**
+     * Les consommations par générateur ne sont des poids valides que si elles
+     * répartissent celle de l'installation. Plusieurs stratégies de §9 recopient
+     * encore la même valeur sur chaque générateur : leur somme vaut alors deux
+     * fois celle de l'installation, et le comportement précédent — l'énergie du
+     * premier générateur — est conservé.
+     */
+    public function testDuplicatedGeneratorConsumptionsAreNotUsedAsWeights(): void
+    {
+        $doc = $this->buildInstallationBiEnergie(10000.0, 10000.0, 10000.0);
+        $node = $doc->getElementsByTagName('logement')->item(0);
+
+        (new EpConsoCalculator())->calculate($node, $this->makeContext($doc, Period::POST_2026));
+
+        // Somme des générateurs = 20 000 pour une installation à 10 000 : les
+        // poids sont rejetés et le coefficient reste celui du premier
+        // générateur, le bois, soit 1,0 — et non la moyenne 1,45 que des poids
+        // égaux auraient produite.
+        $epCh = (float)$doc->getElementsByTagName('ep_conso_ch')->item(0)->textContent;
+        self::assertEqualsWithDelta(10000.0, $epCh, 0.1);
+        self::assertNotEqualsWithDelta(14500.0, $epCh, 0.1);
+    }
 }

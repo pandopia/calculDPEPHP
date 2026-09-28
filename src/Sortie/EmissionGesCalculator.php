@@ -236,8 +236,7 @@ final class EmissionGesCalculator implements CalculatorInterface
             $conso    = $accessor->getFloatOrNull('./donnee_intermediaire/conso_ch',           $install) ?? 0.0;
             $consoDep = $accessor->getFloatOrNull('./donnee_intermediaire/conso_ch_depensier', $install) ?? 0.0;
 
-            $energyId = $this->firstGeneratorEnergyType($accessor, $install, 'generateur_chauffage');
-            $gesFact  = $this->gesFactorCh($energyId, $install, $accessor, 'generateur_chauffage', $context);
+            $gesFact = $this->facteurGesPondereParGenerateur($accessor, $install, $conso, $context);
 
             $totalGes    += $conso    * $rdimEff * $gesFact;
             $totalGesDep += $consoDep * $rdimEff * $gesFact;
@@ -310,6 +309,60 @@ final class EmissionGesCalculator implements CalculatorInterface
         }
 
         return [$totalGes, $totalGesDep, $cleRepartition];
+    }
+
+    /**
+     * Facteur d'émission de l'installation de chauffage, pondéré par la
+     * consommation de chaque générateur.
+     *
+     * §9.3 à §9.5 décrivent des installations dont les générateurs n'utilisent
+     * pas la même énergie — un poêle bois et un convecteur électrique de salle
+     * de bains, par exemple. Retenir l'énergie du premier générateur appliquait
+     * son facteur à toute l'installation.
+     *
+     * Les consommations publiées par générateur ne servent de poids que si
+     * elles répartissent celle de l'installation : plusieurs stratégies de §9
+     * recopient encore la même valeur sur chaque générateur, et leur somme vaut
+     * alors N fois celle de l'installation. Dans ce cas, comme avec un seul
+     * générateur, le comportement précédent est conservé.
+     */
+    private function facteurGesPondereParGenerateur(
+        NodeAccessor $accessor,
+        DOMElement $install,
+        float $consoInstallation,
+        ?CalculationContext $context,
+    ): float {
+        $poidsTotal = 0.0;
+        $somme = 0.0;
+        foreach ($install->getElementsByTagName('generateur_chauffage') as $gen) {
+            if (!$gen instanceof DOMElement) {
+                continue;
+            }
+            $conso = $accessor->getFloatOrNull('./donnee_intermediaire/conso_ch', $gen);
+            if ($conso === null || $conso <= 0.0) {
+                continue;
+            }
+            $energie = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $gen) ?? 2;
+            $facteur = $energie === 8 && $context !== null
+                ? ReseauChaleurFactorResolver::resolve($gen, $accessor, $context)
+                : $this->gesFactorCh($energie);
+            $poidsTotal += $conso;
+            $somme += $conso * $facteur;
+        }
+
+        $repartissent = $consoInstallation > 0.0
+            && abs($poidsTotal - $consoInstallation) <= $consoInstallation * 0.001;
+        if (!$repartissent) {
+            return $this->gesFactorCh(
+                $this->firstGeneratorEnergyType($accessor, $install, 'generateur_chauffage'),
+                $install,
+                $accessor,
+                'generateur_chauffage',
+                $context,
+            );
+        }
+
+        return $somme / $poidsTotal;
     }
 
     private function gesFactorCh(
