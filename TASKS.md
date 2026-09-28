@@ -61,6 +61,31 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase K — Conformité au corpus ADEME
 
+### TASK-K32 — 2459E4183923N : consommation de chauffage et pont thermique
+
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
+- Reste de l'instruction du cas, après la correction de `besoin_ecs`. Le cas est
+  passé de 98 à 76 écarts imputables au moteur.
+- `conso_ch` : référence 118 781, moteur 110 056, alors que `besoin_ch` ne
+  diverge que de +0,8 % et que les quatre rendements publiés (émission 0,95,
+  distribution 0,87, régulation 0,95, génération 0,84) sont reproduits. Le
+  rapport `besoin_ch / conso_ch` de la référence vaut 0,6809, contre 0,6595
+  pour le produit de ses propres rendements : la référence ne reproduit pas sa
+  propre consommation. Chercher le facteur manquant avant de toucher au moteur.
+- `k` du pont thermique n° 2 : la référence publie 0,460, soit la valeur
+  tabulée `tv_pont_thermique_id = 30` (0,92) déjà multipliée par
+  `pourcentage_valeur_pont_thermique = 0,5`. Sur les 54 fichiers du corpus
+  portant un pourcentage ≠ 1, **50 publient au contraire le `k` brut et
+  appliquent le pourcentage à la déperdition** — notre convention. Et le total
+  publié par ce fichier, 243,326, ne correspond ni à Σ(l·k) = 254,601 ni à
+  Σ(l·k·pct) = 206,512 : il se contredit lui-même. Ne pas aligner le moteur
+  dessus.
+- `i0` : 4 écarts seulement sur 377 cas, de sens opposés (0,95 attendu pour 1,03
+  calculé sur un fichier, l'inverse sur un autre). Queue contradictoire, pas de
+  règle à en tirer.
+- `upb = 2,0` contre 0,5 : même motif que TASK-H08.
+- Apports et pertes récupérées sérialisés ×1 000 : cf. TASK-H03.
+
 ### TASK-K31 — Pn des chaudières : trois régimes d'arrondi inconciliables
 
 - [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: basse

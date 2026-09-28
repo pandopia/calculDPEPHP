@@ -6,6 +6,7 @@ namespace Tests\Unit\Conformite;
 
 use CalculDpePHP\Conformite\ReferenceDefects;
 use DOMDocument;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class ReferenceDefectsTest extends TestCase
@@ -22,6 +23,64 @@ final class ReferenceDefectsTest extends TestCase
             self::COUT . 'cout_ch' => '900',
             self::COUT . 'cout_ch_depensier' => '900',
         ], $extra);
+    }
+
+    /**
+     * Un total d'auxiliaires qui contredit ses propres addendes est un défaut
+     * de la référence, et le contrôle vaut pour les quatre blocs qui publient
+     * ces totaux — pas seulement la consommation finale.
+     *
+     * @return iterable<string, array{0: string, 1: string, 2: string}>
+     */
+    public static function blocsAuxiliairesProvider(): iterable
+    {
+        yield 'energie finale' => [
+            'dpe/logement/sortie/ef_conso/', 'conso_', 'conso_totale_auxiliaire',
+        ];
+        yield 'cout' => [
+            'dpe/logement/sortie/cout/', 'cout_', 'cout_total_auxiliaire',
+        ];
+        yield 'emissions de GES' => [
+            'dpe/logement/sortie/emission_ges/', 'emission_ges_', 'emission_ges_totale_auxiliaire',
+        ];
+        yield 'energie primaire' => [
+            'dpe/logement/sortie/ep_conso/', 'ep_conso_', 'ep_conso_totale_auxiliaire',
+        ];
+    }
+
+    #[DataProvider('blocsAuxiliairesProvider')]
+    public function testTotalAuxiliaireContredisantSesPostesEstSignale(
+        string $prefixe,
+        string $prefixePoste,
+        string $nomTotal,
+    ): void {
+        // Tous les postes nuls sauf la ventilation, et un total inférieur à
+        // cette seule ventilation : le total contredit sa propre somme.
+        $suspects = ReferenceDefects::detect($this->reference([
+            $prefixe . $prefixePoste . 'auxiliaire_generation_ch' => '0',
+            $prefixe . $prefixePoste . 'auxiliaire_distribution_ch' => '0',
+            $prefixe . $prefixePoste . 'auxiliaire_ventilation' => '3016.2',
+            $prefixe . $nomTotal => '1169.6',
+        ]));
+
+        self::assertArrayHasKey($nomTotal, $suspects);
+        self::assertStringContainsString('3016', $suspects[$nomTotal]);
+    }
+
+    #[DataProvider('blocsAuxiliairesProvider')]
+    public function testTotalAuxiliaireCoherentNestPasSignale(
+        string $prefixe,
+        string $prefixePoste,
+        string $nomTotal,
+    ): void {
+        $suspects = ReferenceDefects::detect($this->reference([
+            $prefixe . $prefixePoste . 'auxiliaire_generation_ch' => '150',
+            $prefixe . $prefixePoste . 'auxiliaire_distribution_ch' => '1000',
+            $prefixe . $prefixePoste . 'auxiliaire_ventilation' => '3016.2',
+            $prefixe . $nomTotal => '4166.2',
+        ]));
+
+        self::assertArrayNotHasKey($nomTotal, $suspects);
     }
 
     public function testCoutDepensierRecopieEstSignale(): void
