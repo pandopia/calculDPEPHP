@@ -86,6 +86,43 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - `upb = 2,0` contre 0,5 : même motif que TASK-H08.
 - Apports et pertes récupérées sérialisés ×1 000 : cf. TASK-H03.
 
+### TASK-K33 — Coût d'une installation de chauffage bi-énergie
+
+- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
+- `CoutCalculator::primaryEnergieId` retient l'énergie du **premier** générateur
+  pour tarifer toute l'installation, comme le faisaient `EpConsoCalculator` et
+  `EmissionGesCalculator` avant d'être corrigés. Sur les configurations §9.3
+  à §9.5 — poêle bois plus convecteur électrique — la part électrique est donc
+  tarifée au prix du bois.
+- La correction n'est pas le simple portage de la pondération : le barème a des
+  **tranches d'abonnement** indexées sur la consommation annuelle par énergie
+  (cf. K10). Il faut tarifer chaque énergie séparément, à partir des
+  consommations par générateur, puis sommer — pas moyenner un prix.
+- Mesure de l'écart restant sur 2662E2454031K : `cout_ch` 1 439 contre 1 723
+  attendu, `cout_ch_depensier` 1 739 contre 2 067. Les consommations par énergie
+  (`sortie_par_energie_collection`) sont désormais exactes, l'entrée est donc
+  disponible.
+- Le garde posé sur la pondération EP/GES vaut ici aussi : n'utiliser les
+  consommations par générateur que lorsqu'elles répartissent celle de
+  l'installation.
+
+### TASK-K34 — Étendre la répartition par branche à §9.3 et §9.5
+
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- `InsertElecSdb` (§9.4) répartit désormais la consommation entre l'émetteur de
+  base et celui de salle de bains via `enum_lien_generateur_emetteur_id`, grâce
+  à `StrategieComputeTrait::computeAndWriteParLien`. `InsertPoeleAppoint` (§9.3,
+  liens 1 et 2) et `AppointInsertElecSdb` (§9.5, liens 1, 2 et 3) lisent encore
+  les parts sur le rang de l'installation et écrivent la même consommation sur
+  chaque générateur.
+- Le corpus compte une douzaine de fichiers en cfg 3 et 5, dont
+  2600E0080950R, 2600E0105050P, 2600E0083964P et 2400E0086646R.
+- Reprendre le garde de §9.4 : la répartition ne vaut que si l'installation est
+  la seule du logement, sans quoi le besoin est double-compté.
+- Gain attendu en prime : la pondération EP/GES par générateur ne s'applique
+  qu'aux installations dont les consommations par générateur se répartissent, ce
+  que cette tâche rendrait vrai pour ces fichiers.
+
 ### TASK-K31 — Pn des chaudières : trois régimes d'arrondi inconciliables
 
 - [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: basse
