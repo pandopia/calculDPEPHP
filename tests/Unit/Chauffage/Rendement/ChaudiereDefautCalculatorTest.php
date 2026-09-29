@@ -338,7 +338,16 @@ XML;
         self::assertEqualsWithDelta(55000.0, (float)$doc->getElementsByTagName('pn')->item(0)->textContent, 1e-6);
     }
 
-    public function testCollectiveVirtualizedGasBoilerUsesFourHundredKwBuildingPower(): void
+    /**
+     * §13.2.2.4 p.92 : une chaudière collective virtualisée se dimensionne comme
+     * les autres — Pdim, puis la table Pn —, le plafond de §15.1 ne servant que
+     * de maximum. Nous lui assignions 400 kW en dur, quel que soit son Pdim.
+     *
+     * Ici GV = 152 W/K pour un ratio de 0,02933, soit 5 182 W/K au bâtiment, et
+     * Tbase = −9,5 : Pch = 1,2 × 5 182 × 28,5 / 0,95³ = 206,7 kW, que la table
+     * rend à 210 kW. Le pn publié est la part du logement, 210 000 × 0,02933.
+     */
+    public function testCollectiveVirtualizedGasBoilerIsSizedOnItsOwnPdim(): void
     {
         $xml = <<<'XML'
 <logement>
@@ -362,10 +371,96 @@ XML;
 
         (new ChaudiereDefautCalculator())->calculate($doc->getElementsByTagName('generateur_chauffage')->item(0), $context);
 
-        self::assertEqualsWithDelta(400000.0 * 0.02933, (float)$doc->getElementsByTagName('pn')->item(0)->textContent, 1e-6);
-        self::assertEqualsWithDelta((84.0 + 2.0 * log10(400.0)) / 100.0, (float)$doc->getElementsByTagName('rpn')->item(0)->textContent, 1e-9);
-        self::assertEqualsWithDelta(0.012 * 400000.0 * 0.02933, (float)$doc->getElementsByTagName('qp0')->item(0)->textContent, 1e-6);
+        self::assertEqualsWithDelta(210000.0 * 0.02933, (float)$doc->getElementsByTagName('pn')->item(0)->textContent, 1e-6);
+        // Les caractéristiques restent évaluées à la puissance du bâtiment.
+        self::assertEqualsWithDelta((84.0 + 2.0 * log10(210.0)) / 100.0, (float)$doc->getElementsByTagName('rpn')->item(0)->textContent, 1e-9);
+        self::assertEqualsWithDelta(0.012 * 210000.0 * 0.02933, (float)$doc->getElementsByTagName('qp0')->item(0)->textContent, 1e-6);
         self::assertNull($doc->getElementsByTagName('pveilleuse')->item(0));
+    }
+
+    /**
+     * §13.2.2.4 compare Pch et Pecs, qui doivent être à la même échelle. Pch
+     * l'est déjà au bâtiment pour une installation virtualisée ; Pecs est la
+     * puissance d'ECS d'un logement — 21 kW en production instantanée. Le
+     * générateur collectif dessert 1/ratio logements, donc 21 / 0,13554 =
+     * 154,9 kW, que la table rend à 155 kW.
+     *
+     * Le lien mixte est ici porté par `enum_usage_generateur_id = 3`
+     * (« chauffage + ecs ») et non par une référence croisée.
+     */
+    public function testVirtualizedCollectiveBoilerScalesEcsPowerToTheBuilding(): void
+    {
+        $xml = <<<'XML'
+<logement>
+  <caracteristique_generale><enum_methode_application_dpe_log_id>5</enum_methode_application_dpe_log_id></caracteristique_generale>
+  <meteo><enum_zone_climatique_id>1</enum_zone_climatique_id><enum_classe_altitude_id>1</enum_classe_altitude_id></meteo>
+  <installation_ecs_collection><installation_ecs><generateur_ecs_collection><generateur_ecs><donnee_entree>
+    <enum_usage_generateur_id>3</enum_usage_generateur_id><volume_stockage>0</volume_stockage>
+  </donnee_entree></generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection>
+  <installation_chauffage><donnee_entree>
+    <enum_type_installation_id>2</enum_type_installation_id><ratio_virtualisation>0.13554</ratio_virtualisation>
+  </donnee_entree><generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+    <enum_type_generateur_ch_id>88</enum_type_generateur_ch_id><tv_generateur_combustion_id>4</tv_generateur_combustion_id>
+    <enum_usage_generateur_id>3</enum_usage_generateur_id>
+    <enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id><presence_ventouse>0</presence_ventouse>
+  </donnee_entree></generateur_chauffage></generateur_chauffage_collection></installation_chauffage>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $context = $this->makeContext($doc);
+        // GV volontairement faible : c'est Pecs qui doit dimensionner.
+        $context->set('enveloppe.dp_parois', 50.0);
+        $context->set('enveloppe.dp_pont_thermique', 0.0);
+        $context->set('ventilation.hvent', 0.0);
+        $context->set('ventilation.hperm', 0.0);
+
+        (new ChaudiereDefautCalculator())->calculate($doc->getElementsByTagName('generateur_chauffage')->item(0), $context);
+
+        self::assertEqualsWithDelta(
+            155000.0 * 0.13554,
+            (float)$doc->getElementsByTagName('pn')->item(0)->textContent,
+            1e-6,
+        );
+    }
+
+    /**
+     * Sans virtualisation, `enum_usage_generateur_id = 3` seul ne prouve pas que
+     * les deux générateurs décrivent un même appareil : le corpus montre alors
+     * deux puissances distinctes, chaque usage étant dimensionné pour lui-même.
+     * Pdim reste donc Pch.
+     */
+    public function testNonVirtualizedInstallationIgnoresTheEcsPowerWithoutCrossReference(): void
+    {
+        $xml = <<<'XML'
+<logement>
+  <caracteristique_generale><enum_methode_application_dpe_log_id>1</enum_methode_application_dpe_log_id></caracteristique_generale>
+  <meteo><enum_zone_climatique_id>1</enum_zone_climatique_id><enum_classe_altitude_id>1</enum_classe_altitude_id></meteo>
+  <installation_ecs_collection><installation_ecs><generateur_ecs_collection><generateur_ecs><donnee_entree>
+    <enum_usage_generateur_id>3</enum_usage_generateur_id><volume_stockage>0</volume_stockage>
+  </donnee_entree></generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection>
+  <installation_chauffage><donnee_entree>
+    <enum_type_installation_id>1</enum_type_installation_id>
+  </donnee_entree><generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+    <enum_type_generateur_ch_id>88</enum_type_generateur_ch_id><tv_generateur_combustion_id>4</tv_generateur_combustion_id>
+    <enum_usage_generateur_id>3</enum_usage_generateur_id>
+    <enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id><presence_ventouse>0</presence_ventouse>
+  </donnee_entree></generateur_chauffage></generateur_chauffage_collection></installation_chauffage>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $context = $this->makeContext($doc);
+        // Pch = 1,2 × 250 × 28,5 / 0,95³ ≈ 9,97 kW → table : 13 kW sur sol.
+        $context->set('enveloppe.dp_parois', 250.0);
+        $context->set('enveloppe.dp_pont_thermique', 0.0);
+        $context->set('ventilation.hvent', 0.0);
+        $context->set('ventilation.hperm', 0.0);
+
+        (new ChaudiereDefautCalculator())->calculate($doc->getElementsByTagName('generateur_chauffage')->item(0), $context);
+
+        // Sans le garde, Pecs = 21 kW aurait donné 24 kW.
+        self::assertEqualsWithDelta(18000.0, (float)$doc->getElementsByTagName('pn')->item(0)->textContent, 1e-6);
     }
 
     public function testMixedHeatingKeepsApartmentPowerAndEvaluatesCharacteristicsAtBuildingScale(): void
