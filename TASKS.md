@@ -123,6 +123,42 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   qu'aux installations dont les consommations par générateur se répartissent, ce
   que cette tâche rendrait vrai pour ces fichiers.
 
+### TASK-K35 — 2113E0368523M : conso_ch et référence lacunaire
+
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
+- `conso_ch` : référence 7 462,41, moteur 10 162,50 (+36 %). Notre facteur
+  d'émission est pourtant le bon — 3 292,65 / 10 162,50 = 0,324, exactement
+  celui du `sortie_par_energie` de la référence pour le fioul. C'est la
+  consommation elle-même qu'il faut reprendre, pas l'aval.
+- La référence se contredit sur les émissions : son agrégat
+  `sortie/emission_ges/emission_ges_ch` vaut 589,53 quand son propre
+  `sortie_par_energie[enum_type_energie_id=3]/emission_ges_ch` vaut 2 417,82.
+  Idem côté ECS, 309,54 contre 1 080,99. Candidat à une règle `ReferenceDefects`
+  générique : *un agrégat d'émissions incompatible avec la somme de sa
+  ventilation par énergie*.
+- Son `version_moteur_calcul` est « inconnu » et elle omet beaucoup
+  d'intermédiaires que le schéma prévoit — `pn`, `qp0`, `rpn`, `temp_fonc_*`,
+  `b` des planchers, `surface_sud_equivalente`, `deperdition_plancher_*` — d'où
+  39 balises comptées comme supplémentaires chez nous. Vérifier d'abord si une
+  partie relève d'une règle d'omission déjà connue avant de conclure.
+- `umur0 = 2,9` attendu contre 2,5 sur trois murs, et `k = 0,365` contre 0,73
+  sur trois ponts : non instruits.
+
+### TASK-K36 — Auxiliaires de génération d'une chaudière bois : atmosphérique ou ventilateur ?
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
+- Complète TASK-K28 avec un second cas. §15.1 p.97 distingue « chaudière bois
+  atmosphérique » (G = 0, H = 0) de « chaudière bois assistée par ventilateur »
+  (G = 73,3, H = 10,5). **Le XSD ne porte aucun champ pour les distinguer** :
+  `enum_type_generateur_ch_id` 55 à 74 ne donne que le combustible (bûche,
+  plaquette, granulés) et le millésime.
+- `AuxGenerationCalculator` range tous les bois en « assistée par ventilateur ».
+  Sur 2613E2419802A — chaudière **granulés** de 2004-2012, donc a priori la plus
+  sûrement ventilée — la référence publie pourtant
+  `conso_auxiliaire_generation_ch = 0`, soit la ligne atmosphérique.
+- Le corpus ne compte qu'un seul logement chauffé exclusivement au bois : aucune
+  corroboration possible. Ne pas basculer le défaut sur cette seule observation.
+
 ### TASK-K31 — Pn des chaudières : trois régimes d'arrondi inconciliables
 
 - [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: basse
