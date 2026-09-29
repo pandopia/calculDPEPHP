@@ -114,16 +114,15 @@ final class DpeEngine
 
         $period = $this->detectPeriod($document);
 
-        // Énergie principale du chauffage : prend la première installation, premier générateur.
-        // Si type_energie_id == 1 (électricité) → "joule", sinon "autres".
-        // Heuristique : suffisante pour les exemples actuels ; à raffiner si plusieurs générateurs
-        // de natures différentes apparaissent.
+        // Colonne « effet joule » ou « autres » des tables forfaitaires de U
+        // (§3.2.1 p.13 et suivantes). §3.2 p.12 la définit sans ambiguïté :
+        // « On considère qu'un logement est chauffé par effet joule lorsque la
+        // chaleur est fournie par une résistance électrique. » Une pompe à
+        // chaleur fonctionne sur un cycle thermodynamique : elle est électrique
+        // sans être à effet joule, et relève donc de la colonne « autres ».
         $energieGenId = $accessor->getIntOrNull('(//generateur_chauffage/donnee_entree/enum_type_energie_id)[1]');
-        $energieChauffage = match ($energieGenId) {
-            1       => 'joule',                   // électricité (effet Joule, PAC, convecteur)
-            null    => null,
-            default => 'autres',                  // gaz, fioul, bois, réseau chaleur, etc.
-        };
+        $typeGenId    = $accessor->getIntOrNull('(//generateur_chauffage/donnee_entree/enum_type_generateur_ch_id)[1]');
+        $energieChauffage = CalculationContext::colonneEffetJoule($energieGenId, $typeGenId);
 
         return new CalculationContext(
             document: $document,

@@ -142,4 +142,5 @@ final class DpeEngineTest extends TestCase
         $this->assertSame(0, $document->getElementsByTagName('sortie')->length);
         $this->assertSame(1, $document->getElementsByTagName('logement')->length);
     }
+
 }
