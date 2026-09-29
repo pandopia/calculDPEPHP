@@ -9,6 +9,7 @@ use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
 use DOMElement;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -150,5 +151,59 @@ XML;
 
         // fecs = 0 → on n'écrit pas
         $this->assertSame(0, $inst->getElementsByTagName('fecs')->length);
+    }
+
+    /**
+     * §18.4 p.143 n'a que deux colonnes, « Maison » et « Immeuble collectif » :
+     * ce sont des types de bâtiment. Un appartement, même décrit
+     * individuellement (modes 2 à 5), se trouve dans un immeuble collectif et
+     * relève donc de la seconde — 0,40 en H3 pour une ECS solaire seule de plus
+     * de cinq ans, contre 0,64 pour une maison.
+     *
+     * @return iterable<string, array{int, float}>
+     */
+    public static function modesEtFecs(): iterable
+    {
+        yield 'maison individuelle'            => [1, 0.64];
+        yield 'maison RT2012'                  => [14, 0.64];
+        yield 'appartement chauffage individuel' => [2, 0.40];
+        yield 'appartement ECS collective'     => [4, 0.40];
+        yield 'immeuble collectif'             => [9, 0.40];
+        yield 'appartement généré immeuble'    => [11, 0.40];
+    }
+
+    #[DataProvider('modesEtFecs')]
+    public function testColonneMaisonOuImmeubleCollectif(int $mode, float $attendu): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<XML
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale>
+        <enum_methode_application_dpe_log_id>$mode</enum_methode_application_dpe_log_id>
+    </caracteristique_generale>
+    <installation_ecs_collection><installation_ecs>
+        <donnee_entree>
+            <enum_type_installation_solaire_id>2</enum_type_installation_solaire_id>
+        </donnee_entree>
+        <donnee_intermediaire><besoin_ecs>1000</besoin_ecs></donnee_intermediaire>
+    </installation_ecs></installation_ecs_collection>
+</logement>
+XML);
+
+        $node = $doc->getElementsByTagName('installation_ecs')->item(0);
+        self::assertInstanceOf(DOMElement::class, $node);
+
+        (new FacteurCouvertureSolaireEcsCalculator())->calculate($node, new CalculationContext(
+            document: $doc,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+            zoneClimatique: '8',
+        ));
+
+        self::assertEqualsWithDelta(
+            $attendu,
+            (float)$doc->getElementsByTagName('fecs')->item(0)?->textContent,
+            1e-9,
+        );
     }
 }
