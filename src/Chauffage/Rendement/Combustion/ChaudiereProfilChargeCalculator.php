@@ -128,8 +128,12 @@ final class ChaudiereProfilChargeCalculator implements CalculatorInterface
             $node,
         );
 
-        // Seules les chaudières gaz/fioul (55-97) sont couvertes
-        if ($genId === null || $genId < 55 || $genId > 97) {
+        // §13.2.1.5 p.81 tabule les températures de fonctionnement par type de
+        // chaudière — à condensation, basse température, standard —, c'est-à-dire
+        // les familles gaz et fioul (enums 75 à 97). Les chaudières bois (55-74)
+        // relèvent de leurs propres rendements et n'ont pas de température de
+        // fonctionnement tabulée : leur en publier une inventait une donnée.
+        if ($genId === null || $genId < 75 || $genId > 97) {
             return;
         }
 
