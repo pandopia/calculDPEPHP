@@ -87,7 +87,17 @@ final class InsertPoeleAppoint implements CalculatorInterface
                     continue;
                 }
                 $genPos++;
-                $factor = self::FACTORS[$genPos] ?? (1.0 / max(1, $genPos));
+                // §9.3 p.62 affecte 0,75 au système principal et 0,25 à l'insert
+                // ou au poêle d'appoint. Le XSD les distingue par
+                // `enum_lien_generateur_emetteur_id` — 1 « génération
+                // principale », 2 « génération d'appoint » —, et non par leur
+                // ordre dans le fichier : rien n'oblige le générateur principal
+                // à être écrit en premier, et l'inverse s'observe. L'ordre ne
+                // sert plus que de repli quand le lien n'est pas renseigné.
+                $lien   = $accessor->getIntOrNull('./donnee_entree/enum_lien_generateur_emetteur_id', $gen);
+                $factor = ($lien !== null ? (self::FACTORS[$lien] ?? null) : null)
+                    ?? self::FACTORS[$genPos]
+                    ?? (1.0 / max(1, $genPos));
                 $rg     = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen) ?? 1.0;
                 $i0     = $this->linkedEmetteurFloat($accessor, $node, $gen, 'i0')
                     ?? $this->weightedEmetteurFloat($accessor, $node, 'i0')

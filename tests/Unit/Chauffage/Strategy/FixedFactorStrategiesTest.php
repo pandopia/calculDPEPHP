@@ -453,4 +453,64 @@ XML);
         self::assertEqualsWithDelta(10000.0, $lire($di, 'besoin_ch'), 0.001);
         self::assertEqualsWithDelta($cch1 + $cch2, $lire($di, 'conso_ch'), 0.001);
     }
+
+    /**
+     * §9.3 p.62 affecte 0,75 au système principal et 0,25 à l'insert ou au
+     * poêle d'appoint. Le XSD les distingue par
+     * `enum_lien_generateur_emetteur_id` — 1 « génération principale »,
+     * 2 « génération d'appoint » —, et non par leur ordre dans le fichier.
+     *
+     * Ici le poêle est écrit en premier : indexer sur l'ordre inverse les parts.
+     */
+    public function testInsertPoeleAppointUsesTheGeneratorLinkNotDocumentOrder(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<dpe><logement>
+  <caracteristique_generale><surface_habitable_logement>100</surface_habitable_logement></caracteristique_generale>
+  <installation_chauffage_collection><installation_chauffage>
+    <donnee_entree><enum_cfg_installation_ch_id>3</enum_cfg_installation_ch_id>
+      <surface_chauffee>100</surface_chauffee><rdim>1</rdim></donnee_entree>
+    <emetteur_chauffage_collection>
+      <emetteur_chauffage><donnee_entree><surface_chauffee>100</surface_chauffee>
+        <enum_lien_generateur_emetteur_id>2</enum_lien_generateur_emetteur_id></donnee_entree>
+        <donnee_intermediaire><i0>1</i0><rendement_emission>1</rendement_emission>
+          <rendement_distribution>1</rendement_distribution><rendement_regulation>1</rendement_regulation></donnee_intermediaire></emetteur_chauffage>
+      <emetteur_chauffage><donnee_entree><surface_chauffee>100</surface_chauffee>
+        <enum_lien_generateur_emetteur_id>1</enum_lien_generateur_emetteur_id></donnee_entree>
+        <donnee_intermediaire><i0>1</i0><rendement_emission>1</rendement_emission>
+          <rendement_distribution>1</rendement_distribution><rendement_regulation>1</rendement_regulation></donnee_intermediaire></emetteur_chauffage>
+    </emetteur_chauffage_collection>
+    <generateur_chauffage_collection>
+      <generateur_chauffage><donnee_entree>
+        <enum_lien_generateur_emetteur_id>2</enum_lien_generateur_emetteur_id></donnee_entree>
+        <donnee_intermediaire><rendement_generation>1</rendement_generation></donnee_intermediaire></generateur_chauffage>
+      <generateur_chauffage><donnee_entree>
+        <enum_lien_generateur_emetteur_id>1</enum_lien_generateur_emetteur_id></donnee_entree>
+        <donnee_intermediaire><rendement_generation>1</rendement_generation></donnee_intermediaire></generateur_chauffage>
+    </generateur_chauffage_collection>
+  </installation_chauffage></installation_chauffage_collection>
+</logement></dpe>
+XML);
+
+        $context = new CalculationContext(
+            document: $document,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        );
+        $context->set('chauffage.besoin_ch', 10000.0);
+        $context->set('chauffage.besoin_ch_depensier', 10000.0);
+        $context->set('chauffage.gv', 1.0);
+
+        $install = $document->getElementsByTagName('installation_chauffage')->item(0);
+        self::assertInstanceOf(DOMElement::class, $install);
+        (new InsertPoeleAppoint())->calculate($install, $context);
+
+        $generateurs = $document->getElementsByTagName('generateur_chauffage');
+        $appoint   = (float)$generateurs->item(0)?->getElementsByTagName('conso_ch')->item(0)?->textContent;
+        $principal = (float)$generateurs->item(1)?->getElementsByTagName('conso_ch')->item(0)?->textContent;
+
+        // Tous les rendements valent 1 et INT est commun : le rapport vaut 0,25 / 0,75.
+        self::assertGreaterThan(0.0, $appoint);
+        self::assertEqualsWithDelta(1.0 / 3.0, $appoint / $principal, 1e-9);
+    }
 }
