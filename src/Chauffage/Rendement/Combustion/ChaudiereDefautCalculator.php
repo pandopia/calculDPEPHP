@@ -124,6 +124,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         // Lecture de la table tv_generateur_combustion pour les champs forfaitaires
         $tvId = $accessor->getIntOrNull('./donnee_entree/tv_generateur_combustion_id', $node);
         $entry = null;
+        $table = [];
         if ($tvId !== null) {
             $table = $context->tables->load('chauffage/tv_generateur_combustion');
             $entry = $table[$tvId] ?? null;
@@ -228,6 +229,14 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
                     ? $pnW
                     : $pnW * $ratioForCharacteristics;
             }
+            // §13.2.2 p.88 : les chaudières à condensation récentes ont trois
+            // lignes de table départagées par Pn. L'identifiant saisi précède le
+            // calcul de la puissance ; la bande se relit donc sur Pn.
+            $bande = BandePuissanceCombustion::pourPuissance($tvId, $pnBuildingKw);
+            if ($bande !== $tvId) {
+                $entry = $table[$bande] ?? $entry;
+            }
+
             $row = $entry($pnBuildingKw, $e, $f);
             // pn stocké = part du logement ; qp0/pveilleuse proportionnels si collectif
             $row['pn']    = $pnApartmentW;
