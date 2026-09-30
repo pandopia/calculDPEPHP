@@ -223,9 +223,15 @@ final class BesoinEcsCalculator implements CalculatorInterface
         // ── 10. Pertes distribution ECS récupérées pour chauffage (§11.5) ──────
         // Qrec = 0.48 × sumNref19 × Tau × becs_total / 8760  (kWh)
         // Tau = 0.1 (individuel) ou 0.212 (collectif)
-        [$pertesRecup, $pertesRecupDep] = $this->computePertesDistributionRecup(
-            $becsTotal, $becsTotalDep, $isAnyCollectiveInstall, $context
-        );
+        // §11.5 décrit les pertes d'un réseau de distribution d'ECS. Un logement
+        // qui n'en décrit aucune installation n'a pas de réseau : il n'y a rien
+        // à récupérer, alors que le besoin d'ECS conventionnel, lui, reste
+        // calculé depuis la surface et Nadeq.
+        [$pertesRecup, $pertesRecupDep] = $instalNodes === []
+            ? [0.0, 0.0]
+            : $this->computePertesDistributionRecup(
+                $becsTotal, $becsTotalDep, $isAnyCollectiveInstall, $context
+            );
         $context->set('ecs.pertes_distribution_recup',     $pertesRecup);
         $context->set('ecs.pertes_distribution_recup_dep', $pertesRecupDep);
     }
