@@ -459,4 +459,50 @@ XML);
             array_keys($suspects),
         );
     }
+
+    /**
+     * Le XSD définit `k` comme la valeur du pont thermique en W/(m·K) : la
+     * déperdition totale vaut Σ k × l. Quand c'est la somme des `k` eux-mêmes
+     * qui reproduit `deperdition_pont_thermique`, les valeurs publiées portent
+     * déjà la longueur.
+     */
+    public function testPontThermiqueKDejaMultiplieParLaLongueurEstSignale(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement>
+  <deperdition><deperdition_pont_thermique>3.0</deperdition_pont_thermique></deperdition>
+  <enveloppe><pont_thermique_collection>
+    <pont_thermique><donnee_entree><l>2</l></donnee_entree>
+      <donnee_intermediaire><k>2.0</k></donnee_intermediaire></pont_thermique>
+    <pont_thermique><donnee_entree><l>5</l></donnee_entree>
+      <donnee_intermediaire><k>1.0</k></donnee_intermediaire></pont_thermique>
+  </pont_thermique_collection></enveloppe>
+</logement></dpe>
+XML);
+
+        $suspects = ReferenceDefects::detect($this->reference(), $doc);
+
+        self::assertArrayHasKey('k', $suspects);
+        self::assertStringContainsString('W/(m·K)', $suspects['k']);
+    }
+
+    /** Un fichier où Σ k × l reproduit le total n'est pas signalé. */
+    public function testPontThermiqueKCoefficientNestPasSignale(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement>
+  <deperdition><deperdition_pont_thermique>9.0</deperdition_pont_thermique></deperdition>
+  <enveloppe><pont_thermique_collection>
+    <pont_thermique><donnee_entree><l>2</l></donnee_entree>
+      <donnee_intermediaire><k>2.0</k></donnee_intermediaire></pont_thermique>
+    <pont_thermique><donnee_entree><l>5</l></donnee_entree>
+      <donnee_intermediaire><k>1.0</k></donnee_intermediaire></pont_thermique>
+  </pont_thermique_collection></enveloppe>
+</logement></dpe>
+XML);
+
+        self::assertArrayNotHasKey('k', ReferenceDefects::detect($this->reference(), $doc));
+    }
 }

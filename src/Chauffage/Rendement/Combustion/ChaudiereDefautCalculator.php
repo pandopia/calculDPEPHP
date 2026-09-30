@@ -180,13 +180,18 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             $pnCap = $this->getPnCap($genId);
             if ($mixedHeatingMode) {
                 $pnW = min($pchW, $pnCap);
-            } elseif ($ratioVirt > 0.0 && $ratioVirt < 1.0
-                && $pnCap < PHP_FLOAT_MAX
-                && $this->isCollectiveInstallation($node, $accessor)) {
-                $pnW = $pnCap;
             } else {
                 // Pour les chaudières mixtes, Pdim = max(Pch, Pecs) puis Pn lue dans la table §13.2.2.4
-                $pecsW = $this->computePecsForMixte($node, $accessor);
+                $pecsW = $this->computePecsForMixte($node, $accessor, $ratioVirt);
+                // §13.2.2.4 compare Pch et Pecs, qui doivent donc être à la même
+                // échelle. Pch l'est déjà au bâtiment pour une installation
+                // virtualisée ; Pecs, lui, est la puissance d'ECS d'un logement
+                // — 21 kW en production instantanée, quel que soit l'immeuble.
+                // Le générateur collectif dessert 1/ratio logements : sa
+                // puissance d'ECS suit.
+                if ($ratioVirt > 0.0 && $ratioVirt < 1.0 && !$mixedHeatingMode) {
+                    $pecsW /= $ratioVirt;
+                }
                 if ($pecsW > 0.0) {
                     $pdimKw = max($pchW, $pecsW) / 1000.0;
                     $pnW    = $this->lookupPnFromPdim($pdimKw, $node, $accessor) * 1000.0;
@@ -291,11 +296,18 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
      * @spec-section 13.2.2.4
      * @spec-pages   91-92
      */
-    private function computePecsForMixte(DOMElement $genNode, NodeAccessor $accessor): float
-    {
+    private function computePecsForMixte(
+        DOMElement $genNode,
+        NodeAccessor $accessor,
+        float $ratioVirt = 1.0,
+    ): float {
         $refMixte = $accessor->getStringOrNull('./donnee_entree/reference_generateur_mixte', $genNode);
         if ($refMixte === null || $refMixte === '') {
-            return 0.0;
+            // Le lien mixte n'est pas toujours exprimé par une référence
+            // croisée : le XSD porte aussi `enum_usage_generateur_id = 3`,
+            // « chauffage + ecs ». Un générateur ainsi déclaré assure les deux
+            // usages, et sa puissance d'ECS entre donc dans Pdim.
+            return $this->pecsParUsageMixte($genNode, $accessor, $ratioVirt);
         }
 
         // Deux sérialisations ADEME existent : `reference_generateur_mixte`
@@ -330,6 +342,66 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         }
 
         $vs = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $ecsNode) ?? 0.0;
+
+        return PuissanceDimensionnement::pecsW($vs);
+    }
+
+    /**
+     * Pecs (W) d'un générateur déclaré à l'usage « chauffage + ecs » sans
+     * référence de générateur mixte.
+     *
+     * Le volume de stockage se lit alors sur le générateur d'ECS du logement :
+     * celui qui porte la même `reference`, ou l'unique générateur d'ECS lui
+     * aussi déclaré à l'usage mixte.
+     *
+     * @spec-section 13.2.2.4
+     * @spec-pages   92
+     */
+    private function pecsParUsageMixte(
+        DOMElement $genNode,
+        NodeAccessor $accessor,
+        float $ratioVirt,
+    ): float {
+        if ($accessor->getIntOrNull('./donnee_entree/enum_usage_generateur_id', $genNode) !== 3) {
+            return 0.0;
+        }
+        // Sans référence croisée, l'usage 3 seul ne prouve pas que les deux
+        // générateurs décrivent un même appareil. Une installation collective
+        // virtualisée en apporte la preuve : le générateur y est celui de
+        // l'immeuble, dimensionné une fois pour les deux usages. Hors
+        // virtualisation, le corpus montre au contraire deux puissances
+        // distinctes, chaque usage étant dimensionné pour lui-même.
+        if ($ratioVirt <= 0.0 || $ratioVirt >= 1.0) {
+            return 0.0;
+        }
+
+        $doc = $genNode->ownerDocument;
+        if ($doc === null) {
+            return 0.0;
+        }
+        $xpath = new \DOMXPath($doc);
+
+        $maRef = $accessor->getStringOrNull('./donnee_entree/reference', $genNode);
+        $candidats = [];
+        foreach ($xpath->query('//generateur_ecs') as $ecs) {
+            if (!$ecs instanceof DOMElement) {
+                continue;
+            }
+            if ($accessor->getIntOrNull('./donnee_entree/enum_usage_generateur_id', $ecs) !== 3) {
+                continue;
+            }
+            $refEcs = $accessor->getStringOrNull('./donnee_entree/reference', $ecs);
+            if ($maRef !== null && $maRef !== '' && $refEcs === $maRef) {
+                $candidats = [$ecs];
+                break;
+            }
+            $candidats[] = $ecs;
+        }
+        if (count($candidats) !== 1) {
+            return 0.0;
+        }
+
+        $vs = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $candidats[0]) ?? 0.0;
 
         return PuissanceDimensionnement::pecsW($vs);
     }

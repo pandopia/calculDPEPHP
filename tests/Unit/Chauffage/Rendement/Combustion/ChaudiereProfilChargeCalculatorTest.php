@@ -144,4 +144,46 @@ XML);
         self::assertSame('80', $document->getElementsByTagName('temp_fonc_100')->item(0)?->textContent);
         self::assertSame('38', $document->getElementsByTagName('temp_fonc_30')->item(0)?->textContent);
     }
+
+    /**
+     * §13.2.1.5 p.81 tabule les températures de fonctionnement par type de
+     * chaudière — à condensation, basse température, standard —, c'est-à-dire
+     * les familles gaz et fioul. Une chaudière bois relève de ses propres
+     * rendements et n'a pas de température de fonctionnement tabulée : lui en
+     * publier une inventait une donnée. Sur les 277 chaudières du corpus, les
+     * références en publient pour 275 des 277 gaz/fioul et pour aucune bois.
+     */
+    public function testWoodBoilerGetsNoOperatingTemperature(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<logement><installation_chauffage>
+  <emetteur_chauffage_collection><emetteur_chauffage><donnee_entree>
+    <enum_type_emission_distribution_id>37</enum_type_emission_distribution_id>
+    <enum_periode_installation_emetteur_id>2</enum_periode_installation_emetteur_id>
+  </donnee_entree></emetteur_chauffage></emetteur_chauffage_collection>
+  <generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+    <enum_type_generateur_ch_id>72</enum_type_generateur_ch_id>
+    <presence_regulation_combustion>1</presence_regulation_combustion>
+  </donnee_entree></generateur_chauffage></generateur_chauffage_collection>
+</installation_chauffage></logement>
+XML);
+
+        $generator = $document->getElementsByTagName('generateur_chauffage')->item(0);
+        self::assertInstanceOf(DOMElement::class, $generator);
+
+        (new ChaudiereProfilChargeCalculator())->calculate($generator, new CalculationContext(
+            document: $document,
+            tables: new TableRepository(__DIR__ . '/../../../../../resources/tables'),
+        ));
+
+        self::assertSame(0, $document->getElementsByTagName('temp_fonc_100')->length);
+        self::assertSame(0, $document->getElementsByTagName('temp_fonc_30')->length);
+    }
+
+    /** Une chaudière gaz du même fichier en reçoit bien une. */
+    public function testGasBoilerStillGetsOneInTheSameShape(): void
+    {
+        self::assertSame(['70', '35'], $this->tfonc([[32, 2]], periode: 3));
+    }
 }

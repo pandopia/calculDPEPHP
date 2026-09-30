@@ -51,6 +51,44 @@ final class CalculationContext
         };
     }
 
+    /**
+     * Générateurs de chauffage qui fournissent la chaleur par une résistance
+     * électrique (XSD `enum_type_generateur_ch_id`) : convecteur, panneau
+     * rayonnant, radiateur, autres émetteurs à effet joule, plancher ou plafond
+     * rayonnant, radiateur à accumulation, convecteur bi-jonction et chaudière
+     * électrique.
+     *
+     * @var list<int>
+     */
+    private const GENERATEURS_EFFET_JOULE = [98, 99, 100, 101, 102, 103, 104, 105, 106];
+
+    /**
+     * Colonne des tables forfaitaires de U : « effet joule » ou « autres »
+     * (§3.2.1 p.13 et suivantes).
+     *
+     * §3.2 p.12 la définit sans ambiguïté : « On considère qu'un logement est
+     * chauffé par effet joule lorsque la chaleur est fournie par une résistance
+     * électrique. » Une pompe à chaleur fonctionne sur un cycle thermodynamique :
+     * elle est électrique sans être à effet joule, et relève donc de « autres ».
+     *
+     * @spec-section 3.2
+     * @spec-pages   12
+     */
+    public static function colonneEffetJoule(?int $energieId, ?int $typeGenerateurId): ?string
+    {
+        if ($energieId === null) {
+            return null;
+        }
+        if ($energieId !== 1) {
+            return 'autres';
+        }
+
+        return $typeGenerateurId !== null
+            && in_array($typeGenerateurId, self::GENERATEURS_EFFET_JOULE, true)
+                ? 'joule'
+                : 'autres';
+    }
+
     public function set(string $key, mixed $value): void
     {
         $this->bag[$key] = $value;

@@ -116,6 +116,7 @@ final class ReferenceDefects
             $suspects += self::stockageIntegreSerialiseCommeSepare($referenceDoc);
             $suspects += self::repartitionEcsAppartementNonReproductible($expected, $referenceDoc);
             $suspects += self::ventilationSansPuissanceMaisConsommatrice($expected, $referenceDoc);
+            $suspects += self::pontThermiqueKPorteDejaLaLongueur($referenceDoc);
         }
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
@@ -445,6 +446,78 @@ final class ReferenceDefects
         }
 
         return $suspects;
+    }
+
+    /**
+     * `k` de pont thermique publié comme un produit k × l.
+     *
+     * Le XSD définit `k` comme la valeur du pont thermique en W/(m·K) : la
+     * déperdition totale vaut donc Σ k × l. Quand c'est la somme des `k`
+     * eux-mêmes qui reproduit `deperdition_pont_thermique`, alors que Σ k × l
+     * ne la reproduit pas, les valeurs publiées portent déjà la longueur et
+     * contredisent l'unité déclarée par le schéma. La contradiction s'établit
+     * sur le fichier de référence seul.
+     *
+     * @return array<string, string>
+     */
+    private static function pontThermiqueKPorteDejaLaLongueur(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+        $total = $xpath->query('//deperdition/deperdition_pont_thermique')->item(0);
+        if ($total === null) {
+            return [];
+        }
+        $attendu = (float)str_replace(',', '.', trim($total->textContent));
+        if ($attendu <= 0.0) {
+            return [];
+        }
+
+        $sommeK = 0.0;
+        $sommeKL = 0.0;
+        $ponts = 0;
+        foreach ($xpath->query('//pont_thermique') as $pont) {
+            if (!$pont instanceof DOMElement) {
+                continue;
+            }
+            $k = self::nombreEnfant($xpath, './donnee_intermediaire/k', $pont);
+            $l = self::nombreEnfant($xpath, './donnee_entree/l', $pont);
+            if ($k === null || $l === null) {
+                continue;
+            }
+            $pct = self::nombreEnfant($xpath, './donnee_entree/pourcentage_valeur_pont_thermique', $pont) ?? 1.0;
+            $sommeK += $k * $pct;
+            $sommeKL += $k * $l * $pct;
+            $ponts++;
+        }
+        if ($ponts === 0) {
+            return [];
+        }
+
+        $tolerance = max(0.01, $attendu * 0.002);
+        if (abs($sommeK - $attendu) > $tolerance || abs($sommeKL - $attendu) <= $tolerance) {
+            return [];
+        }
+
+        return [
+            'k' => sprintf(
+                'la référence publie des k déjà multipliés par la longueur : leur somme (%.3f) '
+                . 'reproduit deperdition_pont_thermique, alors que Σ k × l vaut %.3f — '
+                . 'le XSD définit k en W/(m·K)',
+                $sommeK,
+                $sommeKL,
+            ),
+        ];
+    }
+
+    private static function nombreEnfant(DOMXPath $xpath, string $chemin, DOMElement $contexte): ?float
+    {
+        $noeud = $xpath->query($chemin, $contexte)->item(0);
+        if ($noeud === null) {
+            return null;
+        }
+        $valeur = str_replace(',', '.', trim($noeud->textContent));
+
+        return is_numeric($valeur) ? (float)$valeur : null;
     }
 
     /**

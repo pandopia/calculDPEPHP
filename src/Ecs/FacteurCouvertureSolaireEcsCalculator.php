@@ -105,9 +105,20 @@ final class FacteurCouvertureSolaireEcsCalculator implements CalculatorInterface
     }
 
     /**
-     * Type bâtiment "maison" inclut maison + appartements individuels (open3cl :
-     * th = 'maison' pour ces cas dans le matcher solaire).
+     * Modes d'application décrivant une maison individuelle (XSD
+     * `enum_methode_application_dpe_log_id`) : 1, plus les deux variantes
+     * issues d'une étude réglementaire RT2012 (14) et RE2020 (18).
+     *
+     * §18.4 p.143 n'a que deux colonnes, « Maison » et « Immeuble collectif » :
+     * ce sont des types de bâtiment. Un appartement, même décrit
+     * individuellement, se trouve dans un immeuble collectif et relève donc de
+     * la seconde.
+     *
+     * @var list<int>
      */
+    private const MODES_MAISON = [1, 14, 18];
+
+    /** Vrai lorsque le logement est une maison individuelle au sens de §18.4. */
     private function isMaisonOuAppt(DOMElement $inst, NodeAccessor $accessor): bool
     {
         $logement = $this->findLogement($inst);
@@ -115,7 +126,8 @@ final class FacteurCouvertureSolaireEcsCalculator implements CalculatorInterface
             return false;
         }
         $mode = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $logement);
-        return in_array($mode, [1, 2, 3, 4, 5, 14, 18, 31, 32, 35, 36, 37], true);
+
+        return in_array($mode, self::MODES_MAISON, true);
     }
 
     private function findLogement(DOMElement $node): ?DOMElement
