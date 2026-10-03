@@ -347,6 +347,15 @@ final class CombustionCalculator implements CalculatorInterface
             $e = [0 => 2.5, 1 => 1.75][$ventose] ?? 2.5;
             $f = [0 => -0.8, 1 => -0.55][$ventose] ?? -0.8;
             // pnW = Pn_bâtiment (déjà plaffonné) pour installations collectives sans pn saisi
+            // §13.2.2 p.88 : bande de puissance relue sur Pn (cf. chauffage).
+            $bande = \CalculDpePHP\Chauffage\Rendement\Combustion\BandePuissanceCombustion::pourPuissance(
+                $tvId,
+                $pnW / 1000.0,
+            );
+            if ($bande !== $tvId) {
+                $entry = $table[$bande] ?? $entry;
+            }
+
             $row = $entry($pnW / 1000.0, $e, $f);
             if (!$hasPnSaisie && $ratioVirt > 0.0 && $ratioVirt < 1.0) {
                 $row['pn']    = $pnW * $ratioVirt;

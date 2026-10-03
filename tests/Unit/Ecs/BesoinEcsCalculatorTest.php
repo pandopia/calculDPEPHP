@@ -532,4 +532,31 @@ XML);
             0.01,
         );
     }
+
+    /**
+     * §11.5 p.77 décrit les pertes d'un réseau de distribution d'ECS récupérées
+     * pour le chauffage. Un logement qui ne décrit aucune installation d'ECS
+     * n'a pas de réseau : il n'y a rien à récupérer, alors que le besoin d'ECS
+     * conventionnel reste calculé depuis la surface et Nadeq.
+     */
+    public function testAucuneInstallationEcsDoncAucunePerteRecuperee(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale><surface_habitable_logement>66.06</surface_habitable_logement></caracteristique_generale>
+    <installation_ecs_collection/>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $node = $doc->getElementsByTagName('logement')->item(0);
+        $ctx = $this->makeContext($doc, ['apport.nadeq' => 2.0]);
+
+        (new BesoinEcsCalculator())->calculate($node, $ctx);
+
+        self::assertGreaterThan(0.0, (float)$ctx->get('ecs.besoin_ecs', 0.0));
+        self::assertSame(0.0, (float)$ctx->get('ecs.pertes_distribution_recup', -1.0));
+        self::assertSame(0.0, (float)$ctx->get('ecs.pertes_distribution_recup_dep', -1.0));
+    }
 }

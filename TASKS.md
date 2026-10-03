@@ -159,6 +159,28 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Le corpus ne compte qu'un seul logement chauffé exclusivement au bois : aucune
   corroboration possible. Ne pas basculer le défaut sur cette seule observation.
 
+### TASK-K37 — Auxiliaires de distribution d'ECS d'un réseau à traceur chauffant
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- §15.2 p.99 : « aux consommations d'auxiliaires du générateur, il faut ajouter
+  celles éventuelles du bouclage **ou du traçage** de l'ECS ». Le XSD distingue
+  1 « réseau d'ecs non bouclé », 2 « réseau d'ecs bouclé » et 3 « réseau d'ecs
+  avec présence d'un traceur chauffant ».
+- `AuxDistributionCalculator::…` ne calcule rien hors de la valeur 2. Sur
+  2659E2407381B — installation collective, `enum_bouclage_reseau_ecs_id = 3`,
+  réseau isolé — la référence publie `conso_auxiliaire_distribution_ecs` =
+  151,19 kWh et nous 0. En découlent `conso_totale_auxiliaire` (721,69 contre
+  570,49), son coût, ses émissions et son énergie primaire, soit une dizaine
+  d'écarts.
+- **Élargir le garde à la valeur 3 ne suffit pas** : mesuré, l'effet est
+  strictement nul, le calcul rendant toujours 0 une fois le garde passé.
+  Chercher le second bloqueur avant de toucher au garde — vérifier d'abord
+  `ecs.besoin_ecs_mensuel`, que la méthode consomme et qui pourrait être vide
+  pour cette configuration.
+- Un traceur chauffant n'est pas un circulateur : vérifier aussi que la formule
+  de §15.2.3, écrite pour une boucle, s'applique telle quelle — la spec les cite
+  ensemble sans donner deux formules.
+
 ### TASK-K31 — Pn des chaudières : trois régimes d'arrondi inconciliables
 
 - [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: basse
