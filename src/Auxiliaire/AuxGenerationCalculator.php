@@ -325,7 +325,14 @@ final class AuxGenerationCalculator implements CalculatorInterface
      */
     private function getGHch(NodeAccessor $accessor, DOMElement $genNode): array
     {
-        $genId = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $genNode);
+        // §17.2.1.1 : l'enum 119 ne désigne pas une famille de générateur, mais
+        // « une chaudière atmosphérique mixte standard datant de la construction
+        // du bâtiment […] au fioul ». Les auxiliaires de §15.1 sont donc ceux de
+        // la ligne « chaudière gaz ou fioul ».
+        $genId = \CalculDpePHP\Chauffage\GenerateurChAlias::normalizeNode(
+            $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $genNode),
+            $genNode,
+        );
         if ($genId === null) {
             return self::GH_DEFAULT;
         }
