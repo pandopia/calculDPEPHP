@@ -14,6 +14,13 @@ use RuntimeException;
 
 final class CalculDpePHP
 {
+    public const VERSION = '0.1.20-alpha.5';
+
+    public static function calculateBuilding(Dto\BuildingInput $input): Dto\BuildingResult
+    {
+        return Collectif\BuildingCalculation::run($input);
+    }
+
     /**
      * @param array{energieOnly?: bool} $options
      */

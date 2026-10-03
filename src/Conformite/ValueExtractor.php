@@ -23,6 +23,8 @@ use DOMXPath;
  */
 final class ValueExtractor
 {
+    public function __construct(private readonly bool $useReferences = false) {}
+
     /** Conteneurs dont on extrait les feuilles. */
     private const CONTAINERS = ['donnee_intermediaire', 'sortie'];
 
@@ -104,9 +106,9 @@ final class ValueExtractor
         return match (true) {
             $methode === null => 'inconnu',
             $methode === 1 => 'maison_individuelle',
-            in_array($methode, [2, 3, 4, 5, 31, 32], true) => 'appartement_individuel',
+            in_array($methode, [2, 3, 4, 5, 31, 32, 35, 36, 37], true) => 'appartement_individuel',
             in_array($methode, [6, 7, 8, 9, 26, 27, 28, 29, 30], true) => 'immeuble_collectif',
-            in_array($methode, [10, 11, 12, 13, 33, 34], true) => 'appartement_issu_immeuble',
+            in_array($methode, [10, 11, 12, 13, 33, 34, 38, 39, 40], true) => 'appartement_issu_immeuble',
             $methode >= 14 && $methode <= 25 => 'logement_neuf',
             default => 'inconnu',
         };
@@ -154,7 +156,7 @@ final class ValueExtractor
             $seen[$name] = ($seen[$name] ?? 0) + 1;
 
             $suffix = '';
-            if ($counts[$name] > 1) {
+            if ($counts[$name] > 1 || ($this->useReferences && $this->semanticKey($child) !== null)) {
                 $semantic = $this->semanticKey($child);
                 $suffix = '[' . ($semantic ?? $seen[$name]) . ']';
             }
@@ -169,6 +171,22 @@ final class ValueExtractor
      */
     private function semanticKey(DOMElement $child): ?string
     {
+        if ($this->useReferences) {
+            $xp = new DOMXPath($child->ownerDocument);
+            $ref = trim($xp->evaluate('string(./donnee_entree/reference)', $child));
+            if ($ref !== '') {
+                $matches = 0;
+                foreach ($child->parentNode->childNodes as $sibling) {
+                    if ($sibling instanceof DOMElement && $sibling->nodeName === $child->nodeName
+                        && trim($xp->evaluate('string(./donnee_entree/reference)', $sibling)) === $ref) {
+                        $matches++;
+                    }
+                }
+                if ($matches === 1) {
+                    return 'reference=' . rawurlencode($ref);
+                }
+            }
+        }
         $keyTag = self::SEMANTIC_KEYS[$child->nodeName] ?? null;
         if ($keyTag === null) {
             return null;
@@ -178,6 +196,16 @@ final class ValueExtractor
             if ($node instanceof DOMElement && $node->nodeName === $keyTag) {
                 $value = trim($node->textContent);
 
+                if ($this->useReferences && $value !== '') {
+                    $matches = 0;
+                    foreach ($child->parentNode->childNodes as $sibling) {
+                        if (!$sibling instanceof DOMElement || $sibling->nodeName !== $child->nodeName) { continue; }
+                        foreach ($sibling->childNodes as $keyNode) {
+                            if ($keyNode instanceof DOMElement && $keyNode->nodeName === $keyTag && trim($keyNode->textContent) === $value) { $matches++; }
+                        }
+                    }
+                    if ($matches > 1) { return null; }
+                }
                 return $value === '' ? null : $keyTag . '=' . $value;
             }
         }
@@ -221,7 +249,8 @@ final class ValueExtractor
                 }
             }
 
-            $parts[] = $siblings > 1 ? $name . '[' . $position . ']' : $name;
+            $key = $this->useReferences ? $this->semanticKey($cursor) : null;
+            $parts[] = $key !== null ? $name . '[' . $key . ']' : ($siblings > 1 ? $name . '[' . $position . ']' : $name);
             $cursor = $parent instanceof DOMElement ? $parent : null;
         }
 

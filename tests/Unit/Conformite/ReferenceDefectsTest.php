@@ -505,4 +505,26 @@ XML);
 
         self::assertArrayNotHasKey('k', ReferenceDefects::detect($this->reference(), $doc));
     }
+    public function test_signale_le_bouclage_collectif_sans_auxiliaire_depuis_la_reference_seule(): void
+    {
+        $xml = '<dpe><logement><caracteristique_generale><enum_methode_application_dpe_log_id>34</enum_methode_application_dpe_log_id></caracteristique_generale><installation_ecs><donnee_entree><enum_type_installation_id>2</enum_type_installation_id><enum_bouclage_reseau_ecs_id>2</enum_bouclage_reseau_ecs_id><cle_repartition_ecs>0.02</cle_repartition_ecs><surface_habitable>30</surface_habitable></donnee_entree><donnee_intermediaire><besoin_ecs>1000</besoin_ecs></donnee_intermediaire></installation_ecs></logement></dpe>';
+        $path = self::EF . 'conso_auxiliaire_distribution_ecs';
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        self::assertArrayHasKey($path, ReferenceDefects::detect([$path => '0.0'], $doc));
+        self::assertArrayNotHasKey($path, ReferenceDefects::detect([$path => '4.2'], $doc));
+        self::assertArrayNotHasKey($path, ReferenceDefects::detect([], $doc));
+        foreach ([
+            ['<enum_bouclage_reseau_ecs_id>2', '<enum_bouclage_reseau_ecs_id>1'],
+            ['<enum_type_installation_id>2', '<enum_type_installation_id>1'],
+            ['<cle_repartition_ecs>0.02', '<cle_repartition_ecs>0'],
+            ['<besoin_ecs>1000', '<besoin_ecs>0'],
+            ['<surface_habitable>30', '<surface_habitable>0'],
+            ['<enum_methode_application_dpe_log_id>34', '<enum_methode_application_dpe_log_id>2'],
+            ['</donnee_entree>', '<enum_type_installation_solaire_id>2</enum_type_installation_solaire_id></donnee_entree>'],
+        ] as [$from, $to]) {
+            $doc->loadXML(str_replace($from, $to, $xml));
+            self::assertArrayNotHasKey($path, ReferenceDefects::detect([$path => '0'], $doc));
+        }
+    }
 }
