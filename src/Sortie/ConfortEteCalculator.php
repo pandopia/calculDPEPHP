@@ -14,7 +14,8 @@ use DOMElement;
  * Bloc <sortie><confort_ete> : indicateur qualitatif.
  *
  * Algorithme (open3cl src/2021_04_13_confort_ete.js) :
- *   - isolation_toiture : 0 si un PH extérieur est non-isolé/inconnu, 1 sinon
+ *   - isolation_toiture : 0 si le logement n'a pas de toiture ou si l'un de ses
+ *                        planchers hauts déperditifs est non-isolé/inconnu, 1 sinon
  *   - aspect_traversant : 1 si les baies couvrent ≥ 2 orientations, 0 sinon
  *   - protection_solaire_exterieure : 0 si une baie non-nord manque de fermeture, 1 sinon
  *   - inertie_lourde : 1 si classe_inertie ∈ {très lourde (1), lourde (2)}, 0 sinon
@@ -38,7 +39,12 @@ final class ConfortEteCalculator implements CalculatorInterface
     ];
 
     // enum_type_adjacence_id values for "extérieur"
-    private const ADJACENCE_EXTERIEUR_ID = 1;
+    /**
+     * `enum_type_adjacence_id` = 22 : « local non déperditif (local à usage
+     * d'habitation chauffé) ». Un plafond de ce type n'appartient pas à
+     * l'enveloppe et n'est donc pas une toiture.
+     */
+    private const ADJACENCE_LOCAL_CHAUFFE_ID = 22;
 
     // enum_type_isolation_id values considered as "non isolé" or "inconnu"
     private const ISOLATION_NON_ISOLE_IDS = [1, 2]; // 1=inconnu, 2=non isolé (à vérifier vs XSD)
@@ -183,6 +189,7 @@ final class ConfortEteCalculator implements CalculatorInterface
      */
     private function resolveIsolationToiture(array $planchers, NodeAccessor $accessor): int
     {
+        $aUneToiture = false;
         foreach ($planchers as $ph) {
             $de = null;
             foreach ($ph->childNodes as $child) {
@@ -195,14 +202,17 @@ final class ConfortEteCalculator implements CalculatorInterface
                 continue;
             }
             $adjacenceId = $accessor->getIntOrNull('./enum_type_adjacence_id', $de);
-            if ($adjacenceId !== self::ADJACENCE_EXTERIEUR_ID) {
-                continue; // pas extérieur → non pertinent
+            if ($adjacenceId === self::ADJACENCE_LOCAL_CHAUFFE_ID) {
+                continue; // local non déperditif : ce plafond n'est pas une toiture
             }
+            $aUneToiture = true;
             $isolationId = $accessor->getIntOrNull('./enum_type_isolation_id', $de);
             if ($isolationId !== null && in_array($isolationId, self::ISOLATION_NON_ISOLE_IDS, true)) {
                 return 0; // non isolé ou inconnu
             }
         }
-        return 1;
+        // Sans toiture — plafond sur logement chauffé, ou aucun plancher haut —
+        // le logement n'a pas d'isolation de toiture : la réponse est « non ».
+        return $aUneToiture ? 1 : 0;
     }
 }
