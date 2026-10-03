@@ -181,6 +181,24 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   de §15.2.3, écrite pour une boucle, s'applique telle quelle — la spec les cite
   ensemble sans donner deux formules.
 
+### TASK-K38 — L'isolation de la toiture conditionne-t-elle l'indicateur de confort d'été ?
+
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
+- `ConfortEteCalculator` déclare le confort « insuffisant » dès que
+  `protection_solaire_exterieure = 0` **ou** `isolation_toiture = 0`, règle
+  reprise d'open3cl (`2021_04_13_confort_ete.js`). Aucun texte de la méthode ni
+  du XSD ne l'établit : le XSD documente les cinq critères un par un, jamais
+  leur agrégation.
+- **Les références se contredisent.** 2583E2717522L et 2659E2047646C publient
+  `isolation_toiture = 0` avec `enum_indicateur_confort_ete_id = 3` (« bon ») ;
+  2662E2147774H publie 0 avec l'indicateur à 1 (« insuffisant ») pour une
+  protection solaire et un aspect traversant identiques.
+- Mesuré : retirer `isolation_toiture` du veto donne 8 054 -> 8 040 écarts
+  moteur (-14), mais 23 cas améliorés contre **9 dégradés**. Le corpus ne
+  départage pas, et aucune source ne tranche : non retenu.
+- Rouvrir avec le texte de l'arrêté (annexe « confort d'été »), qui seul peut
+  donner la table d'agrégation des cinq critères.
+
 ### TASK-K31 — Pn des chaudières : trois régimes d'arrondi inconciliables
 
 - [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: basse
