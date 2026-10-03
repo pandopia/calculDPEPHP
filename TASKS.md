@@ -312,7 +312,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K28 — Auxiliaires de génération d'une chaudière charbon ou bois
 
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
+- [~CLA] Owner: CLA  | Phase: K  | Estimation: 2h  | Priorité: basse
 - `AuxGenerationCalculator` ne reconnaît pas les chaudières charbon (enums
   120-126) : elles retombent sur `GH_DEFAULT` et publient
   `conso_auxiliaire_generation_ch = 0`. Or §15.1 p.97 n'énonce que deux cas nuls
