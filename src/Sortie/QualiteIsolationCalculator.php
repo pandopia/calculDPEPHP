@@ -244,9 +244,16 @@ final class QualiteIsolationCalculator implements CalculatorInterface
      */
     private function sumPlancherHaut(DOMXPath $xpath, DOMElement $logement, NodeAccessor $accessor): array
     {
-        $caSum = ['su' => 0.0, 's' => 0.0]; // s exclut adj=22
-        $ttSum = ['su' => 0.0, 's' => 0.0];
-        $cpSum = ['su' => 0.0, 's' => 0.0];
+        // `su` et `s` excluent tous deux adj=22 : un plafond donnant sur un local
+        // chauffé n'est pas une paroi de l'enveloppe (b = 0, aucune déperdition),
+        // comme pour les murs et les planchers bas. `n` compte en revanche les
+        // planchers du sous-type quelle que soit leur adjacence, pour savoir si
+        // la rubrique doit être renseignée.
+        $sommes = [
+            'ca' => ['su' => 0.0, 's' => 0.0, 'n' => 0],
+            'tt' => ['su' => 0.0, 's' => 0.0, 'n' => 0],
+            'cp' => ['su' => 0.0, 's' => 0.0, 'n' => 0],
+        ];
 
         $nodes = $xpath->query('.//plancher_haut', $logement);
         if ($nodes === false) {
@@ -299,23 +306,23 @@ final class QualiteIsolationCalculator implements CalculatorInterface
                 $bucket = 'cp';
             }
 
-            if ($bucket === 'ca') {
-                $caSum['su'] += $s * $u;
-                if ($adjId !== 22) { $caSum['s'] += $s; }
-            } elseif ($bucket === 'tt') {
-                $ttSum['su'] += $s * $u;
-                if ($adjId !== 22) { $ttSum['s'] += $s; }
-            } else {
-                $cpSum['su'] += $s * $u;
-                if ($adjId !== 22) { $cpSum['s'] += $s; }
+            $sommes[$bucket]['n']++;
+            if ($adjId !== 22) {
+                $sommes[$bucket]['su'] += $s * $u;
+                $sommes[$bucket]['s']  += $s;
             }
         }
 
-        $uMoy = fn(array $a): ?float => $a['su'] > 0.0 ? $a['su'] / max($a['s'], 1e-9) : null;
+        // Un sous-type entièrement adjacent à des locaux chauffés ne déperdit
+        // pas : Umoy = 0, donc la meilleure classe, comme pour un plancher bas
+        // sans surface déperditive.
+        $uMoy = fn(array $a): ?float => $a['n'] === 0
+            ? null
+            : ($a['s'] > 0.0 ? $a['su'] / $a['s'] : 0.0);
         return [
-            $uMoy($caSum), $caSum['s'],
-            $uMoy($ttSum), $ttSum['s'],
-            $uMoy($cpSum), $cpSum['s'],
+            $uMoy($sommes['ca']), $sommes['ca']['s'],
+            $uMoy($sommes['tt']), $sommes['tt']['s'],
+            $uMoy($sommes['cp']), $sommes['cp']['s'],
         ];
     }
 

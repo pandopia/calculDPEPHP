@@ -237,6 +237,56 @@ XML);
         $this->assertSame('4', $this->childText($quality, 'qualite_isol_plancher_haut_toit_terrasse'));
     }
 
+    /**
+     * Un plafond donnant sur un local chauffé (adjacence 22) n'est pas une
+     * paroi de l'enveloppe : il ne déperdit pas (b = 0) et ne doit pas peser
+     * sur la qualité d'isolation, comme un mur ou un plancher bas de même
+     * adjacence. La rubrique reste renseignée, à la meilleure classe.
+     */
+    public function testUnPlafondSurLocalChauffeNeDegradePasLaQualite(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<logement><enveloppe><plancher_haut_collection>
+  <plancher_haut>
+    <donnee_entree><enum_type_adjacence_id>22</enum_type_adjacence_id><surface_paroi_opaque>68.208</surface_paroi_opaque></donnee_entree>
+    <donnee_intermediaire><uph>2.5</uph></donnee_intermediaire>
+  </plancher_haut>
+</plancher_haut_collection></enveloppe><sortie><deperdition/></sortie></logement>
+XML);
+
+        (new QualiteIsolationCalculator())->calculate($document->documentElement, $this->makeContext($document));
+
+        $quality = $document->getElementsByTagName('qualite_isolation')->item(0);
+        $this->assertSame('1', $this->childText($quality, 'qualite_isol_plancher_haut_comble_perdu'));
+    }
+
+    /**
+     * Mélange des deux : seule la partie déperditive compte dans la moyenne.
+     */
+    public function testSeuleLaPartieDeperditiveEntreDansLaMoyenne(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<logement><enveloppe><plancher_haut_collection>
+  <plancher_haut>
+    <donnee_entree><enum_type_adjacence_id>22</enum_type_adjacence_id><surface_paroi_opaque>60</surface_paroi_opaque></donnee_entree>
+    <donnee_intermediaire><uph>2.5</uph></donnee_intermediaire>
+  </plancher_haut>
+  <plancher_haut>
+    <donnee_entree><enum_type_adjacence_id>7</enum_type_adjacence_id><surface_paroi_opaque>40</surface_paroi_opaque></donnee_entree>
+    <donnee_intermediaire><uph>0.18</uph></donnee_intermediaire>
+  </plancher_haut>
+</plancher_haut_collection></enveloppe><sortie><deperdition/></sortie></logement>
+XML);
+
+        (new QualiteIsolationCalculator())->calculate($document->documentElement, $this->makeContext($document));
+
+        $quality = $document->getElementsByTagName('qualite_isolation')->item(0);
+        // Umoy = 0,18 sur les seuls 40 m2 déperditifs : seuils comble perdu → classe 2.
+        $this->assertSame('2', $this->childText($quality, 'qualite_isol_plancher_haut_comble_perdu'));
+    }
+
     public static function phQualiteProvider(): array
     {
         // CP_THRESHOLDS = [0.15, 0.20, 0.30] (strict <)
