@@ -253,14 +253,21 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K06 — Écarts résiduels de génération ECS
 
-- [~CLA] Owner: CLA  | Phase: K  | Estimation: 5h  | Priorité: moyenne
+- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
 - Acquis : `rendement_stockage` n'est plus écrit sans ballon ; les puissances
-  saisies en `donnee_intermediaire` sont préservées et utilisées.
-- Reste : environ 33 divergences de `rendement_generation`, 33 de
-  `rendement_stockage` et quelques COP, avec plusieurs installations ECS
-  hétérogènes. Isoler les causes par configuration, sans règle globale déduite
-  d'un seul fichier.
-- Objectif : famille « Génération ECS » au-dessus de 92 % en profil strict.
+  saisies en `donnee_intermediaire` sont préservées et utilisées ; un chauffe-eau
+  thermodynamique ne publie plus de `rendement_generation` séparé, son `cop`
+  incluant le stockage (XSD).
+- Deux questions de sérialisation sont tranchées, ne pas les rouvrir :
+  - `rendement_stockage` sans ballon : 10 références l'écrivent à 1, 191 balises
+    supplémentaires seraient créées en le publiant. On ne l'écrit pas.
+  - les 12 balises `rendement_generation` surnuméraires restantes portent sur
+    des générateurs **à combustion**, pas thermodynamiques : question distincte.
+- Reste : 54 divergences de `rendement_generation` en ECS réparties sur 46 cas,
+  aux rapports ref/nous dispersés (0,60 à 2,05) sans famille dominante. Isoler
+  les causes par configuration, sans règle globale déduite d'un seul fichier.
+- Objectif : famille « Génération ECS » au-dessus de 92 % en profil strict
+  (84,62 % actuellement).
 
 ### TASK-K26 — §17.1.2 : Shmoy_système est une moyenne, pas une somme
 
