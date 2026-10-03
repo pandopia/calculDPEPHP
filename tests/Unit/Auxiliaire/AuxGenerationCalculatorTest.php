@@ -152,6 +152,76 @@ XML;
         $this->assertEqualsWithDelta(3.7227, $this->efValue($doc, 'conso_auxiliaire_generation_ecs_depensier'), 0.001);
     }
 
+    /**
+     * §15.1.1 : Bch_g est le besoin couvert par le générateur, approché par
+     * surface_chauffee / surface desservie. Dans un DPE d'appartement, le
+     * besoin porté par l'installation est celui de l'appartement : la surface
+     * desservie est celle du logement, même quand le fichier renseigne aussi
+     * celle de l'immeuble.
+     */
+    public function testDpeAppartementRapporteLeBesoinALaSurfaceDuLogement(): void
+    {
+        [$doc, $logement, $ctx] = $this->buildDoc($this->fioulAvecSurfaces(2));
+        (new AuxGenerationCalculator())->calculate($logement, $ctx);
+
+        // Paux = 20 + 1,6 x 18 = 48,8 W ; Q = 48,8 x 4549,03 / 18000.
+        $this->assertEqualsWithDelta(12.3329, $this->efValue($doc, 'conso_auxiliaire_generation_ch'), 0.001);
+    }
+
+    /**
+     * Un DPE immeuble collectif porte en revanche un besoin à l'échelle de
+     * l'immeuble : la surface desservie est celle de l'immeuble.
+     */
+    public function testDpeImmeubleRapporteLeBesoinALaSurfaceDeLImmeuble(): void
+    {
+        [$doc, $logement, $ctx] = $this->buildDoc($this->fioulAvecSurfaces(9));
+        (new AuxGenerationCalculator())->calculate($logement, $ctx);
+
+        $this->assertEqualsWithDelta(
+            12.3329 * 64.96 / 4687.0,
+            $this->efValue($doc, 'conso_auxiliaire_generation_ch'),
+            0.0001
+        );
+    }
+
+    private function fioulAvecSurfaces(int $methode): string
+    {
+        return <<<XML
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale>
+        <enum_methode_application_dpe_log_id>$methode</enum_methode_application_dpe_log_id>
+        <surface_habitable_logement>64.96</surface_habitable_logement>
+        <surface_habitable_immeuble>4687</surface_habitable_immeuble>
+    </caracteristique_generale>
+    <installation_chauffage_collection>
+        <installation_chauffage>
+            <donnee_entree>
+                <surface_chauffee>64.96</surface_chauffee>
+            </donnee_entree>
+            <donnee_intermediaire>
+                <besoin_ch>4549.0289651514</besoin_ch>
+                <besoin_ch_depensier>6162.5758788342</besoin_ch_depensier>
+            </donnee_intermediaire>
+            <generateur_chauffage_collection>
+                <generateur_chauffage>
+                    <donnee_entree>
+                        <enum_type_energie_id>3</enum_type_energie_id>
+                        <enum_type_generateur_ch_id>75</enum_type_generateur_ch_id>
+                        <tv_generateur_combustion_id>16</tv_generateur_combustion_id>
+                    </donnee_entree>
+                    <donnee_intermediaire>
+                        <pn>18000</pn>
+                    </donnee_intermediaire>
+                </generateur_chauffage>
+            </generateur_chauffage_collection>
+        </installation_chauffage>
+    </installation_chauffage_collection>
+    <sortie/>
+</logement>
+XML;
+    }
+
     public function testElectricGeneratorIsZero(): void
     {
         $xml = <<<XML

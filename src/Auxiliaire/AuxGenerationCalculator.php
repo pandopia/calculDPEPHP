@@ -78,6 +78,12 @@ final class AuxGenerationCalculator implements CalculatorInterface
     /** Chaudières bois ventilateur ECS (13-34) */
     private const ECS_BOIS_VENT_RANGES       = [[13,34]];
 
+    /**
+     * `enum_methode_application_dpe_log_id` des DPE immeuble collectif : seuls
+     * ceux-là portent un besoin de chauffage à l'échelle de l'immeuble.
+     */
+    private const METHODES_DPE_IMMEUBLE = [6, 7, 8, 9, 26, 27, 28, 29, 30];
+
     public function id(): string
     {
         return self::class;
@@ -160,12 +166,16 @@ final class AuxGenerationCalculator implements CalculatorInterface
             $besoinDep = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ch_depensier', $install) ?? 0.0;
             $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation',       $install) ?? 1.0;
 
-            // surface_chauffee / surface_habitable ratio for CH — open3cl §15.1.
-            // Référence = surface totale desservie (immeuble si présent : en modes 6-13
-            // les installations et leur besoin sont à l'échelle immeuble). Borné à 1.
+            // §15.1.1 : Bch_g est « le besoin annuel d'énergie assuré par le
+            // générateur », réduit à « la part du besoin qu'il couvre ». Cette
+            // part est approchée par surface_chauffee / surface desservie.
+            // La surface desservie doit être à la même échelle que le besoin
+            // porté par l'installation : celle de l'immeuble pour un DPE
+            // immeuble, celle du logement sinon. Un DPE d'appartement décrit
+            // une installation et un besoin d'appartement, même quand le
+            // fichier renseigne aussi la surface de l'immeuble.
             $surfCh = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $install);
-            $sh     = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement)
-                   ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement',  $logement);
+            $sh     = $this->surfaceDesservie($accessor, $logement);
             $ratioSurface = ($surfCh !== null && $sh !== null && $sh > 0.0) ? min(1.0, $surfCh / $sh) : 1.0;
 
             $genCollection = $this->getChild($install, 'generateur_chauffage_collection');
@@ -215,6 +225,30 @@ final class AuxGenerationCalculator implements CalculatorInterface
         }
 
         return [$totalQ, $totalQDep, $cle];
+    }
+
+    /**
+     * Surface desservie par une installation de chauffage, à l'échelle du
+     * périmètre du DPE : l'immeuble pour un DPE immeuble collectif, le logement
+     * décrit sinon.
+     */
+    private function surfaceDesservie(NodeAccessor $accessor, DOMElement $logement): ?float
+    {
+        $methode = $accessor->getIntOrNull(
+            './caracteristique_generale/enum_methode_application_dpe_log_id',
+            $logement
+        );
+        $surfaceLogement = $accessor->getFloatOrNull(
+            './caracteristique_generale/surface_habitable_logement',
+            $logement
+        );
+        if ($methode === null || !in_array($methode, self::METHODES_DPE_IMMEUBLE, true)) {
+            return $surfaceLogement;
+        }
+        return $accessor->getFloatOrNull(
+            './caracteristique_generale/surface_habitable_immeuble',
+            $logement
+        ) ?? $surfaceLogement;
     }
 
     /**
