@@ -123,6 +123,28 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   qu'aux installations dont les consommations par générateur se répartissent, ce
   que cette tâche rendrait vrai pour ces fichiers.
 
+### TASK-K39 — Auxiliaires de génération : répartir le besoin entre générateurs
+
+- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
+- §15.1.1 p.97 : « Bch_g : besoin annuel d'énergie **assuré par le générateur** »,
+  et « dans les cas où le générateur n'assure pas 100 % du besoin, seule la part
+  du besoin qu'il couvre est prise en compte ».
+- `AuxGenerationCalculator` passe le `besoin_ch` **entier** de l'installation à
+  **chaque** générateur, puis somme : une installation à deux générateurs compte
+  donc le besoin deux fois.
+- Démontré sur `2457E3640397P` (hors corpus, tiré de l'open data) : chaudière
+  fioul 78 et chaudière charbon 120, toutes deux Pn = 60 kW, besoin_ch =
+  51 685,61. La référence publie 99,9255 kWh, soit exactement
+  116 W x 51 685,61 / 60 000 — la valeur d'**un seul** générateur, ou de deux se
+  partageant le besoin, ce qui revient au même à Pn égal. Nous publions le
+  double.
+- Le partage n'est pas toujours 50/50 : sur `2457E3724590U` (gaz 97 à 32 kW +
+  charbon 120 à 40 kW) un partage égal donne 57,428 contre 57,2428 publiés.
+  Chercher la clé réelle — probablement la part déjà calculée par les stratégies
+  de §9, que les générateurs publient en `conso_ch`.
+- Faible rendement sur le corpus actuel : 8 cas seulement, dont 2 au rapport
+  exact de 2. Mesurer avant de livrer.
+
 ### TASK-K35 — 2113E0368523M : conso_ch et référence lacunaire
 
 - [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
