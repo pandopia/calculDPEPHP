@@ -48,9 +48,10 @@ XML;
         [$doc, $node] = $this->buildNode(1);
         (new CetAccumulationCalculator())->calculate($node, $this->makeContext($doc, '1'));
         $cop = (float)$doc->getElementsByTagName('cop')->item(0)?->textContent;
-        $rg  = (float)$doc->getElementsByTagName('rendement_generation')->item(0)?->textContent;
         $this->assertEqualsWithDelta(2.0, $cop, self::TOL);
-        $this->assertEqualsWithDelta(2.0, $rg,  self::TOL);
+        // Le COP inclut le rendement de stockage (XSD) : aucun rendement de
+        // génération séparé n'est publié pour un ballon intégré.
+        $this->assertSame(0, $doc->getElementsByTagName('rendement_generation')->length);
     }
 
     /** §14.2 — CET air extérieur 2010-2014, zone H2 → COP = 2.2 */

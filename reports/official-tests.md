@@ -1,7 +1,7 @@
 # Conformité du moteur — jeux de tests DPE 3CL
 
-_Généré le 2026-10-03T15:41:42+00:00 — profil de tolérance : `strict`_
-_Révision mesurée : `a317506` — arbre de travail modifié : 1 fichier(s) src/ non commités_
+_Généré le 2026-10-03T15:45:12+00:00 — profil de tolérance : `strict`_
+_Révision mesurée : `6c84698` — arbre de travail modifié : 2 fichier(s) src/ non commités_
 
 Comparaison balise à balise de la totalité de `<donnee_intermediaire>` et
 `<sortie>` entre la sortie du moteur et la référence du cas. Aucune balise
@@ -16,18 +16,18 @@ Crash                    : 0
 Totalement conformes     : 0
 Partiellement conformes  : 389
 
-Valeurs comparées        : 123 153
+Valeurs comparées        : 123 142
 Exactes                  : 93 227
 Dans tolérance           : 18 569
 Hors tolérance           : 9 295
 Balises manquantes       : 145
-Balises supplémentaires  : 1 882
+Balises supplémentaires  : 1 871
 Écarts non numériques    : 35
 
-Conformité               : 90,78 %
+Conformité               : 90,79 %
 ```
 
-Sur ces écarts, **3 437 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **93,57 %**. Détail plus bas.
+Sur ces écarts, **3 437 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **93,58 %**. Détail plus bas.
 
 ## Écarts par famille fonctionnelle
 
@@ -39,7 +39,7 @@ Sur ces écarts, **3 437 sont imputables à la référence** et non au moteur : 
 | Besoin chauffage | 1910 | 12 | 1747 | 147 | 4 | 0 | 92,09 % |
 | Besoin ECS | 3657 | 3438 | 201 | 18 | 0 | 0 | 99,51 % |
 | Génération chauffage | 7850 | 3337 | 3281 | 1182 | 19 | 31 | 84,31 % |
-| Génération ECS | 8041 | 5114 | 1681 | 1214 | 16 | 16 | 84,50 % |
+| Génération ECS | 8030 | 5114 | 1681 | 1214 | 16 | 5 | 84,62 % |
 | Auxiliaires | 13226 | 8407 | 2569 | 2249 | 0 | 1 | 82,99 % |
 | Froid | 4848 | 4464 | 29 | 260 | 88 | 7 | 92,68 % |
 | PV | 2738 | 2723 | 0 | 9 | 6 | 0 | 99,45 % |
@@ -57,17 +57,17 @@ Périmètres du règlement d'évaluation CSTB §1.1, déduits de
 
 | Périmètre | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| immeuble_collectif | 237 | 79387 | 61709 | 11832 | 4375 | 26 | 92,36 % |
+| immeuble_collectif | 237 | 79380 | 61709 | 11832 | 4375 | 26 | 92,37 % |
 | appartement_issu_immeuble | 59 | 20136 | 14015 | 3169 | 2527 | 49 | 85,09 % |
-| maison_individuelle | 44 | 12231 | 9202 | 1697 | 1265 | 36 | 88,79 % |
+| maison_individuelle | 44 | 12227 | 9202 | 1697 | 1265 | 36 | 88,82 % |
 | appartement_individuel | 49 | 11399 | 8301 | 1871 | 1128 | 34 | 88,85 % |
 
 ## Écarts par régime du coefficient EP électricité
 
 | Régime | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| post_2026 | 291 | 89590 | 68602 | 13873 | 5528 | 80 | 91,76 % |
-| pre_2026 | 98 | 33563 | 24625 | 4696 | 3767 | 65 | 87,11 % |
+| post_2026 | 291 | 89581 | 68602 | 13873 | 5528 | 80 | 91,77 % |
+| pre_2026 | 98 | 33561 | 24625 | 4696 | 3767 | 65 | 87,11 % |
 
 ## Écarts par moteur de calcul de la référence
 
@@ -76,15 +76,15 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 
 | Moteur | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| BBS_Slama_2025.11.1.0 | 277 | 85950 | 66354 | 13147 | 4985 | 11 | 92,20 % |
-| 3cl_tribu_1.4.25.1 | 69 | 24436 | 17998 | 3559 | 2584 | 32 | 87,97 % |
+| BBS_Slama_2025.11.1.0 | 277 | 85941 | 66354 | 13147 | 4985 | 11 | 92,21 % |
+| 3cl_tribu_1.4.25.1 | 69 | 24435 | 17998 | 3559 | 2584 | 32 | 87,97 % |
 | 3cl_tribu_2024.6.1.0 | 16 | 5703 | 4380 | 779 | 472 | 0 | 90,21 % |
 | inconnu | 7 | 1889 | 1264 | 377 | 167 | 40 | 86,55 % |
 | 3cl_bbs_V2025.11.1.0 | 7 | 1800 | 961 | 292 | 460 | 37 | 69,34 % |
 | BBS_Slama_2024.6.1.0 | 3 | 937 | 684 | 137 | 107 | 0 | 87,34 % |
 | 3cl-2024.6.1.0 | 3 | 644 | 441 | 81 | 106 | 12 | 80,68 % |
 | 3cl_bbs_V2024.6.1.0 | 1 | 329 | 208 | 35 | 74 | 4 | 73,64 % |
-| V 2024.6.1.0 | 1 | 296 | 196 | 7 | 85 | 5 | 68,35 % |
+| V 2024.6.1.0 | 1 | 295 | 196 | 7 | 85 | 5 | 68,58 % |
 | 3cl_tribu_1.4.25.0 | 1 | 279 | 186 | 33 | 48 | 4 | 78,21 % |
 | 3cl_tribu_1.4.24.0 | 1 | 260 | 169 | 1 | 89 | 0 | 65,13 % |
 | 3cl_BBS_2025.11.1.0 | 1 | 213 | 144 | 58 | 8 | 0 | 94,39 % |
@@ -187,10 +187,10 @@ Aucun chemin produit hors de ceux déclarés par `resources/ademe_DPE.xsd`.
 | `2313E3593866F.xml` | appartement_issu_immeuble | pre_2026 | 307 | 111 | 63,84 % |
 | `2313E3593911Y.xml` | appartement_issu_immeuble | pre_2026 | 307 | 110 | 64,17 % |
 | `2400E0669425G.xml` | immeuble_collectif | pre_2026 | 722 | 109 | 84,90 % |
-| `2400E0020849A.xml` | maison_individuelle | pre_2026 | 465 | 97 | 79,14 % |
 | `2659E2253310G.xml` | appartement_issu_immeuble | post_2026 | 256 | 97 | 62,11 % |
+| `2400E0020849A.xml` | maison_individuelle | pre_2026 | 464 | 96 | 79,31 % |
 | `2600E0660731Y.xml` | immeuble_collectif | post_2026 | 589 | 94 | 84,04 % |
-| `2593E3079342Z.xml` | maison_individuelle | pre_2026 | 296 | 93 | 68,58 % |
+| `2593E3079342Z.xml` | maison_individuelle | pre_2026 | 295 | 92 | 68,81 % |
 | `2238E1985046L.xml` | appartement_individuel | pre_2026 | 260 | 90 | 65,38 % |
 | `2659E2236157N.xml` | appartement_issu_immeuble | post_2026 | 283 | 90 | 68,20 % |
 | `2659E2268156G.xml` | appartement_issu_immeuble | post_2026 | 229 | 90 | 60,70 % |

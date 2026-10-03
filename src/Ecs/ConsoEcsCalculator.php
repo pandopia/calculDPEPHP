@@ -98,8 +98,11 @@ final class ConsoEcsCalculator implements CalculatorInterface
             $rsConv  = $rgsConv !== null
                 ? 1.0
                 : ($accessor->getFloatOrNull('./donnee_intermediaire/rendement_stockage', $gen) ?? 1.0);
+            // Un chauffe-eau thermodynamique publie un `cop` qui inclut déjà le
+            // rendement de stockage (XSD) : il tient lieu de Rg x Rs.
             $rgConv  = $rgsConv
                 ?? $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen)
+                ?? $accessor->getFloatOrNull('./donnee_intermediaire/cop', $gen)
                 ?? 1.0;
             $rpn     = $accessor->getFloatOrNull('./donnee_intermediaire/rpn',                  $gen);
             $genType = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id',   $gen);
