@@ -18,9 +18,9 @@ use DOMElement;
  * Q_aux_g_ecs = Paux_g × Becs_g / Pn_ecs        (kWh)
  *
  * G/H par type de générateur (spec §15.1 p.97) :
- *   Chaudière gaz/fioul : G=20, H=1.6 (Pn cap 400 kW)
- *   Chaudière bois atmosphérique : G=0, H=0
- *   Chaudière bois à ventilateur : G=73.3, H=10.5 (Pn cap 70 kW)
+ *   Chaudière gaz/fioul : G=20, H=1.6 (Pn cap 400 kW) — et chaudière charbon
+ *   Chaudière bois atmosphérique : G=0, H=0        (presence_ventouse = 0)
+ *   Chaudière bois à ventilateur : G=73.3, H=10.5  (presence_ventouse = 1, cap 70 kW)
  *   Générateur d'air chaud gaz : G=0, H=4 (Pn cap 300 kW)
  *   Radiateur gaz : G=40, H=0
  *   Chauffe-eau gaz / Accumulateur gaz : G=0, H=0
@@ -36,7 +36,7 @@ use DOMElement;
  * @spec-pages   97-98
  * @spec-source  resources/specsplitted/15-auxiliaires/01-aux-generation.md
  * @xml-input    installation_chauffage.generateur_chauffage.donnee_entree.{enum_type_energie_id,
- *               tv_generateur_combustion_id}
+ *               enum_type_generateur_ch_id, presence_ventouse, tv_generateur_combustion_id}
  *               installation_chauffage.generateur_chauffage.donnee_intermediaire.pn
  *               installation_chauffage.donnee_intermediaire.{besoin_ch, besoin_ch_depensier}
  *               installation_ecs.generateur_ecs.donnee_entree.{enum_type_energie_id,
@@ -56,7 +56,8 @@ final class AuxGenerationCalculator implements CalculatorInterface
     /** G/H table: [G_W, H_W_per_kW, Pn_cap_kW] — open3cl §15.1 */
     private const GH_CHAUDIERE        = [20.0,   1.6,  400.0];
     private const GH_RADIATEUR_GAZ    = [40.0,   0.0,  PHP_FLOAT_MAX];
-    private const GH_CHAUDIERE_BOIS   = [73.3,  10.5,   70.0];
+    private const GH_BOIS_ATMO        = [0.0,    0.0,   70.0];
+    private const GH_BOIS_VENTILATEUR = [73.3,  10.5,   70.0];
     private const GH_AIR_CHAUD        = [0.0,    4.0,  300.0];
     private const GH_DEFAULT          = [0.0,    0.0,  PHP_FLOAT_MAX];
 
@@ -66,8 +67,15 @@ final class AuxGenerationCalculator implements CalculatorInterface
     private const CH_CHAUDIERE_FIOUL_RANGES  = [[75,84],[150,151]];
     /** Radiateurs gaz CH (53-54) */
     private const CH_RADIATEUR_GAZ_RANGES    = [[53,54]];
-    /** Chaudières bois ventilateur CH (55-74, 152-156) */
-    private const CH_BOIS_VENT_RANGES        = [[55,74],[152,156]];
+    /** Chaudières bois CH (55-74, 152-156) — atmosphérique ou ventilateur selon la ventouse */
+    private const CH_BOIS_RANGES             = [[55,74],[152,156]];
+    /**
+     * Chaudières charbon CH (120-126). §15.1 p.97 ne tabule pas le charbon et
+     * n'énonce que deux cas nuls (PAC, réseau de chaleur) : la ligne retenue est
+     * « chaudière au gaz ou au fioul ». §13.2.2.3 renvoie bien le charbon vers le
+     * bois bûche, mais pour le rendement de combustion, pas pour les auxiliaires.
+     */
+    private const CH_CHARBON_RANGES          = [[120,126]];
     /** Générateurs air chaud CH (50-52) */
     private const CH_AIR_CHAUD_RANGES        = [[50,52]];
 
@@ -75,8 +83,14 @@ final class AuxGenerationCalculator implements CalculatorInterface
     private const ECS_CHAUDIERE_GAZ_RANGES   = [[45,57],[92,104],[120,121],[132,133]];
     /** Chaudières fioul ECS (35-44, 122-123) */
     private const ECS_CHAUDIERE_FIOUL_RANGES = [[35,44],[122,123]];
-    /** Chaudières bois ventilateur ECS (13-34) */
-    private const ECS_BOIS_VENT_RANGES       = [[13,34]];
+    /** Chaudières bois ECS (13-34) — atmosphérique ou ventilateur selon la ventouse */
+    private const ECS_BOIS_RANGES            = [[13,34]];
+
+    /**
+     * `enum_methode_application_dpe_log_id` des DPE immeuble collectif : seuls
+     * ceux-là portent un besoin de chauffage à l'échelle de l'immeuble.
+     */
+    private const METHODES_DPE_IMMEUBLE = [6, 7, 8, 9, 26, 27, 28, 29, 30];
 
     public function id(): string
     {
@@ -160,12 +174,16 @@ final class AuxGenerationCalculator implements CalculatorInterface
             $besoinDep = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ch_depensier', $install) ?? 0.0;
             $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation',       $install) ?? 1.0;
 
-            // surface_chauffee / surface_habitable ratio for CH — open3cl §15.1.
-            // Référence = surface totale desservie (immeuble si présent : en modes 6-13
-            // les installations et leur besoin sont à l'échelle immeuble). Borné à 1.
+            // §15.1.1 : Bch_g est « le besoin annuel d'énergie assuré par le
+            // générateur », réduit à « la part du besoin qu'il couvre ». Cette
+            // part est approchée par surface_chauffee / surface desservie.
+            // La surface desservie doit être à la même échelle que le besoin
+            // porté par l'installation : celle de l'immeuble pour un DPE
+            // immeuble, celle du logement sinon. Un DPE d'appartement décrit
+            // une installation et un besoin d'appartement, même quand le
+            // fichier renseigne aussi la surface de l'immeuble.
             $surfCh = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $install);
-            $sh     = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement)
-                   ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement',  $logement);
+            $sh     = $this->surfaceDesservie($accessor, $logement);
             $ratioSurface = ($surfCh !== null && $sh !== null && $sh > 0.0) ? min(1.0, $surfCh / $sh) : 1.0;
 
             $genCollection = $this->getChild($install, 'generateur_chauffage_collection');
@@ -215,6 +233,30 @@ final class AuxGenerationCalculator implements CalculatorInterface
         }
 
         return [$totalQ, $totalQDep, $cle];
+    }
+
+    /**
+     * Surface desservie par une installation de chauffage, à l'échelle du
+     * périmètre du DPE : l'immeuble pour un DPE immeuble collectif, le logement
+     * décrit sinon.
+     */
+    private function surfaceDesservie(NodeAccessor $accessor, DOMElement $logement): ?float
+    {
+        $methode = $accessor->getIntOrNull(
+            './caracteristique_generale/enum_methode_application_dpe_log_id',
+            $logement
+        );
+        $surfaceLogement = $accessor->getFloatOrNull(
+            './caracteristique_generale/surface_habitable_logement',
+            $logement
+        );
+        if ($methode === null || !in_array($methode, self::METHODES_DPE_IMMEUBLE, true)) {
+            return $surfaceLogement;
+        }
+        return $accessor->getFloatOrNull(
+            './caracteristique_generale/surface_habitable_immeuble',
+            $logement
+        ) ?? $surfaceLogement;
     }
 
     /**
@@ -325,11 +367,25 @@ final class AuxGenerationCalculator implements CalculatorInterface
      */
     private function getGHch(NodeAccessor $accessor, DOMElement $genNode): array
     {
-        $genId = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $genNode);
-        if ($genId === null) {
+        $saisi = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $genNode);
+        if ($saisi === null) {
             return self::GH_DEFAULT;
         }
-        return $this->resolveGHfromRanges($genId, 'ch');
+        // Les familles qui ont leur propre ligne dans §15.1 sont lues sur l'enum
+        // saisi. Le charbon en fait partie : son alias vers le bois bûche ne vaut
+        // que pour le rendement de combustion (§13.2.2.3).
+        $gh = $this->resolveGHfromRanges($saisi, 'ch', $accessor, $genNode);
+        if ($gh !== self::GH_DEFAULT) {
+            return $gh;
+        }
+        // Sinon, l'enum renvoie à une autre famille : §17.2.1.1 pour le système
+        // collectif par défaut (119), §13.2.2 pour les « autres systèmes à
+        // combustion » (113-116). On résout alors sur l'enum équivalent.
+        $equivalent = \CalculDpePHP\Chauffage\GenerateurChAlias::normalizeNode($saisi, $genNode);
+        if ($equivalent === null || $equivalent === $saisi) {
+            return self::GH_DEFAULT;
+        }
+        return $this->resolveGHfromRanges($equivalent, 'ch', $accessor, $genNode);
     }
 
     /**
@@ -344,29 +400,52 @@ final class AuxGenerationCalculator implements CalculatorInterface
         if ($genId === null) {
             return self::GH_DEFAULT;
         }
-        return $this->resolveGHfromRanges($genId, 'ecs');
+        return $this->resolveGHfromRanges($genId, 'ecs', $accessor, $genNode);
     }
 
     /** @return array{float, float, float} */
-    private function resolveGHfromRanges(int $genId, string $type): array
-    {
+    private function resolveGHfromRanges(
+        int $genId,
+        string $type,
+        NodeAccessor $accessor,
+        DOMElement $genNode,
+    ): array {
         $chaudGazRanges  = ($type === 'ch') ? self::CH_CHAUDIERE_GAZ_RANGES   : self::ECS_CHAUDIERE_GAZ_RANGES;
         $chaudFioulRanges = ($type === 'ch') ? self::CH_CHAUDIERE_FIOUL_RANGES : self::ECS_CHAUDIERE_FIOUL_RANGES;
-        $boisVentRanges  = ($type === 'ch') ? self::CH_BOIS_VENT_RANGES        : self::ECS_BOIS_VENT_RANGES;
+        $boisRanges      = ($type === 'ch') ? self::CH_BOIS_RANGES            : self::ECS_BOIS_RANGES;
 
         if ($this->inRanges($genId, $chaudGazRanges) || $this->inRanges($genId, $chaudFioulRanges)) {
+            return self::GH_CHAUDIERE;
+        }
+        if ($type === 'ch' && $this->inRanges($genId, self::CH_CHARBON_RANGES)) {
             return self::GH_CHAUDIERE;
         }
         if ($type === 'ch' && $this->inRanges($genId, self::CH_RADIATEUR_GAZ_RANGES)) {
             return self::GH_RADIATEUR_GAZ;
         }
-        if ($this->inRanges($genId, $boisVentRanges)) {
-            return self::GH_CHAUDIERE_BOIS;
+        if ($this->inRanges($genId, $boisRanges)) {
+            return $this->ligneBois($accessor, $genNode);
         }
         if ($type === 'ch' && $this->inRanges($genId, self::CH_AIR_CHAUD_RANGES)) {
             return self::GH_AIR_CHAUD;
         }
         return self::GH_DEFAULT;
+    }
+
+    /**
+     * §15.1 p.97 distingue « chaudière bois atmosphérique » (G = 0, H = 0) de
+     * « chaudière bois assistée par ventilateur » (G = 73,3, H = 10,5) sans dire
+     * comment les départager. `presence_ventouse` le fait : une ventouse est un
+     * terminal à tirage forcé, qui suppose un ventilateur de combustion ; une
+     * chaudière raccordée au tirage naturel d'un conduit est atmosphérique.
+     *
+     * @return array{float, float, float}
+     */
+    private function ligneBois(NodeAccessor $accessor, DOMElement $genNode): array
+    {
+        $ventouse = $accessor->getIntOrNull('./donnee_entree/presence_ventouse', $genNode);
+
+        return $ventouse === 1 ? self::GH_BOIS_VENTILATEUR : self::GH_BOIS_ATMO;
     }
 
     /** @param list<array{int,int}> $ranges */

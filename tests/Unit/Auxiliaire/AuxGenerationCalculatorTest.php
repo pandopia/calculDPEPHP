@@ -152,6 +152,147 @@ XML;
         $this->assertEqualsWithDelta(3.7227, $this->efValue($doc, 'conso_auxiliaire_generation_ecs_depensier'), 0.001);
     }
 
+    /**
+     * §15.1.1 : Bch_g est le besoin couvert par le générateur, approché par
+     * surface_chauffee / surface desservie. Dans un DPE d'appartement, le
+     * besoin porté par l'installation est celui de l'appartement : la surface
+     * desservie est celle du logement, même quand le fichier renseigne aussi
+     * celle de l'immeuble.
+     */
+    public function testDpeAppartementRapporteLeBesoinALaSurfaceDuLogement(): void
+    {
+        [$doc, $logement, $ctx] = $this->buildDoc($this->fioulAvecSurfaces(2));
+        (new AuxGenerationCalculator())->calculate($logement, $ctx);
+
+        // Paux = 20 + 1,6 x 18 = 48,8 W ; Q = 48,8 x 4549,03 / 18000.
+        $this->assertEqualsWithDelta(12.3329, $this->efValue($doc, 'conso_auxiliaire_generation_ch'), 0.001);
+    }
+
+    /**
+     * Un DPE immeuble collectif porte en revanche un besoin à l'échelle de
+     * l'immeuble : la surface desservie est celle de l'immeuble.
+     */
+    public function testDpeImmeubleRapporteLeBesoinALaSurfaceDeLImmeuble(): void
+    {
+        [$doc, $logement, $ctx] = $this->buildDoc($this->fioulAvecSurfaces(9));
+        (new AuxGenerationCalculator())->calculate($logement, $ctx);
+
+        $this->assertEqualsWithDelta(
+            12.3329 * 64.96 / 4687.0,
+            $this->efValue($doc, 'conso_auxiliaire_generation_ch'),
+            0.0001
+        );
+    }
+
+    /**
+     * §15.1 p.97 distingue « chaudière bois atmosphérique » (0 / 0) de
+     * « chaudière bois assistée par ventilateur » (73,3 / 10,5). La ventouse,
+     * terminal à tirage forcé, départage les deux.
+     */
+    public function testUneChaudiereBoisSansVentouseEstAtmospherique(): void
+    {
+        [$doc, $logement, $ctx] = $this->buildDoc($this->chaudiereSeule(73, 0, 15000.0, 11287.3));
+        (new AuxGenerationCalculator())->calculate($logement, $ctx);
+
+        $this->assertSame(0.0, $this->efValue($doc, 'conso_auxiliaire_generation_ch'));
+    }
+
+    public function testUneChaudiereBoisAVentouseEstAssisteeParVentilateur(): void
+    {
+        [$doc, $logement, $ctx] = $this->buildDoc($this->chaudiereSeule(73, 1, 15000.0, 11287.3));
+        (new AuxGenerationCalculator())->calculate($logement, $ctx);
+
+        // Paux = 73,3 + 10,5 x 15 = 230,8 W ; Q = 230,8 x 11287,3 / 15000.
+        $this->assertEqualsWithDelta(173.6733, $this->efValue($doc, 'conso_auxiliaire_generation_ch'), 0.001);
+    }
+
+    /**
+     * §15.1 ne tabule pas le charbon et n'énonce que deux cas nuls (PAC, réseau
+     * de chaleur). Le renvoi de §13.2.2.3 vers le bois bûche vaut pour le
+     * rendement de combustion, pas pour les auxiliaires : la ligne retenue est
+     * « chaudière au gaz ou au fioul », quelle que soit la ventouse.
+     */
+    public function testUneChaudiereCharbonSuitLaLigneGazFioul(): void
+    {
+        [$doc, $logement, $ctx] = $this->buildDoc($this->chaudiereSeule(121, 0, 18000.0, 9594.106));
+        (new AuxGenerationCalculator())->calculate($logement, $ctx);
+
+        // Paux = 20 + 1,6 x 18 = 48,8 W ; Q = 48,8 x 9594,106 / 18000.
+        $this->assertEqualsWithDelta(26.0107, $this->efValue($doc, 'conso_auxiliaire_generation_ch'), 0.001);
+    }
+
+    private function chaudiereSeule(int $genId, int $ventouse, float $pn, float $besoin): string
+    {
+        return <<<XML
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale>
+        <enum_methode_application_dpe_log_id>1</enum_methode_application_dpe_log_id>
+        <surface_habitable_logement>100</surface_habitable_logement>
+    </caracteristique_generale>
+    <installation_chauffage_collection>
+        <installation_chauffage>
+            <donnee_entree/>
+            <donnee_intermediaire>
+                <besoin_ch>$besoin</besoin_ch>
+                <besoin_ch_depensier>$besoin</besoin_ch_depensier>
+            </donnee_intermediaire>
+            <generateur_chauffage_collection>
+                <generateur_chauffage>
+                    <donnee_entree>
+                        <enum_type_generateur_ch_id>$genId</enum_type_generateur_ch_id>
+                        <presence_ventouse>$ventouse</presence_ventouse>
+                    </donnee_entree>
+                    <donnee_intermediaire>
+                        <pn>$pn</pn>
+                    </donnee_intermediaire>
+                </generateur_chauffage>
+            </generateur_chauffage_collection>
+        </installation_chauffage>
+    </installation_chauffage_collection>
+    <sortie/>
+</logement>
+XML;
+    }
+
+    private function fioulAvecSurfaces(int $methode): string
+    {
+        return <<<XML
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale>
+        <enum_methode_application_dpe_log_id>$methode</enum_methode_application_dpe_log_id>
+        <surface_habitable_logement>64.96</surface_habitable_logement>
+        <surface_habitable_immeuble>4687</surface_habitable_immeuble>
+    </caracteristique_generale>
+    <installation_chauffage_collection>
+        <installation_chauffage>
+            <donnee_entree>
+                <surface_chauffee>64.96</surface_chauffee>
+            </donnee_entree>
+            <donnee_intermediaire>
+                <besoin_ch>4549.0289651514</besoin_ch>
+                <besoin_ch_depensier>6162.5758788342</besoin_ch_depensier>
+            </donnee_intermediaire>
+            <generateur_chauffage_collection>
+                <generateur_chauffage>
+                    <donnee_entree>
+                        <enum_type_energie_id>3</enum_type_energie_id>
+                        <enum_type_generateur_ch_id>75</enum_type_generateur_ch_id>
+                        <tv_generateur_combustion_id>16</tv_generateur_combustion_id>
+                    </donnee_entree>
+                    <donnee_intermediaire>
+                        <pn>18000</pn>
+                    </donnee_intermediaire>
+                </generateur_chauffage>
+            </generateur_chauffage_collection>
+        </installation_chauffage>
+    </installation_chauffage_collection>
+    <sortie/>
+</logement>
+XML;
+    }
+
     public function testElectricGeneratorIsZero(): void
     {
         $xml = <<<XML

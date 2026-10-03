@@ -13,7 +13,8 @@ use DOMElement;
  * COP des chauffe-eau thermodynamiques à accumulation (§14.2 p.95).
  *
  * Le COP dépend du type d'installation (air ambiant/extérieur, air extrait, PAC double service)
- * et de la zone climatique (H1/H2 vs H3). Pour ce calculateur, COP = rendement_generation.
+ * et de la zone climatique (H1/H2 vs H3). Le COP inclut déjà le rendement de
+ * stockage (XSD), il tient donc lieu de rendement de génération et de stockage.
  *
  * Formula spec : Iecs = 1 / (Rd × COP)
  *
@@ -21,7 +22,7 @@ use DOMElement;
  * @spec-pages   95
  * @spec-source  resources/specsplitted/14-rendement-ecs-generateurs/02-cet-accumulation.md
  * @xml-input    generateur_ecs.donnee_entree.enum_type_generateur_ecs_id
- * @xml-output   generateur_ecs.donnee_intermediaire.{cop, rendement_generation}
+ * @xml-output   generateur_ecs.donnee_intermediaire.cop
  * @depends-on   aucun
  * @tables       (aucune — valeurs directement de la spec p.95)
  */
@@ -92,8 +93,12 @@ final class CetAccumulationCalculator implements CalculatorInterface
         $table = ($zone === 'H3') ? self::COP_H3 : self::COP_H1H2;
         $cop   = $table[$typeId];
 
+        // Le XSD définit `rendement_generation` comme « le rendement de
+        // génération dans le cas où le rendement de stockage est séparé du
+        // rendement de génération », et `cop` comme « le COP du chauffe-eau
+        // thermodynamique (inclus le rendement de stockage) » : un CET a son
+        // ballon intégré, donc un COP et pas de Rg séparé.
         $di = $accessor->ensureDonneeIntermediaire($node);
-        $accessor->setChildValue($di, 'cop',                 $cop);
-        $accessor->setChildValue($di, 'rendement_generation', $cop);
+        $accessor->setChildValue($di, 'cop', $cop);
     }
 }

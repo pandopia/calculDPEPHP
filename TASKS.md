@@ -123,6 +123,49 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   qu'aux installations dont les consommations par générateur se répartissent, ce
   que cette tâche rendrait vrai pour ces fichiers.
 
+### TASK-K39 — Auxiliaires de génération : répartir le besoin entre générateurs
+
+- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
+- §15.1.1 p.97 : « Bch_g : besoin annuel d'énergie **assuré par le générateur** »,
+  et « dans les cas où le générateur n'assure pas 100 % du besoin, seule la part
+  du besoin qu'il couvre est prise en compte ».
+- `AuxGenerationCalculator` passe le `besoin_ch` **entier** de l'installation à
+  **chaque** générateur, puis somme : une installation à deux générateurs compte
+  donc le besoin deux fois.
+- Démontré sur `2457E3640397P` (hors corpus, tiré de l'open data) : chaudière
+  fioul 78 et chaudière charbon 120, toutes deux Pn = 60 kW, besoin_ch =
+  51 685,61. La référence publie 99,9255 kWh, soit exactement
+  116 W x 51 685,61 / 60 000 — la valeur d'**un seul** générateur, ou de deux se
+  partageant le besoin, ce qui revient au même à Pn égal. Nous publions le
+  double.
+- Le partage n'est pas toujours 50/50 : sur `2457E3724590U` (gaz 97 à 32 kW +
+  charbon 120 à 40 kW) un partage égal donne 57,428 contre 57,2428 publiés.
+  Chercher la clé réelle — probablement la part déjà calculée par les stratégies
+  de §9, que les générateurs publient en `conso_ch`.
+- Faible rendement sur le corpus actuel : 8 cas seulement, dont 2 au rapport
+  exact de 2. Mesurer avant de livrer.
+
+### TASK-K40 — Auxiliaires de distribution de refroidissement : balise jamais produite
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
+- §15 p.97 annonce `Caux_fr = Caux_dist_fr`, mais **aucun paragraphe ne donne la
+  formule** : §15.2.1 ne tabule que le mode chaud, et §15.2.2/15.2.3 ne traitent
+  que le chauffage et l'ECS. open3cl ne la calcule pas davantage.
+- Nous ne produisons donc ni `conso_auxiliaire_distribution_fr` ni ses trois
+  dérivées (coût, GES, énergie primaire), ce qui vaut 88 balises manquantes sur
+  22 cas.
+- **Aucune référence du corpus ne publie de valeur non nulle** : sur 390
+  fichiers, 22 écrivent un zéro — tous sans installation de froid — et 367
+  omettent la balise, y compris les 20 qui ont du froid. Il n'y a donc rien à
+  valider contre le corpus.
+- La sérialisation suit le format du fichier : les versions 8.x et 9.x
+  l'écrivent (11 sur 11), la version 2 jamais (1 sur 364), la 0.1.0 11 fois sur
+  14. Publier un zéro sous ce seul garde de format gagnerait environ 72 écarts
+  nets, au prix d'un second garde de format inféré, pour une balise que la
+  méthode ne définit pas. Non retenu en l'état.
+- Rouvrir si une référence publiant une valeur non nulle apparaît au corpus, ou
+  avec un texte réglementaire donnant la formule.
+
 ### TASK-K35 — 2113E0368523M : conso_ch et référence lacunaire
 
 - [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
@@ -143,21 +186,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   partie relève d'une règle d'omission déjà connue avant de conclure.
 - `umur0 = 2,9` attendu contre 2,5 sur trois murs, et `k = 0,365` contre 0,73
   sur trois ponts : non instruits.
-
-### TASK-K36 — Auxiliaires de génération d'une chaudière bois : atmosphérique ou ventilateur ?
-
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
-- Complète TASK-K28 avec un second cas. §15.1 p.97 distingue « chaudière bois
-  atmosphérique » (G = 0, H = 0) de « chaudière bois assistée par ventilateur »
-  (G = 73,3, H = 10,5). **Le XSD ne porte aucun champ pour les distinguer** :
-  `enum_type_generateur_ch_id` 55 à 74 ne donne que le combustible (bûche,
-  plaquette, granulés) et le millésime.
-- `AuxGenerationCalculator` range tous les bois en « assistée par ventilateur ».
-  Sur 2613E2419802A — chaudière **granulés** de 2004-2012, donc a priori la plus
-  sûrement ventilée — la référence publie pourtant
-  `conso_auxiliaire_generation_ch = 0`, soit la ligne atmosphérique.
-- Le corpus ne compte qu'un seul logement chauffé exclusivement au bois : aucune
-  corroboration possible. Ne pas basculer le défaut sur cette seule observation.
 
 ### TASK-K37 — Auxiliaires de distribution d'ECS d'un réseau à traceur chauffant
 
@@ -180,6 +208,24 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Un traceur chauffant n'est pas un circulateur : vérifier aussi que la formule
   de §15.2.3, écrite pour une boucle, s'applique telle quelle — la spec les cite
   ensemble sans donner deux formules.
+
+### TASK-K38 — L'isolation de la toiture conditionne-t-elle l'indicateur de confort d'été ?
+
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
+- `ConfortEteCalculator` déclare le confort « insuffisant » dès que
+  `protection_solaire_exterieure = 0` **ou** `isolation_toiture = 0`, règle
+  reprise d'open3cl (`2021_04_13_confort_ete.js`). Aucun texte de la méthode ni
+  du XSD ne l'établit : le XSD documente les cinq critères un par un, jamais
+  leur agrégation.
+- **Les références se contredisent.** 2583E2717522L et 2659E2047646C publient
+  `isolation_toiture = 0` avec `enum_indicateur_confort_ete_id = 3` (« bon ») ;
+  2662E2147774H publie 0 avec l'indicateur à 1 (« insuffisant ») pour une
+  protection solaire et un aspect traversant identiques.
+- Mesuré : retirer `isolation_toiture` du veto donne 8 054 -> 8 040 écarts
+  moteur (-14), mais 23 cas améliorés contre **9 dégradés**. Le corpus ne
+  départage pas, et aucune source ne tranche : non retenu.
+- Rouvrir avec le texte de l'arrêté (annexe « confort d'été »), qui seul peut
+  donner la table d'agrégation des cinq critères.
 
 ### TASK-K31 — Pn des chaudières : trois régimes d'arrondi inconciliables
 
@@ -207,14 +253,21 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K06 — Écarts résiduels de génération ECS
 
-- [ ] Owner: __  | Phase: K  | Estimation: 5h  | Priorité: moyenne
+- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
 - Acquis : `rendement_stockage` n'est plus écrit sans ballon ; les puissances
-  saisies en `donnee_intermediaire` sont préservées et utilisées.
-- Reste : environ 33 divergences de `rendement_generation`, 33 de
-  `rendement_stockage` et quelques COP, avec plusieurs installations ECS
-  hétérogènes. Isoler les causes par configuration, sans règle globale déduite
-  d'un seul fichier.
-- Objectif : famille « Génération ECS » au-dessus de 92 % en profil strict.
+  saisies en `donnee_intermediaire` sont préservées et utilisées ; un chauffe-eau
+  thermodynamique ne publie plus de `rendement_generation` séparé, son `cop`
+  incluant le stockage (XSD).
+- Deux questions de sérialisation sont tranchées, ne pas les rouvrir :
+  - `rendement_stockage` sans ballon : 10 références l'écrivent à 1, 191 balises
+    supplémentaires seraient créées en le publiant. On ne l'écrit pas.
+  - les 12 balises `rendement_generation` surnuméraires restantes portent sur
+    des générateurs **à combustion**, pas thermodynamiques : question distincte.
+- Reste : 54 divergences de `rendement_generation` en ECS réparties sur 46 cas,
+  aux rapports ref/nous dispersés (0,60 à 2,05) sans famille dominante. Isoler
+  les causes par configuration, sans règle globale déduite d'un seul fichier.
+- Objectif : famille « Génération ECS » au-dessus de 92 % en profil strict
+  (84,62 % actuellement).
 
 ### TASK-K26 — §17.1.2 : Shmoy_système est une moyenne, pas une somme
 
@@ -291,25 +344,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   traitement d'une installation à plusieurs émetteurs. §15.2.1 dit « Sh :
   surface habitable du bâtiment », ce que le code applique déjà : chercher la
   source avant de s'en écarter, et mesurer en A/B.
-
-### TASK-K28 — Auxiliaires de génération d'une chaudière charbon ou bois
-
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
-- `AuxGenerationCalculator` ne reconnaît pas les chaudières charbon (enums
-  120-126) : elles retombent sur `GH_DEFAULT` et publient
-  `conso_auxiliaire_generation_ch = 0`. Or §15.1 p.97 n'énonce que deux cas nuls
-  (PAC, réseau de chaleur) : le zéro n'est pas sourcé.
-- §13.2.2.3 p.89 dit « les chaudières au charbon sont traitées comme des
-  chaudières bois bûche », ce qui les renvoie vers les lignes bois — mais le
-  tableau §15.1 en distingue deux, « atmosphérique » (0/0) et « assistée par
-  ventilateur » (73,3/10,5), sans qu'aucun champ du XSD permette de trancher.
-  Notre code applique aujourd'hui la ligne ventilateur à tout 55-74, ce qui
-  n'est pas sourcé non plus.
-- **Non mesurable sur les corpus actuels** : ils ne contiennent qu'une seule
-  chaudière charbon et aucune chaudière bois. Ne pas trancher sur ce cas isolé.
-  Pour information, sa référence applique G=20 / H=1,6 (ligne « chaudière au gaz
-  ou au fioul ») et publie 56,371 kWh ; la ligne bois-ventilateur donnerait
-  313,9 kWh. Élargir le corpus avant de décider.
 
 ### TASK-K29 — Écarts non reproductibles des appartements 2313E359… (méthode 33)
 

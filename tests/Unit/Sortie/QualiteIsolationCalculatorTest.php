@@ -187,7 +187,13 @@ XML;
         $this->assertEquals($expectedClasse, (int)$this->childText($qi, 'qualite_isol_plancher_haut_comble_perdu'));
     }
 
-    public function testLicielMixedLncType10RoofUsesToitTerrasseQuality(): void
+    /**
+     * Deux sous-types coexistent : seule la rubrique du sous-type qui porte la
+     * plus grande surface déperditive est renseignée. Ici le local non chauffé
+     * non accessible (30 m2, rangé en toit terrasse) l'emporte sur le comble
+     * faiblement ventilé (20 m2).
+     */
+    public function testSeulLeSousTypeDePlusGrandeSurfaceEstRenseigne(): void
     {
         $xml = <<<'XML'
 <logement>
@@ -214,7 +220,12 @@ XML;
         $this->assertNull($this->childText($qi, 'qualite_isol_plancher_haut_comble_perdu'));
     }
 
-    public function testMixedAmenageAndLostAtticUsesEffectiveFloorUAndWritesTerraceQuality(): void
+/**
+     * La qualité du plancher bas se lit sur `upb`, y compris quand la toiture
+     * mélange plusieurs sous-types : `upb_final` (coefficient effectif Ue) ne
+     * sert pas à qualifier l'isolation.
+     */
+    public function testLaQualiteDuPlancherBasSeLitToujoursSurUpb(): void
     {
         $document = new DOMDocument();
         $document->loadXML(<<<'XML'
@@ -233,8 +244,90 @@ XML);
         (new QualiteIsolationCalculator())->calculate($document->documentElement, $this->makeContext($document));
 
         $quality = $document->getElementsByTagName('qualite_isolation')->item(0);
-        $this->assertSame('3', $this->childText($quality, 'qualite_isol_plancher_bas'));
-        $this->assertSame('4', $this->childText($quality, 'qualite_isol_plancher_haut_toit_terrasse'));
+        // upb : (18 x 0,8 + 26 x 2) / 44 = 1,51 -> classe 4.
+        $this->assertSame('4', $this->childText($quality, 'qualite_isol_plancher_bas'));
+        // Toiture : le LNC non accessible (30 m2) l'emporte sur le comble
+        // aménagé (12 m2), et Umoy = 0,25 -> classe 2 au barème toit terrasse.
+        $this->assertSame('2', $this->childText($quality, 'qualite_isol_plancher_haut_toit_terrasse'));
+        $this->assertNull($this->childText($quality, 'qualite_isol_plancher_haut_comble_amenage'));
+    }
+
+    /**
+     * Un plafond donnant sur un local chauffé (adjacence 22) n'est pas une
+     * paroi de l'enveloppe : il ne déperdit pas (b = 0) et ne doit pas peser
+     * sur la qualité d'isolation, comme un mur ou un plancher bas de même
+     * adjacence. La rubrique reste renseignée, à la meilleure classe.
+     */
+    public function testUnPlafondSurLocalChauffeNeDegradePasLaQualite(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<logement><enveloppe><plancher_haut_collection>
+  <plancher_haut>
+    <donnee_entree><enum_type_adjacence_id>22</enum_type_adjacence_id><surface_paroi_opaque>68.208</surface_paroi_opaque></donnee_entree>
+    <donnee_intermediaire><uph>2.5</uph></donnee_intermediaire>
+  </plancher_haut>
+</plancher_haut_collection></enveloppe><sortie><deperdition/></sortie></logement>
+XML);
+
+        (new QualiteIsolationCalculator())->calculate($document->documentElement, $this->makeContext($document));
+
+        $quality = $document->getElementsByTagName('qualite_isolation')->item(0);
+        $this->assertSame('1', $this->childText($quality, 'qualite_isol_plancher_haut_comble_perdu'));
+    }
+
+    /**
+     * Mélange des deux : seule la partie déperditive compte dans la moyenne.
+     */
+    public function testSeuleLaPartieDeperditiveEntreDansLaMoyenne(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<logement><enveloppe><plancher_haut_collection>
+  <plancher_haut>
+    <donnee_entree><enum_type_adjacence_id>22</enum_type_adjacence_id><surface_paroi_opaque>60</surface_paroi_opaque></donnee_entree>
+    <donnee_intermediaire><uph>2.5</uph></donnee_intermediaire>
+  </plancher_haut>
+  <plancher_haut>
+    <donnee_entree><enum_type_adjacence_id>12</enum_type_adjacence_id><surface_paroi_opaque>40</surface_paroi_opaque></donnee_entree>
+    <donnee_intermediaire><uph>0.18</uph></donnee_intermediaire>
+  </plancher_haut>
+</plancher_haut_collection></enveloppe><sortie><deperdition/></sortie></logement>
+XML);
+
+        (new QualiteIsolationCalculator())->calculate($document->documentElement, $this->makeContext($document));
+
+        $quality = $document->getElementsByTagName('qualite_isolation')->item(0);
+        // Umoy = 0,18 sur les seuls 40 m2 déperditifs : seuils comble perdu → classe 2.
+        $this->assertSame('2', $this->childText($quality, 'qualite_isol_plancher_haut_comble_perdu'));
+    }
+
+    /**
+     * Deux sous-types de surface déperditive égale : l'ordre du fichier
+     * départage, et c'est le premier plancher haut déclaré qui donne la
+     * rubrique.
+     */
+    public function testASurfaceEgaleLePremierPlancherHautDepartage(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<logement><enveloppe><plancher_haut_collection>
+  <plancher_haut>
+    <donnee_entree><enum_type_adjacence_id>12</enum_type_adjacence_id><surface_paroi_opaque>86.86</surface_paroi_opaque></donnee_entree>
+    <donnee_intermediaire><uph>0.2</uph></donnee_intermediaire>
+  </plancher_haut>
+  <plancher_haut>
+    <donnee_entree><enum_type_adjacence_id>1</enum_type_adjacence_id><surface_paroi_opaque>86.86</surface_paroi_opaque></donnee_entree>
+    <donnee_intermediaire><uph>0.27</uph></donnee_intermediaire>
+  </plancher_haut>
+</plancher_haut_collection></enveloppe><sortie><deperdition/></sortie></logement>
+XML);
+
+        (new QualiteIsolationCalculator())->calculate($document->documentElement, $this->makeContext($document));
+
+        $quality = $document->getElementsByTagName('qualite_isolation')->item(0);
+        $this->assertSame('3', $this->childText($quality, 'qualite_isol_plancher_haut_comble_perdu'));
+        $this->assertNull($this->childText($quality, 'qualite_isol_plancher_haut_toit_terrasse'));
     }
 
     public static function phQualiteProvider(): array

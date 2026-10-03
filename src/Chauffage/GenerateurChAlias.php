@@ -71,30 +71,79 @@ final class GenerateurChAlias
     ];
 
     /**
+     * « Système collectif par défaut en absence d'information : chaudière fioul
+     * pénalisante » (enum 119) — §17.2.1.1 p.129 :
+     *
+     *   « si aucune information n'est communiquée sur les équipements collectifs,
+     *     un calcul par défaut se fera avec une chaudière atmosphérique mixte
+     *     standard datant de la construction du bâtiment. L'énergie utilisée par
+     *     le système sera du fioul. »
+     *
+     * L'enum 119 ne décrit donc pas une famille de générateur : il renvoie à la
+     * chaudière fioul de la période de construction du bâtiment. Seuils = année
+     * plancher → enum fioul équivalent ; sans année connue, la période la plus
+     * ancienne, conformément au qualificatif « pénalisante » de l'enum.
+     */
+    /** Enum du système collectif par défaut en absence d'information (§17.2.1.1). */
+    public const COLLECTIF_DEFAUT_ID = 119;
+
+    private const COLLECTIF_DEFAUT_FIOUL = [
+        1948 => 75, 1970 => 76, 1976 => 77, 1981 => 78, 1991 => 79, 2015 => 80,
+    ];
+
+    /**
+     * Première année de chaque période de construction (enum_periode_construction_id),
+     * utilisée quand `annee_construction` n'est pas renseignée.
+     */
+    private const PERIODE_CONSTRUCTION_DEBUT = [
+        1 => 1900, 2 => 1948, 3 => 1975, 4 => 1978, 5 => 1983,
+        6 => 1989, 7 => 2001, 8 => 2006, 9 => 2013, 10 => 2022,
+    ];
+
+    /**
      * Retourne l'enum équivalent 1-97 pour les calculs de rendement,
      * ou l'enum inchangé s'il n'a pas d'alias.
      *
      * @param int|null $anneeInstallation Année d'installation si connue —
      *                 utilisée pour les « autres systèmes à combustion » 113-116.
+     * @param int|null $anneeConstruction Année de construction du bâtiment —
+     *                 utilisée pour le système collectif par défaut (119).
      */
-    public static function normalize(?int $genId, ?int $anneeInstallation = null): ?int
-    {
+    public static function normalize(
+        ?int $genId,
+        ?int $anneeInstallation = null,
+        ?int $anneeConstruction = null,
+    ): ?int {
         if ($genId === null) {
             return null;
         }
+        if ($genId === self::COLLECTIF_DEFAUT_ID) {
+            return self::parAnnee(self::COLLECTIF_DEFAUT_FIOUL, $anneeConstruction);
+        }
         if (isset(self::AUTRE_COMBUSTION[$genId])) {
-            $map = self::AUTRE_COMBUSTION[$genId];
-            $eq  = $map[array_key_first($map)]; // défaut : période la plus ancienne
-            if ($anneeInstallation !== null) {
-                foreach ($map as $seuil => $enum) {
-                    if ($anneeInstallation >= $seuil) {
-                        $eq = $enum;
-                    }
-                }
-            }
-            return $eq;
+            return self::parAnnee(self::AUTRE_COMBUSTION[$genId], $anneeInstallation);
         }
         return self::ALIAS[$genId] ?? $genId;
+    }
+
+    /**
+     * Lit un barème « année plancher → enum » : sans année connue, la période la
+     * plus ancienne, qui est aussi la plus pénalisante.
+     *
+     * @param array<int,int> $bareme
+     */
+    private static function parAnnee(array $bareme, ?int $annee): int
+    {
+        $eq = $bareme[array_key_first($bareme)];
+        if ($annee === null) {
+            return $eq;
+        }
+        foreach ($bareme as $seuil => $enum) {
+            if ($annee >= $seuil) {
+                $eq = $enum;
+            }
+        }
+        return $eq;
     }
 
     /**
@@ -104,9 +153,9 @@ final class GenerateurChAlias
      */
     public static function normalizeNode(?int $genId, \DOMElement $genNode): ?int
     {
+        $xpath = new \DOMXPath($genNode->ownerDocument);
         $annee = null;
         if ($genId !== null && isset(self::AUTRE_COMBUSTION[$genId])) {
-            $xpath = new \DOMXPath($genNode->ownerDocument);
             $nodes = $xpath->query('./donnee_entree/data_complementaires', $genNode);
             if ($nodes !== false && $nodes->length > 0) {
                 $dc = $nodes->item(0);
@@ -118,7 +167,34 @@ final class GenerateurChAlias
                 }
             }
         }
-        return self::normalize($genId, $annee);
+        $construction = $genId === self::COLLECTIF_DEFAUT_ID
+            ? self::anneeConstruction($xpath)
+            : null;
+
+        return self::normalize($genId, $annee, $construction);
+    }
+
+    /**
+     * Année de construction du bâtiment : la valeur saisie si elle existe, sinon
+     * la première année de la période déclarée (enum_periode_construction_id).
+     */
+    private static function anneeConstruction(\DOMXPath $xpath): ?int
+    {
+        $annee = $xpath->query('//caracteristique_generale/annee_construction');
+        if ($annee !== false && $annee->length > 0) {
+            $raw = trim($annee->item(0)?->textContent ?? '');
+            if ($raw !== '' && is_numeric($raw)) {
+                return (int)$raw;
+            }
+        }
+        $periode = $xpath->query('//caracteristique_generale/enum_periode_construction_id');
+        if ($periode !== false && $periode->length > 0) {
+            $raw = trim($periode->item(0)?->textContent ?? '');
+            if ($raw !== '' && is_numeric($raw)) {
+                return self::PERIODE_CONSTRUCTION_DEBUT[(int)$raw] ?? null;
+            }
+        }
+        return null;
     }
 
     /**
