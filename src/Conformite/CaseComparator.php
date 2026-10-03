@@ -120,6 +120,26 @@ final class CaseComparator
     }
 
     /**
+     * Compare deux documents déjà calculés en mémoire, sans exécuter le moteur.
+     * Toutes les valeurs, y compris identiques, sont disponibles pour l'interface.
+     * Les chemins à références stables sont activés par un ValueExtractor(true).
+     * @return list<array<string, mixed>>
+     */
+    public function compareDocuments(DOMDocument $expected, DOMDocument $actual, bool $includeExact = true): array
+    {
+        $e = $this->extractor->extract($expected);
+        $suspects = ReferenceDefects::detect($e, $expected);
+        $out = [];
+        foreach ($this->compareValues($e, $this->extractor->extract($actual)) as $row) {
+            $row['reference_suspect'] = $this->suspectFor($suspects, $row);
+            if ($includeExact || $row['status'] !== ComparisonStatus::EXACT) {
+                $out[] = $row;
+            }
+        }
+        return $out;
+    }
+
+    /**
      * Motif de suspicion applicable à un delta, s'il y en a un.
      *
      * Une règle vise soit un chemin exact, soit une balise entière

@@ -402,3 +402,9 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   et mesurée en A/B isolé avec `bin/official-test-report` sur le corpus complet.
 - Ne jamais élargir une tolérance ni ajouter de comportement propre à un numéro
   ADEME pour faire baisser un compteur.
+
+
+## TASK-COMPARATIF — Répartitions collectives restant à implémenter
+
+- [ ] Compléter l’API `calculateBuilding(BuildingInput)` pour le chauffage par besoins/IFC et individuel homogène, ECS hétérogène, installations multiples, froid et photovoltaïque (§17.2). Les DTO conservent positions, typologies et liaisons ; le moteur signale explicitement ces cas comme non pris en charge. Utiliser les paires de sources archivées Pandopia, notamment le BAT 378102, pour mesurer chaque correction sur les mêmes entrées.
+- [ ] Exécuter la couverture PHPUnit avec Xdebug (indisponible dans le runtime utilisé pour cette livraison) et vérifier l’objectif de 80 %.

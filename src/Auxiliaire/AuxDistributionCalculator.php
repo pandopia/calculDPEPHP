@@ -300,16 +300,19 @@ final class AuxDistributionCalculator implements CalculatorInterface
         $totalCaux = 0.0;
         $cle       = 1.0;
 
-        // DPE appartement / zone (modes 2-4, 10-13, 31-40) : la conso d'aux de
+        // DPE appartement autonome (modes 2-4, 31-32, 35-37) : la conso d'aux de
         // distribution ECS collective est portée par l'immeuble — LICIEL ne la
         // facture pas au niveau apt. Le mode 5 est une virtualisation directe de
         // l'installation collective : son réseau local reste donc à calculer.
         $modeAppId  = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $logement);
         $isZoneDpe  = $modeAppId !== null && in_array(
             $modeAppId,
-            [2, 3, 4, 10, 11, 12, 13, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
+            [2, 3, 4, 31, 32, 35, 36, 37],
             true,
         );
+        // §17.2.2.5.1 p.118 : les appartements générés reçoivent aussi
+        // les auxiliaires ECS, répartis par le rapport des besoins ECS.
+        // Ils ne sont donc pas concernés par ce court-circuit autonome.
         if ($isZoneDpe) {
             return [0.0, 1.0];
         }

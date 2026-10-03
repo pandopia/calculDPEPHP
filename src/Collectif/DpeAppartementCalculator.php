@@ -14,13 +14,13 @@ use DOMElement;
  *
  * Deux cas principaux :
  *
- * §17.2.1 — DPE appartement autonome (enum_methode_application_dpe_log_id ∈ {6, 7}) :
+ * §17.2.1 — DPE appartement autonome (enum_methode_application_dpe_log_id ∈ {2-5, 31-32, 35-37}) :
  *   Calcul à l'échelle de l'appartement. Usages individuels → méthode ordinaire.
  *   Usages collectifs non-combustion → uses caractéristiques générateur immeuble.
  *   Usages collectifs combustion → générateur équivalent : Pe = a × Pn_collectif,
  *   a = Sh_appartement / Sh_immeuble.
  *
- * §17.2.2 — Génération depuis données immeuble (enum_methode_application_dpe_log_id = 27) :
+ * §17.2.2 — Génération depuis données immeuble (enum_methode_application_dpe_log_id ∈ {10-13, 33-34, 38-40}) :
  *   Méthode 1 (CH collectif sans IFC) : Cch_ap = (Sh_ap / Sh) × Cch_immeuble
  *   Méthode 2 (CH collectif avec IFC ou CH individuel homogène) :
  *     Cch_ap = [(1-coef_IFC)×(Sh_ap/Sh) + coef_IFC×Clé_ap] × Cch_immeuble
@@ -43,15 +43,15 @@ final class DpeAppartementCalculator implements CalculatorInterface
 {
     /**
      * Codes methode correspondant à un DPE généré depuis les données immeuble.
-     * 27 = "Génération depuis DPE immeuble".
+     * Codes ADEME de génération depuis un immeuble (27 désigne un immeuble).
      */
-    private const METHODE_DEPUIS_IMMEUBLE = [27];
+    private const METHODE_DEPUIS_IMMEUBLE = [10, 11, 12, 13, 33, 34, 38, 39, 40];
 
     /**
      * Codes methode correspondant à un DPE appartement autonome.
-     * 6 = appartement collectif, 7 = appartement individuel (ventilation collective).
+     * Codes ADEME des appartements décrits à leur propre échelle.
      */
-    private const METHODE_APPARTEMENT = [6, 7];
+    private const METHODE_APPARTEMENT = [2, 3, 4, 5, 31, 32, 35, 36, 37];
 
     public function id(): string
     {
@@ -104,6 +104,6 @@ final class DpeAppartementCalculator implements CalculatorInterface
         //   2. Surface de l'appartement (Shap) et surface totale immeuble (Sh)
         //   3. Coefficient IFC et clé Clé_ap
         // Ces données sont absentes dans le XML d'entrée des DPE appartements standalone.
-        // Ce cas sera complété quand un fichier test avec méthode=27 sera disponible.
+        // Ce cas sera complété quand un fichier test généré ; voir BuildingCalculation pour la collection typée sera disponible.
     }
 }

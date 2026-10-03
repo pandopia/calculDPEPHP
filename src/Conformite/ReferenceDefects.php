@@ -116,6 +116,7 @@ final class ReferenceDefects
             $suspects += self::stockageIntegreSerialiseCommeSepare($referenceDoc);
             $suspects += self::repartitionEcsAppartementNonReproductible($expected, $referenceDoc);
             $suspects += self::ventilationSansPuissanceMaisConsommatrice($expected, $referenceDoc);
+            $suspects += self::bouclageEcsSansAuxiliaire($expected, $referenceDoc);
             $suspects += self::pontThermiqueKPorteDejaLaLongueur($referenceDoc);
         }
 
@@ -160,6 +161,32 @@ final class ReferenceDefects
         }
 
         return $suspects;
+    }
+
+    /**
+     * §15.2.3 pp.98-102 : un circulateur de réseau ECS bouclé appelle au moins
+     * 20 W, même hors puisage. §17.2.2.5.1 p.118 : sa consommation est aussi
+     * répartie aux appartements générés par une clé de besoins positive.
+     * Preuve sur la référence seule ; aucun résultat de notre moteur n'intervient.
+     * @spec-source resources/specsplitted/15-auxiliaires/02-aux-distribution.md
+     * @param array<string, string> $expected
+     * @return array<string, string>
+     */
+    private static function bouclageEcsSansAuxiliaire(array $expected, DOMDocument $doc): array
+    {
+        $xp = new DOMXPath($doc);
+        $method = (int) $xp->evaluate('string(//enum_methode_application_dpe_log_id)');
+        if (!in_array($method, [10, 11, 12, 13, 33, 34, 38, 39, 40], true)) { return []; }
+        $installations = $xp->query('//installation_ecs[donnee_entree/enum_type_installation_id=2 and donnee_entree/enum_bouclage_reseau_ecs_id=2 and donnee_entree/cle_repartition_ecs>0 and donnee_entree/surface_habitable>0 and donnee_intermediaire/besoin_ecs>0 and not(donnee_entree/enum_type_installation_solaire_id)]');
+        if ($installations->length === 0) { return []; }
+        $result = [];
+        foreach (self::BLOCS_AUXILIAIRES as [$prefix, $postPrefix]) {
+            $path = $prefix . $postPrefix . 'auxiliaire_distribution_ecs';
+            if (self::num($expected, $path) === 0.0) {
+                $result[$path] = 'la référence publie zéro auxiliaire ECS malgré un réseau collectif bouclé, des besoins non nuls et une clé positive (§15.2.3 et §17.2.2.5.1)';
+            }
+        }
+        return $result;
     }
 
     /**
