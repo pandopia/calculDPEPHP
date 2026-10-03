@@ -145,6 +145,27 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Faible rendement sur le corpus actuel : 8 cas seulement, dont 2 au rapport
   exact de 2. Mesurer avant de livrer.
 
+### TASK-K40 — Auxiliaires de distribution de refroidissement : balise jamais produite
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
+- §15 p.97 annonce `Caux_fr = Caux_dist_fr`, mais **aucun paragraphe ne donne la
+  formule** : §15.2.1 ne tabule que le mode chaud, et §15.2.2/15.2.3 ne traitent
+  que le chauffage et l'ECS. open3cl ne la calcule pas davantage.
+- Nous ne produisons donc ni `conso_auxiliaire_distribution_fr` ni ses trois
+  dérivées (coût, GES, énergie primaire), ce qui vaut 88 balises manquantes sur
+  22 cas.
+- **Aucune référence du corpus ne publie de valeur non nulle** : sur 390
+  fichiers, 22 écrivent un zéro — tous sans installation de froid — et 367
+  omettent la balise, y compris les 20 qui ont du froid. Il n'y a donc rien à
+  valider contre le corpus.
+- La sérialisation suit le format du fichier : les versions 8.x et 9.x
+  l'écrivent (11 sur 11), la version 2 jamais (1 sur 364), la 0.1.0 11 fois sur
+  14. Publier un zéro sous ce seul garde de format gagnerait environ 72 écarts
+  nets, au prix d'un second garde de format inféré, pour une balise que la
+  méthode ne définit pas. Non retenu en l'état.
+- Rouvrir si une référence publiant une valeur non nulle apparaît au corpus, ou
+  avec un texte réglementaire donnant la formule.
+
 ### TASK-K35 — 2113E0368523M : conso_ch et référence lacunaire
 
 - [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
