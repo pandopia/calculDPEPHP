@@ -27,7 +27,8 @@ use DOMXPath;
  *   Comble perdu      : < 0.15 → 1, < 0.20 → 2, < 0.30 → 3, sinon 4
  *   Menuiseries (bv+portes) : < 1.60 → 1, < 2.20 → 2, < 3.00 → 3, sinon 4
  *
- * Tags plancher_haut écrits uniquement si des planchers de ce sous-type existent.
+ * Un seul tag plancher_haut est écrit : celui du sous-type qui porte la plus
+ * grande surface déperditive, l'ordre du fichier départageant les égalités.
  *
  * @spec-section 3
  * @spec-pages   7
@@ -53,6 +54,17 @@ final class QualiteIsolationCalculator implements CalculatorInterface
 
     // enum_type_plancher_haut_id=12 → comble aménagé
     private const COMBLE_AMENAGE_ID = 12;
+
+    /** `enum_type_adjacence_id` = 7 : « locaux non chauffés non accessible ». */
+    private const ADJACENCE_LNC_NON_ACCESSIBLE = 7;
+
+    /**
+     * Rang du premier plancher haut rencontré dans chaque sous-type, renseigné
+     * par `sumPlancherHaut` : il départage deux sous-types de surface égale.
+     *
+     * @var array<string, int>
+     */
+    private array $ordrePlancherHaut = ['ca' => 0, 'tt' => 1, 'cp' => 2];
 
     public function id(): string
     {
@@ -108,20 +120,6 @@ final class QualiteIsolationCalculator implements CalculatorInterface
         // l'indicateur du plancher bas est établi avec le coefficient effectif
         // Ue (`upb_final`) et la rubrique toit-terrasse est également renseignée
         // avec la qualité la plus défavorable des deux pans de toiture.
-        if ($uCaMoy !== null && $uCpMoy !== null) {
-            [$upbSU, $sPB] = $this->sumQualite(
-                $xpath,
-                $node,
-                'plancher_bas',
-                ['upb_final', 'upb'],
-                'surface_paroi_opaque',
-                filterBGt0: false,
-                excludeAdj22: true,
-            );
-            if ($uTtMoy === null) {
-                $uTtMoy = max($uCaMoy, $uCpMoy);
-            }
-        }
         $sPH = $sCA + $sTT + $sCP;
 
         // ubat = déperditions_stockées / surface_déperditive (hors adj=22 dans dénominateur)
@@ -151,15 +149,27 @@ final class QualiteIsolationCalculator implements CalculatorInterface
             $accessor->setChildValue($qi, 'qualite_isol_menuiserie', $this->classe($uMenuMoy, self::MENU_THRESHOLDS));
         }
 
-        // Planchers hauts : tag écrit uniquement si ce sous-type existe (UphX > 0 dans open3cl)
-        if ($uCaMoy !== null) {
-            $accessor->setChildValue($qi, 'qualite_isol_plancher_haut_comble_amenage', $this->classe($uCaMoy, self::CA_THRESHOLDS));
+        // Un logement n'a qu'une toiture : le schéma prévoit trois rubriques,
+        // mais une seule est renseignée — celle du sous-type qui porte la plus
+        // grande surface déperditive. Les planchers hauts des autres sous-types
+        // n'y entrent pas, ni dans sa surface ni dans sa moyenne.
+        $rubriques = [
+            ['tag' => 'qualite_isol_plancher_haut_comble_amenage', 'u' => $uCaMoy, 's' => $sCA, 'seuils' => self::CA_THRESHOLDS, 'ordre' => $this->ordrePlancherHaut['ca']],
+            ['tag' => 'qualite_isol_plancher_haut_toit_terrasse',  'u' => $uTtMoy, 's' => $sTT, 'seuils' => self::TT_THRESHOLDS, 'ordre' => $this->ordrePlancherHaut['tt']],
+            ['tag' => 'qualite_isol_plancher_haut_comble_perdu',   'u' => $uCpMoy, 's' => $sCP, 'seuils' => self::CP_THRESHOLDS, 'ordre' => $this->ordrePlancherHaut['cp']],
+        ];
+        usort($rubriques, static fn(array $a, array $b): int => $a['ordre'] <=> $b['ordre']);
+        $retenue = null;
+        foreach ($rubriques as $rubrique) {
+            if ($rubrique['u'] === null) {
+                continue;
+            }
+            if ($retenue === null || $rubrique['s'] > $retenue['s']) {
+                $retenue = $rubrique;
+            }
         }
-        if ($uTtMoy !== null) {
-            $accessor->setChildValue($qi, 'qualite_isol_plancher_haut_toit_terrasse', $this->classe($uTtMoy, self::TT_THRESHOLDS));
-        }
-        if ($uCpMoy !== null) {
-            $accessor->setChildValue($qi, 'qualite_isol_plancher_haut_comble_perdu', $this->classe($uCpMoy, self::CP_THRESHOLDS));
+        if ($retenue !== null) {
+            $accessor->setChildValue($qi, $retenue['tag'], $this->classe($retenue['u'], $retenue['seuils']));
         }
     }
 
@@ -234,13 +244,13 @@ final class QualiteIsolationCalculator implements CalculatorInterface
     /**
      * Catégorise les planchers hauts en 3 sous-types (comme open3cl) :
      * - comble aménagé  : adjacence=1 ET (type_ph=12 OU description contient "combles aménagés")
-     * - toit terrasse   : adjacence=1 ET NON comble aménagé
-     * - comble perdu    : adjacence≠1
+     * - toit terrasse   : adjacence=1 ou 7, ET NON comble aménagé
+     * - comble perdu    : toute autre adjacence
      *
      * @return array{0:float|null, 1:float, 2:float|null, 3:float, 4:float|null, 5:float}
      *         [uCaMoy, sCA, uTtMoy, sTT, uCpMoy, sCP]
-     *         Surfaces (sCA/sTT/sCP) excluent adj=22 (pour dénominateur ubat, comme open3cl).
-     *         U moyens utilisent tous les planchers (comme open3cl pour le numérateur qualité).
+     *         Surfaces et U moyens excluent adj=22, qui n'est pas une paroi de
+     *         l'enveloppe.
      */
     private function sumPlancherHaut(DOMXPath $xpath, DOMElement $logement, NodeAccessor $accessor): array
     {
@@ -249,37 +259,19 @@ final class QualiteIsolationCalculator implements CalculatorInterface
         // comme pour les murs et les planchers bas. `n` compte en revanche les
         // planchers du sous-type quelle que soit leur adjacence, pour savoir si
         // la rubrique doit être renseignée.
+        // `ordre` retient le rang du premier plancher haut rencontré dans le
+        // sous-type : il départage deux sous-types de surface égale.
         $sommes = [
-            'ca' => ['su' => 0.0, 's' => 0.0, 'n' => 0],
-            'tt' => ['su' => 0.0, 's' => 0.0, 'n' => 0],
-            'cp' => ['su' => 0.0, 's' => 0.0, 'n' => 0],
+            'ca' => ['su' => 0.0, 's' => 0.0, 'n' => 0, 'ordre' => PHP_INT_MAX],
+            'tt' => ['su' => 0.0, 's' => 0.0, 'n' => 0, 'ordre' => PHP_INT_MAX],
+            'cp' => ['su' => 0.0, 's' => 0.0, 'n' => 0, 'ordre' => PHP_INT_MAX],
         ];
+        $rang = 0;
 
         $nodes = $xpath->query('.//plancher_haut', $logement);
         if ($nodes === false) {
             return [null, 0.0, null, 0.0, null, 0.0];
         }
-
-        // Compatibilité LICIEL/BBS observée sur les exports ADEME 2.6 : quand
-        // une toiture est entièrement constituée de plafonds sous solives bois
-        // (type 10) et combine un LNC non accessible (7) avec un comble
-        // faiblement ventilé (12), la qualité est sérialisée dans la rubrique
-        // « toit terrasse ». Les configurations usuelles restent classées par
-        // l'adjacence conformément à open3cl.
-        $allType10 = $nodes->length > 0;
-        $hasAdj7   = false;
-        $hasAdj12  = false;
-        foreach ($nodes as $candidate) {
-            if (!$candidate instanceof DOMElement) {
-                continue;
-            }
-            $candidateType = $accessor->getIntOrNull('./donnee_entree/enum_type_plancher_haut_id', $candidate);
-            $candidateAdj  = $accessor->getIntOrNull('./donnee_entree/enum_type_adjacence_id', $candidate);
-            $allType10 = $allType10 && $candidateType === 10;
-            $hasAdj7   = $hasAdj7 || $candidateAdj === 7;
-            $hasAdj12  = $hasAdj12 || $candidateAdj === 12;
-        }
-        $licielMixedLncRoof = $allType10 && $hasAdj7 && $hasAdj12;
 
         foreach ($nodes as $ph) {
             if (!$ph instanceof DOMElement) {
@@ -295,17 +287,21 @@ final class QualiteIsolationCalculator implements CalculatorInterface
             $typePhId = $accessor->getIntOrNull('./donnee_entree/enum_type_plancher_haut_id', $ph);
             $desc     = strtolower($accessor->getStringOrNull('./donnee_entree/description', $ph) ?? '');
 
-            if ($licielMixedLncRoof) {
-                $bucket = 'tt';
-            } elseif ($adjId === 1) {
+            if ($adjId === 1) {
                 $isCA   = ($typePhId === self::COMBLE_AMENAGE_ID)
                        || str_contains($desc, 'combles aménagés')
                        || str_contains($desc, 'comble aménagé');
                 $bucket = $isCA ? 'ca' : 'tt';
+            } elseif ($adjId === self::ADJACENCE_LNC_NON_ACCESSIBLE) {
+                // Un local non chauffé non accessible n'est pas un comble :
+                // la référence le range en toit terrasse.
+                $bucket = 'tt';
             } else {
                 $bucket = 'cp';
             }
 
+            $sommes[$bucket]['ordre'] = min($sommes[$bucket]['ordre'], $rang);
+            $rang++;
             $sommes[$bucket]['n']++;
             if ($adjId !== 22) {
                 $sommes[$bucket]['su'] += $s * $u;
@@ -319,6 +315,11 @@ final class QualiteIsolationCalculator implements CalculatorInterface
         $uMoy = fn(array $a): ?float => $a['n'] === 0
             ? null
             : ($a['s'] > 0.0 ? $a['su'] / $a['s'] : 0.0);
+        $this->ordrePlancherHaut = [
+            'ca' => $sommes['ca']['ordre'],
+            'tt' => $sommes['tt']['ordre'],
+            'cp' => $sommes['cp']['ordre'],
+        ];
         return [
             $uMoy($sommes['ca']), $sommes['ca']['s'],
             $uMoy($sommes['tt']), $sommes['tt']['s'],
