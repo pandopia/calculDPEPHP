@@ -144,21 +144,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - `umur0 = 2,9` attendu contre 2,5 sur trois murs, et `k = 0,365` contre 0,73
   sur trois ponts : non instruits.
 
-### TASK-K36 — Auxiliaires de génération d'une chaudière bois : atmosphérique ou ventilateur ?
-
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
-- Complète TASK-K28 avec un second cas. §15.1 p.97 distingue « chaudière bois
-  atmosphérique » (G = 0, H = 0) de « chaudière bois assistée par ventilateur »
-  (G = 73,3, H = 10,5). **Le XSD ne porte aucun champ pour les distinguer** :
-  `enum_type_generateur_ch_id` 55 à 74 ne donne que le combustible (bûche,
-  plaquette, granulés) et le millésime.
-- `AuxGenerationCalculator` range tous les bois en « assistée par ventilateur ».
-  Sur 2613E2419802A — chaudière **granulés** de 2004-2012, donc a priori la plus
-  sûrement ventilée — la référence publie pourtant
-  `conso_auxiliaire_generation_ch = 0`, soit la ligne atmosphérique.
-- Le corpus ne compte qu'un seul logement chauffé exclusivement au bois : aucune
-  corroboration possible. Ne pas basculer le défaut sur cette seule observation.
-
 ### TASK-K37 — Auxiliaires de distribution d'ECS d'un réseau à traceur chauffant
 
 - [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
@@ -309,25 +294,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   traitement d'une installation à plusieurs émetteurs. §15.2.1 dit « Sh :
   surface habitable du bâtiment », ce que le code applique déjà : chercher la
   source avant de s'en écarter, et mesurer en A/B.
-
-### TASK-K28 — Auxiliaires de génération d'une chaudière charbon ou bois
-
-- [~CLA] Owner: CLA  | Phase: K  | Estimation: 2h  | Priorité: basse
-- `AuxGenerationCalculator` ne reconnaît pas les chaudières charbon (enums
-  120-126) : elles retombent sur `GH_DEFAULT` et publient
-  `conso_auxiliaire_generation_ch = 0`. Or §15.1 p.97 n'énonce que deux cas nuls
-  (PAC, réseau de chaleur) : le zéro n'est pas sourcé.
-- §13.2.2.3 p.89 dit « les chaudières au charbon sont traitées comme des
-  chaudières bois bûche », ce qui les renvoie vers les lignes bois — mais le
-  tableau §15.1 en distingue deux, « atmosphérique » (0/0) et « assistée par
-  ventilateur » (73,3/10,5), sans qu'aucun champ du XSD permette de trancher.
-  Notre code applique aujourd'hui la ligne ventilateur à tout 55-74, ce qui
-  n'est pas sourcé non plus.
-- **Non mesurable sur les corpus actuels** : ils ne contiennent qu'une seule
-  chaudière charbon et aucune chaudière bois. Ne pas trancher sur ce cas isolé.
-  Pour information, sa référence applique G=20 / H=1,6 (ligne « chaudière au gaz
-  ou au fioul ») et publie 56,371 kWh ; la ligne bois-ventilateur donnerait
-  313,9 kWh. Élargir le corpus avant de décider.
 
 ### TASK-K29 — Écarts non reproductibles des appartements 2313E359… (méthode 33)
 

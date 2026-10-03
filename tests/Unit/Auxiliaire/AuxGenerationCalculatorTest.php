@@ -184,6 +184,77 @@ XML;
         );
     }
 
+    /**
+     * §15.1 p.97 distingue « chaudière bois atmosphérique » (0 / 0) de
+     * « chaudière bois assistée par ventilateur » (73,3 / 10,5). La ventouse,
+     * terminal à tirage forcé, départage les deux.
+     */
+    public function testUneChaudiereBoisSansVentouseEstAtmospherique(): void
+    {
+        [$doc, $logement, $ctx] = $this->buildDoc($this->chaudiereSeule(73, 0, 15000.0, 11287.3));
+        (new AuxGenerationCalculator())->calculate($logement, $ctx);
+
+        $this->assertSame(0.0, $this->efValue($doc, 'conso_auxiliaire_generation_ch'));
+    }
+
+    public function testUneChaudiereBoisAVentouseEstAssisteeParVentilateur(): void
+    {
+        [$doc, $logement, $ctx] = $this->buildDoc($this->chaudiereSeule(73, 1, 15000.0, 11287.3));
+        (new AuxGenerationCalculator())->calculate($logement, $ctx);
+
+        // Paux = 73,3 + 10,5 x 15 = 230,8 W ; Q = 230,8 x 11287,3 / 15000.
+        $this->assertEqualsWithDelta(173.6733, $this->efValue($doc, 'conso_auxiliaire_generation_ch'), 0.001);
+    }
+
+    /**
+     * §15.1 ne tabule pas le charbon et n'énonce que deux cas nuls (PAC, réseau
+     * de chaleur). Le renvoi de §13.2.2.3 vers le bois bûche vaut pour le
+     * rendement de combustion, pas pour les auxiliaires : la ligne retenue est
+     * « chaudière au gaz ou au fioul », quelle que soit la ventouse.
+     */
+    public function testUneChaudiereCharbonSuitLaLigneGazFioul(): void
+    {
+        [$doc, $logement, $ctx] = $this->buildDoc($this->chaudiereSeule(121, 0, 18000.0, 9594.106));
+        (new AuxGenerationCalculator())->calculate($logement, $ctx);
+
+        // Paux = 20 + 1,6 x 18 = 48,8 W ; Q = 48,8 x 9594,106 / 18000.
+        $this->assertEqualsWithDelta(26.0107, $this->efValue($doc, 'conso_auxiliaire_generation_ch'), 0.001);
+    }
+
+    private function chaudiereSeule(int $genId, int $ventouse, float $pn, float $besoin): string
+    {
+        return <<<XML
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale>
+        <enum_methode_application_dpe_log_id>1</enum_methode_application_dpe_log_id>
+        <surface_habitable_logement>100</surface_habitable_logement>
+    </caracteristique_generale>
+    <installation_chauffage_collection>
+        <installation_chauffage>
+            <donnee_entree/>
+            <donnee_intermediaire>
+                <besoin_ch>$besoin</besoin_ch>
+                <besoin_ch_depensier>$besoin</besoin_ch_depensier>
+            </donnee_intermediaire>
+            <generateur_chauffage_collection>
+                <generateur_chauffage>
+                    <donnee_entree>
+                        <enum_type_generateur_ch_id>$genId</enum_type_generateur_ch_id>
+                        <presence_ventouse>$ventouse</presence_ventouse>
+                    </donnee_entree>
+                    <donnee_intermediaire>
+                        <pn>$pn</pn>
+                    </donnee_intermediaire>
+                </generateur_chauffage>
+            </generateur_chauffage_collection>
+        </installation_chauffage>
+    </installation_chauffage_collection>
+    <sortie/>
+</logement>
+XML;
+    }
+
     private function fioulAvecSurfaces(int $methode): string
     {
         return <<<XML
