@@ -253,7 +253,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K06 — Écarts résiduels de génération ECS
 
-- [ ] Owner: __  | Phase: K  | Estimation: 5h  | Priorité: moyenne
+- [~CLA] Owner: CLA  | Phase: K  | Estimation: 5h  | Priorité: moyenne
 - Acquis : `rendement_stockage` n'est plus écrit sans ballon ; les puissances
   saisies en `donnee_intermediaire` sont préservées et utilisées.
 - Reste : environ 33 divergences de `rendement_generation`, 33 de
