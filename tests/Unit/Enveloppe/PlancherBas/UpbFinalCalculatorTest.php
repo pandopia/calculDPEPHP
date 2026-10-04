@@ -83,6 +83,15 @@ final class UpbFinalCalculatorTest extends TestCase
         yield 'périmètre absent' => ['7.0.0', 6, 1, '', 2.0, 2.0];
         yield 'périmètre nul' => ['7.0.0', 6, 1, '<perimetre_ue>0</perimetre_ue>', 2.0, 2.0];
         yield 'plancher extérieur' => ['7.0.0', 1, 1, $perimetre, 2.0, 2.0];
+        // XSD : calcul_ue=1 signifie que le plancher est déjà passé par le calcul Ue.
+        // Le coefficient fourni est une entrée, même si surface/périmètre sont documentés.
+        $terrePlein = '<surface_ue>790.3</surface_ue><perimetre_ue>140</perimetre_ue>';
+        yield 'Ue calculé fourni sur terre-plein avec géométrie complète' => ['2', 5, 1, $terrePlein . '<ue>0.15333333</ue>', 0.23, 0.15333333];
+        $geometrie = '<surface_ue>211.56</surface_ue>' . $perimetre;
+        yield 'Ue calculé fourni sur vide sanitaire avec géométrie complète' => ['2', 3, 1, $geometrie . '<ue>0.2</ue>', 2.0, 0.2];
+        yield 'Ue calculé fourni sur sous-sol avec géométrie complète' => ['2', 6, 1, $geometrie . '<ue>0.2</ue>', 2.0, 0.2];
+        yield 'Ue ignoré sans déclaration de calcul préalable' => ['2', 5, 0, $terrePlein . '<ue>0.15333333</ue>', 0.23, 0.14833333333333];
+        yield 'reconstruction si Ue absent malgré calcul déclaré' => ['2', 5, 1, $terrePlein, 0.23, 0.14833333333333];
     }
 
     /** @return array{DOMDocument, DOMElement} */

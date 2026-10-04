@@ -19,7 +19,7 @@ use DOMElement;
 /**
  * Installation avec en appoint un insert/poêle bois et un chauffage élec SdB (§9.5 p.63-64).
  *
- * enum_cfg_installation_ch_id = 5 → 3 installations :
+ * enum_cfg_installation_ch_id = 5 → 3 branches (une ou trois installations) :
  *   1ère (principale) : Cch1 = 0.75 × 0.90 × Bch × INT1 × Ich1  = 0.675 × Bch …
  *   2ème (insert)     : Cch2 = 0.25 × 0.90 × Bch × INT2 × Ich2  = 0.225 × Bch …
  *   3ème (élec SdB)   : Cch3 = 0.10 × Bch × INT3 × Ich3
@@ -28,6 +28,7 @@ use DOMElement;
  * @spec-pages   63-64
  * @spec-source  resources/specsplitted/09-conso-chauffage/05-appoint-insert-elec-sdb.md
  * @xml-input    installation_chauffage.donnee_entree.{enum_cfg_installation_ch_id, rdim}
+ *               generateur_chauffage/emetteur_chauffage.donnee_entree.enum_lien_generateur_emetteur_id
  * @xml-output   installation_chauffage.donnee_intermediaire.{besoin_ch, conso_ch}
  * @depends-on   \CalculDpePHP\Chauffage\BesoinChauffageCalculator
  * @tables       (aucune)
@@ -75,6 +76,22 @@ final class AppointInsertElecSdb implements CalculatorInterface
         $rdim          = $accessor->getFloatOrNull('./donnee_entree/rdim', $node) ?? 1.0;
         $rdimEffective = max(1e-9, $rdim);
 
+        // §9.5 p.63-64 : les liens XSD 1/2/3 désignent respectivement le
+        // chauffage principal, le poêle d'appoint et l'électrique de salle de bains.
+        // Une installation unique peut porter ces trois branches : chacune reçoit
+        // sa part de Bch avec les rendements et l'intermittence de ses émetteurs.
+        $collection = $node->parentNode;
+        $liensGenerateurs = array_keys($this->groupByLien($accessor, $node, 'generateur_chauffage_collection', 'generateur_chauffage'));
+        $liensEmetteurs = array_keys($this->groupByLien($accessor, $node, 'emetteur_chauffage_collection', 'emetteur_chauffage'));
+        if ($collection instanceof DOMElement
+            && $collection->getElementsByTagName('installation_chauffage')->length === 1
+            && array_diff([1, 2, 3], $liensGenerateurs) === []
+            && array_diff([1, 2, 3], $liensEmetteurs) === []
+            && $this->computeAndWriteParLien(self::FACTORS, $bch / $rdimEffective, $bchDep / $rdimEffective, $node, $context)) {
+            return;
+        }
+
+        // Sérialisation alternative : chaque installation représente une branche.
         $this->computeAndWrite($factor * $bch / $rdimEffective, $factor * $bchDep / $rdimEffective, $node, $context);
     }
 

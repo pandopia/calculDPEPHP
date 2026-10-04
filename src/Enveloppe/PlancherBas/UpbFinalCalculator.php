@@ -16,8 +16,8 @@ use RuntimeException;
  * Pour les planchers donnant sur extérieur ou local non chauffé (hors sous-sol),
  * Upb_final = Upb (le plancher est traité comme une paroi déperditive classique).
  *
- * Si le coefficient Ue calculé est fourni mais que sa reconstruction est impossible
- * faute de surface ou de périmètre Ue, la valeur publiée est utilisée.
+ * Si calcul_ue=1 et que le coefficient Ue est fourni en entrée, il remplace Upb,
+ * même lorsque la surface et le périmètre Ue sont également renseignés.
  * Sinon, pour les planchers sur **vide sanitaire** (adj=3), **sous-sol non chauffé** (adj=6),
  * **terre-plein** (adj=5) ou **paroi enterrée** (adj=2), un coefficient Ue est calculé
  * via les tableaux §3.2.2.1 (p.18-19) en fonction de di.upb (Uiso) et 2S/P.
@@ -71,14 +71,12 @@ final class UpbFinalCalculator implements CalculatorInterface
 
         $adjacence = $accessor->getIntOrNull('./enum_type_adjacence_id', $entree);
 
-        // Le XSD ADEME définit `ue` comme le « coefficient remplaçant Upb ».
-        // Il constitue le seul résultat reproductible lorsque les données de
-        // géométrie nécessaires à la table ne sont pas toutes publiées. La spec
-        // précise en outre que le Ue d'un plancher d'immeuble est calculé à
-        // l'immeuble, y compris pour un DPE réalisé sur un seul appartement.
-        $geometryIncomplete = $accessor->getFloatOrNull('./surface_ue', $entree) === null
-            || $accessor->getFloatOrNull('./perimetre_ue', $entree) === null;
-        $ueSaisi = $geometryIncomplete && $accessor->getIntOrNull('./calcul_ue', $entree) === 1
+        // XSD ADEME, plancher_bas/donnee_entree : calcul_ue=1 signifie que le
+        // plancher est déjà passé par le calcul Ue ; `ue` remplace alors Upb.
+        // La géométrie documente ce calcul sans invalider le coefficient fourni.
+        // §3.2.2.1 p.18-19 : ce Ue concerne le plancher entier de l'immeuble,
+        // y compris pour le DPE d'un seul appartement.
+        $ueSaisi = $accessor->getIntOrNull('./calcul_ue', $entree) === 1
             ? $accessor->getFloatOrNull('./ue', $entree)
             : null;
 

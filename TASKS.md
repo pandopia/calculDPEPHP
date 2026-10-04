@@ -106,22 +106,20 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   consommations par générateur que lorsqu'elles répartissent celle de
   l'installation.
 
-### TASK-K34 — Étendre la répartition par branche à §9.3 et §9.5
+### TASK-K34 — Sérialisations multiples de la répartition §9.3 et §9.5
 
-- [~CDX] Owner: CDX  | Phase: K  | Estimation: 3h  | Priorité: moyenne
-- `InsertElecSdb` (§9.4) répartit désormais la consommation entre l'émetteur de
-  base et celui de salle de bains via `enum_lien_generateur_emetteur_id`, grâce
-  à `StrategieComputeTrait::computeAndWriteParLien`. `InsertPoeleAppoint` (§9.3,
-  liens 1 et 2) et `AppointInsertElecSdb` (§9.5, liens 1, 2 et 3) lisent encore
-  les parts sur le rang de l'installation et écrivent la même consommation sur
-  chaque générateur.
-- Le corpus compte une douzaine de fichiers en cfg 3 et 5, dont
-  2600E0080950R, 2600E0105050P, 2600E0083964P et 2400E0086646R.
-- Reprendre le garde de §9.4 : la répartition ne vaut que si l'installation est
-  la seule du logement, sans quoi le besoin est double-compté.
-- Gain attendu en prime : la pondération EP/GES par générateur ne s'applique
-  qu'aux installations dont les consommations par générateur se répartissent, ce
-  que cette tâche rendrait vrai pour ces fichiers.
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- Acquis : §9.3 lit déjà les liens générateur/émetteur ; la campagne 50h
+  traite aussi §9.5 dans une installation unique portant les trois liens
+  1/2/3, avec les parts 67,5/22,5/10 et les rendements propres aux branches.
+  Les quatre DPE 2624E1215905S, 2624E1215816H, 2624E1215722R et
+  2624E1215661I retrouvent leur lettre B.
+- Reste à qualifier les sérialisations à plusieurs installations et les
+  branches comprenant plusieurs générateurs ou plusieurs émetteurs de salle
+  de bains : prorata de surface (§9.5 p.64), rendements dépensiers propres et
+  absence de double comptage. Les gardes et replis actuels restent en place.
+- Les coûts par énergie et les auxiliaires relèvent respectivement de K33
+  et K39 ; ne pas confondre consommation répartie et conformité complète.
 
 ### TASK-K39 — Auxiliaires de génération : répartir le besoin entre générateurs
 
@@ -500,3 +498,15 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - [ ] Valider une collection réelle avec un coefficient IFC explicitement saisi : le moteur conserve 0,7 par défaut ; l’adaptateur Pandopia utilise une approximation surfacique tracée pour les anciens fichiers sans coefficient.
 - [ ] Auditer l’autoconsommation photovoltaïque des appartements générés (§16.2) : vérifier l’échelle des consommations lues dans les générateurs et la conversion primaire/finale, au-delà de la répartition des capteurs. Mesurer en A/B sur des cas collectifs et individuels.
 - [ ] Exécuter la couverture PHPUnit avec Xdebug (indisponible dans le runtime utilisé pour cette livraison) et vérifier l’objectif de 80 %.
+
+### TASK-K47 — Date d'arrêté et millésime du réseau 3802C
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- Campagne 50h : bâtiment 1563791, dont 2638E1939755Q (cible 4012840),
+  DPE du 21/07/2026. XML : `date_arrete_reseau_chaleur=2025-04-11` ;
+  référence EF×0,093, moteur EF×0,091, trois GES arrondis 15 contre 14.
+- Le facteur ACV 3802C de l'arrêté du 11/04/2025 est 0,091 ; 0,093
+  correspond au millésime suivant dans les tables du moteur. Qualifier la
+  date d'arrêté publiée et la priorité attendue avec la date du DPE avant
+  de modifier le résolveur. Ne pas remplacer une valeur de table pour ces cas.
+- Source : https://www.legifrance.gouv.fr/jorf/article_jo/JORFARTI000051520830
