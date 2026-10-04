@@ -108,7 +108,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K34 — Étendre la répartition par branche à §9.3 et §9.5
 
-- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- [~CDX] Owner: CDX  | Phase: K  | Estimation: 3h  | Priorité: moyenne
 - `InsertElecSdb` (§9.4) répartit désormais la consommation entre l'émetteur de
   base et celui de salle de bains via `enum_lien_generateur_emetteur_id`, grâce
   à `StrategieComputeTrait::computeAndWriteParLien`. `InsertPoeleAppoint` (§9.3,
