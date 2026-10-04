@@ -71,6 +71,38 @@ final class KCalculator implements CalculatorInterface
             }
         }
 
+        // Ancien format 6.x : certaines liaisons portent les descriptions exactes
+        // des parois, mais leurs références sont nil et leur ID tabulé est resté
+        // générique. Résoudre uniquement ces associations non ambiguës.
+        $legacyK = $this->legacyDescribedConnection($entree, $accessor, $context);
+        if ($legacyK !== null && ($methode === 1 || $methode === null)) {
+            if ($accessor->getIntOrNull('./enum_type_liaison_id', $entree) === 2) {
+                $context->set('enveloppe.pt_fraction_in_k.' . $node->getNodePath(), true);
+            }
+            $this->writeK($node, $accessor, $legacyK);
+            return;
+        }
+
+        // §3.4.3 p.35 : un plancher haut en structure légère ne crée
+        // pas de pont thermique linéique, même contre un mur lourd.
+        if ($accessor->getIntOrNull('./enum_type_liaison_id', $entree) === 3) {
+            $xpath = new DOMXPath($context->document);
+            foreach (['reference_1', 'reference_2'] as $field) {
+                $ref = $accessor->getStringOrNull('./' . $field, $entree);
+                $floor = $ref !== null ? $this->findParoiByReference($xpath, $ref) : null;
+                if ($floor === null || $floor->nodeName !== 'plancher_haut') { continue; }
+                // XSD : bois/solives bois ou métalliques, chaume, bac acier.
+                // Un plafond en plaque de plâtre ne décrit pas la structure
+                // porteuse : il peut masquer une dalle béton. Béton, entrevous et types inconnus sont
+                // conservés ; paroi_lourde décrit l'inertie, pas la structure.
+                $type = $accessor->getIntOrNull('./donnee_entree/enum_type_plancher_haut_id', $floor);
+                if (in_array($type, [4, 5, 6, 9, 10, 13, 16], true)) {
+                    $this->writeK($node, $accessor, 0.0);
+                    return;
+                }
+            }
+        }
+
         if ($this->isNegligibleByAdjacency($entree, $accessor, $context->document)) {
             $this->writeK($node, $accessor, 0.0);
             return;
@@ -87,7 +119,16 @@ final class KCalculator implements CalculatorInterface
             if ($tvId !== null) {
                 $table = $context->tables->load('enveloppe/tv_pont_thermique_id');
                 if (isset($table[$tvId])) {
-                    $this->writeK($node, $accessor, (float)$table[$tvId]);
+                    $k = (float)$table[$tvId];
+                    // Format 7.x : les limites intermédiaires du logement
+                    // portent explicitement la fraction du pont affectée au lot.
+                    // Le coefficient est partagé, la longueur reste géométrique.
+                    if (str_starts_with($context->document->documentElement?->getAttribute('version') ?? '', '7.')
+                        && $accessor->getIntOrNull('./enum_type_liaison_id', $entree) === 2) {
+                        $k *= $accessor->getFloatOrNull('./pourcentage_valeur_pont_thermique', $entree) ?? 1.0;
+                        $context->set('enveloppe.pt_fraction_in_k.' . $node->getNodePath(), true);
+                    }
+                    $this->writeK($node, $accessor, $k);
                     return;
                 }
             }
@@ -95,6 +136,52 @@ final class KCalculator implements CalculatorInterface
 
         $k = $this->computeFromSpec($entree, $accessor, $context);
         $this->writeK($node, $accessor, $k);
+    }
+
+    /**
+     * §3.4.2 : les limites basse/haute d'un lot portent la moitié du pont
+     * intermédiaire. Le format historique 6.x les nomme explicitement
+     * PLANCHER_INTERMEDIAIRE_BAS/HAUT, sans pourcentage ni référence de paroi.
+     * Les descriptions des murs sont des entrées ; aucune valeur calculée
+     * antérieure n'est lue. Un doublon, une référence existante ou une liaison
+     * non décrite laisse le traitement standard décider.
+     */
+    private function legacyDescribedConnection(DOMElement $entry, NodeAccessor $accessor, CalculationContext $context): ?float
+    {
+        if (!str_starts_with($context->document->documentElement?->getAttribute('version') ?? '', '6.')) {
+            return null;
+        }
+        foreach (['reference_1', 'reference_2'] as $field) {
+            if (($accessor->getStringOrNull('./' . $field, $entry) ?? '') !== '') { return null; }
+        }
+        $description = $accessor->getStringOrNull('./description', $entry) ?? '';
+        $walls = [];
+        foreach ($context->document->getElementsByTagName('mur') as $wall) {
+            $name = $accessor->getStringOrNull('./donnee_entree/description', $wall) ?? '';
+            if ($name !== '' && str_starts_with($description, $name . ' - ')) { $walls[] = $wall; }
+        }
+        if (count($walls) !== 1) { return null; }
+        $wall = $walls[0];
+        $name = $accessor->getStringOrNull('./donnee_entree/description', $wall);
+        $otherName = substr($description, strlen($name . ' - '));
+        $isolation = $this->readIsolationOfParoi($wall);
+        if ($isolation === null) { return null; }
+        $liaison = $accessor->getIntOrNull('./enum_type_liaison_id', $entry);
+        $table = $context->tables->load('enveloppe/tv_pont_thermique');
+        if ($liaison === 2 && in_array($otherName, ['PLANCHER_INTERMEDIAIRE_BAS', 'PLANCHER_INTERMEDIAIRE_HAUT'], true)) {
+            $part = $accessor->getFloatOrNull('./pourcentage_valeur_pont_thermique', $entry) ?? 0.5;
+            return $this->lookupPiOrRefend($table['pi_mur'], $this->isolationKey($isolation)) * $part;
+        }
+        if ($liaison !== 1) { return null; }
+        $floors = [];
+        foreach ($context->document->getElementsByTagName('plancher_bas') as $floor) {
+            if ($accessor->getStringOrNull('./donnee_entree/description', $floor) === $otherName) { $floors[] = $floor; }
+        }
+        if (count($floors) !== 1 || $this->readIsolationOfParoi($floors[0]) === null) { return null; }
+        $floor = $floors[0];
+        if (in_array($this->readAdjacenceOfParoi($floor), [14, 15, 16, 17, 18, 22], true)) { return 0.0; }
+        if (!$this->estParoiLourde($floor) || !$this->estParoiLourde($wall)) { return 0.0; }
+        return $this->lookupPbMur($table, $this->isolationKey($isolation), $floor, $context);
     }
 
     private function writeK(DOMElement $node, NodeAccessor $accessor, float $k): void

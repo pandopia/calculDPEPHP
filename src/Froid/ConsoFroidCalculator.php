@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Froid;
 
+use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -21,6 +22,8 @@ use DOMElement;
  *
  * Si besoin_fr = 0 (pas de climatisation ou pas de besoin), conso = 0.
  *
+ * Appartement généré : répartition par besoins, §17.2.2.4 p.118.
+ * @spec-source resources/specsplitted/17-collectif/02-appartement.md
  * @spec-section 10.3
  * @spec-pages   69-70
  * @spec-source  resources/specsplitted/10-conso-froid/03-consommations.md
@@ -68,7 +71,12 @@ final class ConsoFroidCalculator implements CalculatorInterface
         $shLogement     = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node)
             ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $node)
             ?? 0.0;
-        $surfaceRatio   = $this->resolveRefroidieRatio($node, $accessor, $shLogement);
+        // §17.2.2.4 : le besoin généré reste celui de l'immeuble avant
+        // application de la clé. La fraction climatisée doit avoir la même
+        // surface de référence, sinon une climatisation partielle devient
+        // artificiellement totale dès que le logement est plus petit.
+        $shCalculation = GeneratedApartment::calculationSurface($node, $accessor, $shLogement) ?? $shLogement;
+        $surfaceRatio   = $this->resolveRefroidieRatio($node, $accessor, $shCalculation);
 
         // ── Cfr = 0,9 × Bfr / EER × ratio ────────────────────────────────────
         $cfr    = ($eer > 0.0) ? self::INTERMITTENCE_FROID * $bfr    / $eer * $surfaceRatio : 0.0;
@@ -76,8 +84,8 @@ final class ConsoFroidCalculator implements CalculatorInterface
 
         $this->writeOutputs($accessor, $node, $cfr, $cfrDep, $eer);
 
-        $context->set('froid.conso_fr',          $cfr);
-        $context->set('froid.conso_fr_depensier', $cfrDep);
+        $context->set('froid.conso_fr', $accessor->getFloatOrNull('./sortie/ef_conso/conso_fr', $node) ?? 0.0);
+        $context->set('froid.conso_fr_depensier', $accessor->getFloatOrNull('./sortie/ef_conso/conso_fr_depensier', $node) ?? 0.0);
         $context->set('froid.eer',               $eer);
     }
 
@@ -178,6 +186,9 @@ final class ConsoFroidCalculator implements CalculatorInterface
             $climNodes[] = [$clim, $surf];
             $totalSurfClim += $surf;
         }
+        $generated = GeneratedApartment::isGenerated($node, $accessor);
+        $allocated = 0.0;
+        $allocatedDep = 0.0;
         foreach ($climNodes as [$clim, $surf]) {
             $part = ($totalSurfClim > 0.0) ? ($surf / $totalSurfClim) : (1.0 / max(1, count($climNodes)));
             $di = $accessor->ensureDonneeIntermediaire($clim);
@@ -186,6 +197,22 @@ final class ConsoFroidCalculator implements CalculatorInterface
             }
             $accessor->setChildValue($di, 'conso_fr',           $cfr    * $part);
             $accessor->setChildValue($di, 'conso_fr_depensier', $cfrDep * $part);
+            // §17.2.2.4 p.118 : les intermédiaires restent à l'échelle de
+            // l'installation immeuble ; seule la consommation attribuée au
+            // logement est pondérée par Bfr_i / somme(Bfr_i).
+            $share = 1.0;
+            if ($generated && ($cfr > 0.0 || $cfrDep > 0.0)) {
+                $share = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_clim', $clim);
+                if ($share === null || $share < 0.0 || $share > 1.0) {
+                    throw new \RuntimeException('Clé de répartition du refroidissement absente ou invalide pour cet appartement généré (§17.2.2.4).');
+                }
+            }
+            $allocated += $cfr * $part * $share;
+            $allocatedDep += $cfrDep * $part * $share;
+        }
+        if ($generated) {
+            $accessor->setChildValue($efConso, 'conso_fr', $allocated);
+            $accessor->setChildValue($efConso, 'conso_fr_depensier', $allocatedDep);
         }
     }
 

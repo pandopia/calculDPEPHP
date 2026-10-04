@@ -36,7 +36,7 @@ final class BuildingCalculationTest extends TestCase
         self::assertSame(['lot-0'], array_keys($single->apartments));
         $unsupported = CalculDpePHP::calculateBuilding(new BuildingInput($xml, $apartments, 3, 0));
         self::assertNotNull($unsupported->building->xml);
-        self::assertStringContainsString('non encore prise en charge', $unsupported->apartments['lot-0']->error);
+        self::assertStringContainsString('incompatible', $unsupported->apartments['lot-0']->error);
     }
 
     public function test_le_besoin_ecs_ne_se_repartit_pas_par_surface(): void

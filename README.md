@@ -37,6 +37,60 @@ $energy = CalculDpePHP::calculate($xml, ['energieOnly' => true]);
 php bin/calcul-dpe /chemin/vers/input.xml [/chemin/vers/output.xml]
 ```
 
+## Rapport PDF du DPE
+
+Genere le rapport PDF d'un DPE a partir de son XML ADEME valide (avec ses
+resultats `<sortie>`), sur le fond du modele officiel du ministere en vigueur
+(DPE etablis depuis le 1er septembre 2025 ; maison, appartement, appartement a
+partir de l'immeuble, immeuble). Les DPE anterieurs levent
+`UnsupportedTemplateException`.
+
+```php
+<?php
+
+use CalculDpePHP\CalculDpePHP;
+use CalculDpePHP\Dto\DiagnostiqueurRapport;
+use CalculDpePHP\Dto\DonneesRapportPdf;
+
+$pdf = CalculDpePHP::genererPdf(file_get_contents('dpe.xml'), new DonneesRapportPdf(
+    photo: DonneesRapportPdf::image('photo.jpg'),        // JPEG ou PNG
+    logo: DonneesRapportPdf::image('logo.png'),
+    signature: DonneesRapportPdf::image('signature.png'),
+    numeroDpe: '2674E1068548B',                          // si absent du XML
+    nomProprietaire: 'Nom du proprietaire',              // remplace le XML s'il est renseigne
+    adresseProprietaire: '1 rue X 75000 Paris',
+    diagnostiqueur: new DiagnostiqueurRapport(
+        entreprise: 'Entreprise', adresse: '37 rue Y 75008 PARIS', nom: 'Prenom Nom',
+        telephone: '01 00 00 00 00', email: 'contact@exemple.fr',
+        numeroCertification: 'C0000', organismeCertification: 'Organisme',
+        adresseOrganismeCertification: 'Adresse de l\'organisme',
+    ),
+    explicationsPersonnalisees: 'Ecarts consommations estimees / reelles (annexe)',
+    commentaires: 'Commentaires sous les travaux (p.5)',
+));
+file_put_contents('dpe.pdf', $pdf);
+```
+
+Tous les champs de `DonneesRapportPdf` sont facultatifs. Les donnees du XML
+sont utilisees quand un champ n'est pas renseigne ; les XML de l'observatoire
+ADEME n'ont pas les donnees personnelles (proprietaire, diagnostiqueur).
+
+**Sans numero ADEME** (ni dans le XML, ni dans le DTO : calcul prealable,
+simulation), la page 1 porte en diagonale « DOCUMENT NON OFFICIEL – DPE non
+enregistre aupres de l'ADEME – sans valeur reglementaire », le numero est
+« non attribue » et le QR code est remplace par une mention.
+
+En CLI :
+
+```bash
+php bin/dpe-pdf dpe.xml dpe.pdf --photo=photo.jpg --logo=logo.png --signature=sig.png --numero-dpe=2674E1068548B
+```
+
+`php bin/dpe-pdf` sans argument liste toutes les options (proprietaire,
+diagnostiqueur, organisme, explications, commentaires, lien du guide).
+Preparation des modeles officiels et choix techniques :
+`resources/pdf/README.md`.
+
 ## Outil de preparation des fixtures XML
 
 ```bash

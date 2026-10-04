@@ -62,6 +62,19 @@ final class UphCalculator implements CalculatorInterface
         }
         $intermediaire = $accessor->ensureDonneeIntermediaire($node);
 
+        // XSD ADEME : la saisie directe utilise uph_saisi. u_saisi
+        // reste accepté pour les anciens jeux d'entrée. Une valeur justifiée
+        // prime sur le forfait, même si la paroi est déclarée non isolée.
+        $method = $accessor->getIntOrNull('./enum_methode_saisie_u_id', $entree);
+        if (in_array($method, [9, 10], true)) {
+            $direct = $accessor->getFloatOrNull('./uph_saisi', $entree)
+                ?? $accessor->getFloatOrNull('./u_saisi', $entree);
+            if ($direct !== null) {
+                $accessor->setChildValue($intermediaire, 'uph', $direct);
+                return;
+            }
+        }
+
         $uph0 = $accessor->getFloatOrNull('./uph0', $intermediaire);
         if ($uph0 === null) {
             throw new RuntimeException('UphCalculator : uph0 absent.');

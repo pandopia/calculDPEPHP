@@ -232,7 +232,15 @@ final class AuxDistributionCalculator implements CalculatorInterface
             // jusqu'aux émetteurs, et les références lui comptent bien un
             // circulateur (cinq cas au corpus, contre deux à zéro pour les
             // réseaux urbains).
-            if ($typeInstall === 3 && $this->estReseauDeChaleurUrbain($accessor, $install)) {
+            // Une installation virtualisée dans un DPE appartement autonome
+            // (méthode 5) décrit aussi le circuit local des émetteurs. Le type 3
+            // y désigne la production distante, pas l'absence de distribution
+            // dans le logement. Conserver ses auxiliaires hydrauliques (§15.2,
+            // §17.2.1.1), sans ajouter ceux de génération du réseau urbain.
+            $ratioVirtualisation = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation', $install);
+            $circuitAppartement = $modeApp === 5 && $ratioVirtualisation !== null
+                && $ratioVirtualisation > 0.0 && $ratioVirtualisation < 1.0;
+            if ($typeInstall === 3 && !$circuitAppartement && $this->estReseauDeChaleurUrbain($accessor, $install)) {
                 continue;
             }
 

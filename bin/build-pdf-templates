@@ -1,0 +1,156 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/*
+ * Prépare les modèles officiels de DPE pour le générateur PDF.
+ *
+ * Pour chaque modèle de resources/pdf/templates/source/ :
+ *   1. le réécrit sans flux d'objets (qpdf), seul format lisible par le
+ *      parseur libre de FPDI ;
+ *   2. relève la position de chaque ligne de texte (pdftotext -bbox-layout) :
+ *      ce sont les ancres des données d'exemple à masquer puis réécrire ;
+ *   3. rend chaque page en PNG basse résolution (pdftoppm) pour échantillonner
+ *      la couleur de fond sous un masque ;
+ *   4. retire du modèle le texte d'exemple des zones que le générateur
+ *      recouvre (maps/*.zones.php), pour qu'il ne subsiste pas dans la couche
+ *      texte du rapport.
+ *
+ * Les zones se relèvent en générant des rapports, un XML au moins par modèle :
+ *   php bin/build-pdf-templates --zones a.xml b.xml …
+ * Outils requis à la préparation uniquement (pas à l'exécution) : qpdf (et
+ * fix-qdf), poppler. Sources : php bin/build-pdf-templates --download
+ */
+
+require __DIR__ . '/../vendor/autoload.php';
+
+use CalculDpePHP\Dto\DonneesRapportPdf;
+use CalculDpePHP\Pdf\DpePdfGenerator;
+use CalculDpePHP\Pdf\Render\Canvas;
+use CalculDpePHP\Pdf\Template\TemplateCleaner;
+
+$root = dirname(__DIR__);
+$templates = $root . '/resources/pdf/templates';
+$source = $templates . '/source';
+$work = $source . '/normalized';
+$base = 'https://rt-re-batiment.developpement-durable.gouv.fr/IMG/pdf/';
+
+$files = [
+    '01_dpe_existant_maison_01.09_2025.pdf',
+    '02_dpe_existant_appartement_01.09_2025.pdf',
+    '03_dpe_appartement_a_partir_d_immeuble_01.09_2025.pdf',
+    '04_dpe_existant_ic_01.09_2025.pdf',
+];
+
+$args = array_slice($argv, 1);
+
+if (in_array('--download', $args, true)) {
+    @mkdir($source, 0777, true);
+    foreach ($files as $file) {
+        $content = file_get_contents($base . $file);
+        if ($content === false) {
+            fwrite(STDERR, "Téléchargement impossible : $file\n");
+            exit(1);
+        }
+        file_put_contents("$source/$file", $content);
+    }
+}
+
+@mkdir("$templates/maps", 0777, true);
+@mkdir("$templates/preview", 0777, true);
+@mkdir($work, 0777, true);
+
+// 1-3 : modèle normalisé (avec ses exemples, pour les ancres), carte, rendus.
+foreach ($files as $file) {
+    $name = basename($file, '.pdf');
+    $src = "$source/$file";
+    if (!is_file($src)) {
+        fwrite(STDERR, "Source absente : $src (relancer avec --download)\n");
+        exit(1);
+    }
+    run(sprintf('qpdf --object-streams=disable --compress-streams=y %s %s', escapeshellarg($src), escapeshellarg("$work/$file")));
+
+    $html = shell_exec(sprintf('pdftotext -bbox-layout %s - 2>/dev/null', escapeshellarg("$work/$file")));
+    $map = [];
+    foreach (explode('<page ', (string) $html) as $i => $page) {
+        if ($i === 0) {
+            continue;
+        }
+        preg_match_all('#<line xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">(.*?)</line>#s', $page, $lines, PREG_SET_ORDER);
+        foreach ($lines as $line) {
+            preg_match_all('#>([^<]*)</word>#', $line[5], $words);
+            $text = html_entity_decode(implode(' ', $words[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $map[$i][] = [round((float) $line[1], 2), round((float) $line[2], 2), round((float) $line[3], 2), round((float) $line[4], 2), $text];
+        }
+    }
+    $php = "<?php\n\n// Généré par bin/build-pdf-templates depuis $file — ne pas éditer.\n// [page => [[xMin, yMin, xMax, yMax, texte], …]] en points, origine en haut à gauche.\nreturn " . var_export($map, true) . ";\n";
+    file_put_contents("$templates/maps/$name.php", $php);
+
+    // 36 dpi = 0,5 px par point : suffisant pour lire des aplats de couleur.
+    run(sprintf('pdftoppm -r 36 -png %s %s 2>/dev/null', escapeshellarg("$work/$file"), escapeshellarg("$templates/preview/$name")));
+
+    // Le générateur part du modèle normalisé tant qu'il n'est pas nettoyé.
+    if (!is_file("$templates/maps/$name.zones.php")) {
+        copy("$work/$file", "$templates/$file");
+    }
+}
+
+// Relevé des zones recouvertes (sur le modèle non nettoyé : mêmes ancres).
+$zonesIndex = array_search('--zones', $args, true);
+if ($zonesIndex !== false) {
+    foreach ($files as $file) {
+        copy("$work/$file", "$templates/$file");
+    }
+    Canvas::$recordedZones = [];
+    foreach (array_slice($args, $zonesIndex + 1) as $xml) {
+        if (str_starts_with($xml, '--')) {
+            break;
+        }
+        (new DpePdfGenerator())->generate((string) file_get_contents($xml), new DonneesRapportPdf(numeroDpe: '0000E0000000X'));
+        fwrite(STDOUT, "· zones relevées : " . basename($xml) . "\n");
+    }
+    foreach (Canvas::$recordedZones as $name => $pages) {
+        $merged = [];
+        foreach ($pages as $page => $rects) {
+            $unique = [];
+            foreach ($rects as $r) {
+                $unique[implode(',', array_map(static fn (float $v): string => number_format($v, 1, '.', ''), $r))] = array_map(static fn (float $v): float => round($v, 1), $r);
+            }
+            $merged[$page] = array_values($unique);
+        }
+        ksort($merged);
+        file_put_contents(
+            "$templates/maps/$name.zones.php",
+            "<?php\n\n// Généré par bin/build-pdf-templates --zones — zones recouvertes par le générateur.\n// [page => [[x0, y0, x1, y1], …]] en points, origine en haut à gauche.\nreturn " . var_export($merged, true) . ";\n",
+        );
+    }
+    Canvas::$recordedZones = null;
+}
+
+// 4 : modèles nettoyés de leur texte d'exemple.
+foreach ($files as $file) {
+    $name = basename($file, '.pdf');
+    $zonesFile = "$templates/maps/$name.zones.php";
+    if (!is_file($zonesFile)) {
+        fwrite(STDOUT, "✓ $name (non nettoyé : pas de zones relevées)\n");
+        continue;
+    }
+    $qdf = "$work/$name.qdf.pdf";
+    run(sprintf('qpdf --qdf --normalize-content=y --object-streams=disable %s %s', escapeshellarg("$source/$file"), escapeshellarg($qdf)));
+    $removed = TemplateCleaner::cleanQdf($qdf, require $zonesFile);
+    run(sprintf('fix-qdf %s > %s', escapeshellarg($qdf), escapeshellarg("$qdf.fixed")));
+    run(sprintf('qpdf --object-streams=disable --compress-streams=y %s %s', escapeshellarg("$qdf.fixed"), escapeshellarg("$templates/$file")));
+    @unlink($qdf);
+    @unlink("$qdf.fixed");
+    fwrite(STDOUT, "✓ $name ($removed textes d'exemple retirés)\n");
+}
+
+function run(string $command): void
+{
+    exec($command, $output, $code);
+    if ($code !== 0) {
+        fwrite(STDERR, "Échec : $command\n");
+        exit(1);
+    }
+}

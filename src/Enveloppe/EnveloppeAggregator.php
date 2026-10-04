@@ -73,7 +73,7 @@ final class EnveloppeAggregator implements CalculatorInterface
         $dpPH  = $this->sumProductSurfaceBU($xpath, $node, 'plancher_haut', 'uph', 'surface_paroi_opaque');
         $dpBV  = $this->sumProductSurfaceBU($xpath, $node, 'baie_vitree', 'u_menuiserie', 'surface_totale_baie');
         $dpPorte = $this->sumProductSurfaceBU($xpath, $node, 'porte', 'uporte', 'surface_porte');
-        $dpPT  = $this->sumProductLK($xpath, $node);
+        $dpPT  = $this->sumProductLK($xpath, $node, $context);
 
         $sortie = $accessor->ensureSortie($node);
         $deperdition = $this->ensureChildElement($context, $sortie, 'deperdition');
@@ -111,7 +111,7 @@ final class EnveloppeAggregator implements CalculatorInterface
         return $sum;
     }
 
-    private function sumProductLK(DOMXPath $xpath, DOMElement $logement): float
+    private function sumProductLK(DOMXPath $xpath, DOMElement $logement, CalculationContext $context): float
     {
         $sum = 0.0;
         $nodes = $xpath->query('.//pont_thermique', $logement);
@@ -121,6 +121,9 @@ final class EnveloppeAggregator implements CalculatorInterface
             $l   = $this->readFloatChild($n, 'donnee_entree', 'l');
             $k   = $this->readFloatChild($n, 'donnee_intermediaire', 'k');
             $pct = $this->readFloatChild($n, 'donnee_entree', 'pourcentage_valeur_pont_thermique') ?? 1.0;
+            // Les formats historiques peuvent publier un k déjà partagé entre
+            // logements. Ne pas appliquer une seconde fois la même fraction.
+            if ($context->get('enveloppe.pt_fraction_in_k.' . $n->getNodePath()) === true) { $pct = 1.0; }
             if ($l === null || $k === null) continue;
             $sum += $l * $k * $pct;
         }

@@ -400,9 +400,10 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
      * `GV / Nblgt`. Chauffage collectif : le calcul reste à l'immeuble, GV
      * entier.
      *
-     * Le diviseur `rdim` d'open3cl (`9_chauffage.js::tauxChargeForGenerator`)
-     * a été testé et écarté : il dégrade l'ensemble du corpus (+30 écarts hors
-     * tolérance) et ne correspond pas au Nblgt de la spec.
+     * Les descriptions directes agrégées sont identifiées séparément : leurs
+     * surfaces couvrent l'immeuble avec une multiplicité totale inférieure
+     * à Nblgt. Leur GV suit la surface desservie par le générateur déclaré.
+     * Pour les relevés par logement et les échantillons, conserver GV/Nblgt.
      */
     /** @return array{float, bool} [GV retenu (W/K), GV ramené à l'appartement moyen] */
     private function resolveGvBuilding(DOMElement $node, NodeAccessor $accessor, CalculationContext $context): array
@@ -416,7 +417,9 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         if ($modeApp !== null && in_array($modeApp, [6, 8, 10, 12], true)) {
             $nblgt = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement');
             if ($nblgt !== null && $nblgt > 1) {
-                return [$gv / $nblgt, true];
+                $share = \CalculDpePHP\Collectif\ChauffageInstallationMultiplicity::directShareOrNull($node, $accessor)
+                    ?? (1.0 / $nblgt);
+                return [$gv * $share, true];
             }
         }
 

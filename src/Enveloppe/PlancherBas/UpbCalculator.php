@@ -62,6 +62,19 @@ final class UpbCalculator implements CalculatorInterface
         }
         $intermediaire = $accessor->ensureDonneeIntermediaire($node);
 
+        // XSD ADEME : la saisie directe utilise upb_saisi. u_saisi
+        // reste accepté pour les anciens jeux d'entrée. Une valeur justifiée
+        // prime sur le forfait, même si la paroi est déclarée non isolée.
+        $method = $accessor->getIntOrNull('./enum_methode_saisie_u_id', $entree);
+        if (in_array($method, [9, 10], true)) {
+            $direct = $accessor->getFloatOrNull('./upb_saisi', $entree)
+                ?? $accessor->getFloatOrNull('./u_saisi', $entree);
+            if ($direct !== null) {
+                $accessor->setChildValue($intermediaire, 'upb', $direct);
+                return;
+            }
+        }
+
         $upb0 = $accessor->getFloatOrNull('./upb0', $intermediaire);
         if ($upb0 === null) {
             throw new RuntimeException('UpbCalculator : upb0 absent (Upb0Calculator non exécuté ?).');

@@ -72,6 +72,37 @@ final class ChauffageInstallationMultiplicity
         return max(1e-9, $groupSurface * $ratioVirtualisation / $averageApartmentSurface);
     }
 
+    /** Part des déperditions affectée à UN générateur saisi directement. */
+    public static function directShareOrNull(DOMElement $generator, NodeAccessor $accessor): ?float
+    {
+        $install = self::findAncestor($generator, 'installation_chauffage');
+        $logement = self::findAncestor($generator, 'logement');
+        if ($install === null || $logement === null
+            || $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $install) !== 1
+            || $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $install) !== 1) { return null; }
+        // Si les installations couvrent déjà tous les logements, la méthode
+        // de l'appartement moyen s'applique. Une description agrégée complète
+        // peut au contraire représenter moins de systèmes que de logements :
+        // sa multiplicité explicite ne doit pas être remplacée par Nblgt.
+        $count = $accessor->getIntOrNull('./caracteristique_generale/nombre_appartement', $logement) ?? 0;
+        $totalMultiplicity = 0.0;
+        $totalSurface = 0.0;
+        foreach ($logement->getElementsByTagName('installation_chauffage') as $other) {
+            if ($accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $other) !== 1
+                || $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $other) !== 1) { return null; }
+            $multiplicity = $accessor->getFloatOrNull('./donnee_entree/rdim', $other) ?? 0.0;
+            if ($multiplicity <= 0.0) { return null; }
+            $totalMultiplicity += $multiplicity;
+            $totalSurface += $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $other) ?? 0.0;
+        }
+        if ($totalMultiplicity >= $count) { return null; }
+        $rdim = $accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 0.0;
+        $building = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement) ?? 0.0;
+        $group = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $install) ?? 0.0;
+        return $rdim > 0.0 && $building > 0.0 && $group > 0.0 && abs($totalSurface - $building) <= 0.01
+            ? min(1.0, $group / $building) / $rdim : null;
+    }
+
     private static function findAncestor(DOMElement $node, string $name): ?DOMElement
     {
         $current = $node->parentNode;
