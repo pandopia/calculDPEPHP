@@ -624,4 +624,34 @@ XML;
         }
     }
 
+
+    /** §15.2.1 p.98-99 : Sh=1000, Niv=4, GV=1000, H1a, Nref=5792 h. */
+    public function testCirculateurPlancherUtiliseSonCoefficientDeLongueur(): void
+    {
+        // Valeurs indépendantes obtenues avec Fcot=0,156, ΔPem=15 pour le plancher,
+        // et Fcot=0,802 pour les radiateurs. Un ensemble mixte conserve les maxima.
+        foreach ([
+            [[12], 786.315231877491],
+            [[16], 786.315231877491],
+            [[37], 922.009437956965],
+            [[12, 37], 1059.415873772947],
+            [[37, 12], 1059.415873772947],
+        ] as [$types, $expected]) {
+            $emetteurs = '';
+            foreach ($types as $type) {
+                $emetteurs .= '<emetteur_chauffage><donnee_entree><enum_type_emission_distribution_id>' . $type
+                    . '</enum_type_emission_distribution_id><enum_temp_distribution_ch_id>3</enum_temp_distribution_ch_id>'
+                    . '</donnee_entree></emetteur_chauffage>';
+            }
+            $doc = new DOMDocument();
+            $doc->loadXML('<logement><caracteristique_generale><surface_habitable_immeuble>1000</surface_habitable_immeuble>'
+                . '</caracteristique_generale><installation_chauffage_collection><installation_chauffage><donnee_entree>'
+                . '<surface_chauffee>1000</surface_chauffee><nombre_niveau_installation_ch>4</nombre_niveau_installation_ch>'
+                . '<enum_type_installation_id>2</enum_type_installation_id></donnee_entree><emetteur_chauffage_collection>'
+                . $emetteurs . '</emetteur_chauffage_collection></installation_chauffage></installation_chauffage_collection><sortie/></logement>');
+            $context = $this->buildCtx($doc, ['enveloppe.dp_parois' => 1000.0]);
+            (new AuxDistributionCalculator())->calculate($doc->documentElement, $context);
+            self::assertEqualsWithDelta($expected, $this->efValue($doc, 'conso_auxiliaire_distribution_ch'), 1e-8);
+        }
+    }
 }

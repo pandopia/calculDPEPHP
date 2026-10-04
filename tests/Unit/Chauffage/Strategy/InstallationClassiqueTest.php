@@ -393,4 +393,44 @@ XML;
 
         $this->assertEqualsWithDelta($installConso, $genConso, 0.001);
     }
+
+    /** §13.2.1.3.2 : la somme des besoins fournis par les chaudières reste le besoin utile. */
+    public function testCascadeSansPrioriteRepartitLeBesoinSelonLesPuissances(): void
+    {
+        foreach ([[400000.0, 400000.0], [600000.0, 200000.0]] as [$pn1, $pn2]) {
+            [$doc, $node] = $this->buildXml(1000, 1400, 250, 100, 100, 2.5, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 0.8);
+            $collection = $doc->getElementsByTagName('generateur_chauffage_collection')->item(0);
+            while ($collection->firstChild !== null) {
+                $collection->removeChild($collection->firstChild);
+            }
+            foreach ([['g1', $pn1, 0.8], ['g2', $pn2, 0.6]] as [$ref, $pn, $rg]) {
+                $fragment = $doc->createDocumentFragment();
+                $fragment->appendXML('<generateur_chauffage><donnee_entree><reference>' . $ref . '</reference>'
+                    . '<priorite_generateur_cascade>1</priorite_generateur_cascade><enum_type_generateur_ch_id>89</enum_type_generateur_ch_id></donnee_entree>'
+                    . '<donnee_intermediaire><pn>' . $pn . '</pn><rendement_generation>' . $rg . '</rendement_generation>'
+                    . '</donnee_intermediaire></generateur_chauffage>');
+                $collection->appendChild($fragment);
+            }
+            $context = $this->makeContext($doc, 1000, 1400, 250);
+            $context->set('chauffage.rendement_generation_depensier', ['g1' => 0.9, 'g2' => 0.7]);
+            (new InstallationClassique())->calculate($node, $context);
+            $xpath = new \DOMXPath($doc);
+            $part1 = $pn1 / ($pn1 + $pn2);
+            $part2 = 1.0 - $part1;
+            $expected = [1000 * $part1 / 0.8, 1000 * $part2 / 0.6];
+            $expectedDep = [1400 * $part1 / 0.9, 1400 * $part2 / 0.7];
+            foreach ($collection->getElementsByTagName('generateur_chauffage') as $i => $gen) {
+                self::assertEqualsWithDelta($expected[$i], (float) $xpath->evaluate('string(donnee_intermediaire/conso_ch)', $gen), 1e-8);
+                self::assertEqualsWithDelta($expectedDep[$i], (float) $xpath->evaluate('string(donnee_intermediaire/conso_ch_depensier)', $gen), 1e-8);
+            }
+            self::assertEqualsWithDelta(array_sum($expected), (float) $xpath->evaluate('string(donnee_intermediaire/conso_ch)', $node), 1e-8);
+            self::assertEqualsWithDelta(array_sum($expectedDep), (float) $xpath->evaluate('string(donnee_intermediaire/conso_ch_depensier)', $node), 1e-8);
+            (new \CalculDpePHP\Auxiliaire\AuxGenerationCalculator())->calculate($doc->documentElement, $context);
+            // §15.1 : Paux = 20 + 1,6 × min(Pn[kW],400), Qaux = Paux × Bch_g / Pn.
+            $aux = (20 + 1.6 * min($pn1 / 1000, 400)) * 1000 * $part1 / $pn1
+                 + (20 + 1.6 * min($pn2 / 1000, 400)) * 1000 * $part2 / $pn2;
+            self::assertEqualsWithDelta($aux, (float) $xpath->evaluate('string(//ef_conso/conso_auxiliaire_generation_ch)'), 1e-8);
+            self::assertEqualsWithDelta(2.4 * $aux, (float) $xpath->evaluate('string(//ef_conso/conso_auxiliaire_generation_ch_depensier)'), 1e-8);
+        }
+    }
 }

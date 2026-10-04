@@ -128,7 +128,7 @@ final class AuxGenerationCalculator implements CalculatorInterface
         $isZone = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node) !== null;
 
         // ── CH auxiliaires ────────────────────────────────────────────────────
-        [$qauxCh, $qauxChDep, $cleRepartCh] = $this->computeChAux($accessor, $node, $isZone);
+        [$qauxCh, $qauxChDep, $cleRepartCh] = $this->computeChAux($accessor, $node, $isZone, $context);
 
         // ── ECS auxiliaires ───────────────────────────────────────────────────
         [$qauxEcs, $qauxEcsDep, $cleRepartEcs] = $this->computeEcsAux($accessor, $node, $isZone, $context);
@@ -154,7 +154,7 @@ final class AuxGenerationCalculator implements CalculatorInterface
     /**
      * @return array{float, float, float} [Q_aux_ch, Q_aux_ch_dep, cle_repartition_ch]
      */
-    private function computeChAux(NodeAccessor $accessor, DOMElement $logement, bool $isZone): array
+    private function computeChAux(NodeAccessor $accessor, DOMElement $logement, bool $isZone, CalculationContext $context): array
     {
         $collection = $this->getChild($logement, 'installation_chauffage_collection');
         if ($collection === null) {
@@ -200,6 +200,12 @@ final class AuxGenerationCalculator implements CalculatorInterface
                     continue;
                 }
 
+                // §15.1.1 : le besoin assuré par ce générateur, et non celui
+                // de toute la cascade, dimensionne ses auxiliaires.
+                $parts = (array) $context->get('chauffage.part_besoin_generateur', []);
+                $partBesoin = $parts[$gen->getNodePath()] ?? 1.0;
+                $besoinGen = $besoin * $partBesoin;
+                $besoinGenDep = $besoinDep * $partBesoin;
                 [$g, $h, $pnCapKw] = $this->getGHch($accessor, $gen);
 
                 if ($ratioVirt > 0.0 && $ratioVirt < 1.0) {
@@ -213,16 +219,16 @@ final class AuxGenerationCalculator implements CalculatorInterface
                     if ($paux <= 0.0) {
                         continue;
                     }
-                    $totalQ    += $paux * $besoin / $pe;
-                    $totalQDep += $paux * ($besoin + $besoinDep) / $pe;
+                    $totalQ    += $paux * $besoinGen / $pe;
+                    $totalQDep += $paux * ($besoinGen + $besoinGenDep) / $pe;
                 } else {
                     $pnKw  = min($pn / 1000.0, $pnCapKw);
                     $paux  = $g + $h * $pnKw;
                     if ($paux <= 0.0) {
                         continue;
                     }
-                    $totalQ    += $paux * $besoin               * $ratioSurface / $pn;
-                    $totalQDep += $paux * ($besoin + $besoinDep) * $ratioSurface / $pn;
+                    $totalQ    += $paux * $besoinGen            * $ratioSurface / $pn;
+                    $totalQDep += $paux * ($besoinGen + $besoinGenDep) * $ratioSurface / $pn;
                 }
             }
 

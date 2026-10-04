@@ -528,8 +528,8 @@ final class AuxDistributionCalculator implements CalculatorInterface
     {
         $emCollection = $this->getChild($install, 'emetteur_chauffage_collection');
 
-        $worstDeltaP    = 10.0; // default radiateur bitube
-        $worstFcot      = 0.802;
+        $worstDeltaP    = 0.0; // maximum des seuls émetteurs présents
+        $worstFcot      = 0.0; // un plancher seul doit conserver Fcot = 0,156 (§15.2.1)
         $dtDim          = 7.5;
         $hasHydraulic   = false;
 

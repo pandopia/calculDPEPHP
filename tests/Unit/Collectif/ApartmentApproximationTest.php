@@ -127,7 +127,7 @@ final class ApartmentApproximationTest extends TestCase
         $doc = (new XmlReader())->loadString($input->xml);
         foreach (iterator_to_array($doc->getElementsByTagName('production_elec_enr')) as $old) { $old->parentNode->removeChild($old); }
         $fragment = $doc->createDocumentFragment();
-        $fragment->appendXML('<production_elec_enr><donnee_entree><presence_production_pv>1</presence_production_pv></donnee_entree><panneaux_pv_collection><panneaux_pv><surface_totale_capteurs>12</surface_totale_capteurs><tv_coef_orientation_pv_id>1</tv_coef_orientation_pv_id></panneaux_pv></panneaux_pv_collection></production_elec_enr>');
+        $fragment->appendXML('<production_elec_enr><donnee_entree><presence_production_pv>1</presence_production_pv></donnee_entree><panneaux_pv_collection><panneaux_pv><surface_totale_capteurs>12</surface_totale_capteurs><tv_coef_orientation_pv_id>1</tv_coef_orientation_pv_id><enum_orientation_pv_id>1</enum_orientation_pv_id><enum_inclinaison_pv_id>1</enum_inclinaison_pv_id></panneaux_pv></panneaux_pv_collection></production_elec_enr>');
         $doc->getElementsByTagName('logement')->item(0)->appendChild($fragment);
         $result = CalculDpePHP::calculateBuilding(new BuildingInput($doc->saveXML(), $input->apartments, 2, 0));
         $sum = 0.0;

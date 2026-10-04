@@ -211,6 +211,11 @@ final class InstallationClassique implements CalculatorInterface
             return;
         }
 
+        if ($this->writeCascadeSansPriorite($node, $context, $accessor, $genCollection,
+            $besoinInstall, $besoinInstallDep, $besoinMoy, $besoinMoyDep, $int, $re * $rd * $rr)) {
+            return;
+        }
+
         $denom      = max(1e-9, $rg * $re * $rd * $rr);
         $denomDep   = max(1e-9, $rgDep * $re * $rd * $rr);
         $consoCh    = $besoinMoy    * $int / $denom;
@@ -232,6 +237,64 @@ final class InstallationClassique implements CalculatorInterface
                 $accessor->setChildValue($genDi, 'conso_ch_depensier', $consoChDep);
             }
         }
+    }
+
+    /**
+     * §13.2.1.3.2 p.79-80 : deux générateurs sans priorité se partagent
+     * le besoin utile au prorata de Pn. §9.1.2 p.59 : chaque part est
+     * divisée par son propre rendement, puis les consommations s'additionnent.
+     * Le XSD déclare les deux générateurs principaux avec une priorité de 1.
+     */
+    private function writeCascadeSansPriorite(
+        DOMElement $node,
+        CalculationContext $context,
+        NodeAccessor $accessor,
+        ?DOMElement $collection,
+        float $besoinInstall,
+        float $besoinInstallDep,
+        float $besoinMoy,
+        float $besoinMoyDep,
+        float $intermittence,
+        float $rendementEmissionDistributionRegulation,
+    ): bool {
+        $generateurs = $collection?->getElementsByTagName('generateur_chauffage');
+        if ($generateurs === null || $generateurs->length !== 2) {
+            return false;
+        }
+        $puissanceTotale = 0.0;
+        foreach ($generateurs as $gen) {
+            if ($accessor->getIntOrNull('./donnee_entree/priorite_generateur_cascade', $gen) !== 1
+                || ($accessor->getFloatOrNull('./donnee_intermediaire/pn', $gen) ?? 0.0) <= 0.0
+                || ($accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen) ?? 0.0) <= 0.0) {
+                return false;
+            }
+            $puissanceTotale += $accessor->getFloatOrNull('./donnee_intermediaire/pn', $gen);
+        }
+        $rendementsDep = (array) $context->get('chauffage.rendement_generation_depensier', []);
+        $conso = $consoDep = 0.0;
+        $partsBesoin = (array) $context->get('chauffage.part_besoin_generateur', []);
+        foreach ($generateurs as $gen) {
+            $part = $accessor->getFloatOrNull('./donnee_intermediaire/pn', $gen) / $puissanceTotale;
+            $partsBesoin[$gen->getNodePath()] = $part;
+            $rg = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen);
+            $reference = $accessor->getStringOrNull('./donnee_entree/reference', $gen);
+            $rgDep = $reference !== null ? ($rendementsDep[$reference] ?? $rg) : $rg;
+            $c = $besoinMoy * $part * $intermittence / max(1e-9, $rg * $rendementEmissionDistributionRegulation);
+            $cDep = $besoinMoyDep * $part * $intermittence / max(1e-9, $rgDep * $rendementEmissionDistributionRegulation);
+            $di = $accessor->ensureDonneeIntermediaire($gen);
+            $accessor->setChildValue($di, 'conso_ch', $c);
+            $accessor->setChildValue($di, 'conso_ch_depensier', $cDep);
+            $conso += $c;
+            $consoDep += $cDep;
+        }
+        // §15.1.1 : les auxiliaires doivent recevoir la même part du besoin utile.
+        $context->set('chauffage.part_besoin_generateur', $partsBesoin);
+        $di = $accessor->ensureDonneeIntermediaire($node);
+        $accessor->setChildValue($di, 'besoin_ch', $besoinInstall);
+        $accessor->setChildValue($di, 'besoin_ch_depensier', $besoinInstallDep);
+        $accessor->setChildValue($di, 'conso_ch', $conso);
+        $accessor->setChildValue($di, 'conso_ch_depensier', $consoDep);
+        return true;
     }
 
     /**

@@ -8,6 +8,7 @@ use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
+use RuntimeException;
 
 /**
  * Production photovoltaïque et électricité autoconsommée (§16.2 p.103-105).
@@ -219,7 +220,7 @@ final class ProductionPvCalculator implements CalculatorInterface
 
         // ── 14. Réduire ep_conso dans le sortie ────────────────────────────
         $epNode = $this->getChild($sortie, 'ep_conso');
-        $coefEp = $context->period === \CalculDpePHP\Common\Period::POST_2026 ? 2.3 : 1.9;
+        $coefEp = $context->period === \CalculDpePHP\Common\Period::POST_2026 ? 1.9 : 2.3;
         if ($epNode !== null && $sh > 0.0) {
             $this->reduceEpConso($epNode, $accessor, $acCh, $acEcs, $acFr, $acEcl, $acAux, $coefEp, $sh);
         }
@@ -229,7 +230,7 @@ final class ProductionPvCalculator implements CalculatorInterface
      * §16.2 p.103 : Ppv = Σ_panneaux Σ_mois ki × Scapteur × r × Epv_j × C
      *
      * @param array<int, float> $ePvByMonth
-     * @param array<int, array{ki: float}> $coefOrTable
+     * @param array<int, array<int, float>> $coefOrTable
      */
     private function computePpv(
         DOMElement $pvNode,
@@ -248,10 +249,6 @@ final class ProductionPvCalculator implements CalculatorInterface
                     continue;
                 }
 
-                // Coefficient ki depuis tv_coef_orientation_pv_id ou orientation/inclinaison
-                $tvId    = $accessor->getIntOrNull('./tv_coef_orientation_pv_id', $panneau);
-                $ki      = $tvId !== null ? (float)(($coefOrTable[$tvId] ?? [])['ki'] ?? 1.0) : 1.0;
-
                 // Surface : surface_totale_capteurs OU nombre_module × 1,6
                 $surface = $accessor->getFloatOrNull('./surface_totale_capteurs', $panneau);
                 if ($surface === null || $surface <= 0.0) {
@@ -259,8 +256,18 @@ final class ProductionPvCalculator implements CalculatorInterface
                     $surface  = $nbModule * self::SURFACE_PAR_MODULE;
                 }
 
-                if ($surface <= 0.0 || $ki <= 0.0) {
+                if ($surface <= 0.0) {
                     continue;
+                }
+
+                // §16.2 p.104 : les paramètres physiques indexent ki. L'identifiant
+                // tv_* de l'éditeur ne définit pas une indexation réglementaire.
+                $orientation = $accessor->getIntOrNull('./enum_orientation_pv_id', $panneau);
+                $inclinaison = $accessor->getIntOrNull('./enum_inclinaison_pv_id', $panneau);
+                $ki = $orientation !== null && $inclinaison !== null
+                    ? ($coefOrTable[$orientation][$inclinaison] ?? null) : null;
+                if ($ki === null) {
+                    throw new RuntimeException('Orientation ou inclinaison photovoltaïque absente ou invalide : renseigner les deux paramètres des panneaux.');
                 }
 
                 // Σ_mois Epv_j

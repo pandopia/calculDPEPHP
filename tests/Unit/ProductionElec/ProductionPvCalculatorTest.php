@@ -10,6 +10,7 @@ use CalculDpePHP\ProductionElec\ProductionPvCalculator;
 use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * Tests unitaires pour ProductionPvCalculator.
@@ -116,6 +117,7 @@ XML;
         <panneaux_pv_collection>
             <panneaux_pv>
                 <tv_coef_orientation_pv_id>10</tv_coef_orientation_pv_id>
+                <enum_orientation_pv_id>3</enum_orientation_pv_id><enum_inclinaison_pv_id>2</enum_inclinaison_pv_id>
                 <surface_totale_capteurs>10</surface_totale_capteurs>
             </panneaux_pv>
         </panneaux_pv_collection>
@@ -188,6 +190,7 @@ XML;
         <panneaux_pv_collection>
             <panneaux_pv>
                 <tv_coef_orientation_pv_id>1</tv_coef_orientation_pv_id>
+                <enum_orientation_pv_id>1</enum_orientation_pv_id><enum_inclinaison_pv_id>1</enum_inclinaison_pv_id>
                 <nombre_module>5</nombre_module>
             </panneaux_pv>
         </panneaux_pv_collection>
@@ -252,6 +255,7 @@ XML;
         <panneaux_pv_collection>
             <panneaux_pv>
                 <tv_coef_orientation_pv_id>10</tv_coef_orientation_pv_id>
+                <enum_orientation_pv_id>3</enum_orientation_pv_id><enum_inclinaison_pv_id>2</enum_inclinaison_pv_id>
                 <surface_totale_capteurs>50</surface_totale_capteurs>
             </panneaux_pv>
         </panneaux_pv_collection>
@@ -315,12 +319,12 @@ XML;
     }
 
     /**
-     * Vérification ki par tv_coef_orientation_pv_id=10 → ki=1.07 (Sud, 15-45°).
-     * Comparé avec id=1 → ki=1.00 (Est, ≤15°) : Sud doit produire plus.
+     * Vérification ki par orientation Sud et inclinaison 15-45° → 1,07.
+     * Comparé avec Est, ≤15° → ki=1.00 : Sud doit produire plus.
      */
     public function testSudProducesMoreThanEst(): void
     {
-        $baseXml = fn(int $tvId, float $surface) => <<<XML
+        $baseXml = fn(int $orientation, int $inclinaison, float $surface) => <<<XML
 <?xml version="1.0"?>
 <logement>
     <caracteristique_generale>
@@ -332,7 +336,7 @@ XML;
         </donnee_entree>
         <panneaux_pv_collection>
             <panneaux_pv>
-                <tv_coef_orientation_pv_id>$tvId</tv_coef_orientation_pv_id>
+                <enum_orientation_pv_id>$orientation</enum_orientation_pv_id><enum_inclinaison_pv_id>$inclinaison</enum_inclinaison_pv_id>
                 <surface_totale_capteurs>$surface</surface_totale_capteurs>
             </panneaux_pv>
         </panneaux_pv_collection>
@@ -367,8 +371,8 @@ XML;
 </logement>
 XML;
 
-        $docSud = $this->runOnLogement($baseXml(10, 10.0)); // Sud 15-45°, ki=1.07
-        $docEst = $this->runOnLogement($baseXml(1, 10.0));  // Est ≤15°, ki=1.00
+        $docSud = $this->runOnLogement($baseXml(3, 2, 10.0)); // Sud 15-45°, ki=1.07
+        $docEst = $this->runOnLogement($baseXml(1, 1, 10.0));  // Est ≤15°, ki=1.00
 
         $getPpv = static function (DOMDocument $doc): float {
             $pvNode = $doc->getElementsByTagName('production_elec_enr')->item(0);
@@ -383,9 +387,9 @@ XML;
     }
 
     /**
-     * Post-2026 : coef_ep=2.3 → réduction EP plus grande qu'en pré-2026 (coef=1.9).
+     * La déduction PV utilise le même coefficient EF/EP que les consommations : 2,3 puis 1,9.
      */
-    public function testPost2026UsesCoefEp23(): void
+    public function testCoefficientPrimairePhotovoltaiqueSuitLaPeriode(): void
     {
         $xml = <<<XML
 <?xml version="1.0"?>
@@ -400,6 +404,7 @@ XML;
         <panneaux_pv_collection>
             <panneaux_pv>
                 <tv_coef_orientation_pv_id>10</tv_coef_orientation_pv_id>
+                <enum_orientation_pv_id>3</enum_orientation_pv_id><enum_inclinaison_pv_id>2</enum_inclinaison_pv_id>
                 <surface_totale_capteurs>20</surface_totale_capteurs>
             </panneaux_pv>
         </panneaux_pv_collection>
@@ -449,6 +454,50 @@ XML;
         $ep5Pre  = $getEp5($docPre);
         $ep5Post = $getEp5($docPost);
 
-        $this->assertLessThan($ep5Pre, $ep5Post, 'Post-2026 (coef=2.3) a une réduction EP plus grande → ep_5 plus bas');
+        $this->assertGreaterThan($ep5Pre, $ep5Post);
+        $efApres = (float) (new \DOMXPath($docPre))->evaluate('string(//sortie/ef_conso/conso_5_usages)');
+        $reductionEf = 2400.0 - $efApres;
+        $this->assertGreaterThan(0.0, $reductionEf);
+        $this->assertEqualsWithDelta(2.3 * $reductionEf, 5520.0 - $ep5Pre, 1e-8);
+        $this->assertEqualsWithDelta(1.9 * $reductionEf, 5520.0 - $ep5Post, 1e-8);
+    }
+
+    /** Toutes les cellules de §16.2 p.104, sans dépendre d'un ID éditeur. */
+    public static function orientationsEtInclinaisons(): iterable
+    {
+        foreach ([1 => [1.00, 0.96, 0.83, 0.59], 2 => [1.00, 1.03, 0.94, 0.71],
+                  3 => [1.00, 1.07, 0.97, 0.73], 4 => [1.00, 1.03, 0.94, 0.71],
+                  5 => [1.00, 0.96, 0.83, 0.59]] as $orientation => $valeurs) {
+            foreach ($valeurs as $index => $ki) {
+                yield $orientation . '-' . ($index + 1) => [$orientation, $index + 1, $ki];
+            }
+        }
+    }
+
+    #[DataProvider('orientationsEtInclinaisons')]
+    public function testProductionSelonParametresPhysiques(int $orientation, int $inclinaison, float $ki): void
+    {
+        foreach (['', '<tv_coef_orientation_pv_id>6</tv_coef_orientation_pv_id>', '<tv_coef_orientation_pv_id>9999</tv_coef_orientation_pv_id>'] as $tv) {
+            $xml = '<logement><caracteristique_generale><surface_habitable_logement>100</surface_habitable_logement></caracteristique_generale>'
+                . '<production_elec_enr><donnee_entree><presence_production_pv>1</presence_production_pv></donnee_entree>'
+                . '<panneaux_pv_collection><panneaux_pv><surface_totale_capteurs>2.5</surface_totale_capteurs>'
+                . '<enum_orientation_pv_id>' . $orientation . '</enum_orientation_pv_id>'
+                . '<enum_inclinaison_pv_id>' . $inclinaison . '</enum_inclinaison_pv_id>' . $tv
+                . '</panneaux_pv></panneaux_pv_collection></production_elec_enr><sortie/></logement>';
+            $doc = $this->runOnLogement($xml);
+            $production = (float) $doc->getElementsByTagName('production_pv')->item(0)->textContent;
+            // Somme des douze valeurs H1a de §18.2 : 1 573,5 kWh/m².
+            self::assertEqualsWithDelta($ki * 2.5 * 0.17 * 1573.5 * 0.86, $production, 1e-8);
+        }
+    }
+
+    public function testParametresPhotovoltaiquesIncompletsSontSignales(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Orientation ou inclinaison photovoltaïque');
+        $this->runOnLogement('<logement><production_elec_enr><donnee_entree><presence_production_pv>1</presence_production_pv></donnee_entree>'
+            . '<panneaux_pv_collection><panneaux_pv><surface_totale_capteurs>2.5</surface_totale_capteurs>'
+            . '<tv_coef_orientation_pv_id>6</tv_coef_orientation_pv_id></panneaux_pv></panneaux_pv_collection>'
+            . '</production_elec_enr><sortie/></logement>');
     }
 }
