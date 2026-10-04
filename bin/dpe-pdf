@@ -1,0 +1,94 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use CalculDpePHP\Dto\DiagnostiqueurRapport;
+use CalculDpePHP\Dto\DonneesRapportPdf;
+use CalculDpePHP\Pdf\DpePdfGenerator;
+
+require __DIR__ . '/../vendor/autoload.php';
+
+$usage = <<<TXT
+Usage : php bin/dpe-pdf input.xml [output.pdf] [options]
+  input.xml    XML DPE ADEME validé (avec ses résultats <sortie>)
+  output.pdf   optionnel ; par défaut input.pdf à côté de l'XML
+Options (éléments absents du XML ; une identité renseignée remplace celle du XML) :
+  --photo=FICHIER        photo du bien (JPEG/PNG)
+  --logo=FICHIER         logo de l'entreprise de diagnostic
+  --signature=FICHIER    signature du diagnostiqueur
+  --numero-dpe=NUMERO    numéro ADEME si absent du XML (porté par le QR code)
+  --proprietaire=NOM     --adresse-proprietaire=TEXTE
+  --entreprise=NOM       --adresse-entreprise=TEXTE   --diagnostiqueur=PRENOM_NOM
+  --telephone=TEL        --email=EMAIL
+  --certification=NUM    --organisme=NOM              --adresse-organisme=TEXTE
+  --explications=TEXTE   explications personnalisées (annexe)
+  --commentaires=TEXTE   commentaires du diagnostiqueur (p.5)
+  --url-guide=URL        lien « Pour en savoir plus » de l'en-tête
+
+TXT;
+
+$positional = [];
+$options = [];
+foreach (array_slice($argv, 1) as $arg) {
+    if (preg_match('/^--([a-z-]+)=(.*)$/s', $arg, $m) === 1) {
+        $options[$m[1]] = $m[2];
+    } else {
+        $positional[] = $arg;
+    }
+}
+
+if ($positional === []) {
+    fwrite(STDERR, $usage);
+    exit(1);
+}
+
+$input = $positional[0];
+$output = $positional[1] ?? preg_replace('/\.xml$/i', '', $input) . '.pdf';
+if ($output === $input) {
+    fwrite(STDERR, "Le fichier de sortie ne peut pas être identique au fichier d'entrée.\n");
+    exit(1);
+}
+
+$read = static function (?string $path): ?string {
+    if ($path === null) {
+        return null;
+    }
+    $content = @file_get_contents($path);
+    if ($content === false) {
+        fwrite(STDERR, "Fichier illisible : $path\n");
+        exit(1);
+    }
+
+    return $content;
+};
+
+try {
+    $xml = $read($input);
+    $extra = new DonneesRapportPdf(
+        photo: $read($options['photo'] ?? null),
+        logo: $read($options['logo'] ?? null),
+        signature: $read($options['signature'] ?? null),
+        numeroDpe: $options['numero-dpe'] ?? null,
+        nomProprietaire: $options['proprietaire'] ?? null,
+        adresseProprietaire: $options['adresse-proprietaire'] ?? null,
+        diagnostiqueur: new DiagnostiqueurRapport(
+            entreprise: $options['entreprise'] ?? null,
+            adresse: $options['adresse-entreprise'] ?? null,
+            nom: $options['diagnostiqueur'] ?? null,
+            telephone: $options['telephone'] ?? null,
+            email: $options['email'] ?? null,
+            numeroCertification: $options['certification'] ?? null,
+            organismeCertification: $options['organisme'] ?? null,
+            adresseOrganismeCertification: $options['adresse-organisme'] ?? null,
+        ),
+        explicationsPersonnalisees: $options['explications'] ?? null,
+        commentaires: $options['commentaires'] ?? null,
+        urlGuidePedagogique: $options['url-guide'] ?? DonneesRapportPdf::URL_GUIDE_PEDAGOGIQUE,
+    );
+    file_put_contents($output, (new DpePdfGenerator())->generate((string) $xml, $extra));
+    fwrite(STDOUT, "✓ Rapport DPE : $output\n");
+} catch (Throwable $t) {
+    fwrite(STDERR, 'Erreur : ' . $t->getMessage() . "\n");
+    exit(1);
+}

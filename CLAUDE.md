@@ -25,6 +25,10 @@ Le CLI cible : `bin/calcul-dpe input.xml` → enrichit le XML avec les balises `
 | `resources/XML/official/` | Jeux de tests documentés (manifestes suivis en git, XML non versionnés). |
 | `src/Conformite/` | Outillage de mesure d'écart (extraction, familles, tolérances, rapport). |
 | `TASKS.md` | Liste concise des seules tâches non terminées ou différées. |
+| `bin/dpe-pdf` | Rapport PDF d'un DPE depuis son XML ADEME (`CalculDpePHP::genererPdf`). |
+| `src/Pdf/` | Générateur PDF : modèle officiel en fond, données du XML par-dessus. Voir `resources/pdf/README.md`. |
+| `resources/pdf/` | Modèles officiels préparés (`bin/build-pdf-templates`), pictogrammes, polices. |
+| `resources/pdfsamples/` | Exemples XML + PDF réels, **local uniquement** (gitignore). |
 
 ## Workflow de calcul
 
@@ -268,6 +272,37 @@ Cinq leçons à retenir de ces corrections :
   pas un seuil faux.
 - Une tâche `TASK-Kxx` dans `TASKS.md`, un test de non-régression, le gain
   mesuré en A/B, et la suite unitaire verte.
+
+## Rapport PDF (`src/Pdf/`)
+
+Entrée : un XML ADEME **validé** (avec `<sortie>`). Sortie : le rapport PDF au
+format du modèle officiel du ministère (DPE établis depuis le 1er septembre 2025).
+
+```php
+$pdf = CalculDpePHP::genererPdf($xml, new Dto\DonneesRapportPdf(/* photo, logo, signature, numeroDpe, propriétaire, diagnostiqueur… */));
+```
+```bash
+php bin/dpe-pdf input.xml output.pdf --photo=… --numero-dpe=…   # options : php bin/dpe-pdf
+```
+
+- `Dto\DonneesRapportPdf` (+ `Dto\DiagnostiqueurRapport`) porte tout ce que le
+  XML n'a pas : photo, logo, signature, numéro ADEME, identités (remplacent
+  celles du XML si renseignées), adresse de l'organisme certificateur,
+  explications personnalisées, commentaires, lien du guide pédagogique.
+- **Sans numéro ADEME**, la page 1 porte un filigrane diagonal « DOCUMENT NON
+  OFFICIEL » : ne jamais le retirer, un précalcul ne doit pas passer pour un
+  DPE opposable.
+- Principe : la page du modèle (`resources/pdf/templates/`) est le fond ; les
+  zones d'exemple sont repérées par leur texte (`templates/maps/*.php`),
+  recouvertes à la couleur du fond, puis réécrites. Le texte d'exemple est aussi
+  retiré des modèles (`maps/*.zones.php`) pour ne pas rester dans la couche
+  texte du PDF.
+- **Tout masque ajouté ou modifié dans `src/Pdf/Render/Page/` impose de
+  relancer** `php bin/build-pdf-templates --zones <XML…>` (au moins un XML par
+  modèle), puis de vérifier qu'aucune donnée fictive ne subsiste
+  (`pdftotext` sur un rapport généré). Détails : `resources/pdf/README.md`.
+- Vérification visuelle : comparer avec les PDF réels de
+  `resources/pdfsamples/` (local, non versionné).
 
 ## Tolérance des tests E2E
 

@@ -38,6 +38,18 @@ final class CalculDpePHP
     }
 
     /**
+     * Rapport PDF d'un DPE, au format des modèles officiels, à partir de son
+     * XML ADEME validé (avec ses résultats `<sortie>`). Les éléments absents
+     * du XML (photo, logo, signature…) se passent dans $complements.
+     *
+     * @return string contenu binaire du PDF
+     */
+    public static function genererPdf(string $xml, ?Dto\DonneesRapportPdf $complements = null): string
+    {
+        return (new Pdf\DpePdfGenerator())->generate($xml, $complements ?? new Dto\DonneesRapportPdf());
+    }
+
+    /**
      * @param array<string, mixed> $options
      */
     private static function assertSupportedOptions(array $options): void
