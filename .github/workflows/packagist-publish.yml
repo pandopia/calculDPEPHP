@@ -25,11 +25,12 @@ jobs:
     name: Notify Packagist
     runs-on: ubuntu-latest
     # Permet d'éviter une publication via le message de commit
-    if: "!contains(github.event.head_commit.message, '[skip publish]') && !contains(github.event.head_commit.message, '[skip release]')"
+    if: "github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip publish]') && !contains(github.event.head_commit.message, '[skip release]')"
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
+          ref: main  # reprend la dernière publication si ce job a attendu son tour
           fetch-depth: 0  # nécessaire pour lister les tags existants
 
       - name: Read package name
@@ -71,8 +72,40 @@ jobs:
             echo "HEAD = $LAST, rien à publier"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
+
+            # Le tag et la constante doivent décrire exactement le même code.
+            export RELEASE_VERSION="${NEW#v}"
+            php <<'PHP'
+          <?php
+          $path = 'src/CalculDpePHP.php';
+          $version = getenv('RELEASE_VERSION');
+          $source = file_get_contents($path);
+          if ($source === false) {
+              throw new RuntimeException("Lecture impossible : $path");
+          }
+          $updated = preg_replace(
+              "/public const VERSION = '[^']*';/",
+              "public const VERSION = '$version';",
+              $source,
+              -1,
+              $count,
+          );
+          if ($updated === null || $count !== 1 || file_put_contents($path, $updated) === false) {
+              throw new RuntimeException('Impossible de synchroniser la constante VERSION.');
+          }
+          require $path;
+          if (\CalculDpePHP\CalculDpePHP::VERSION !== $version) {
+              throw new RuntimeException('La constante VERSION ne correspond pas au tag.');
+          }
+          PHP
+
+            git add src/CalculDpePHP.php
+            if ! git diff --cached --quiet; then
+              git commit -m "Release $NEW [skip release]"
+            fi
             git tag -a "$NEW" -m "Release $NEW"
-            git push origin "$NEW"
+            # Aucun tag n'est publié si main a avancé entre-temps.
+            git push --atomic origin HEAD:refs/heads/main "refs/tags/$NEW"
             echo "Tag créé : $NEW (bump=$BUMP)"
           fi
 
