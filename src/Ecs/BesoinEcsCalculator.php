@@ -184,11 +184,16 @@ final class BesoinEcsCalculator implements CalculatorInterface
             $surfInst = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $inst);
             $typeId   = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $inst);
 
-            if (GeneratedApartment::isGenerated($node, $accessor) && $typeId === 2) {
+            $exhaustive = \CalculDpePHP\Collectif\EcsInstallationMultiplicity::exhaustiveHomogeneousOrNull($inst, $accessor);
+            if ($exhaustive !== null) {
+                $ratio = 1.0 / $exhaustive;
+            } elseif (GeneratedApartment::isGenerated($node, $accessor) && $typeId === 2) {
                 // §17.2.2.3.1 : le système collectif est d'abord calculé à
                 // l'échelle immeuble ; Cecs est réparti ensuite au logement.
                 $ratio = 1.0 / $rdim;
-            } elseif ($isGeneratedFromImmeuble && $allIndividual && $nbApt > 1) {
+            } elseif ($isGeneratedFromImmeuble && $allIndividual && $nbApt > 1
+                && (!in_array($modeAppId, [10, 11, 12, 13], true)
+                    || $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $inst) !== 1)) {
                 // Appartement moyen : besoin_install = besoin_total / nombre_appartement
                 $ratio = 1.0 / $nbApt;
             } elseif ($surfInst !== null && $surfInst > 0.0 && $surfImmeuble !== null && $surfImmeuble > 0.0) {

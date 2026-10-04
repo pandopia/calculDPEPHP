@@ -262,7 +262,7 @@ final class CombustionCalculator implements CalculatorInterface
             // Pch brut tiré du GV : une valeur continue, hors des paliers
             // nominaux, qui ignorait la puissance réellement nécessaire à la
             // production d'ECS — laquelle vaut 21 kW dès qu'elle est instantanée.
-            $vs     = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $node) ?? 0.0;
+            $vs     = \CalculDpePHP\Ecs\StorageVolume::fromEntry($node, $accessor);
             $pdimKw = $this->puissanceDimensionnementKw($pnW, $vs, $node, $accessor);
             $pnW    = PuissanceDimensionnement::pnFromPdimKw(
                 $pdimKw,
@@ -336,7 +336,7 @@ final class CombustionCalculator implements CalculatorInterface
                 // Sans ces deux étapes, un générateur d'ECS publiait Pch brut —
                 // une valeur continue, hors des paliers nominaux, et qui ignorait
                 // la puissance réellement nécessaire à la production d'ECS.
-                $vs     = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $node) ?? 0.0;
+                $vs     = \CalculDpePHP\Ecs\StorageVolume::fromEntry($node, $accessor);
                 $pdimKw = $this->puissanceDimensionnementKw($pnW, $vs, $node, $accessor);
                 $pnW    = PuissanceDimensionnement::pnFromPdimKw(
                     $pdimKw,

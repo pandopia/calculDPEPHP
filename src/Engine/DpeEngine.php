@@ -44,7 +44,7 @@ final class DpeEngine
         return $this->calculateDocument($document);
     }
 
-    public function calculateDocument(DOMDocument $document): DOMDocument
+    public function calculateDocument(DOMDocument $document, bool $simplifiedApartmentNeeds = false): DOMDocument
     {
         // Garde-fou AVANT toute purge : un DPE hors méthode 3CL logement ne doit
         // pas perdre sa <sortie> existante ni produire un faux succès.
@@ -54,8 +54,18 @@ final class DpeEngine
         $this->purgeOutputs($document);
 
         $context = $this->buildContext($document);
+        $context->set('collectif.besoin_simplifie', $simplifiedApartmentNeeds);
 
-        $this->pipeline->run($document, $context);
+        $originalMethods = \CalculDpePHP\Xml\ExhaustiveInstallationNormalizer::apply($document);
+        try {
+            $this->pipeline->run($document, $context);
+        } finally {
+            // L'adaptation de format n'altère pas les données saisies, même
+            // lorsqu'un calculateur échoue ou que le document est rejoué.
+            foreach ($originalMethods as $method) {
+                $method->textContent = $originalMethods[$method];
+            }
+        }
 
         return $document;
     }

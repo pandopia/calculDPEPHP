@@ -197,7 +197,7 @@ final class EmissionGesCalculator implements CalculatorInterface
         $accessor->setChildValue($emGes, 'emission_ges_fr',                                  $gesConsoFr);
         $accessor->setChildValue($emGes, 'emission_ges_fr_depensier',                        $gesConsoFrDep);
         $accessor->setChildValue($emGes, 'emission_ges_5_usages',                            $ges5);
-        $accessor->setChildValue($emGes, 'emission_ges_5_usages_m2',                         $ges5m2);
+        $accessor->setChildValue($emGes, 'emission_ges_5_usages_m2',                         IntermediateEnergyUnit::usesDecimalIntensities($context->document) && $surface > 0.0 ? round($ges5 / $surface, 2) : $ges5m2);
         $accessor->setChildValue($emGes, 'classe_emission_ges',                              $classeGes);
     }
 

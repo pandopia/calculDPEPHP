@@ -16,7 +16,7 @@ use CalculDpePHP\Engine\CalculationContext;
  *    classe tous les logements pile sur un seuil — 49 des 79 écarts de classe
  *    du corpus, avec une valeur au m² pourtant exacte.
  * 2. **Les petites surfaces ont leurs propres seuils.** L'arrêté du 25 mars
- *    2024 les relève, surface par surface de 3 à 40 m².
+ *    2024 les relève jusqu’à 40 m², avec interpolation des surfaces intermédiaires.
  * 3. **L'altitude relève E et F.** Au-dessus de 800 m en zone H1b, H1c ou H2d.
  *
  * La valeur classée est la valeur au m² **plancher**, celle qui est publiée :
@@ -98,10 +98,13 @@ final class SeuilsClasses
         $table = $context->tables->load(self::TABLE);
 
         $seuils = $table['standard']['defaut'][$grandeur];
-        $surfaceArrondie = (int) round($surface);
+        // Arrêté du 25 mars 2024, art. 5 : entrée en vigueur le 1er juillet.
+        // Rejouer un XML historique ne doit pas appliquer une attestation ultérieure.
+        $date = trim((new \DOMXPath($context->document))->evaluate('string(//administratif/date_etablissement_dpe)'));
+        $petitesSurfaces2024 = $date === '' || $date >= '2024-07-01';
 
-        if ($surface > 0.0 && $surfaceArrondie <= self::SURFACE_MAX_PETIT_LOGEMENT) {
-            $seuils = $table['standard']['par_surface'][$surfaceArrondie][$grandeur] ?? $seuils;
+        if ($petitesSurfaces2024 && $surface > 0.0 && $surface <= self::SURFACE_MAX_PETIT_LOGEMENT) {
+            $seuils = self::interpoler($table['standard'], $surface, $grandeur);
         }
 
         if (!self::estRelevePourAltitude($zoneClimatiqueId, $classeAltitudeId)) {
@@ -109,12 +112,32 @@ final class SeuilsClasses
         }
 
         $altitude = $table['altitude_sup_800'];
-        $releves = ($surface > 0.0 && $surfaceArrondie <= self::SURFACE_MAX_PETIT_LOGEMENT)
-            ? ($altitude['par_surface'][$surfaceArrondie][$grandeur] ?? $altitude['defaut'][$grandeur])
+        $releves = ($petitesSurfaces2024 && $surface > 0.0 && $surface <= self::SURFACE_MAX_PETIT_LOGEMENT)
+            ? self::interpoler($altitude, $surface, $grandeur)
             : $altitude['defaut'][$grandeur];
 
         // Le barème d'altitude ne porte que sur E et F.
         return array_merge($seuils, $releves);
+    }
+
+    /**
+     * Arrêté du 25 mars 2024, annexe 5, §1.2.2 : interpolation linéaire
+     * des seuils entre deux surfaces, sans arrondir la surface du logement.
+     * Les surfaces inférieures ou égales à 8 m² utilisent la première ligne.
+     * @param array<string, mixed> $bareme
+     * @return array<string, float>
+     */
+    private static function interpoler(array $bareme, float $surface, string $grandeur): array
+    {
+        $surface = max(8.0, $surface);
+        $bas = (int)floor($surface);
+        $haut = (int)ceil($surface);
+        $seuils = $bareme['par_surface'][$bas][$grandeur];
+        foreach ($seuils as $classe => $valeur) {
+            $seuils[$classe] = $valeur + ($surface - $bas)
+                * ($bareme['par_surface'][$haut][$grandeur][$classe] - $valeur);
+        }
+        return $seuils;
     }
 
     private static function estRelevePourAltitude(?int $zoneClimatiqueId, ?int $classeAltitudeId): bool

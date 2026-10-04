@@ -14,7 +14,7 @@ use RuntimeException;
 
 final class CalculDpePHP
 {
-    public const VERSION = '0.1.20-alpha.5';
+    public const VERSION = '0.1.20-alpha.12';
 
     public static function calculateBuilding(Dto\BuildingInput $input): Dto\BuildingResult
     {

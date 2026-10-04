@@ -165,7 +165,7 @@ final class EpConsoCalculator implements CalculatorInterface
         $accessor->setChildValue($epConso, 'ep_conso_fr',                                  $epConsoFr);
         $accessor->setChildValue($epConso, 'ep_conso_fr_depensier',                        $epConsoFrDep);
         $accessor->setChildValue($epConso, 'ep_conso_5_usages',                            $ep5);
-        $accessor->setChildValue($epConso, 'ep_conso_5_usages_m2',                         $ep5m2);
+        $accessor->setChildValue($epConso, 'ep_conso_5_usages_m2',                         IntermediateEnergyUnit::usesDecimalIntensities($context->document) && $surface > 0.0 ? $ep5 / $surface : $ep5m2);
         $accessor->setChildValue($epConso, 'classe_bilan_dpe',                             $classeEnergie);
     }
 

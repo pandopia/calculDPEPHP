@@ -224,4 +224,46 @@ XML;
             $this->assertTrue(true); // no output element = handled by caller
         }
     }
+    public function test_la_cle_appartement_pondere_les_sorties_et_preserve_les_intermediaires(): void
+    {
+        foreach ([2 => 1.0, 10 => 0.1, 11 => 0.1, 12 => 0.1, 13 => 0.1, 33 => 0.1, 34 => 0.1, 38 => 0.1, 39 => 0.1, 40 => 0.1] as $method => $share) {
+            [$doc, $node] = $this->buildLogementWithClimatisation(null, 1.0, 1000.0);
+            $general = $doc->getElementsByTagName('caracteristique_generale')->item(0);
+            $general->appendChild($doc->createElement('enum_methode_application_dpe_log_id', (string) $method));
+            $general->appendChild($doc->createElement('surface_habitable_immeuble', '1000'));
+            $doc->getElementsByTagName('donnee_entree')->item(0)->appendChild($doc->createElement('cle_repartition_clim', '0.1'));
+            $ctx = $this->makeContext($doc, ['froid.besoin_fr' => 1000.0, 'froid.besoin_fr_depensier' => 1200.0]);
+            (new ConsoFroidCalculator())->calculate($node, $ctx);
+            $xpath = new \DOMXPath($doc);
+            $this->assertEqualsWithDelta(900.0, (float) $xpath->evaluate('string(//climatisation/donnee_intermediaire/conso_fr)'), 1e-9);
+            $this->assertEqualsWithDelta(900.0 * $share, (float) $xpath->evaluate('string(//sortie/ef_conso/conso_fr)'), 1e-9);
+            $this->assertEqualsWithDelta(1080.0 * $share, $ctx->get('froid.conso_fr_depensier'), 1e-9);
+        }
+    }
+
+    public function test_une_cle_absente_ne_repartit_pas_arbitrairement_la_climatisation(): void
+    {
+        [$doc, $node] = $this->buildLogementWithClimatisation(null, 1.0, 1000.0);
+        $doc->getElementsByTagName('caracteristique_generale')->item(0)->appendChild($doc->createElement('enum_methode_application_dpe_log_id', '10'));
+        $ctx = $this->makeContext($doc, ['froid.besoin_fr' => 1000.0]);
+        $this->expectException(\RuntimeException::class);
+        (new ConsoFroidCalculator())->calculate($node, $ctx);
+    }
+
+    public function test_le_refroidissement_partiel_garde_la_surface_immeuble_avant_repartition(): void
+    {
+        [$doc, $node] = $this->buildLogementWithClimatisation(null, 4.0, 500.0);
+        $general = $doc->getElementsByTagName('caracteristique_generale')->item(0);
+        $general->appendChild($doc->createElement('enum_methode_application_dpe_log_id', '13'));
+        $general->appendChild($doc->createElement('surface_habitable_immeuble', '1000'));
+        $doc->getElementsByTagName('donnee_entree')->item(0)->appendChild($doc->createElement('cle_repartition_clim', '0.1'));
+        $ctx = $this->makeContext($doc, ['froid.besoin_fr' => 1000.0, 'froid.besoin_fr_depensier' => 1200.0]);
+        (new ConsoFroidCalculator())->calculate($node, $ctx);
+        $xp = new \DOMXPath($doc);
+        // 0,9 × 1000 / 4 × 500/1000 = 112,5 kWh immeuble, puis clé 0,1.
+        self::assertEqualsWithDelta(112.5, (float) $xp->evaluate('string(//climatisation/donnee_intermediaire/conso_fr)'), 1e-9);
+        self::assertEqualsWithDelta(11.25, (float) $xp->evaluate('string(//sortie/ef_conso/conso_fr)'), 1e-9);
+        self::assertEqualsWithDelta(13.5, $ctx->get('froid.conso_fr_depensier'), 1e-9);
+    }
+
 }

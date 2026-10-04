@@ -559,4 +559,33 @@ XML;
         self::assertSame(0, $doc->getElementsByTagName('Qgw')->length);
         self::assertGreaterThan(0.0, (float) $ctx->get(StockageCalculator::qgwKey($node)));
     }
+
+    public function test_un_groupe_exhaustif_ne_divise_pas_le_ballon_par_le_nombre_de_visites(): void
+    {
+        [$doc, $node] = $this->buildGen(200, 1, 71, 8);
+        $general = $doc->createElement('caracteristique_generale');
+        foreach (['surface_habitable_immeuble' => 200, 'nombre_appartement' => 4] as $tag => $value) {
+            $general->appendChild($doc->createElement($tag, (string) $value));
+        }
+        $doc->documentElement->appendChild($general);
+        $building = $doc->createElement('dpe_immeuble');
+        $visits = $doc->createElement('logement_visite_collection');
+        foreach ([40, 50, 50, 60] as $area) {
+            $visit = $doc->createElement('logement_visite');
+            $visit->appendChild($doc->createElement('surface_habitable_logement', (string) $area));
+            $visit->appendChild($doc->createElement('enum_typologie_logement_id', '3'));
+            $visits->appendChild($visit);
+        }
+        $building->appendChild($visits);
+        $doc->documentElement->appendChild($building);
+        $de = $doc->createElement('donnee_entree');
+        foreach (['enum_methode_calcul_conso_id' => 4, 'enum_type_installation_id' => 1, 'surface_habitable' => 200] as $tag => $value) {
+            $de->appendChild($doc->createElement($tag, (string) $value));
+        }
+        $doc->getElementsByTagName('installation_ecs')->item(0)->appendChild($de);
+        $context = $this->makeContext($doc);
+        (new StockageCalculator())->calculate($node, $context);
+        self::assertEqualsWithDelta(8592 * 45 / 24 * 200 * 0.2, $context->get(StockageCalculator::qgwKey($node)), 1e-6);
+    }
+
 }
