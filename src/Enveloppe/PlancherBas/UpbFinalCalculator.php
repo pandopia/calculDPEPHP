@@ -32,7 +32,7 @@ use RuntimeException;
  * @spec-section 3.2.2.1
  * @spec-pages 18-19
  * @spec-source resources/specsplitted/03-enveloppe-deperditions/02-parois-opaques/02-upb/00-calcul.md
- * @xml-input  plancher_bas.donnee_entree.{enum_type_adjacence_id, calcul_ue, ue, surface_ue, perimetre_ue} + donnee_intermediaire.upb
+ * @xml-input  plancher_bas.donnee_entree.{enum_type_adjacence_id, calcul_ue, ue, surface_ue, surface_paroi_opaque, perimetre_ue} + donnee_intermediaire.upb
  * @xml-output plancher_bas.donnee_intermediaire.upb_final
  * @depends-on \CalculDpePHP\Enveloppe\PlancherBas\UpbCalculator
  * @tables tv_ue_vide_sanitaire, tv_ue_terre_plein
@@ -118,11 +118,12 @@ final class UpbFinalCalculator implements CalculatorInterface
     {
         $surface   = $accessor->getFloatOrNull('./surface_ue', $entree);
         $perimetre = $accessor->getFloatOrNull('./perimetre_ue', $entree);
-        // Ancien format 6.x : la surface du plancher et son périmètre Ue
+        // Anciens formats 6.x / 7.x : la surface du plancher et son périmètre Ue
         // décrivent la géométrie équivalente, sans répéter surface_ue.
         // Une surface_ue explicite et un Ue fourni gardent leur priorité.
+        $version = $entree->ownerDocument->documentElement?->getAttribute('version') ?? '';
         if ($surface === null
-            && str_starts_with($entree->ownerDocument->documentElement?->getAttribute('version') ?? '', '6.')
+            && (str_starts_with($version, '6.') || str_starts_with($version, '7.'))
             && $accessor->getIntOrNull('./calcul_ue', $entree) === 1) {
             $surface = $accessor->getFloatOrNull('./surface_paroi_opaque', $entree);
         }

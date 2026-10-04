@@ -443,6 +443,38 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   multiplicité et unité à partir de §14.4 et du XSD, puis mesurer en A/B.
   Ne pas corriger la consommation pour faire coïncider cette seule balise.
 
+### TASK-K46 — Réseau 9514C : référence CO2 direct ou facteur ACV
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- Campagne 50g, bâtiment 52041673575825 / **2595E1189146F**, appartement
+  **2595E1189162V** (lettres B/B de référence contre C/C calculées).
+  33 cibles diffèrent, principalement sur les GES ; EP bâtiment 88 dans les deux moteurs.
+- Réseau déclaré 9514C, arrêté 2024-07-05 : émissions CH et ECS de référence
+  = consommation EF × 0,097 ; moteur = EF × 0,118.
+- L'arrêté du 5 juillet 2024 publie respectivement 0,097 en CO2 direct et 0,118
+  en CO2 ACV. Source : https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000049925781
+- Vérifier la colonne applicable au DPE habitation et la règle du logiciel
+  de référence, puis mesurer sur tous les réseaux du corpus. Ne pas remplacer
+  isolément 9514C ni inférer une table depuis les résultats attendus.
+
+### TASK-K45 — Ponts thermiques des exports 7.x, après correction Ue
+
+- [ ] Owner: __ | Phase: K | Priorité: haute
+- Campagne aléatoire 50g : bâtiment 1382945 / **2369E0794198V**. Après
+  reconstruction correcte de Ue (0,33648 ; §3.2.2.1 p.18–19), la synthèse perd
+  le seuil de 1 % : EP 276,500 → 266,534, référence 276,029. Lettres E/D stables.
+  Les 20 appartements associés gagnent le seuil ; exemple **2369E0794746X**.
+- Ponts thermiques bâtiment : 327,75 W/K calculés contre 472,35 publiés.
+  Liaison mur/plancher intermédiaire : k=0,46 contre 0,86 ; mur/plancher haut :
+  0,75 contre 0,40. Les anciens identifiants tabulés sont prioritaires dans
+  `KCalculator`, malgré son commentaire annonçant un calcul depuis les parois.
+- Reconstituer les liaisons avec leurs références et paramètres physiques,
+  sourcer §3.4 p.32–37, distinguer mapping externe et défaut de référence.
+  Ne pas ajuster un ID de table pour retrouver un résultat ni rétablir l'ancien
+  Upb incorrect qui compensait les écarts. Voir aussi **2378E0434697F**.
+- Sources figées et mesures : `docs/corrections-campagne-50g.md`, corpus privé
+  `tmp/dpe-campaign-50g-frozen` du dépôt applicatif.
+
 ### TASK-K44 — Besoin de froid du DPE 2682E0504521A
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
