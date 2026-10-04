@@ -378,17 +378,81 @@ XML;
         self::assertNull($doc->getElementsByTagName('pveilleuse')->item(0));
     }
 
+    public static function casChaudiereCollectiveMixte(): iterable
+    {
+        // §13.2.2.4 p.91-92 : Pch = 1,2 × GV_immeuble × 28,5 / 0,95³ ;
+        // Pecs dépend seulement du stockage, puis Pn = table(max(Pch, Pecs)).
+        $cas = [
+            'instantanee dimensionnee par ecs' => [0.0, 200.0, 24000.0],
+            'instantanee dimensionnee par chauffage' => [0.0, 1600.0, 65000.0],
+            'semi instantanee' => [10.0, 200.0, 18000.0],
+            'semi accumulation' => [100.0, 200.0, 18000.0],
+            'accumulation collective' => [10000.0, 200.0, 75000.0],
+            'plafond gaz fioul' => [0.0, 12535.0, 400000.0],
+        ];
+        foreach ($cas as $nom => [$volume, $gvImmeuble, $pnImmeuble]) {
+            foreach ([0.05, 0.2] as $ratio) {
+                foreach ([false, true] as $cleDistincte) {
+                    yield $nom . ' ratio ' . $ratio . ($cleDistincte ? ' cle commune distincte' : ' cle commune egale a reference chauffage')
+                        => [$volume, $gvImmeuble, $pnImmeuble, $ratio, $cleDistincte];
+                }
+            }
+        }
+    }
+
     /**
-     * §13.2.2.4 compare Pch et Pecs, qui doivent être à la même échelle. Pch
-     * l'est déjà au bâtiment pour une installation virtualisée ; Pecs est la
-     * puissance d'ECS d'un logement — 21 kW en production instantanée. Le
-     * générateur collectif dessert 1/ratio logements, donc 21 / 0,13554 =
-     * 154,9 kW, que la table rend à 155 kW.
-     *
-     * Le lien mixte est ici porté par `enum_usage_generateur_id = 3`
-     * (« chauffage + ecs ») et non par une référence croisée.
+     * §13.2.2.4 p.92 : le forfait Pecs caractérise le générateur collectif ;
+     * il ne se multiplie pas par l'inverse de la part du logement.
+     * §17.2.1.1 : seule la puissance nominale obtenue est ensuite virtualisée.
+     * Le même immeuble doit conserver la même Pn quel que soit le logement.
      */
-    public function testVirtualizedCollectiveBoilerScalesEcsPowerToTheBuilding(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('casChaudiereCollectiveMixte')]
+    public function test_chaudiere_collective_mixte_dimensionnee_avant_virtualisation(
+        float $volume,
+        float $gvImmeuble,
+        float $pnImmeuble,
+        float $ratio,
+        bool $cleDistincte,
+    ): void {
+        $cleMixte = $cleDistincte ? 'chaudiere-commune' : 'chauffage';
+        $lienChauffage = '<reference_generateur_mixte>' . $cleMixte . '</reference_generateur_mixte>';
+        $lienEcs = $lienChauffage;
+        $xml = <<<XML
+<logement>
+  <caracteristique_generale><enum_methode_application_dpe_log_id>5</enum_methode_application_dpe_log_id></caracteristique_generale>
+  <meteo><enum_zone_climatique_id>1</enum_zone_climatique_id><enum_classe_altitude_id>1</enum_classe_altitude_id></meteo>
+  <installation_ecs_collection><installation_ecs><generateur_ecs_collection><generateur_ecs><donnee_entree>
+    <reference>ecs</reference>{$lienEcs}
+    <enum_usage_generateur_id>3</enum_usage_generateur_id><volume_stockage>{$volume}</volume_stockage>
+  </donnee_entree></generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection>
+  <installation_chauffage><donnee_entree>
+    <enum_type_installation_id>2</enum_type_installation_id><ratio_virtualisation>{$ratio}</ratio_virtualisation>
+  </donnee_entree><generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+    <reference>chauffage</reference>{$lienChauffage}
+    <enum_type_generateur_ch_id>88</enum_type_generateur_ch_id><tv_generateur_combustion_id>4</tv_generateur_combustion_id>
+    <enum_usage_generateur_id>3</enum_usage_generateur_id>
+    <enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id><presence_ventouse>0</presence_ventouse>
+  </donnee_entree></generateur_chauffage></generateur_chauffage_collection></installation_chauffage>
+</logement>
+XML;
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $context = $this->makeContext($doc);
+        $context->set('enveloppe.dp_parois', $gvImmeuble * $ratio);
+
+        (new ChaudiereDefautCalculator())->calculate($doc->getElementsByTagName('generateur_chauffage')->item(0), $context);
+
+        self::assertEqualsWithDelta($pnImmeuble * $ratio, (float)$doc->getElementsByTagName('pn')->item(0)->textContent, 1e-6);
+        self::assertEqualsWithDelta((84.0 + 2.0 * log10($pnImmeuble / 1000.0)) / 100.0, (float)$doc->getElementsByTagName('rpn')->item(0)->textContent, 1e-9);
+        self::assertEqualsWithDelta(0.012 * $pnImmeuble * $ratio, (float)$doc->getElementsByTagName('qp0')->item(0)->textContent, 1e-6);
+    }
+
+    /**
+     * Compatibilité des exports historiques sans clé mixte commune :
+     * l'ECS y est dimensionnée sur le logement virtuel (21 / ratio).
+     * Cette convention ne doit pas contaminer un lien commun conforme au XSD.
+     */
+    public function test_conserve_la_convention_historique_sans_cle_mixte_commune(): void
     {
         $xml = <<<'XML'
 <logement>

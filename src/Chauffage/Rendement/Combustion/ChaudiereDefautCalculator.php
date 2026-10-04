@@ -178,22 +178,15 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             // §17.2 / convention ADEME : une chaudière collective virtualisée
             // gaz/fioul est représentée par la puissance bâtiment plafonnée à
             // 400 kW, puis ramenée au logement via ratio_virtualisation.
-            // Les exports de référence portent donc pn = 400000 × ratio.
             $pnCap = $this->getPnCap($genId);
             if ($mixedHeatingMode) {
                 $pnW = min($pchW, $pnCap);
             } else {
                 // Pour les chaudières mixtes, Pdim = max(Pch, Pecs) puis Pn lue dans la table §13.2.2.4
                 $pecsW = $this->computePecsForMixte($node, $accessor, $ratioVirt);
-                // §13.2.2.4 compare Pch et Pecs, qui doivent donc être à la même
-                // échelle. Pch l'est déjà au bâtiment pour une installation
-                // virtualisée ; Pecs, lui, est la puissance d'ECS d'un logement
-                // — 21 kW en production instantanée, quel que soit l'immeuble.
-                // Le générateur collectif dessert 1/ratio logements : sa
-                // puissance d'ECS suit.
-                if ($ratioVirt > 0.0 && $ratioVirt < 1.0 && !$mixedHeatingMode) {
-                    $pecsW /= $ratioVirt;
-                }
+                // Le lien mixte détermine la convention de Pecs (voir ci-dessous).
+                // §17.2.1.1 : Pn est ramenée au logement une fois le générateur
+                // collectif dimensionné, plus bas dans le calcul des caractéristiques.
                 if ($pecsW > 0.0) {
                     $pdimKw = max($pchW, $pecsW) / 1000.0;
                     $pnW    = $this->lookupPnFromPdim($pdimKw, $node, $accessor) * 1000.0;
@@ -301,7 +294,10 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
      *   20 < Vs ≤ 150          → Pecs = 5 − 1.751 × (Vs − 20) / 65
      *   150 < Vs               → Pecs = (7.14 × Vs + 428) / 1000
      *
-     * Retourne 0 si la chaudière n'est pas mixte (pas de reference_generateur_mixte).
+     * La clé mixte commune suit cette formule avant virtualisation (§17.2.1.1).
+     * Les exports historiques sans clé commune conservent leur convention
+     * antérieure Pecs / ratio, à qualifier séparément (TASK-K41).
+     * Retourne 0 si aucun générateur d'ECS mixte ne peut être identifié.
      *
      * @spec-section 13.2.2.4
      * @spec-pages   91-92
@@ -311,19 +307,22 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         NodeAccessor $accessor,
         float $ratioVirt = 1.0,
     ): float {
+        // Compatibilité avec les exports historiques sans clé mixte commune :
+        // conserver le dimensionnement antérieur du moteur à l'échelle du
+        // logement virtuel, sans l'appliquer au lien commun défini par le XSD.
+        $legacyScale = ($ratioVirt > 0.0 && $ratioVirt < 1.0) ? 1.0 / $ratioVirt : 1.0;
         $refMixte = $accessor->getStringOrNull('./donnee_entree/reference_generateur_mixte', $genNode);
         if ($refMixte === null || $refMixte === '') {
             // Le lien mixte n'est pas toujours exprimé par une référence
             // croisée : le XSD porte aussi `enum_usage_generateur_id = 3`,
             // « chauffage + ecs ». Un générateur ainsi déclaré assure les deux
             // usages, et sa puissance d'ECS entre donc dans Pdim.
-            return $this->pecsParUsageMixte($genNode, $accessor, $ratioVirt);
+            return $this->pecsParUsageMixte($genNode, $accessor, $ratioVirt) * $legacyScale;
         }
 
-        // Deux sérialisations ADEME existent : `reference_generateur_mixte`
-        // peut pointer vers la `reference` propre du générateur chauffage, ou
-        // servir de clé commune aux deux générateurs dans le mode mixte 33.
-        // Essayer le pointeur historique en priorité, puis cette clé commune.
+        // Le XSD définit reference_generateur_mixte comme une clé identique
+        // pour les deux parties d'un même générateur, quel que soit le mode DPE.
+        // Cette clé commune est prioritaire sur les références croisées legacy.
         $myRef = $accessor->getStringOrNull('./donnee_entree/reference', $genNode);
         $doc   = $genNode->ownerDocument;
         if ($doc === null) {
@@ -331,17 +330,22 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         }
 
         $xpath = new \DOMXPath($doc);
+        foreach ($xpath->query('//generateur_ecs') as $ecsNode) {
+            if ($ecsNode instanceof DOMElement
+                && $accessor->getStringOrNull('./donnee_entree/reference_generateur_mixte', $ecsNode) === $refMixte) {
+                // §13.2.2.4 p.91-92 : Pch utilise GV_immeuble et Pecs dépend du
+                // stockage de ce même générateur (21 kW en instantané).
+                // Le ratio de surface ne multiplie pas sa puissance d'ECS ;
+                // §17.2.1.1 virtualise seulement les caractéristiques obtenues.
+                $vs = \CalculDpePHP\Ecs\StorageVolume::fromEntry($ecsNode, $accessor);
+                return PuissanceDimensionnement::pecsW($vs);
+            }
+        }
+
         $matches = $myRef === null ? false : $xpath->query(sprintf(
             '//generateur_ecs[donnee_entree/reference_generateur_mixte="%s"]',
             addslashes($myRef),
         ));
-        if (($matches === false || $matches->length === 0)
-            && $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id') === 33) {
-            $matches = $xpath->query(sprintf(
-                '//generateur_ecs[donnee_entree/reference_generateur_mixte="%s"]',
-                addslashes($refMixte),
-            ));
-        }
         if ($matches === false || $matches->length === 0) {
             return 0.0;
         }
@@ -353,7 +357,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
 
         $vs = \CalculDpePHP\Ecs\StorageVolume::fromEntry($ecsNode, $accessor);
 
-        return PuissanceDimensionnement::pecsW($vs);
+        return PuissanceDimensionnement::pecsW($vs) * $legacyScale;
     }
 
     /**

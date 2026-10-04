@@ -227,6 +227,24 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Rouvrir avec le texte de l'arrêté (annexe « confort d'été »), qui seul peut
   donner la table d'agrégation des cinq critères.
 
+### TASK-K41 — Qualifier Pecs dans les exports sans clé mixte commune
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- Le XSD définit `reference_generateur_mixte` comme une clé identique pour les
+  deux usages. Ce format applique désormais Pecs(Vs) au générateur collectif
+  avant virtualisation, conformément à §13.2.2.4 et §17.2.1.1.
+- La compatibilité des exports avec références croisées ou usage mixte implicite
+  conserve provisoirement la convention historique `Pecs / ratio_virtualisation`.
+  Sa justification reste à qualifier ; la différence de sérialisation ne suffit
+  pas, à elle seule, à établir une différence physique de dimensionnement.
+- Variante globale écartée : enlever ce facteur aussi des anciens exports donne,
+  en A/B isolé sur 389 cas (révision 86a2162), 8 990 → 9 228 valeurs hors tolérance,
+  28 → 30 écarts non numériques, 145 manquantes et 1 871 supplémentaires inchangées.
+  Six références s'éloignent : 2400E0007293Q, 2206E1733496F, 2230E1068756F,
+  2613E2419802A, 2659E2129582M et 2659E2407381B.
+- Reprendre depuis les entrées et les textes officiels, sans élargir les tolérances
+  ni choisir une formule selon un identifiant de diagnostic ou d'éditeur.
+
 ### TASK-K31 — Pn des chaudières : trois régimes d'arrondi inconciliables
 
 - [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: basse
