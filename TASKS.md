@@ -414,6 +414,46 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   cas à 0,90.
 - Ne rouvrir qu'avec de nouveaux cas de types 74-77 ou 134 au corpus.
 
+### TASK-K42 — Échelles des exports exhaustifs chauffage et ECS
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- Campagne 50f : `2659E0496026K` et `2659E0496027L` (bâtiment 431123),
+  XML 2.6 LICIEL 319/BBS 2025.11, deux logements tous visités, une installation
+  individuelle à `rdim=1` couvrant la surface totale. Le normalisateur la traite
+  comme agrégée ; la référence publie pourtant la consommation de chauffage du
+  logement moyen (4 414,285 contre 8 518,618 kWh sur le second cas).
+- Requalifier le garde de `ExhaustiveInstallationNormalizer` depuis les seules
+  entrées et §17 ; pas de branche fondée sur un résultat attendu ou un numéro.
+- Cas lié ECS : `2559E3128801Y` (419079/419083), format 2.5, quatre logements.
+  Référence besoin ECS = 4 926,122 kWh, moteur = 1 231,530, rendement 0,854926
+  contre 0,698657. Distinguer groupe entier et appartement moyen avec TASK-K06.
+- Preuves et corpus figé : `docs/corrections-campagne-50f.md` et rapport
+  applicatif `docs/dpe-campaigns/dpe-campaign-50f/`.
+
+### TASK-K43 — Production ECS solaire : grandeur et échelle de sérialisation
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- `2559E3812231S` (427992/427999), six logements : `production_ecs_solaire`
+  vaut 2 825 175,598 dans la référence contre 336 609,904 dans le moteur.
+  Référence = `Cecs_moy × 6 × Fecs/(1−Fecs) × 1000`, moteur =
+  `Becs_moy × Fecs × 1000`. Les consommations ECS concordent déjà.
+- Le XSD documente des kWh à l'immeuble pour les méthodes immeuble et
+  appartement généré. Le calcul actuel utilise le besoin d'un logement et une
+  sérialisation forcée en Wh. Qualifier simultanément énergie utile/consommée,
+  multiplicité et unité à partir de §14.4 et du XSD, puis mesurer en A/B.
+  Ne pas corriger la consommation pour faire coïncider cette seule balise.
+
+### TASK-K44 — Besoin de froid du DPE 2682E0504521A
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- Campagne 50f, bâtiment 1540251 / logement 3862474 : besoin de froid
+  conventionnel 1 117,727 contre 1 106,248 kWh ; dépensier 3 324,268 contre
+  2 628,132. Remonter aux sollicitations et apports mensuels de §10 avant
+  de toucher au rendement ou à la consommation finale.
+- Ne pas confondre avec le COP ECS du même fichier : le XML déclare un CET
+  extérieur/ambiant de 2015, H2c et saisie forfaitaire ; §14.2 p.95 impose 2,5,
+  la référence publie 2,8. Le moteur conserve ici la valeur réglementaire.
+
 ## Validation obligatoire
 
 - Toute correction doit être sourcée (spec/XSD/règlement), testée unitairement

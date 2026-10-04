@@ -342,22 +342,23 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             }
         }
 
-        $matches = $myRef === null ? false : $xpath->query(sprintf(
-            '//generateur_ecs[donnee_entree/reference_generateur_mixte="%s"]',
-            addslashes($myRef),
-        ));
-        if ($matches === false || $matches->length === 0) {
-            return 0.0;
+        // Export historique à références croisées : accepter également le
+        // lien CH → référence ECS. En cascade, plusieurs chaudières peuvent
+        // désigner le même ECS dont le lien retour ne nomme que la première.
+        // §13.2.2.4 p.91-92 : chacune doit être dimensionnée sur max(Pch, Pecs).
+        foreach ($xpath->query('//generateur_ecs') as $ecsNode) {
+            if (!$ecsNode instanceof DOMElement) {
+                continue;
+            }
+            $ecsRef = $accessor->getStringOrNull('./donnee_entree/reference', $ecsNode);
+            $ecsMixte = $accessor->getStringOrNull('./donnee_entree/reference_generateur_mixte', $ecsNode);
+            if ($ecsRef === $refMixte || ($myRef !== null && $myRef !== '' && $ecsMixte === $myRef)) {
+                $vs = \CalculDpePHP\Ecs\StorageVolume::fromEntry($ecsNode, $accessor);
+                return PuissanceDimensionnement::pecsW($vs) * $legacyScale;
+            }
         }
 
-        $ecsNode = $matches->item(0);
-        if (!$ecsNode instanceof DOMElement) {
-            return 0.0;
-        }
-
-        $vs = \CalculDpePHP\Ecs\StorageVolume::fromEntry($ecsNode, $accessor);
-
-        return PuissanceDimensionnement::pecsW($vs) * $legacyScale;
+        return 0.0;
     }
 
     /**

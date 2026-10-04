@@ -551,4 +551,41 @@ XML);
         self::assertEqualsWithDelta((84 + 2 * log10($pn / 0.0489907 / 1000)) / 100, (float)$document->getElementsByTagName('rpn')->item(0)?->textContent, 1e-9);
         self::assertEqualsWithDelta(0.04 * $pn, (float)$document->getElementsByTagName('qp0')->item(0)?->textContent, 1e-6);
     }
+    public function testLeLienMixteDirectDimensionneChaqueChaudiereDeLaCascade(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<logement><caracteristique_generale><enum_methode_application_dpe_log_id>1</enum_methode_application_dpe_log_id></caracteristique_generale>
+<installation_ecs_collection><installation_ecs><generateur_ecs_collection><generateur_ecs><donnee_entree>
+<reference>ecs-&quot;commun&quot;</reference><reference_generateur_mixte>chauffage-1</reference_generateur_mixte>
+<enum_usage_generateur_id>3</enum_usage_generateur_id><volume_stockage>0</volume_stockage>
+</donnee_entree></generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection>
+<installation_chauffage><donnee_entree><enum_type_installation_id>1</enum_type_installation_id></donnee_entree>
+<generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+<reference>chauffage-1</reference><reference_generateur_mixte>ecs-&quot;commun&quot;</reference_generateur_mixte>
+<enum_type_generateur_ch_id>97</enum_type_generateur_ch_id><tv_generateur_combustion_id>13</tv_generateur_combustion_id>
+<enum_usage_generateur_id>3</enum_usage_generateur_id><enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id>
+</donnee_entree></generateur_chauffage></generateur_chauffage_collection></installation_chauffage></logement>
+XML);
+        $first = $doc->getElementsByTagName('generateur_chauffage')->item(0);
+        $second = $first->cloneNode(true);
+        $second->getElementsByTagName('reference')->item(0)->textContent = 'chauffage-2';
+        $first->parentNode->appendChild($second);
+        $context = $this->makeContext($doc);
+        foreach (['enveloppe.dp_pont_thermique', 'ventilation.hvent', 'ventilation.hperm'] as $key) {
+            $context->set($key, 0.0);
+        }
+        $context->set('enveloppe.dp_parois', 50.0);
+        $calc = new ChaudiereDefautCalculator();
+        foreach ([$first, $second] as $generator) {
+            $calc->calculate($generator, $context);
+            // §13.2.2.4 p.91-92 : ECS instantanée, Pecs=21 kW donc Pn=24 kW.
+            self::assertEqualsWithDelta(24000.0, (float)$generator->getElementsByTagName('pn')->item(0)->textContent, 1e-6);
+        }
+        // Un lien explicite absent du XML ne désigne pas automatiquement le seul ECS.
+        $second->getElementsByTagName('reference_generateur_mixte')->item(0)->textContent = 'ecs-inconnu';
+        $calc->calculate($second, $context);
+        self::assertLessThan(24000.0, (float)$second->getElementsByTagName('pn')->item(0)->textContent);
+    }
+
 }

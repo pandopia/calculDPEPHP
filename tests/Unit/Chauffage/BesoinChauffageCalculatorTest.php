@@ -346,4 +346,74 @@ XML);
 
         $this->assertSame(0.0, (float)$ctx->get('ecs.pertes_stockage_recup', 0.0));
     }
+    /** §9.1.1 p.57-59 : un excédent récupéré en mi-saison ne chauffe pas janvier. */
+    public function testLesPertesRecupereesNeSeReportentPasEntreMois(): void
+    {
+        $doc = $this->buildLogement();
+        $table = (new TableRepository(self::PROJECT_ROOT . '/resources/tables'))
+            ->load('reference/tv_sollicitations')[1][1];
+        $fractions = array_fill(1, 12, 1.0);
+        $fractions[1] = 0.0;
+        $ctx = $this->makeContext($doc, '1', '1', [
+            'enveloppe.dp_parois' => 100.0,
+            'apport.fj_mensuel' => $fractions,
+            'apport.fj_mensuel_dep' => $fractions,
+            'apport.fraction_ch' => 1 - $table[1]['DH19'] / array_sum(array_column($table, 'DH19')),
+            'apport.fraction_ch_depensier' => 1 - $table[1]['DH21'] / array_sum(array_column($table, 'DH21')),
+            'ecs.pertes_distribution_recup' => 120.0,
+            'ecs.pertes_distribution_recup_dep' => 240.0,
+        ]);
+        (new BesoinChauffageCalculator())->calculate($doc->documentElement, $ctx);
+        // Les onze mois déjà couverts par les apports gratuits restent à zéro.
+        $expected = 100 * $table[1]['DH19'] / 1000
+            - 120 * $table[1]['Nref19'] / array_sum(array_column($table, 'Nref19'));
+        $expectedDep = 100 * $table[1]['DH21'] / 1000
+            - 240 * $table[1]['Nref21'] / array_sum(array_column($table, 'Nref21'));
+        $this->assertEqualsWithDelta($expected, $ctx->get('chauffage.besoin_ch'), 1e-9);
+        $this->assertEqualsWithDelta($expectedDep, $ctx->get('chauffage.besoin_ch_depensier'), 1e-9);
+
+        $ctx->set('collectif.besoin_simplifie', true);
+        (new BesoinChauffageCalculator())->calculate($doc->documentElement, $ctx);
+        $this->assertEqualsWithDelta(100 * $table[1]['DH19'] / 1000, $ctx->get('chauffage.besoin_ch'), 1e-9);
+        $this->assertEqualsWithDelta(100 * $table[1]['DH21'] / 1000, $ctx->get('chauffage.besoin_ch_depensier'), 1e-9);
+    }
+
+    public function testLeStockageEtLeGenerateurSontRecuperesSurLeurMois(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML('<logement><installation_ecs><donnee_entree><rdim>1</rdim></donnee_entree>'
+            . '<generateur_ecs><donnee_entree><position_volume_chauffe_stockage>1</position_volume_chauffe_stockage>'
+            . '</donnee_entree></generateur_ecs></installation_ecs>'
+            . '<installation_chauffage><generateur_chauffage><donnee_entree>'
+            . '<position_volume_chauffe>1</position_volume_chauffe><enum_usage_generateur_id>3</enum_usage_generateur_id>'
+            . '</donnee_entree><donnee_intermediaire><pn>24000</pn><qp0>240</qp0></donnee_intermediaire>'
+            . '</generateur_chauffage></installation_chauffage></logement>');
+        $table = (new TableRepository(self::PROJECT_ROOT . '/resources/tables'))
+            ->load('reference/tv_sollicitations')[1][1];
+        $fractions = array_fill(1, 12, 1.0);
+        $fractions[1] = 0.0;
+        $ctx = $this->makeContext($doc, '1', '1', [
+            'enveloppe.dp_parois' => 100.0,
+            'apport.fj_mensuel' => $fractions,
+            'apport.fj_mensuel_dep' => $fractions,
+            'apport.fraction_ch' => 1 - $table[1]['DH19'] / array_sum(array_column($table, 'DH19')),
+            'apport.fraction_ch_depensier' => 1 - $table[1]['DH21'] / array_sum(array_column($table, 'DH21')),
+        ]);
+        $ctx->set(\CalculDpePHP\Ecs\Rendement\StockageCalculator::qgwKey(
+            $doc->getElementsByTagName('generateur_ecs')->item(0)
+        ), 1000000.0);
+        (new BesoinChauffageCalculator())->calculate($doc->documentElement, $ctx);
+        foreach (['' => ['DH19', 'Nref19'], '_depensier' => ['DH21', 'Nref21']] as $suffix => [$dh, $nref]) {
+            $hours = $table[1][$nref];
+            $grossWh = 100 * $table[1][$dh];
+            $duration = min($hours, 1.3 * $grossWh / (0.3 * 24000) + $hours * 1790 / 8760);
+            $expected = $grossWh / 1000 - 0.48 * $hours * 1000000 / 8760 / 1000
+                - 0.48 * 0.5 * 240 * $duration / 1e6;
+            $this->assertEqualsWithDelta($expected, $ctx->get('chauffage.besoin_ch' . $suffix), 1e-9);
+        }
+        // L'agrégat des pertes reste annuel même si certains mois saturent à zéro.
+        $this->assertEqualsWithDelta(0.48 * array_sum(array_column($table, 'Nref19')) * 1000000 / 8760 / 1000,
+            $ctx->get('ecs.pertes_stockage_recup'), 1e-9);
+    }
+
 }

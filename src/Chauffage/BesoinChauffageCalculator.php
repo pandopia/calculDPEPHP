@@ -17,11 +17,9 @@ use DOMElement;
  * Formule mensuelle :
  *   Bchj (kWh) = BVj × DH19j / 1000 − (Qrec_chauff_j + Qg,w_rec_j + Qgen_rec_j) / 1000
  *
- * Formule annuelle :
- *   Bch = Σ_j Bchj = GV × Σ(DH19j × (1−Fj)) / 1000 − pertes_recup_annuelles
- *       = GV × Σ(DH19j) × (1 − fraction_ch) / 1000 − pertes_recup_annuelles
- *
- * (Identité exacte car fraction_ch = Σ(Fj×DH19j)/Σ(DH19j) par définition)
+ * Bch = Σ_j max(0, Bchj), pour chaque scénario : les excédents récupérés
+ * d'un mois ne compensent pas les besoins d'un autre mois (§9.1.1 p.57-59).
+ * Une borne annuelle seule serait différente dès qu'un mois est excédentaire.
  *
  * Pertes récupérées :
  *   − pertes_distribution_ecs_recup  : calculées par EcsDistributionRecupCalculator (TASK-E26+)
@@ -76,33 +74,14 @@ final class BesoinChauffageCalculator implements CalculatorInterface
         $fraction19 = (float)$context->get('apport.fraction_ch',          0.0);
         $fraction21 = (float)$context->get('apport.fraction_ch_depensier', 0.0);
 
-        // ── 3. Σ(DH19j) et Σ(DH21j) sur la saison de chauffe ─────────────────
+        // ── 3. Sollicitations mensuelles de la saison de chauffe ─────────────
         $zoneId = $context->zoneClimatique !== null ? (int)$context->zoneClimatique : null;
         $altId  = $context->classeAltitude  !== null ? (int)$context->classeAltitude  : null;
         $tvS = ($zoneId !== null && $altId !== null)
             ? ClimaticSolicitations::heating($context, $zoneId, $altId)
             : null;
-
-        $sumDH19 = 0.0;
-        $sumDH21 = 0.0;
-        if ($tvS !== null) {
-            for ($j = 1; $j <= 12; $j++) {
-                $row = $tvS[$j] ?? null;
-                if ($row === null) {
-                    continue;
-                }
-                if (isset($row['DH19']) && $row['DH19'] !== null) {
-                    $sumDH19 += (float)$row['DH19'];
-                }
-                if (isset($row['DH21']) && $row['DH21'] !== null) {
-                    $sumDH21 += (float)$row['DH21'];
-                }
-            }
-        }
-
-        // ── 4. Besoin brut avant pertes récupérées (kWh) ──────────────────────
-        $bchBrut19 = $gv * $sumDH19 * (1.0 - $fraction19) / 1000.0;
-        $bchBrut21 = $gv * $sumDH21 * (1.0 - $fraction21) / 1000.0;
+        $sumNref19 = array_sum(array_column($tvS ?? [], 'Nref19'));
+        $sumNref21 = array_sum(array_column($tvS ?? [], 'Nref21'));
 
         // ── 5. Pertes récupérées ────────────────────────────────────────────────
         $pertesDistribRecup     = (float)$context->get('ecs.pertes_distribution_recup',     0.0);
@@ -117,13 +96,30 @@ final class BesoinChauffageCalculator implements CalculatorInterface
         if ($context->get('collectif.besoin_simplifie', false)) {
             $pertesDistribRecup = $pertesDistribRecupDep = 0.0;
             $pertesStockageRecup = $pertesStockageRecupDep = 0.0;
-            $pertesGenRecup = $pertesGenRecupDep = 0.0;
+            $pertesGenRecup = $pertesGenRecupDep = array_fill(1, 12, 0.0);
         }
-        $context->set('ch.pertes_generateur_recup',     $pertesGenRecup);
-        $context->set('ch.pertes_generateur_recup_dep', $pertesGenRecupDep);
+        $context->set('ch.pertes_generateur_recup',     array_sum($pertesGenRecup));
+        $context->set('ch.pertes_generateur_recup_dep', array_sum($pertesGenRecupDep));
 
-        $besoinCh         = max(0.0, $bchBrut19 - $pertesDistribRecup - $pertesStockageRecup    - $pertesGenRecup);
-        $besoinChDepensier = max(0.0, $bchBrut21 - $pertesDistribRecupDep - $pertesStockageRecupDep - $pertesGenRecupDep);
+        // §9.1.1 p.57-59 : calculer chaque besoin mensuel avant de sommer.
+        // Distribution et stockage sont proportionnels à Nrefj ; les pertes
+        // du générateur dépendent en plus du besoin du mois via Dperj.
+        $fj19 = (array)$context->get('apport.fj_mensuel', array_fill(1, 12, $fraction19));
+        $fj21 = (array)$context->get('apport.fj_mensuel_dep', array_fill(1, 12, $fraction21));
+        $besoinCh = $besoinChDepensier = 0.0;
+        for ($j = 1; $j <= 12; $j++) {
+            $row = $tvS[$j] ?? [];
+            $ratio19 = $sumNref19 > 0 ? (float)($row['Nref19'] ?? 0) / $sumNref19 : 0.0;
+            $ratio21 = $sumNref21 > 0 ? (float)($row['Nref21'] ?? 0) / $sumNref21 : 0.0;
+            $besoinCh += max(0.0,
+                $gv * (float)($row['DH19'] ?? 0) * (1 - (float)($fj19[$j] ?? 0)) / 1000
+                - ($pertesDistribRecup + $pertesStockageRecup) * $ratio19 - $pertesGenRecup[$j]
+            );
+            $besoinChDepensier += max(0.0,
+                $gv * (float)($row['DH21'] ?? 0) * (1 - (float)($fj21[$j] ?? 0)) / 1000
+                - ($pertesDistribRecupDep + $pertesStockageRecupDep) * $ratio21 - $pertesGenRecupDep[$j]
+            );
+        }
 
         // ── 6. Écriture dans sortie.apport_et_besoin ───────────────────────────
         $sortie         = $accessor->ensureSortie($node);
@@ -155,6 +151,7 @@ final class BesoinChauffageCalculator implements CalculatorInterface
      * vérifié sur 2662E2147774H : 334 913 Wh → sortie 0.33491343…
      * L'impact sur besoin_ch est donc négligeable mais la balise doit être remplie.
      *
+     * @return array<int, float> Pertes mensuelles en kWh, indexées de 1 à 12.
      * @spec-source resources/specsplitted/09-conso-chauffage/01-installation-seule/01-conso.md
      */
     private function computePertesGenerateurRecup(
@@ -162,9 +159,9 @@ final class BesoinChauffageCalculator implements CalculatorInterface
         ?array $tvS,
         float $gv,
         bool $depensier
-    ): float {
+    ): array {
         if ($tvS === null || $gv <= 0.0) {
-            return 0.0;
+            return array_fill(1, 12, 0.0);
         }
 
         $accessor = new NodeAccessor($context->document);
@@ -199,7 +196,7 @@ final class BesoinChauffageCalculator implements CalculatorInterface
             ];
         }
         if ($gens === []) {
-            return 0.0;
+            return array_fill(1, 12, 0.0);
         }
 
         $fjKey   = $depensier ? 'apport.fj_mensuel_dep' : 'apport.fj_mensuel';
@@ -207,7 +204,7 @@ final class BesoinChauffageCalculator implements CalculatorInterface
         $dhKey   = $depensier ? 'DH21' : 'DH19';
         $nrefKey = $depensier ? 'Nref21' : 'Nref19';
 
-        $totalWh = 0.0;
+        $pertesMensuelles = array_fill(1, 12, 0.0);
         for ($j = 1; $j <= 12; $j++) {
             $row  = $tvS[$j] ?? null;
             $dhj  = $row !== null ? (float)($row[$dhKey]   ?? 0.0) : 0.0;
@@ -223,12 +220,12 @@ final class BesoinChauffageCalculator implements CalculatorInterface
                     3       => min($nref, 1.3 * $bchHpJ / (0.3 * $g['pn']) + $nref * 1790.0 / 8760.0),
                     default => min($nref, 1.3 * $bchHpJ / (0.3 * $g['pn'])),
                 };
-                $totalWh += 0.48 * $g['cper'] * $g['qp0'] * $dper * $g['multiplicity'];
+                $pertesMensuelles[$j] += 0.48 * $g['cper'] * $g['qp0'] * $dper * $g['multiplicity'] / 1e6;
             }
         }
 
         // Échelle LICIEL : Wh / 10⁶ (cf. doc-block)
-        return $totalWh / 1e6;
+        return $pertesMensuelles;
     }
 
     /**
