@@ -31,17 +31,39 @@ final class TemplateCleaner
         $pdf = (string) file_get_contents($qdfPath);
         $removed = 0;
 
-        // Formulaires (XObject /Form) dessinés par chaque page : le bandeau
-        // « Exemple de DPE » en est un. Seuls ceux à matrice identité sont
-        // traités, leurs coordonnées étant alors celles de la page.
+        // 1. Flux de chaque page, en notant la matrice courante à chaque
+        //    appel de formulaire (Do).
+        $appels = [];
+        $etats = [];
+        $pdf = (string) preg_replace_callback(
+            '/%% Contents for page (\d+)\n(%% Original object ID: [^\n]*\n)?(\d+ 0 obj\n<<.*?>>\nstream\n)(.*?)(\nendstream)/s',
+            static function (array $m) use ($zones, $pageHeight, &$removed, &$appels, &$etats): string {
+                $page = (int) $m[1];
+                if (!isset($zones[$page])) {
+                    return $m[0];
+                }
+                $draws = [];
+                $etats[$page] ??= [];
+                [$content, $count] = self::cleanStream($m[4], $zones[$page], $pageHeight, null, $draws, $etats[$page]);
+                $removed += $count;
+                $appels[$page] = ($appels[$page] ?? []) + $draws;
+
+                return "%% Contents for page {$m[1]}\n" . $m[2] . $m[3] . $content . $m[5];
+            },
+            $pdf,
+        );
+
+        // 2. Formulaires (XObject /Form) appelés par la page — le bandeau
+        //    « Exemple de DPE » en est un —, dans le repère où ils sont posés :
+        //    leur /Matrix composée avec la matrice courante au moment du Do.
         preg_match_all('/%% Page (\d+)\n.*?endobj/s', $pdf, $pages, PREG_SET_ORDER);
         foreach ($pages as $page) {
             $number = (int) $page[1];
             if (!isset($zones[$number]) || preg_match('#/XObject <<(.*?)>>#s', $page[0], $xobjects) !== 1) {
                 continue;
             }
-            preg_match_all('#/\S+ (\d+) 0 R#', $xobjects[1], $refs);
-            foreach ($refs[1] as $id) {
+            preg_match_all('#(/\S+) (\d+) 0 R#', $xobjects[1], $refs, PREG_SET_ORDER);
+            foreach ($refs as [, $name, $id]) {
                 $start = strpos($pdf, "\n$id 0 obj\n");
                 if ($start === false) {
                     continue;
@@ -52,36 +74,28 @@ final class TemplateCleaner
                     continue;
                 }
                 $dict = substr($pdf, $start, $streamAt - $start);
-                $identity = !str_contains($dict, '/Matrix')
-                    || preg_match('#/Matrix \[\s*1(\.0+)?\s+0(\.0+)?\s+0(\.0+)?\s+1(\.0+)?\s+0(\.0+)?\s+0(\.0+)?\s*\]#', $dict) === 1;
-                if (!str_contains($dict, '/Subtype /Form') || !$identity) {
+                if (!str_contains($dict, '/Subtype /Form')) {
                     continue;
                 }
+                $matrix = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+                if (preg_match('#/Matrix \[([^\]]*)\]#', $dict, $mm) === 1) {
+                    $values = array_map('floatval', preg_split('/\s+/', trim($mm[1])) ?: []);
+                    if (count($values) === 6) {
+                        $matrix = $values;
+                    }
+                }
+                $ctm = self::multiply($matrix, $appels[$number][$name] ?? [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]);
                 $bodyStart = $streamAt + strlen(">>\nstream\n");
                 $bodyEnd = strpos($pdf, "\nendstream", $bodyStart);
                 if ($bodyEnd === false) {
                     continue;
                 }
-                [$content, $count] = self::cleanStream(substr($pdf, $bodyStart, $bodyEnd - $bodyStart), $zones[$number], $pageHeight);
+                [$content, $count] = self::cleanStream(substr($pdf, $bodyStart, $bodyEnd - $bodyStart), $zones[$number], $pageHeight, $ctm);
                 $removed += $count;
                 $pdf = substr($pdf, 0, $bodyStart) . rtrim($content, "\n") . substr($pdf, $bodyEnd);
             }
         }
 
-        $pdf = (string) preg_replace_callback(
-            '/%% Contents for page (\d+)\n(%% Original object ID: [^\n]*\n)?(\d+ 0 obj\n<<.*?>>\nstream\n)(.*?)(\nendstream)/s',
-            static function (array $m) use ($zones, $pageHeight, &$removed): string {
-                $page = (int) $m[1];
-                if (!isset($zones[$page])) {
-                    return $m[0];
-                }
-                [$content, $count] = self::cleanStream($m[4], $zones[$page], $pageHeight);
-                $removed += $count;
-
-                return "%% Contents for page {$m[1]}\n" . $m[2] . $m[3] . $content . $m[5];
-            },
-            $pdf,
-        );
         file_put_contents($qdfPath, $pdf);
 
         return $removed;
@@ -89,17 +103,25 @@ final class TemplateCleaner
 
     /**
      * @param list<array{0: float, 1: float, 2: float, 3: float}> $zones
+     * @param array{0: float, 1: float, 2: float, 3: float, 4: float, 5: float}|null $ctm matrice initiale (formulaire posé)
+     * @param array<string, array{0: float, 1: float, 2: float, 3: float, 4: float, 5: float}> $draws matrice courante à chaque Do, par nom
      * @return array{0: string, 1: int}
      */
-    public static function cleanStream(string $stream, array $zones, float $pageHeight): array
+    public static function cleanStream(string $stream, array $zones, float $pageHeight, ?array $ctm = null, array &$draws = [], array &$state = []): array
     {
         $tokens = self::tokenize($stream);
         $out = [];
         $operands = [];
-        $ctm = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
-        $stack = [];
-        $tm = $tlm = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
-        $leading = 0.0;
+        $ctm ??= [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+        // Une page peut répartir son contenu sur plusieurs flux : l'état
+        // graphique et textuel se poursuit de l'un à l'autre.
+        if ($state !== []) {
+            ['ctm' => $ctm, 'stack' => $stack, 'tm' => $tm, 'tlm' => $tlm, 'leading' => $leading] = $state;
+        }
+        $stack ??= [];
+        $tm ??= [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+        $tlm ??= $tm;
+        $leading ??= 0.0;
         $removed = 0;
 
         foreach ($tokens as [$type, $value]) {
@@ -114,10 +136,13 @@ final class TemplateCleaner
                     $stack[] = $ctm;
                     break;
                 case 'Q':
-                    $ctm = array_pop($stack) ?? [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+                    $ctm = array_pop($stack) ?? $ctm;
                     break;
                 case 'cm':
                     $ctm = self::multiply([$num(0), $num(1), $num(2), $num(3), $num(4), $num(5)], $ctm);
+                    break;
+                case 'Do':
+                    $draws[$operands[0][1] ?? ''] ??= $ctm;
                     break;
                 case 'BT':
                     $tm = $tlm = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
@@ -164,6 +189,7 @@ final class TemplateCleaner
         if ($operands !== []) {
             $out[] = implode(' ', array_column($operands, 1));
         }
+        $state = ['ctm' => $ctm, 'stack' => $stack, 'tm' => $tm, 'tlm' => $tlm, 'leading' => $leading];
 
         return [implode("\n", $out) . "\n", $removed];
     }

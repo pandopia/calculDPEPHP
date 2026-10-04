@@ -276,7 +276,10 @@ Cinq leçons à retenir de ces corrections :
 ## Rapport PDF (`src/Pdf/`)
 
 Entrée : un XML ADEME **validé** (avec `<sortie>`). Sortie : le rapport PDF au
-format du modèle officiel du ministère (DPE établis depuis le 1er septembre 2025).
+format du modèle officiel en vigueur à `date_etablissement_dpe` : éditions du
+1er janvier 2023, 1er juillet 2024 et 1er septembre 2025 (QR code seulement
+dans cette dernière ; « surface habitable » au lieu de « surface de
+référence » en 2023). Avant 2023 : `UnsupportedTemplateException`.
 
 ```php
 $pdf = CalculDpePHP::genererPdf($xml, new Dto\DonneesRapportPdf(/* photo, logo, signature, numeroDpe, propriétaire, diagnostiqueur… */));

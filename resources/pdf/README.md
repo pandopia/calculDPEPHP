@@ -9,7 +9,7 @@ sont retirées puis remplacées par celles du XML.
 
 | Chemin | Rôle |
 |---|---|
-| `templates/*.pdf` | Modèles « logement existant » du 1er septembre 2025, préparés : sans flux d'objets (FPDI) et **sans leur texte d'exemple**. |
+| `templates/*.pdf` | Modèles « logement existant » (éditions 2023, 2024, 2025), préparés : sans flux d'objets (FPDI) et **sans leur texte d'exemple**. |
 | `templates/maps/*.php` | Position de chaque ligne de texte du modèle d'origine : les ancres de mise en page. |
 | `templates/maps/*.zones.php` | Zones que le générateur recouvre ; le texte d'exemple qui s'y trouve est retiré du modèle. |
 | `templates/preview/*.png` | Rendu 36 dpi des pages, pour reprendre la couleur exacte du fond sous un masque. |
@@ -17,8 +17,12 @@ sont retirées puis remplacées par celles du XML.
 | `fonts/` | IBM Plex Sans / Sans Condensed (police des modèles, licence SIL OFL) et leur conversion TCPDF. |
 
 Source des modèles : <https://rt-re-batiment.developpement-durable.gouv.fr/modeles-des-dpe-a788.html>.
-Seule l'édition en vigueur (DPE établis depuis le 1er septembre 2025) est mise
-en page ; un DPE antérieur lève `UnsupportedTemplateException`.
+Le modèle est celui en vigueur à la date d'établissement du DPE : éditions du
+1er janvier 2023, du 1er juillet 2024 et du 1er septembre 2025
+(`TemplateCatalog::EDITIONS`). Elles ont la même structure ; seule l'édition
+2025 porte le cartouche du QR code, et celle de 2023 dit « surface habitable »
+(libellé repris du modèle). L'édition 2021-2022, organisée autrement, n'est pas
+prise en charge : un DPE établi avant 2023 lève `UnsupportedTemplateException`.
 
 ## Régénérer les modèles
 
@@ -29,7 +33,8 @@ php bin/build-pdf-templates --download
 php bin/build-pdf-templates --zones chemin/vers/*.xml   # au moins un XML par modèle
 ```
 
-Le relevé des zones génère des rapports et note chaque surface recouverte ;
+Le relevé des zones génère des rapports (chaque XML est rejoué à la date de
+début de chaque édition) et note chaque surface recouverte ;
 il faut le relancer dès qu'un masque change dans `src/Pdf/Render/Page/`. Une
 zone propre à une page de suite (débordement des travaux) n'est pas relevée :
 elle cache du texte fixe du modèle.

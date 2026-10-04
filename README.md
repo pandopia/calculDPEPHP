@@ -40,10 +40,11 @@ php bin/calcul-dpe /chemin/vers/input.xml [/chemin/vers/output.xml]
 ## Rapport PDF du DPE
 
 Genere le rapport PDF d'un DPE a partir de son XML ADEME valide (avec ses
-resultats `<sortie>`), sur le fond du modele officiel du ministere en vigueur
-(DPE etablis depuis le 1er septembre 2025 ; maison, appartement, appartement a
-partir de l'immeuble, immeuble). Les DPE anterieurs levent
-`UnsupportedTemplateException`.
+resultats `<sortie>`), sur le fond du modele officiel du ministere en vigueur a sa date
+d'etablissement : editions du 1er janvier 2023, du 1er juillet 2024 et du
+1er septembre 2025 (seule cette derniere porte le QR code), pour maison,
+appartement, appartement a partir de l'immeuble et immeuble. Les DPE etablis
+avant 2023 levent `UnsupportedTemplateException`.
 
 ```php
 <?php

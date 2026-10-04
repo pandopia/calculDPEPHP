@@ -85,9 +85,12 @@ final class Page7Annexes implements PageRenderer
         // Bloc de références (gauche) et justificatifs (droite).
         $first = $t->anchor(7, '/^référence du logiciel validé/');
         $last = $t->anchor(7, '/^référence de la parcelle cadastrale/');
-        $surface = $t->anchor(7, '/^La surface de référence d/');
         $proprio = $t->find(7, '/^Propriétaire des installations communes/');
-        $bottom = ($proprio ?? $surface)->y0 - 4.0;
+        // Fin du panneau des références : paragraphe « surface de référence »
+        // (absent de l'édition 2023) ou bas du panneau blanc.
+        $surface = $t->find(7, '/^La surface de référence d/');
+        $finPanneau = $surface !== null ? $surface->y0 : $t->whiteUntil(7, 556.0, $first->y0) + 2.0;
+        $bottom = $proprio !== null ? $proprio->y0 - 4.0 : $finPanneau - 4.0;
         $pdf->fillRect(40.0, $first->y0 - 0.5, 519.0, $bottom - $first->y0, Canvas::WHITE);
 
         $lignes = [
@@ -124,7 +127,7 @@ final class Page7Annexes implements PageRenderer
         }
 
         if ($proprio !== null) {
-            $pdf->fillRect(40.0, $proprio->y0 - 0.5, 519.0, $surface->y0 - $proprio->y0 - 3.0, Canvas::WHITE);
+            $pdf->fillRect(40.0, $proprio->y0 - 0.5, 519.0, $finPanneau - $proprio->y0 - 3.0, Canvas::WHITE);
             $nom = $data->nomProprietaireInstallationCommune();
             $pdf->font(Canvas::SANS, 7.3, '', Canvas::BLACK);
             $pdf->textAt($proprio->x0, $proprio->y0, 'Propriétaire des installations communes :');

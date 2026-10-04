@@ -69,38 +69,57 @@ final class Page1Synthese implements PageRenderer
     {
         $t = $pdf->template();
         $numero = $extra->numeroDpe ?? $data->numeroDpe() ?? '';
+        $libelleNumero = 'n° : ' . ($numero !== '' ? $numero : 'non attribué');
+        $etabli = 'établi le : ' . Format::date($data->dateEtablissement());
+        $valable = 'valable jusqu’au : ' . Format::date($data->dateFinValidite());
 
-        // Cartouche vert « n° » puis zone blanche des dates (image du modèle).
-        $pdf->fillRect(368, 44.2, 113, 10.6, $pdf->backgroundAt(350, 50));
-        $pdf->fillRect(340, 55.0, 141, 24.0, Canvas::WHITE);
-        $pdf->font(Canvas::SANS, 7.5, 'B', Canvas::WHITE);
-        $pdf->textAt(479.5, 44.9, 'n° : ' . ($numero !== '' ? $numero : 'non attribué'), 'R');
-        $pdf->font(Canvas::SANS, 9, '', Canvas::GREEN);
-        $pdf->textAt(479.6, 55.0, 'établi le : ' . Format::date($data->dateEtablissement()), 'R');
-        $pdf->font(Canvas::SANS, 9.5, 'B', Canvas::GREEN);
-        $pdf->textAt(479.6, 65.6, 'valable jusqu’au : ' . Format::date($data->dateFinValidite()), 'R');
+        if ($t->hasQrCode()) {
+            // Cartouche vert « n° » puis zone blanche des dates (image du modèle).
+            $pdf->fillRect(368, 44.2, 113, 10.6, $pdf->backgroundAt(350, 50));
+            $pdf->fillRect(340, 55.0, 141, 24.0, Canvas::WHITE);
+            $pdf->font(Canvas::SANS, 7.5, 'B', Canvas::WHITE);
+            $pdf->textAt(479.5, 44.9, $libelleNumero, 'R');
+            $pdf->font(Canvas::SANS, 9, '', Canvas::GREEN);
+            $pdf->textAt(479.6, 55.0, $etabli, 'R');
+            $pdf->font(Canvas::SANS, 9.5, 'B', Canvas::GREEN);
+            $pdf->textAt(479.6, 65.6, $valable, 'R');
 
-        // QR code ADEME (l'image du modèle porte un filigrane « QR code Ademe »).
-        $pdf->fillRect(488.6, 44.3, 63.3, 63.0, Canvas::WHITE);
-        if ($numero !== '') {
-            QrCode::draw($pdf, QrCode::urlFor($numero), 491.0, 46.7, 58.2);
-        } else {
-            $pdf->font(Canvas::SANS, 6.5, 'B', Canvas::GREY);
-            foreach (['QR code', 'disponible après', 'enregistrement', 'à l’ADEME'] as $i => $ligne) {
-                $pdf->textAt(520.2, 57.0 + $i * 9.0, $ligne, 'C');
+            // QR code ADEME (l'image du modèle porte un filigrane « QR code Ademe »).
+            $pdf->fillRect(488.6, 44.3, 63.3, 63.0, Canvas::WHITE);
+            if ($numero !== '') {
+                QrCode::draw($pdf, QrCode::urlFor($numero), 491.0, 46.7, 58.2);
+            } else {
+                $pdf->font(Canvas::SANS, 6.5, 'B', Canvas::GREY);
+                foreach (['QR code', 'disponible après', 'enregistrement', 'à l’ADEME'] as $i => $ligne) {
+                    $pdf->textAt(520.2, 57.0 + $i * 9.0, $ligne, 'C');
+                }
             }
+        } else {
+            // Éditions 2023 et 2024 : numéro et dates en vert, alignés à droite, sans QR code.
+            $n = $t->anchor(1, '/^n° :/');
+            $e = $t->anchor(1, '/^établi le/');
+            $v = $t->anchor(1, '/^valable jusqu/');
+            $pdf->fillRect(min($n->x0, $e->x0, $v->x0) - 40.0, $n->y0 + 0.5, max($n->x1, $e->x1, $v->x1) + 41.0 - min($n->x0, $e->x0, $v->x0), $v->y1 - $n->y0 - 0.5, Canvas::WHITE);
+            $pdf->font(Canvas::SANS, 9, '', Canvas::GREEN);
+            $pdf->textAt($n->x1, $n->y0, $libelleNumero, 'R');
+            $pdf->textAt($e->x1, $e->y0, $etabli, 'R');
+            $pdf->font(Canvas::SANS, 9.5, 'B', Canvas::GREEN);
+            $pdf->textAt($v->x1, $v->y0, $valable, 'R');
         }
 
-        // Lien du guide pédagogique.
+        // Lien du guide pédagogique : le texte du modèle jusqu'au lien, puis le lien.
         $url = $t->find(1, '/<url_gouv_guide_p/');
         if ($url !== null) {
-            $pdf->mask(new Box($url->x0, $url->y0 + 0.5, 478.0, $url->y1));
+            $right = $t->hasQrCode() ? 478.0 : 556.0;
+            $debut = trim(explode('Pour en savoir plus', $url->text, 2)[0]) . ' ';
+            $lien = 'Pour en savoir plus : ' . $extra->urlGuidePedagogique;
+            $pdf->mask(new Box($url->x0, $url->y0 + 0.5, $right, $url->y1));
             $pdf->font(Canvas::SANS, 8, '', Canvas::GREEN);
-            $pdf->fitWidth('pour améliorer ses performances et réduire vos factures. Pour en savoir plus : ' . $extra->urlGuidePedagogique, 476.0 - $url->x0, 6.0);
+            $pdf->fitWidth($debut . $lien, $right - 2.0 - $url->x0, 6.0);
             $size = $pdf->fontSize();
             $pdf->runs($url->x0, $url->y0, [
-                [Canvas::SANS, 'pour améliorer ses performances et réduire vos factures. ', $size, '', Canvas::GREEN],
-                [Canvas::SANS, 'Pour en savoir plus : ' . $extra->urlGuidePedagogique, $size, 'I', Canvas::GREEN],
+                [Canvas::SANS, $debut, $size, '', Canvas::GREEN],
+                [Canvas::SANS, $lien, $size, 'I', Canvas::GREEN],
             ]);
         }
     }
@@ -124,7 +143,8 @@ final class Page1Synthese implements PageRenderer
             ['adresse : ', $data->adresseBien(), Canvas::SANS_SEMIBOLD, ''],
             ['type de bien : ', $data->typeBien(), Canvas::SANS, ''],
             ['année de construction : ', $data->anneeConstruction() ?? '', Canvas::SANS, ''],
-            ['surface de référence : ', Format::surface($data->surfaceReference()), Canvas::SANS, 'B'],
+            // « surface de référence » depuis l'édition 2024, « surface habitable » avant.
+            [self::libelle($pdf, '/^surface (de référence|habitable)\s?:/u', 'surface de référence : '), Format::surface($data->surfaceReference()), Canvas::SANS, 'B'],
         ];
         if ($data->variant() === TemplateVariant::IMMEUBLE) {
             $lines[] = ['nombre de logements : ', (string) ($data->nombreLogements() ?? ''), Canvas::SANS, ''];
@@ -151,6 +171,17 @@ final class Page1Synthese implements PageRenderer
                 $top += 10.75;
             }
         }
+    }
+
+    /** Libellé du modèle (« surface habitable : »…) repris tel qu'il est écrit. */
+    private static function libelle(Canvas $pdf, string $pattern, string $defaut): string
+    {
+        $line = $pdf->template()->find(1, $pattern);
+        if ($line === null || preg_match($pattern, $line->text, $m) !== 1) {
+            return $defaut;
+        }
+
+        return rtrim($m[0], ' :') . ' : ';
     }
 
     private function photo(Canvas $pdf, string $photo, Box $frame): void
