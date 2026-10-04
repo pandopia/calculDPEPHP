@@ -525,3 +525,33 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   substitution ni tolérance ad hoc. Reproduction et variantes :
   `docs/correction-chaudiere-sans-table-52041673587983.txt` ; instantanés privés
   `tmp/dpe-case-52041673587983` dans le dépôt applicatif.
+
+
+### TASK-K49 — Écarts des précalculs sur les sites Complété
+
+- [ ] Owner: __ | Phase: K | Priorité: haute
+- Audit du mode automatique sur 50 sites `complete` : 104/180 références
+  exploitables à 1 % et mêmes lettres, 171/180 mêmes lettres. L'effet isolé
+  de b09140d fait perdre le seuil à 18 lignes (1600943 : quatre logements ;
+  13804186453804 : 14 lignes), pour un gain. Aucun XML complet ne régresse.
+- Qualifier les besoins chauffage et la répartition §17.2 : 1600943 / envoi
+  805191, Bch 37 368 contre 39 959 ; 1598148 / 785622, 57 250 contre 51 269 ;
+  13804186453804 / 784575, 28 560 contre 29 843. ECS reproduite. Références
+  Liciel partielles, sans numéro ADEME. Ne pas rétablir Rg=1 ni ajuster les
+  lettres pour compenser ces désaccords d'entrée/calcul en amont.
+- Audit détaillé : `docs/audit-sites-complete-2026-10-04.txt` ; sources privées
+  dans `tmp/dpe-campaign-tester` du dépôt applicatif (50 auto.json figés).
+
+### TASK-K50 — Export Pandopia des PAC hybrides
+
+- [ ] Owner: __ | Phase: intégration | Priorité: haute
+- 4568190766945 / logement 4696172, envoi 805106, XML du 01/10/2026,
+  sans ADEME : EP +23,71 %, GES −53,53 % sur la chaîne (lettre B/A vs B/B).
+- L'export a deux générateurs chauffage 147/149 partageant la même référence
+  et l'énergie 1 ; le type 149 est une chaudière gaz. Il copie aussi 149
+  dans l'énumération ECS où il n'existe pas. Le moteur ne sort qu'une énergie.
+- Corriger/qualifier d'abord le contrat d'export et les associations :
+  `Connecteurs_Liciel` vers les lignes 3427 et 3920 dans l'application.
+  Ne pas imposer de facteur gaz à tout générateur électrique dans le moteur.
+  Mesurer les branches chauffage/ECS sur des entrées valides et comparer les
+  retours archivés. Preuves : même rapport et corpus privé que TASK-K49.

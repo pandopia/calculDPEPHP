@@ -1,0 +1,102 @@
+CONTRÔLE TESTEUR — SITES « COMPLÉTÉ »
+4 octobre 2026
+
+CONCLUSION
+Le statut du site 1358447, parent du bâtiment 52041673587983, est SITE_PRISEDPE_STATUT=complete (« Complété »), différent du statut « Envoyé au client » des campagnes précédentes.
+50 autres bâtiments sur 50 sites distincts contrôlés avec le mode automatique réel du comparatif. Les écarts restent significatifs sur les précalculs issus des exports Pandopia : sur 180 lignes exploitables à référence XML ou retour archivé, 171 ont les mêmes lettres DPE/GES, mais seulement 104 restent à 1 % maximum en EP et GES avec ces lettres. Ce lot ne permet pas de déclarer le parcours entièrement convergé.
+
+PÉRIMÈTRE DU TIRAGE
+2 345 bâtiments recensés sur 197 sites au statut complete, puis 1 421 bâtiments sur 195 sites après les filtres de visibilité de getOBatimentsEntMulti et les droits du compte IA. Exclusion des bâtiments masqués, supprimés, éclatés, fusionnés ou simulés ; les regroupements multient sont inclus. Exclusion du bâtiment témoin et des huit campagnes de 50 ; logements déclarés strictement positifs : 1 419 candidats sur 194 sites.
+Tirage aléatoire de 50 sites, puis d’un bâtiment par site, prioritairement créé en 2026 quand le site en possède. Ce tirage favorise la diversité des sites ; il n’est pas uniforme sur les 1 419 bâtiments et n’exige aucun DPE certifié. Le cas ponctuel 5111190780240 est revisité ; il n’appartenait pas aux huit campagnes de 50 exclues.
+30 regroupements multient et 20 bâtiments valide. 39 bâtiments créés en 2026, 11 plus anciens. 342 logements déclarés ; les instantanés contiennent 50 lignes bâtiment et 340 lignes logement/historiques, soit 390 lignes. Le nombre déclaré et les lignes du comparatif ne sont pas strictement interchangeables. Pour un bien d’un seul logement, les deux lignes bâtiment/logement peuvent désigner le même diagnostic.
+35 sources de type envoi archivé, dont une sans fichier de retour ; 15 utilisent les données actuelles. Parmi les références XML complètes, 26 dates en 2026 et une en 2023. Les entrées réellement calculées portent 383 dates en 2026 et trois en 2023 ; quatre lignes ne sont pas calculables. Les 155 tables partielles Liciel ne portent pas de date certifiée propre à l’appartement.
+
+RÉSULTATS — MÊMES SOURCES FIGÉES, MODE AUTOMATIQUE
+Références XML/retour archivé calculables (180 lignes) :
+Version                       | Mêmes lettres DPE/GES | EP et GES ≤ 1 % + mêmes lettres
+Paquet installé v0.1.28        | 167 / 180             | 120 / 180
+Avant le correctif chaudière   | 167 / 180             | 121 / 180
+Moteur local b09140d           | 171 / 180             | 104 / 180
+L’effet isolé de b09140d est mesuré en remplaçant uniquement ChaudiereDefautCalculator par sa version de 7f91c18 dans un processus séparé ; la classe et les caches sont identifiés par empreinte. Le dépôt moteur n’a pas été restauré ou modifié pour ce contrôle.
+18 lignes perdent le seuil de 1 % : quatre logements de 1600943 et les 14 lignes de 13804186453804. Une ligne le gagne : logement 4661252 du bâtiment 13804186520312. Quatre logements de 1598148 retrouvent les lettres attendues ; aucune lettre historique n’est perdue sur ce sous-ensemble.
+Par rapport au paquet installé, une autre ligne complète gagne le seuil grâce à la correction antérieure de Ue : 1453255 / 2751731, ADEME 2675E1740193P.
+Les 27 XML complets donnent 26 lignes proches à 1 % et les mêmes lettres ; les 153 tables Liciel partielles calculables n’en donnent que 78. Le contrôle des XML complets seul ne représente donc pas le parcours au statut Complété.
+
+SAISIES ACTUELLES, RÉFÉRENCES ABSENTES ET ERREURS
+390 lignes au total, 386 calculées et quatre erreurs. 200 lignes possèdent un bilan EP/GES/lettres comparables numériquement ; 175 paires de lettres correspondent, 104 sont proches à 1 %.
+Parmi ces 200, 20 comparent la saisie actuelle à des résultats métier historiques sans garantie d’équivalence : quatre paires de lettres correspondent, aucune à 1 %. Elles sont exclues du bilan historique des 180 ci-dessus. Une lettre métier supplémentaire diverge avec le correctif sur la ligne bâtiment 52041673574500 ; elle reste recensée.
+178 lignes n’ont aucune référence, huit ont une référence métier trop partielle pour ce bilan ; les deux autres références métier aboutissent à une erreur d’export. On ne les compte ni comme convergentes ni comme divergentes.
+118 des lignes sans référence appartiennent à 4568170116727 : le dernier envoi 800795 n’a pas de fichier results. Les autres absences sont notamment les 32 appartements de 52041673574500 et les 18 de 1600498.
+Deux erreurs sont l’éclatement métier déjà exigé pour les deux appartements de 52041673587984, autre bâtiment du site témoin : 2916075 et 2916076. La ligne bâtiment reste calculable.
+Deux erreurs sont antérieures au moteur : 52041673579827 et 52041673578645, export actuel interrompu par « Call to a member function getSurfaceEntMulti() on null ». Le chemin maison/appartement de Connecteurs_Liciel attend un logement associé. L’association métier doit être qualifiée ; masquer l’erreur avec une surface arbitraire serait incorrect.
+
+CAS À TRAITER EN PRIORITÉ
+1. Bâtiment 4568190766945, logement 4696172, envoi 805106, XML daté du 01/10/2026 : PAC hybride. Référence EP 74,353 / GES 7,747 / lettres B/B ; moteur local 91,980 / 3,60 / B/A, soit +23,71 % EP et −53,53 % GES.
+   Le XML exporté code la chaudière gaz hybride 149 avec l’énergie 1 (électricité), réutilise la même référence pour les deux générateurs 147 et 149, et emploie 149 comme type ECS alors que ce numéro appartient à l’énumération chauffage, pas ECS. Les sorties calculées ne contiennent que l’électricité. Incohérence d’export prouvée par le XSD ; Connecteurs_Liciel duplique le générateur puis ne change que le type, et copie le code chauffage vers ECS. La correction concerne d’abord l’export/adaptateur et la liaison des branches. Aucun XML certifié ni numéro ADEME disponible pour cette référence.
+2. Bâtiment 1600943, 15 logements, envoi 805191, XML daté du 02/10/2026 : écarts EP des lignes jusqu’à −11,04 % et +8,29 %, même si toutes les lettres sont C/C. Besoin chauffage bâtiment calculé 37 368,014 kWh contre 39 959,238 dans la table Liciel (−6,48 %), avant la répartition entre appartements. Type chaudière 97, Pn 24 kW. Quatre appartements passent hors du seuil de 1 % avec le correctif. Qualifier les besoins, pertes récupérées et clés de répartition, pas les lettres finales. Pas de numéro ADEME de référence disponible.
+3. Bâtiment 1598148, six logements, envoi 785622, XML daté du 13/08/2026 : environ +9,5 % EP et +10,7 % GES, trois paires de lettres encore différentes. Besoin chauffage 57 249,854 kWh contre 51 268,710 (+11,67 %) ; besoin ECS reproduit. Le désaccord commence donc en amont du rendement final. Pas de numéro ADEME de référence disponible.
+4. Bâtiment 13804186453804, 13 logements, envoi 784575, XML daté du 11/08/2026 : les 14 lignes quittent le seuil de 1 % après b09140d, avec des écarts EP entre −1,41 et −1,76 % ; lettres C/C conservées. Besoin chauffage 28 559,779 contre 29 842,647 (−4,30 %), ECS reproduite. L’ancien rendement implicite de 100 % rapprochait les agrégats, mais cette proximité ne valide pas la physique. Ne pas rétablir ce défaut pour faire repasser le seuil. Pas de numéro ADEME de référence disponible.
+5. Bâtiment 390547 : jusqu’à environ −39 % EP / −45 % GES en comparant les données actuelles à des diagnostics métier de 2018 sans XML. Exemples ADEME 1859L1012462W et 1859L1012464Y. Ce n’est pas une comparaison des mêmes entrées ni de la même méthode réglementaire. Le seul logement à XML complet, 390568 / 2359E1032499W (2023), est conservé dans le bilan historique et reste divergent. Ne pas attribuer les autres écarts au moteur seul.
+6. Bâtiment 5111190783985 / logement 4693859, envoi 805697, XML daté du 02/10/2026 : GES 29,62 contre 30,027, donc C au lieu de D ; EP +2,67 %. Ce cas reste un désaccord de consommation près du seuil, pas une raison de modifier les seuils d’étiquette.
+
+NUMÉROS ADEME ET PREUVES
+38 numéros ADEME retrouvés parmi les 41 diagnostics explicitement utilisés par les instantanés. 26 concernent un XML complet et 12 une référence métier historique sans XML. Trois diagnostics n’ont pas de numéro ; les précalculs Liciel sans diagnostic conservent un numéro nul, avec l’envoi, la cible et le lot pour identification. Aucun numéro provenant d’une autre référence n’est substitué.
+references-ademe.json conserve les 390 liens, la provenance et l’origine du numéro (XML ou objet diagnostic exact). Les 38 liens numérotés sont listés dans references-ademe.txt. results.json contient les 1 170 résultats du mode automatique, les empreintes, les transitions et les bilans détaillés. Les rejeux forcés en mode chaîne sont conservés dans le dossier privé pour le diagnostic.
+Collecte avec le compte IA, connexions main/archive en lecture seule, instantanés figés avec SHA-256. Rejeux sans connexion SQL ou téléchargement. Les entrées et références de chaque ligne sont strictement identiques entre les trois versions.
+Un lancement installé du bâtiment 1453255 a précédé la fin de sa collecte et a signalé un instantané absent ; il a été relancé une fois la collecte terminée. Le rapport final vérifie bien 390 lignes et les mêmes identifiants pour chacune des trois versions.
+Le corpus moteur de 389 XML avait déjà été contrôlé avant/après b09140d : résultats inchangés. Cette nouvelle campagne apporte précisément une couverture d’exports partiels absente de ce contrôle. Aucune nouvelle correction de calcul n’a été appliquée lors de cet audit ; les écarts sont documentés pour correction sur des données justifiées. Aucun paramètre métier, aucune tolérance et aucune référence n’ont été changés.
+
+LES 50 BÂTIMENTS — ÉTAT AVEC LE MOTEUR LOCAL
+Colonnes : bâtiment | site | statut bâtiment | lignes | références avec bilan | proches à 1 % | mêmes lettres | source
+1597806 | 1435143 | valide | 2 | 2 | 2 | 2 | 786196
+1600943 | 1436152 | valide | 16 | 16 | 0 | 16 | 805191
+4568190766945 | 1436168 | multient | 2 | 2 | 0 | 0 | 805106
+1597776 | 1435125 | valide | 2 | 2 | 2 | 2 | 784278
+4568190673177 | 1436055 | multient | 2 | 2 | 0 | 2 | 805057
+52041673588978 | 1410764 | multient | 2 | 0 | 0 | 0 | current
+390547 | 390483 | valide | 16 | 15 | 0 | 0 | current
+5111182987615 | 393323 | multient | 2 | 2 | 0 | 2 | 770775
+4568189468495 | 1346640 | multient | 2 | 2 | 0 | 2 | 800182
+52041673538205 | 1347842 | multient | 2 | 2 | 0 | 2 | 202171
+1508784 | 1410836 | valide | 2 | 2 | 1 | 1 | 734192
+1597747 | 1435113 | valide | 2 | 2 | 2 | 2 | 786082
+52041673591977 | 1425853 | multient | 2 | 1 | 0 | 0 | current
+52041673594380 | 1435173 | multient | 2 | 1 | 0 | 1 | current
+13804170025516 | 1410768 | multient | 2 | 2 | 2 | 2 | 708647
+1597688 | 1435099 | valide | 2 | 0 | 0 | 0 | current
+52041673579234 | 1358891 | multient | 2 | 2 | 0 | 2 | 774562
+13804186453804 | 1435137 | multient | 14 | 14 | 0 | 14 | 784575
+1600498 | 1435920 | valide | 19 | 1 | 0 | 1 | current
+5111190780240 | 1435908 | multient | 2 | 2 | 2 | 2 | 805695
+1597824 | 1435146 | valide | 2 | 2 | 0 | 2 | 786269
+52041673587984 | 1358447 | multient | 3 | 1 | 1 | 1 | 769196
+52041673589438 | 1411186 | multient | 2 | 2 | 0 | 2 | 742844
+4568190589072 | 1435980 | multient | 2 | 2 | 0 | 2 | 804314
+1461517 | 1358940 | valide | 2 | 2 | 0 | 2 | 772513
+1598148 | 1435201 | valide | 7 | 7 | 0 | 4 | 785622
+52041673591665 | 1422008 | multient | 2 | 1 | 0 | 1 | current
+13804186520312 | 1435129 | multient | 6 | 6 | 1 | 6 | 785014
+1547010 | 413802 | valide | 2 | 2 | 2 | 2 | 801439
+52041673589189 | 1410745 | multient | 2 | 2 | 2 | 2 | 742882
+1597740 | 1435107 | valide | 58 | 58 | 58 | 58 | 785527
+4568170116727 | 1415105 | multient | 119 | 0 | 0 | 0 | 800795
+1506553 | 1410763 | valide | 2 | 2 | 2 | 2 | 746548
+52041673574500 | 1412192 | valide | 33 | 1 | 0 | 0 | current
+52041673590650 | 1420493 | multient | 2 | 1 | 0 | 1 | current
+52041673591006 | 1410698 | multient | 2 | 2 | 0 | 2 | 760191
+1597758 | 1435120 | valide | 2 | 0 | 0 | 0 | current
+52041673593059 | 1348556 | multient | 2 | 0 | 0 | 0 | current
+52041673586915 | 1410807 | multient | 2 | 0 | 0 | 0 | current
+1453255 | 1355256 | valide | 23 | 23 | 23 | 23 | 767972
+1382008 | 413424 | valide | 2 | 2 | 0 | 2 | 801011
+52041673594565 | 1436244 | multient | 2 | 2 | 2 | 2 | 801109
+52041673579827 | 1415030 | multient | 1 | 0 | 0 | 0 | current
+1597812 | 1435145 | valide | 2 | 0 | 0 | 0 | current
+13804186637748 | 1435105 | multient | 2 | 2 | 0 | 2 | 785688
+1597700 | 1435101 | valide | 2 | 2 | 2 | 2 | 802200
+4568190241491 | 1436015 | multient | 2 | 2 | 0 | 2 | 802401
+52041673578645 | 1414566 | multient | 1 | 0 | 0 | 0 | current
+52041673590023 | 1410211 | multient | 2 | 2 | 0 | 2 | 743940
+5111190783985 | 1435998 | multient | 2 | 2 | 0 | 0 | 805697
+
+Graine du tirage : b84bb5b3a036135e593e00fd7c9108fc
