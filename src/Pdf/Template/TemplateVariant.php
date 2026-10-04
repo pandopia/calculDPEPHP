@@ -7,8 +7,8 @@ namespace CalculDpePHP\Pdf\Template;
 /**
  * Les quatre modèles officiels de rapport DPE pour les logements existants.
  *
- * Source : modèles publiés par le ministère pour les DPE réalisés à partir du
- * 1er septembre 2025 (https://rt-re-batiment.developpement-durable.gouv.fr/modeles-des-dpe-a788.html).
+ * Source : modèles publiés par le ministère, une édition par période
+ * d'établissement (https://rt-re-batiment.developpement-durable.gouv.fr/modeles-des-dpe-a788.html).
  * Le choix se fait sur `enum_methode_application_dpe_log_id` (XSD ADEME).
  */
 enum TemplateVariant: string

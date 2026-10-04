@@ -32,6 +32,12 @@ final class Template
     ) {
     }
 
+    /** Le cartouche « scannez le QR code » n'existe que depuis l'édition 2025. */
+    public function hasQrCode(): bool
+    {
+        return $this->edition === TemplateCatalog::EDITION_2025;
+    }
+
     public function pdfPath(): string
     {
         return sprintf('%s/%s_%s.pdf', $this->directory, $this->variant->value, $this->edition);
