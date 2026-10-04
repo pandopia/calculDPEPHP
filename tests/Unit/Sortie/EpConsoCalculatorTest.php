@@ -340,12 +340,12 @@ XML;
     }
 
     /**
-     * Seuils exacts — les seuils eux-mêmes sont inclusifs (ex : ep=70 → A, ep=71 → B).
+     * Seuils nationaux stricts, testés sur une surface de 100 m².
      */
     public function testClasseEnergetiqueThresholds(): void
     {
         // Pour éviter les problèmes FP, on injecte des ef qui donnent des entiers exacts.
-        // Utiliser pré-2026 (×2.3) et surface=1.
+        // Utiliser pré-2026 (×2.3) et surface=100.
         // ef=10 → ep=23 → A (≤70) ; ef=40 → ep=92 → B ; etc.
         $cases = [
             ['ef' => 10.0,  'classe' => 'A'],  // ep=23
@@ -359,8 +359,8 @@ XML;
 
         foreach ($cases as ['ef' => $efEcl, 'classe' => $expectedClasse]) {
             [$doc, $node, $ctx] = $this->buildDocWithEfConso(
-                ['conso_eclairage' => $efEcl],
-                shLogement: 1.0,
+                ['conso_eclairage' => $efEcl * 100],
+                shLogement: 100.0,
                 shImmeuble: 100.0,
                 period: Period::PRE_2026,
             );

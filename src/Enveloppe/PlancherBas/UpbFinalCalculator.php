@@ -118,6 +118,14 @@ final class UpbFinalCalculator implements CalculatorInterface
     {
         $surface   = $accessor->getFloatOrNull('./surface_ue', $entree);
         $perimetre = $accessor->getFloatOrNull('./perimetre_ue', $entree);
+        // Ancien format 6.x : la surface du plancher et son périmètre Ue
+        // décrivent la géométrie équivalente, sans répéter surface_ue.
+        // Une surface_ue explicite et un Ue fourni gardent leur priorité.
+        if ($surface === null
+            && str_starts_with($entree->ownerDocument->documentElement?->getAttribute('version') ?? '', '6.')
+            && $accessor->getIntOrNull('./calcul_ue', $entree) === 1) {
+            $surface = $accessor->getFloatOrNull('./surface_paroi_opaque', $entree);
+        }
         if ($surface === null || $perimetre === null || $perimetre <= 0) {
             // Données manquantes : on retombe sur Upb (comportement le plus conservateur)
             return $upb;

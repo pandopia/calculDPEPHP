@@ -171,7 +171,8 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
                 // models individual heating at the average-apartment scale. The
                 // installation's declared surface can cover a sampling group and
                 // must not size every individual boiler at that group scale.
-                $pchW = $pchW / $nblgt;
+                $pchW *= \CalculDpePHP\Collectif\ChauffageInstallationMultiplicity::directShareOrNull($node, $accessor)
+                    ?? (1.0 / $nblgt);
             }
 
             // §17.2 / convention ADEME : une chaudière collective virtualisée
@@ -350,7 +351,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             return 0.0;
         }
 
-        $vs = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $ecsNode) ?? 0.0;
+        $vs = \CalculDpePHP\Ecs\StorageVolume::fromEntry($ecsNode, $accessor);
 
         return PuissanceDimensionnement::pecsW($vs);
     }
@@ -410,7 +411,7 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             return 0.0;
         }
 
-        $vs = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $candidats[0]) ?? 0.0;
+        $vs = \CalculDpePHP\Ecs\StorageVolume::fromEntry($candidats[0], $accessor);
 
         return PuissanceDimensionnement::pecsW($vs);
     }

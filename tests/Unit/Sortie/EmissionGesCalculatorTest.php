@@ -394,10 +394,10 @@ XML;
     public function testClasseBilanDpeWorstOfTwo(): void
     {
         // GES = 15 → C (15 > 11, ≤ 30). classe_energie = B → WORST = C.
-        $efEcl = 15.0 / 0.069; // → ges ≈ 15 kgCO2/m² avec surface=1
+        $efEcl = 1500.0 / 0.069; // → ges ≈ 15 kgCO2/m² avec surface=100
         [$doc, $node, $ctx] = $this->buildDocWithEfConso(
             ['conso_eclairage' => $efEcl],
-            shLogement: 1.0,
+            shLogement: 100.0,
             shImmeuble: 100.0,
         );
 

@@ -112,6 +112,13 @@ final class BesoinChauffageCalculator implements CalculatorInterface
 
         $pertesGenRecup         = $this->computePertesGenerateurRecup($context, $tvS, $gv, false);
         $pertesGenRecupDep      = $this->computePertesGenerateurRecup($context, $tvS, $gv, true);
+        // §17.2.2.2.2 p.117 : estimation des besoins de répartition sans
+        // récupération des pertes de chauffage, de stockage ou de distribution.
+        if ($context->get('collectif.besoin_simplifie', false)) {
+            $pertesDistribRecup = $pertesDistribRecupDep = 0.0;
+            $pertesStockageRecup = $pertesStockageRecupDep = 0.0;
+            $pertesGenRecup = $pertesGenRecupDep = 0.0;
+        }
         $context->set('ch.pertes_generateur_recup',     $pertesGenRecup);
         $context->set('ch.pertes_generateur_recup_dep', $pertesGenRecupDep);
 

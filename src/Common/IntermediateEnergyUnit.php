@@ -19,6 +19,13 @@ use DOMDocument;
  */
 final class IntermediateEnergyUnit
 {
+    /** Les formats historiques 6.x/7.x publient les intensités avec leurs décimales. */
+    public static function usesDecimalIntensities(DOMDocument $document): bool
+    {
+        $version = $document->documentElement?->getAttribute('version') ?? '';
+        return str_starts_with($version, '6.') || str_starts_with($version, '7.');
+    }
+
     public static function xmlPerKwh(DOMDocument $document): float
     {
         return self::isNativeAdeme($document)

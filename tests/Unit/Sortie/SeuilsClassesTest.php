@@ -70,13 +70,21 @@ final class SeuilsClassesTest extends TestCase
         self::assertSame('B', SeuilsClasses::energie(70, 41.0, 1, 1, $ctx));
     }
 
-    public function testLaSurfaceEstArrondiePourLireLaTable(): void
+    public function testLesSeuilsSontInterpolesSurLaSurfaceReelle(): void
     {
         $ctx = $this->context();
 
-        // 20,11 m² → 20 m² : seuil A = 88.
+        // 20,11 m² : interpolation entre 20 et 21 m², seuil A = 87,89.
         self::assertSame('A', SeuilsClasses::energie(87, 20.11, 1, 1, $ctx));
         self::assertSame('B', SeuilsClasses::energie(88, 20.11, 1, 1, $ctx));
+        self::assertSame('A', SeuilsClasses::energie(86, 20.9, 1, 1, $ctx));
+        self::assertSame('A', SeuilsClasses::energie(87, 20.9, 1, 1, $ctx));
+        // 39,9 m² : seuil C GES = 30,1 ; l'arrondi à 40 classait à tort D.
+        self::assertSame('C', SeuilsClasses::ges(30, 39.9, 1, 1, $ctx));
+        self::assertSame('D', SeuilsClasses::ges(30, 40.0, 1, 1, $ctx));
+        self::assertSame('E', SeuilsClasses::energie(443, 20.2, 2, 3, $ctx));
+        self::assertSame('F', SeuilsClasses::energie(444, 20.2, 2, 3, $ctx));
+        self::assertSame('A', SeuilsClasses::energie(145, 2.0, 1, 1, $ctx));
     }
 
     /**

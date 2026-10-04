@@ -32,4 +32,16 @@ XML);
 
         self::assertSame('0.42', $document->getElementsByTagName('uph')->item(0)->textContent);
     }
+
+    public function test_la_saisie_justifiee_prime_sur_le_forfait_non_isole(): void
+    {
+        foreach ([9, 10] as $method) {
+            $document = new \DOMDocument();
+            $document->loadXML('<plancher_haut><donnee_entree><enum_methode_saisie_u_id>' . $method . '</enum_methode_saisie_u_id><enum_type_isolation_id>2</enum_type_isolation_id><uph_saisi>0.18</uph_saisi><u_saisi>0.99</u_saisi></donnee_entree></plancher_haut>');
+            $context = new \CalculDpePHP\Engine\CalculationContext(document: $document, tables: new \CalculDpePHP\Tables\TableRepository(dirname(__DIR__, 4) . '/resources/tables'));
+            (new \CalculDpePHP\Enveloppe\PlancherHaut\UphCalculator())->calculate($document->documentElement, $context);
+            self::assertSame('0.18', $document->getElementsByTagName('uph')->item(0)->textContent);
+        }
+    }
+
 }

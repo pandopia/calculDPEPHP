@@ -599,4 +599,29 @@ XML;
 
         $this->assertEqualsWithDelta(166.5584, $this->efValue($doc, 'conso_auxiliaire_distribution_ch'), 0.001);
     }
+    public function testLeReseauUrbainVirtualiseConserveLeCirculateurDuLogement(): void
+    {
+        foreach ([37 => 173.76, 7 => 0.0] as $emetteur => $expected) {
+            $doc = new DOMDocument();
+            $doc->loadXML('<logement><caracteristique_generale>
+                <enum_methode_application_dpe_log_id>5</enum_methode_application_dpe_log_id>
+                <surface_habitable_logement>53.6</surface_habitable_logement>
+                <surface_habitable_immeuble>2417</surface_habitable_immeuble></caracteristique_generale>
+                <installation_chauffage_collection><installation_chauffage><donnee_entree>
+                <surface_chauffee>53.6</surface_chauffee><nombre_niveau_installation_ch>1</nombre_niveau_installation_ch>
+                <enum_type_installation_id>3</enum_type_installation_id><ratio_virtualisation>0.02217625155</ratio_virtualisation>
+                </donnee_entree><emetteur_chauffage_collection><emetteur_chauffage><donnee_entree>
+                <enum_type_emission_distribution_id>' . $emetteur . '</enum_type_emission_distribution_id>
+                <enum_temp_distribution_ch_id>3</enum_temp_distribution_ch_id>
+                </donnee_entree></emetteur_chauffage></emetteur_chauffage_collection>
+                <generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+                <enum_type_generateur_ch_id>108</enum_type_generateur_ch_id><enum_type_energie_id>8</enum_type_energie_id>
+                </donnee_entree></generateur_chauffage></generateur_chauffage_collection>
+                </installation_chauffage></installation_chauffage_collection></logement>');
+            $ctx = $this->buildCtx($doc, ['enveloppe.dp_parois' => 72.0, 'ventilation.hvent' => 59.0]);
+            (new AuxDistributionCalculator())->calculate($doc->documentElement, $ctx);
+            self::assertEqualsWithDelta($expected, $this->efValue($doc, 'conso_auxiliaire_distribution_ch'), 1e-8);
+        }
+    }
+
 }

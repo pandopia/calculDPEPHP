@@ -88,7 +88,7 @@ final class IntermittenceCalculator implements CalculatorInterface
 
         $table = $context->tables->load('chauffage/tv_intermittence');
 
-        $i0 = $this->lookup($table, $batimentType, $chauffageType, $regulation, $emetteur, $inertieKey, $equipementId, $context);
+        $i0 = $this->lookup($table, $batimentType, $chauffageType, $regulation, $emetteur, $inertieKey, $equipementId, $context, $de, $accessor);
 
         $intermediaire = $accessor->ensureDonneeIntermediaire($node);
         $accessor->setChildValue($intermediaire, 'i0', $i0);
@@ -103,9 +103,11 @@ final class IntermittenceCalculator implements CalculatorInterface
         string $inertieKey,
         ?int $equipementId,
         CalculationContext $context,
+        DOMElement $entree,
+        NodeAccessor $accessor,
     ): float {
         if ($batimentType === 'collectif_collectif') {
-            $comptage = $this->comptageKey($context);
+            $comptage = $this->comptageKey($context, $entree, $accessor);
             $row = $table[$batimentType][$chauffageType][$regulation][$emetteur][$comptage] ?? null;
             $key = $equipementId;
             if ($row === null || $key === null) {
@@ -200,8 +202,24 @@ final class IntermittenceCalculator implements CalculatorInterface
      * Détection via fiche_technique[categorie=7]/sous_fiche_technique[description~="comptage"].valeur=1.
      * Voir open3cl 9_emetteur_ch.js (`ficheTechniqueComptage`).
      */
-    private function comptageKey(CalculationContext $context): string
+    private function comptageKey(CalculationContext $context, DOMElement $entree, NodeAccessor $accessor): string
     {
+        // L'identifiant tabulé est une donnée d'entrée qui inclut le comptage.
+        // Les XML historiques peuvent omettre la fiche technique. Valider les
+        // autres critères évite d'utiliser une ligne devenue incohérente après
+        // modification de l'émetteur. La résolution reste propre à cet émetteur.
+        $tvId = $accessor->getIntOrNull('./tv_intermittence_id', $entree);
+        $table = $context->tables->load('chauffage/tv_intermittence_comptage');
+        $row = $tvId !== null ? ($table[$tvId] ?? null) : null;
+        if ($row !== null) {
+            $matches = true;
+            foreach (['enum_type_chauffage_id', 'enum_equipement_intermittence_id', 'enum_type_regulation_id', 'enum_type_emission_distribution_id'] as $field) {
+                $value = $accessor->getIntOrNull('./' . $field, $entree);
+                $matches = $matches && $value !== null && in_array($value, $row[$field], true);
+            }
+            if ($matches) { return $row['comptage']; }
+        }
+
         $cached = $context->get('logement.comptage_individuel');
         if ($cached !== null) {
             return (string)$cached;
@@ -227,7 +245,6 @@ final class IntermittenceCalculator implements CalculatorInterface
                 }
             }
         }
-        $context->set('logement.comptage_individuel', $key);
         return $key;
     }
 }

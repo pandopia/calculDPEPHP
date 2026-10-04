@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DPE fictif minimal pour les tests du générateur PDF : aucune donnée réelle. -->
+<dpe version="0.1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <numero_dpe>2600E0000000T</numero_dpe>
+  <administratif>
+    <date_visite_diagnostiqueur>2026-03-10</date_visite_diagnostiqueur>
+    <date_etablissement_dpe>2026-03-12</date_etablissement_dpe>
+    <nom_proprietaire>Propriétaire Fictif</nom_proprietaire>
+    <diagnostiqueur>
+      <version_logiciel>Logiciel de test 1.0</version_logiciel>
+      <nom_diagnostiqueur>Testeur</nom_diagnostiqueur>
+      <prenom_diagnostiqueur>Alex</prenom_diagnostiqueur>
+      <mail_diagnostiqueur>alex@example.test</mail_diagnostiqueur>
+      <telephone_diagnostiqueur>00 00 00 00 00</telephone_diagnostiqueur>
+      <adresse_diagnostiqueur>1 rue de l'Exemple 75000 PARIS</adresse_diagnostiqueur>
+      <entreprise_diagnostiqueur>Diagnostics Fictifs</entreprise_diagnostiqueur>
+      <numero_certification_diagnostiqueur>CERT-0000</numero_certification_diagnostiqueur>
+      <organisme_certificateur>Organisme Fictif</organisme_certificateur>
+    </diagnostiqueur>
+    <geolocalisation>
+      <numero_fiscal_local>0000000000</numero_fiscal_local>
+      <idpar>000AA0000</idpar>
+      <adresses>
+        <adresse_bien>
+          <label_brut>1 rue de l'Exemple 75000 Paris</label_brut>
+        </adresse_bien>
+        <adresse_proprietaire>
+          <label_brut>2 rue de l'Exemple 75000 Paris</label_brut>
+        </adresse_proprietaire>
+      </adresses>
+    </geolocalisation>
+  </administratif>
+  <logement>
+    <caracteristique_generale>
+      <annee_construction>1975</annee_construction>
+      <enum_methode_application_dpe_log_id>1</enum_methode_application_dpe_log_id>
+      <surface_habitable_logement>100</surface_habitable_logement>
+    </caracteristique_generale>
+    <meteo>
+      <enum_zone_climatique_id>1</enum_zone_climatique_id>
+      <enum_classe_altitude_id>1</enum_classe_altitude_id>
+    </meteo>
+    <sortie>
+      <deperdition>
+        <deperdition_renouvellement_air>30</deperdition_renouvellement_air>
+        <deperdition_mur>40</deperdition_mur>
+        <deperdition_plancher_bas>10</deperdition_plancher_bas>
+        <deperdition_plancher_haut>10</deperdition_plancher_haut>
+        <deperdition_baie_vitree>5</deperdition_baie_vitree>
+        <deperdition_porte>0</deperdition_porte>
+        <deperdition_pont_thermique>5</deperdition_pont_thermique>
+      </deperdition>
+      <apport_et_besoin>
+        <nadeq>2</nadeq>
+        <v40_ecs_journalier>112</v40_ecs_journalier>
+      </apport_et_besoin>
+      <ef_conso>
+        <conso_ch>20000</conso_ch>
+        <conso_ch_depensier>25000</conso_ch_depensier>
+        <conso_ecs>3000</conso_ecs>
+        <conso_ecs_depensier>4000</conso_ecs_depensier>
+        <conso_eclairage>300</conso_eclairage>
+        <conso_totale_auxiliaire>200</conso_totale_auxiliaire>
+        <conso_fr>0</conso_fr>
+        <conso_5_usages>23500</conso_5_usages>
+        <conso_5_usages_m2>235</conso_5_usages_m2>
+      </ef_conso>
+      <ep_conso>
+        <ep_conso_ch>20000</ep_conso_ch>
+        <ep_conso_ecs>3000</ep_conso_ecs>
+        <ep_conso_eclairage>690</ep_conso_eclairage>
+        <ep_conso_totale_auxiliaire>460</ep_conso_totale_auxiliaire>
+        <ep_conso_fr>0</ep_conso_fr>
+        <ep_conso_5_usages>24150</ep_conso_5_usages>
+        <ep_conso_5_usages_m2>241</ep_conso_5_usages_m2>
+        <classe_bilan_dpe>E</classe_bilan_dpe>
+      </ep_conso>
+      <emission_ges>
+        <emission_ges_5_usages>5200</emission_ges_5_usages>
+        <emission_ges_5_usages_m2>52</emission_ges_5_usages_m2>
+        <classe_emission_ges>E</classe_emission_ges>
+      </emission_ges>
+      <cout>
+        <cout_ch>1800</cout_ch>
+        <cout_ecs>300</cout_ecs>
+        <cout_eclairage>60</cout_eclairage>
+        <cout_total_auxiliaire>40</cout_total_auxiliaire>
+        <cout_fr>0</cout_fr>
+        <cout_5_usages>2200</cout_5_usages>
+      </cout>
+      <sortie_par_energie_collection>
+        <sortie_par_energie>
+          <enum_type_energie_id>3</enum_type_energie_id>
+          <conso_ch>20000</conso_ch>
+          <conso_ecs>0</conso_ecs>
+        </sortie_par_energie>
+        <sortie_par_energie>
+          <enum_type_energie_id>1</enum_type_energie_id>
+          <conso_ch>0</conso_ch>
+          <conso_ecs>3000</conso_ecs>
+        </sortie_par_energie>
+      </sortie_par_energie_collection>
+      <confort_ete>
+        <isolation_toiture>0</isolation_toiture>
+        <protection_solaire_exterieure>0</protection_solaire_exterieure>
+        <aspect_traversant>1</aspect_traversant>
+        <brasseur_air>0</brasseur_air>
+        <inertie_lourde>1</inertie_lourde>
+        <enum_indicateur_confort_ete_id>1</enum_indicateur_confort_ete_id>
+      </confort_ete>
+      <qualite_isolation>
+        <qualite_isol_enveloppe>4</qualite_isol_enveloppe>
+        <qualite_isol_mur>4</qualite_isol_mur>
+        <qualite_isol_plancher_haut_comble_perdu>3</qualite_isol_plancher_haut_comble_perdu>
+        <qualite_isol_plancher_bas>3</qualite_isol_plancher_bas>
+        <qualite_isol_menuiserie>3</qualite_isol_menuiserie>
+      </qualite_isolation>
+    </sortie>
+  </logement>
+  <descriptif_enr_collection>
+    <descriptif_enr>
+      <description>pompe à chaleur</description>
+      <enum_categorie_enr_descriptif_id>1</enum_categorie_enr_descriptif_id>
+    </descriptif_enr>
+  </descriptif_enr_collection>
+  <descriptif_simplifie_collection>
+    <descriptif_simplifie>
+      <description>Mur en blocs de béton non isolé donnant sur l'extérieur</description>
+      <enum_categorie_descriptif_simplifie_id>1</enum_categorie_descriptif_simplifie_id>
+    </descriptif_simplifie>
+    <descriptif_simplifie>
+      <description>Chaudière fioul standard</description>
+      <enum_categorie_descriptif_simplifie_id>5</enum_categorie_descriptif_simplifie_id>
+    </descriptif_simplifie>
+    <descriptif_simplifie>
+      <description>VMC simple flux autoréglable</description>
+      <enum_categorie_descriptif_simplifie_id>8</enum_categorie_descriptif_simplifie_id>
+    </descriptif_simplifie>
+  </descriptif_simplifie_collection>
+  <fiche_technique_collection>
+    <fiche_technique>
+      <enum_categorie_fiche_technique_id>11</enum_categorie_fiche_technique_id>
+      <sous_fiche_technique_collection>
+        <sous_fiche_technique>
+          <description>Département: 75 Paris</description>
+          <valeur>75 Paris</valeur>
+          <enum_origine_donnee_id>2</enum_origine_donnee_id>
+        </sous_fiche_technique>
+      </sous_fiche_technique_collection>
+    </fiche_technique>
+    <fiche_technique>
+      <enum_categorie_fiche_technique_id>1</enum_categorie_fiche_technique_id>
+      <sous_fiche_technique_collection>
+        <sous_fiche_technique>
+          <description>Surface du mur: 50 m²</description>
+          <valeur>50 m²</valeur>
+          <enum_origine_donnee_id>1</enum_origine_donnee_id>
+        </sous_fiche_technique>
+      </sous_fiche_technique_collection>
+    </fiche_technique>
+  </fiche_technique_collection>
+  <justificatif_collection>
+    <justificatif>
+      <description>Plans du logement</description>
+      <enum_type_justificatif_id>1</enum_type_justificatif_id>
+    </justificatif>
+  </justificatif_collection>
+  <descriptif_geste_entretien_collection>
+    <descriptif_geste_entretien>
+      <description>Entretien annuel de la chaudière.</description>
+      <enum_picto_geste_entretien_id>2</enum_picto_geste_entretien_id>
+      <categorie_geste_entretien>Chaudière</categorie_geste_entretien>
+    </descriptif_geste_entretien>
+  </descriptif_geste_entretien_collection>
+  <descriptif_travaux>
+    <pack_travaux_collection>
+      <pack_travaux>
+        <enum_num_pack_travaux_id>1</enum_num_pack_travaux_id>
+        <conso_5_usages_apres_travaux>150</conso_5_usages_apres_travaux>
+        <emission_ges_5_usages_apres_travaux>30</emission_ges_5_usages_apres_travaux>
+        <cout_pack_travaux_min>10000</cout_pack_travaux_min>
+        <cout_pack_travaux_max>15000</cout_pack_travaux_max>
+        <travaux_collection>
+          <travaux>
+            <description_travaux>Isolation des murs par l'extérieur.
+Vérifier l'absence d'humidité.</description_travaux>
+            <enum_lot_travaux_id>1</enum_lot_travaux_id>
+            <avertissement_travaux>travaux pouvant nécessiter une autorisation d'urbanisme</avertissement_travaux>
+            <performance_recommande>R &gt; 4,5 m².K/W</performance_recommande>
+          </travaux>
+        </travaux_collection>
+      </pack_travaux>
+      <pack_travaux>
+        <enum_num_pack_travaux_id>3</enum_num_pack_travaux_id>
+        <conso_5_usages_apres_travaux>80</conso_5_usages_apres_travaux>
+        <emission_ges_5_usages_apres_travaux>5</emission_ges_5_usages_apres_travaux>
+        <cout_pack_travaux_min>20000</cout_pack_travaux_min>
+        <cout_pack_travaux_max>30000</cout_pack_travaux_max>
+        <travaux_collection>
+          <travaux>
+            <description_travaux>Remplacer la chaudière par une pompe à chaleur.</description_travaux>
+            <enum_lot_travaux_id>5</enum_lot_travaux_id>
+            <performance_recommande>SCOP = 4</performance_recommande>
+          </travaux>
+        </travaux_collection>
+      </pack_travaux>
+    </pack_travaux_collection>
+  </descriptif_travaux>
+</dpe>

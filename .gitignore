@@ -22,3 +22,10 @@
 !/resources/XML/official/
 /resources/XML/official/*/input/
 /resources/XML/official/*/expected/
+
+# Exemples DPE réels (XML + PDF) : usage local uniquement
+/resources/pdfsamples/
+
+# Modèles DPE officiels bruts (bin/build-pdf-templates --download) et
+# fichiers de travail ; seuls les modèles préparés sont versionnés.
+/resources/pdf/templates/source/

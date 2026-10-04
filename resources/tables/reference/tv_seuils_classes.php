@@ -33,7 +33,7 @@ return [
             'ep'  => ['A' => 70, 'B' => 110, 'C' => 180, 'D' => 250, 'E' => 330, 'F' => 420],
             'ges' => ['A' => 6,  'B' => 11,  'C' => 30,  'D' => 50,  'E' => 70,  'F' => 100],
         ],
-        // Logements de petites surfaces, par surface de référence arrondie.
+        // Logements de petites surfaces, aux surfaces entières ; interpoler les surfaces intermédiaires.
         'par_surface' => [
              3 => ['ep' => ['A' => 146, 'B' => 186, 'C' => 386, 'D' => 505, 'E' => 622, 'F' => 739], 'ges' => ['A' => 11, 'B' => 16, 'C' => 44, 'D' => 68, 'E' => 90, 'F' => 122]],
              4 => ['ep' => ['A' => 146, 'B' => 186, 'C' => 386, 'D' => 505, 'E' => 622, 'F' => 739], 'ges' => ['A' => 11, 'B' => 16, 'C' => 44, 'D' => 68, 'E' => 90, 'F' => 122]],

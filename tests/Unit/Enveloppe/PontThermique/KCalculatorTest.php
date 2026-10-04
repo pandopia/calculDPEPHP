@@ -327,4 +327,16 @@ XML);
 
         self::assertSame('0.3', $document->getElementsByTagName('k')->item(0)?->textContent);
     }
+
+    public function test_seule_une_structure_legere_explicite_annule_le_pont_de_plafond(): void
+    {
+        foreach ([10 => 0.0, 14 => 0.58, 8 => 0.58] as $type => $expected) {
+            $doc = new DOMDocument();
+            $doc->loadXML('<logement><plancher_haut><donnee_entree><reference>haut</reference><enum_type_plancher_haut_id>' . $type . '</enum_type_plancher_haut_id></donnee_entree></plancher_haut><pont_thermique><donnee_entree><reference_1>haut</reference_1><enum_type_liaison_id>3</enum_type_liaison_id><enum_methode_saisie_pont_thermique_id>1</enum_methode_saisie_pont_thermique_id><tv_pont_thermique_id>54</tv_pont_thermique_id></donnee_entree></pont_thermique></logement>');
+            $context = new CalculationContext(document: $doc, tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'));
+            (new KCalculator())->calculate($doc->getElementsByTagName('pont_thermique')->item(0), $context);
+            self::assertEqualsWithDelta($expected, (float) $doc->getElementsByTagName('k')->item(0)->textContent, 1e-9);
+        }
+    }
+
 }

@@ -78,7 +78,7 @@ final class StockageCalculator implements CalculatorInterface
     {
         $accessor = new NodeAccessor($context->document);
 
-        $vs        = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $node) ?? 0.0;
+        $vs        = \CalculDpePHP\Ecs\StorageVolume::fromEntry($node, $accessor);
         $energieId = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $node);
         $typeGenId = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $node);
         $isCet     = ($typeGenId !== null && in_array($typeGenId, self::CET_IDS, true));
@@ -333,6 +333,16 @@ final class StockageCalculator implements CalculatorInterface
             $totalInstallationSurface += max(0.0, $surface);
         }
         if ($installations === [] || $totalInstallationSurface <= 0.0) {
+            return [1.0, false];
+        }
+
+        // §17.1.2 : lorsque tous les appartements sont visités et que
+        // l'installation est unique, Shmoy_système = Shmoy. Les surfaces
+        // confirment l'exhaustivité ; aucune seconde réduction du volume.
+        $buildingSurface = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement) ?? 0;
+        $apartmentCount = $accessor->getIntOrNull('./caracteristique_generale/nombre_appartement', $logement) ?? 0;
+        if (count($installations) === 1 && count($visitedSurfaces) === $apartmentCount
+            && $buildingSurface > 0 && abs(array_sum($visitedSurfaces) - $buildingSurface) <= 0.01) {
             return [1.0, false];
         }
 
