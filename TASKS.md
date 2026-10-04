@@ -510,3 +510,18 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   date d'arrêté publiée et la priorité attendue avec la date du DPE avant
   de modifier le résolveur. Ne pas remplacer une valeur de table pour ces cas.
 - Source : https://www.legifrance.gouv.fr/jorf/article_jo/JORFARTI000051520830
+
+
+### TASK-K48 — Entrées des appartements du bâtiment 52041673587983
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- Après correction des caractéristiques chaudière sans TV, les 17 logements
+  passent de −16/−17 % EP à +0,3/+2,7 %. Trois derniers étages restent au-delà
+  de 1 % ; 2916082 et 2916093 donnent G contre F dans le retour Liciel.
+- Envoi Pandopia 769195 du 30/06/2026, sans numéro ADEME et sans XML complets
+  propres aux appartements. Qualifier les conversions d’entrées (régulation,
+  comble, période d’émetteur) et les clés de besoin avant de corriger §17.2.
+  Copier les paramètres du XML bâtiment dégrade plusieurs logements : aucune
+  substitution ni tolérance ad hoc. Reproduction et variantes :
+  `docs/correction-chaudiere-sans-table-52041673587983.txt` ; instantanés privés
+  `tmp/dpe-case-52041673587983` dans le dépôt applicatif.

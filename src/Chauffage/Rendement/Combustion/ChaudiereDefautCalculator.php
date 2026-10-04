@@ -14,6 +14,7 @@ use DOMElement;
  *
  * Si `enum_methode_saisie_carac_sys_id = 1` (saisie par table), les valeurs sont lues
  * dans `resources/tables/chauffage/tv_generateur_combustion.php` via `tv_generateur_combustion_id`.
+ * Sans cet identifiant, le type ADEME détermine la ligne des chaudières gaz/fioul.
  * La puissance nominale Pn est calculée depuis GV si absente de donnee_entree :
  *   Pn = 1.2 × GV × (19 − Tbase) / 0.95³   (§13.2.2 p.87, open3cl 13.2_generateur_combustion.js)
  *
@@ -26,7 +27,7 @@ use DOMElement;
  * @spec-section 13.2.2
  * @spec-pages   86-92
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
- * @xml-input    generateur_chauffage.donnee_entree.{tv_generateur_combustion_id, enum_methode_saisie_carac_sys_id, pn, presence_ventouse}
+ * @xml-input    generateur_chauffage.donnee_entree.{enum_type_generateur_ch_id, tv_generateur_combustion_id, enum_methode_saisie_carac_sys_id, pn, presence_ventouse}
  * @xml-output   generateur_chauffage.donnee_intermediaire.{pn, rpn, rpint, qp0, pveilleuse}
  * @depends-on   \CalculDpePHP\Enveloppe\EnveloppeAggregator, \CalculDpePHP\Ventilation\VentilationAggregator
  * @tables       chauffage/tv_generateur_combustion
@@ -123,6 +124,16 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
 
         // Lecture de la table tv_generateur_combustion pour les champs forfaitaires
         $tvId = $accessor->getIntOrNull('./donnee_entree/tv_generateur_combustion_id', $node);
+        // §13.2.2 p.86–88 : le type ADEME normalisé décrit la technologie et
+        // la période des chaudières gaz (85–97) et fioul (75–84). Il suffit à
+        // choisir la ligne de notre table lorsque son identifiant est omis.
+        // Les bandes de puissance des condensations récentes sont départagées
+        // après le dimensionnement ; une table explicitement fournie prime.
+        $tvId ??= match (true) {
+            $genId >= 85 && $genId <= 97 => $genId - 84,
+            $genId >= 75 && $genId <= 84 => $genId - 59,
+            default => null,
+        };
         $entry = null;
         $table = [];
         if ($tvId !== null) {

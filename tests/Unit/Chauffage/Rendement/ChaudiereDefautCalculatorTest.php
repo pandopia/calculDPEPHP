@@ -57,6 +57,43 @@ XML;
         );
     }
 
+    /** §13.2.2 p.86–88 : la technologie et la période suffisent sans identifiant TV. */
+    #[\PHPUnit\Framework\Attributes\DataProvider('chaudieresSansIdentifiantTable')]
+    public function testCalculeLesCaracteristiquesDepuisLeTypeSansIdentifiantTable(
+        int $type, float $pn, float $rpn, float $rpint, float $qp0,
+    ): void {
+        [$doc, $node] = $this->buildGenerator($type, 5, 2, ['pn' => $pn]);
+        $tv = $doc->getElementsByTagName('tv_generateur_combustion_id')->item(0);
+        $tv->parentNode->removeChild($tv);
+        (new ChaudiereDefautCalculator())->calculate($node, $this->makeContext($doc));
+        $di = $node->getElementsByTagName('donnee_intermediaire')->item(0);
+        foreach (['pn' => $pn, 'rpn' => $rpn, 'rpint' => $rpint, 'qp0' => $qp0] as $tag => $expected) {
+            $actual = $di->getElementsByTagName($tag)->item(0);
+            self::assertNotNull($actual, $tag . ' doit être calculé sans table explicite');
+            self::assertEqualsWithDelta($expected, (float)$actual->textContent, self::TOL);
+        }
+    }
+
+    public static function chaudieresSansIdentifiantTable(): iterable
+    {
+        $rpn = (84 + 2 * log10(24)) / 100;
+        $rpint = (80 + 3 * log10(24)) / 100;
+        yield 'gaz standard 2001-2015' => [89, 24000.0, $rpn, $rpint, 240.0];
+        yield 'gaz standard 1991-2000' => [88, 24000.0, $rpn, $rpint, 288.0];
+        yield 'fioul standard 1991-2015' => [79, 24000.0, $rpn, $rpint, 240.0];
+        yield 'alias GPL standard' => [131, 24000.0, $rpn, $rpint, 240.0];
+        yield 'condensation gaz au-dessus de 70 kW' => [97, 100000.0, 0.96, 1.06, 300.0];
+        yield 'condensation fioul au-dessus de 70 kW' => [84, 100000.0, 0.96, 1.02, 600.0];
+        yield 'partie chaudière hybride gaz' => [149, 100000.0, 0.96, 1.06, 300.0];
+    }
+
+    public function testConserveLaTableExpliciteQuandLeTypeSuggereUneAutrePeriode(): void
+    {
+        [$doc, $node] = $this->buildGenerator(89, 4, 2, ['pn' => 24000]);
+        (new ChaudiereDefautCalculator())->calculate($node, $this->makeContext($doc));
+        self::assertEqualsWithDelta(288.0, (float)$node->getElementsByTagName('qp0')->item(0)->textContent, self::TOL);
+    }
+
     /**
      * Chaudière gaz condensation après 2015, Pn=40kW (tv_id=13) — vérifié sur verif post2026.
      */

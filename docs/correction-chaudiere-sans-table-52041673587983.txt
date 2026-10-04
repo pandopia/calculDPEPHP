@@ -1,0 +1,65 @@
+BÂTIMENT 52041673587983 — ÉCARTS DES APPARTEMENTS
+4 octobre 2026
+https://app.pandopia.com/entreprisemulti/prisedpe/comparatifmoteurs/id/52041673587983/
+
+CAUSE PRINCIPALE ET CORRECTION
+L’export Pandopia ne fournit pas tv_generateur_combustion_id pour la chaudière gaz standard 2001–2015 (type ADEME 89). Le moteur quittait ChaudiereDefautCalculator sans calculer ses caractéristiques forfaitaires. Le rendement annuel était ensuite absent ; la stratégie chauffage utilisait son défaut de 1, soit 100 %, et les auxiliaires de génération manquaient. Les consommations des 17 appartements étaient ainsi sous-estimées d’environ 16–17 % en énergie primaire.
+Le moteur sélectionne désormais les caractéristiques réglementaires depuis le type ADEME normalisé lorsque l’identifiant de table manque : ensemble des chaudières gaz 85–97 et fioul 75–84, avec les alias GPL/hybrides existants. Les valeurs explicitement saisies et une table explicitement fournie restent prioritaires. Les tranches de puissance existantes s’appliquent toujours.
+Source : méthode 3CL, §13.2.2 p.86–88 ; resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md. Aucune valeur copiée depuis ce dossier, aucune exception par bâtiment, aucune tolérance modifiée.
+Sur ce bâtiment : Pn 24 kW et pertes à l’arrêt Qp0 240 W sont maintenant calculées ; rendement chauffage 0,787213 (contre 0,781933 dans le XML bâtiment de référence).
+
+POURQUOI LA LIGNE BÂTIMENT SEMBLAIT CORRECTE
+Le mode automatique de Myzen_DpeComparison_Service utilise le XML complet de référence pour la ligne bâtiment : il contient déjà les informations chaudière, et le moteur donne 317 kWhEP/m²/an, identique à la référence.
+Pour les appartements, seules des tables de résultats Liciel sont disponibles ; le calcul repart donc de l’export Pandopia et du fichier de liaisons des appartements. Ce second chemin exposait le défaut.
+Forcé sur l’export Pandopia, le bâtiment passait lui aussi de 317 attendu à 266 calculé. Après correction : 321, GES 68 contre 67 attendus. Le recalcul du XML complet reste à 317/67, lettres E/E.
+
+RÉSULTATS SUR LES MÊMES ENTRÉES FIGÉES
+17 appartements recalculés sans erreur.
+Écart EP : −17,30 à −15,68 % avant ; +0,33 à +2,75 % après.
+EP et GES à 1 % maximum avec mêmes lettres : 0/17 → 14/17.
+Paires de lettres DPE/GES identiques à la référence : 6/17 → 15/17.
+Onze paires initialement différentes sont corrigées ; deux nouveaux écarts DPE F→G apparaissent au dernier étage. Ils restent visibles ci-dessous. Toutes les lettres GES correspondent désormais.
+Le rejeu de la saisie actuelle donne les mêmes conclusions ; écart numérique négligeable par rapport à l’archive. Les indicateurs ci-dessus portent sur les entrées archivées, sans mélanger les sources.
+Le paquet Composer actuellement installé a aussi été rejoué : ses résumés EP/GES/lettres sont identiques à la baseline locale avant correction, pour les 18 cibles et les trois modes.
+
+ÉCARTS RESTANTS ET LIMITES
+Trois appartements du dernier étage restent à +2,63 à +2,75 % EP : 2916082, 2916093 et 2916080. Les deux premiers donnent G alors que le retour Liciel affiche F ; le troisième reste G comme sa référence.
+Premières différences d’entrée entre l’export Pandopia et le XML bâtiment retourné : régulation 1 contre 2 (intermittence 0,94 contre 0,91), période d’émetteur absente malgré une année 1947 dans les données complémentaires (températures 60/49,5 contre 80/55,5), isolation du comble 1 contre 2 (b = 0,55 contre 0,70). Les ponts thermiques du bâtiment valent également 481,892 contre 465,392 W/K.
+L’exporteur applicatif force le type de régulation selon chauffage central/divisé et l’isolation du comble à 1 ; l’adaptateur corrige certains champs pour les logements isolés mais exclut explicitement les immeubles de ces adaptations. Cela exige de qualifier les conversions entre les entrées brutes, le XML bâtiment et les retours appartements avant de changer ces paramètres.
+Expériences locales, NON appliquées au code ni aux données : reprendre uniquement la régulation 2 ramène les trois derniers étages près de la référence et donne les 17 paires de lettres, mais les 14 autres appartements passent hors de 1 %. Reprendre uniquement le comble 2 porte les derniers étages à environ +9,3 à +9,6 %. Appliquer ensemble les trois différences porte ces logements à +7,1 à +7,2 %.
+Ces variantes excluent une normalisation aveugle des appartements à partir du XML bâtiment. Faute de XML complets propres aux appartements, le détail des besoins et répartitions de la référence ne peut pas être entièrement vérifié. Une porte sans liaison explicite est également répartie approximativement par le chemin existant, et signalée dans les résultats. Aucun ajustement opportuniste n’a été ajouté.
+
+SOURCE ET NUMÉROS ADEME
+Bâtiment fusionné multient, 17 logements, 761,33 m². Envoi 769195 du 30/06/2026 à 22:49:20 ; calcul bâtiment BBS_Slama_2025.11.1.0, date d’établissement XML 30/06/2026.
+Les références appartements sont les tables Table_Z_DPE_2020_Resultats_Calcul_ZHIC de cet envoi, reliées explicitement par identifiant/lot. Aucun diagnostic certifié directement associé, aucun numéro ADEME disponible pour ces 18 références de comparaison. results.json conserve chaque provenance exacte.
+Le numéro 2592E1309011H présent dans les anciennes métadonnées métier concerne un DPE de 2025 : ce n’est pas le numéro de la référence de juin 2026 utilisée ici, ni celui des appartements. Il n’est donc pas attribué artificiellement à ces comparaisons.
+
+VALIDATION
+Tests ciblés ChaudiereDefautCalculator : 48 tests, 163 assertions, tous passent. Les sept cas sans identifiant de table échouaient avant le correctif. Un autre nouveau test protège la priorité de la table explicite.
+Suite unitaire : 932 tests, 2 243 assertions, aucun échec, quatre dépréciations préexistantes.
+Suite complète : 1 714 tests, 3 804 assertions, deux échecs E2E préexistants (2659E0139658Y et 2682E0137948B), quatre dépréciations. Les écarts chaudière/plancher bas avaient été documentés dans la campagne 50h ; ils ne sont pas masqués.
+Contrôle A/B sur 389 DPE, 123 142 valeurs : résultats strictement identiques cas par cas hors durées de calcul. 8 739 hors tolérance, 145 manquantes, 1 871 supplémentaires, 27 divergences non numériques, zéro plantage et aucun chemin XML inconnu. Conformité brute inchangée : 91,24 %.
+Couverture non mesurée, Xdebug/PCOV indisponibles. L’objectif de couverture de 80 % n’est pas attesté.
+Moteur de départ : 7f91c18. Une seule classe source modifiée ; seuls les tests associés et la documentation s’y ajoutent. Sources et références figées, empreintes conservées dans results.json. Aucune écriture de donnée métier.
+Correctif local dans ../../calculDPEPHP ; le paquet applicatif reste à v0.1.28. La page de production ne recevra ce correctif qu’après publication/intégration du moteur. Aucun changement dans les sources applicatives.
+
+DÉTAIL DES APPARTEMENTS
+Énergie en kWhEP/m²/an ; lettres sous la forme DPE/GES. Les références sont des résultats Liciel partiels, pas des XML ADEME certifiés complets.
+ID | Lot | Surface | EP référence | EP avant | EP après | Écart après | Lettres référence | Avant | Après
+2916081 | 00001-00001-00002 | 64.94 | 339.025 | 280.372 | 341.575 | +0.752 % | F/F | E/E | F/F
+2916083 | 00001-00001-00003 | 48.74 | 343.405 | 285.190 | 345.793 | +0.695 % | F/F | E/E | F/F
+2916084 | 00001-00001-00004 | 55.92 | 283.175 | 235.939 | 284.424 | +0.441 % | E/E | D/D | E/E
+2916088 | 00001-00001-00005 | 33.43 | 291.151 | 244.635 | 292.125 | +0.335 % | E/E | E/E | E/E
+2916085 | 00001-00001-00006 | 37.78 | 289.045 | 242.341 | 290.091 | +0.362 % | E/E | D/D | E/E
+2916089 | 00001-00001-00007 | 57.77 | 282.654 | 235.369 | 283.920 | +0.448 % | E/E | D/D | E/E
+2916077 | 00001-00001-00008 | 34.82 | 290.420 | 243.839 | 291.419 | +0.344 % | E/E | E/E | E/E
+2916090 | 00001-00001-00009 | 38.33 | 288.813 | 242.089 | 289.867 | +0.365 % | E/E | D/D | E/E
+2916086 | 00001-00001-00010 | 57.65 | 282.686 | 235.404 | 283.952 | +0.448 % | E/E | D/D | E/E
+2916078 | 00001-00001-00011 | 34.71 | 290.475 | 243.899 | 291.473 | +0.343 % | E/E | E/E | E/E
+2916079 | 00001-00001-00012 | 38.20 | 288.867 | 242.148 | 289.920 | +0.364 % | E/E | D/D | E/E
+2916087 | 00001-00001-00013 | 57.65 | 282.686 | 235.404 | 283.952 | +0.448 % | E/E | D/D | E/E
+2916091 | 00001-00001-00014 | 34.64 | 290.511 | 243.938 | 291.508 | +0.343 % | E/E | E/E | E/E
+2916092 | 00001-00001-00015 | 38.06 | 288.926 | 242.212 | 289.976 | +0.364 % | E/E | D/D | E/E
+2916082 | 00001-00001-00016 | 56.85 | 419.777 | 351.969 | 431.312 | +2.748 % | F/F | F/F | G/F
+2916093 | 00001-00001-00017 | 33.84 | 427.353 | 360.337 | 438.578 | +2.627 % | F/F | F/F | G/F
+2916080 | 00001-00001-00018 | 38.00 | 425.488 | 358.279 | 436.789 | +2.656 % | G/F | F/F | G/F
