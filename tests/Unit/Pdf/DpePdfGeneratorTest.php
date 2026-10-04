@@ -13,8 +13,10 @@ use CalculDpePHP\Pdf\Render\Page\Page2Enveloppe;
 use CalculDpePHP\Pdf\Render\Page\Page5Travaux;
 use CalculDpePHP\Pdf\Render\Page\Page7Annexes;
 use CalculDpePHP\Pdf\Render\QrCode;
+use CalculDpePHP\Pdf\Template\TemplateCatalog;
 use CalculDpePHP\Pdf\Template\TemplateVariant;
 use CalculDpePHP\Pdf\Template\UnsupportedTemplateException;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -104,10 +106,51 @@ final class DpePdfGeneratorTest extends TestCase
         return str_starts_with($titre, "\xFE\xFF") ? (string) mb_convert_encoding(substr($titre, 2), 'UTF-8', 'UTF-16BE') : $titre;
     }
 
-    public function testRefuseUnDpeAnterieurAuModeleEnVigueur(): void
+    /**
+     * Un DPE se présente avec le modèle en vigueur à sa date d'établissement ;
+     * seule l'édition 2025 porte le cartouche du QR code.
+     */
+    public function testEditionSelonLaDateDEtablissement(): void
+    {
+        $edition = static fn (string $date): string => TemplateCatalog::editionPour(new DateTimeImmutable($date));
+
+        self::assertSame(TemplateCatalog::EDITION_2025, $edition('2025-09-01'));
+        self::assertSame(TemplateCatalog::EDITION_2024, $edition('2025-08-31'));
+        self::assertSame(TemplateCatalog::EDITION_2024, $edition('2024-07-01'));
+        self::assertSame(TemplateCatalog::EDITION_2023, $edition('2024-06-30'));
+        self::assertSame(TemplateCatalog::EDITION_2023, $edition('2023-01-01'));
+
+        $catalog = TemplateCatalog::default();
+        self::assertTrue($catalog->resolve(TemplateVariant::MAISON, new DateTimeImmutable('2026-01-01'))->hasQrCode());
+        self::assertFalse($catalog->resolve(TemplateVariant::MAISON, new DateTimeImmutable('2024-01-01'))->hasQrCode());
+    }
+
+    /**
+     * @return iterable<string, array{0: string, 1: string}>
+     */
+    public static function editionsAnterieuresProvider(): iterable
+    {
+        foreach (['2024-08-15', '2023-03-01'] as $date) {
+            foreach (['1', '2', '10', '6'] as $methode) {
+                yield "$date méthode $methode" => [$date, $methode];
+            }
+        }
+    }
+
+    #[DataProvider('editionsAnterieuresProvider')]
+    public function testGenereAvecLesModelesAnterieurs(string $date, string $methode): void
+    {
+        $xml = str_replace('2026-03-12', $date, self::xml('E', $methode));
+        $pdf = (new DpePdfGenerator())->generate($xml);
+
+        self::assertStringStartsWith('%PDF-', $pdf);
+        self::assertSame(7, self::pageCount($pdf));
+    }
+
+    public function testRefuseUnDpeAnterieurAuxModelesPrisEnCharge(): void
     {
         $this->expectException(UnsupportedTemplateException::class);
-        (new DpePdfGenerator())->generate(str_replace('2026-03-12', '2025-06-30', self::xml()));
+        (new DpePdfGenerator())->generate(str_replace('2026-03-12', '2022-12-31', self::xml()));
     }
 
     public function testChoixDuModeleSelonLaMethode(): void

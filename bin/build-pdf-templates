@@ -28,7 +28,9 @@ require __DIR__ . '/../vendor/autoload.php';
 use CalculDpePHP\Dto\DonneesRapportPdf;
 use CalculDpePHP\Pdf\DpePdfGenerator;
 use CalculDpePHP\Pdf\Render\Canvas;
+use CalculDpePHP\Pdf\Template\TemplateCatalog;
 use CalculDpePHP\Pdf\Template\TemplateCleaner;
+use CalculDpePHP\Pdf\Template\TemplateVariant;
 
 $root = dirname(__DIR__);
 $templates = $root . '/resources/pdf/templates';
@@ -36,24 +38,26 @@ $source = $templates . '/source';
 $work = $source . '/normalized';
 $base = 'https://rt-re-batiment.developpement-durable.gouv.fr/IMG/pdf/';
 
-$files = [
-    '01_dpe_existant_maison_01.09_2025.pdf',
-    '02_dpe_existant_appartement_01.09_2025.pdf',
-    '03_dpe_appartement_a_partir_d_immeuble_01.09_2025.pdf',
-    '04_dpe_existant_ic_01.09_2025.pdf',
-];
+// Modèle préparé ⇒ fichier source publié par le ministère, pour chaque
+// édition mise en page (TemplateCatalog::EDITIONS).
+$files = [];
+foreach (TemplateCatalog::EDITIONS as $edition => $debut) {
+    foreach (TemplateVariant::cases() as $variant) {
+        $files["{$variant->value}_$edition.pdf"] = $variant->value . TemplateCatalog::SOURCE_SUFFIXES[$edition] . '.pdf';
+    }
+}
 
 $args = array_slice($argv, 1);
 
 if (in_array('--download', $args, true)) {
     @mkdir($source, 0777, true);
-    foreach ($files as $file) {
-        $content = file_get_contents($base . $file);
+    foreach ($files as $sourceFile) {
+        $content = file_get_contents($base . $sourceFile);
         if ($content === false) {
-            fwrite(STDERR, "Téléchargement impossible : $file\n");
+            fwrite(STDERR, "Téléchargement impossible : $sourceFile\n");
             exit(1);
         }
-        file_put_contents("$source/$file", $content);
+        file_put_contents("$source/$sourceFile", $content);
     }
 }
 
@@ -62,9 +66,9 @@ if (in_array('--download', $args, true)) {
 @mkdir($work, 0777, true);
 
 // 1-3 : modèle normalisé (avec ses exemples, pour les ancres), carte, rendus.
-foreach ($files as $file) {
+foreach ($files as $file => $sourceFile) {
     $name = basename($file, '.pdf');
-    $src = "$source/$file";
+    $src = "$source/$sourceFile";
     if (!is_file($src)) {
         fwrite(STDERR, "Source absente : $src (relancer avec --download)\n");
         exit(1);
@@ -99,7 +103,7 @@ foreach ($files as $file) {
 // Relevé des zones recouvertes (sur le modèle non nettoyé : mêmes ancres).
 $zonesIndex = array_search('--zones', $args, true);
 if ($zonesIndex !== false) {
-    foreach ($files as $file) {
+    foreach (array_keys($files) as $file) {
         copy("$work/$file", "$templates/$file");
     }
     Canvas::$recordedZones = [];
@@ -107,7 +111,15 @@ if ($zonesIndex !== false) {
         if (str_starts_with($xml, '--')) {
             break;
         }
-        (new DpePdfGenerator())->generate((string) file_get_contents($xml), new DonneesRapportPdf(numeroDpe: '0000E0000000X'));
+        // Chaque XML est rejoué à la date de début de chaque édition.
+        foreach (TemplateCatalog::EDITIONS as $debut) {
+            $contenu = (string) preg_replace(
+                '#<date_etablissement_dpe>[^<]*</date_etablissement_dpe>#',
+                "<date_etablissement_dpe>$debut</date_etablissement_dpe>",
+                (string) file_get_contents($xml),
+            );
+            (new DpePdfGenerator())->generate($contenu, new DonneesRapportPdf(numeroDpe: '0000E0000000X'));
+        }
         fwrite(STDOUT, "· zones relevées : " . basename($xml) . "\n");
     }
     foreach (Canvas::$recordedZones as $name => $pages) {
@@ -129,7 +141,7 @@ if ($zonesIndex !== false) {
 }
 
 // 4 : modèles nettoyés de leur texte d'exemple.
-foreach ($files as $file) {
+foreach ($files as $file => $sourceFile) {
     $name = basename($file, '.pdf');
     $zonesFile = "$templates/maps/$name.zones.php";
     if (!is_file($zonesFile)) {
@@ -137,7 +149,7 @@ foreach ($files as $file) {
         continue;
     }
     $qdf = "$work/$name.qdf.pdf";
-    run(sprintf('qpdf --qdf --normalize-content=y --object-streams=disable %s %s', escapeshellarg("$source/$file"), escapeshellarg($qdf)));
+    run(sprintf('qpdf --qdf --normalize-content=y --object-streams=disable %s %s', escapeshellarg("$source/$sourceFile"), escapeshellarg($qdf)));
     $removed = TemplateCleaner::cleanQdf($qdf, require $zonesFile);
     run(sprintf('fix-qdf %s > %s', escapeshellarg($qdf), escapeshellarg("$qdf.fixed")));
     run(sprintf('qpdf --object-streams=disable --compress-streams=y %s %s', escapeshellarg("$qdf.fixed"), escapeshellarg("$templates/$file")));
