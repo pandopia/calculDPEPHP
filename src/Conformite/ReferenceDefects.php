@@ -112,6 +112,7 @@ final class ReferenceDefects
         $suspects = $referenceDoc === null ? [] : self::installationsEcsIndiscernables($referenceDoc);
         if ($referenceDoc !== null) {
             $suspects += self::rendementStockageDuScenarioDepensier($referenceDoc);
+            $suspects += self::pertesBallonIndividuelDiviseesParNombreLogements($referenceDoc);
             $suspects += self::qp0SerialiseEnKilowatts($referenceDoc);
             $suspects += self::stockageIntegreSerialiseCommeSepare($referenceDoc);
             $suspects += self::repartitionEcsAppartementNonReproductible($expected, $referenceDoc);
@@ -766,4 +767,86 @@ final class ReferenceDefects
 
         return ($v === null || !is_numeric($v)) ? null : (float) $v;
     }
+    /**
+     * §11.2 et §11.6.2-3 p.72-75 : pour un ballon électrique individuel,
+     * Cecs = (Becs / Rd + Qgw) / k, avec k=1,08 en catégorie C, 1 sinon.
+     * §17.1.3.2 p.109 divise le besoin par N pour l'appartement moyen,
+     * puis multiplie sa consommation par N ; les pertes de SON ballon ne
+     * doivent pas être divisées une seconde fois par le nombre de logements.
+     *
+     * Détection conservative : un seul système couvrant tout l'immeuble,
+     * aucune virtualisation ni solaire, et la même division Qgw/N retrouvée
+     * dans les deux scénarios publiés. La preuve ne dépend ni de notre sortie
+     * ni du numéro du DPE. Les consommations ECS et le bilan qui en dépend
+     * sont suspects ; les écarts bruts restent tous comptés par le comparateur.
+     *
+     * @return array<string, string>
+     */
+    private static function pertesBallonIndividuelDiviseesParNombreLogements(DOMDocument $doc): array
+    {
+        $xp = new DOMXPath($doc);
+        $mode = (int)$xp->evaluate('string(//logement/caracteristique_generale/enum_methode_application_dpe_log_id)');
+        $nombre = (int)$xp->evaluate('string(//logement/caracteristique_generale/nombre_appartement)');
+        $surface = (float)$xp->evaluate('string(//logement/caracteristique_generale/surface_habitable_immeuble)');
+        $installations = $xp->query('//logement/installation_ecs_collection/installation_ecs');
+        if (!in_array($mode, [6, 10], true) || $nombre <= 1 || $surface <= 0
+            || $installations === false || $installations->length !== 1) {
+            return [];
+        }
+        $installation = $installations->item(0);
+        $generateurs = $xp->query('./generateur_ecs_collection/generateur_ecs', $installation);
+        if ($generateurs === false || $generateurs->length !== 1
+            || (int)$xp->evaluate('string(donnee_entree/enum_type_installation_id)', $installation) !== 1
+            || (int)$xp->evaluate('string(donnee_entree/enum_methode_calcul_conso_id)', $installation) !== 4
+            || (float)$xp->evaluate('string(donnee_entree/ratio_virtualisation)', $installation) !== 1.0
+            || (float)$xp->evaluate('string(donnee_entree/rdim)', $installation) !== 1.0
+            || (float)$xp->evaluate('string(donnee_entree/nombre_logement)', $installation) !== 1.0
+            || abs((float)$xp->evaluate('string(donnee_entree/surface_habitable)', $installation) - $surface) > 0.01
+            || $xp->query('.//enum_type_installation_solaire_id | .//tv_fecs_id', $installation)->length > 0) {
+            return [];
+        }
+        $generateur = $generateurs->item(0);
+        $type = (int)$xp->evaluate('string(donnee_entree/enum_type_generateur_ecs_id)', $generateur);
+        $volume = (float)$xp->evaluate('string(donnee_entree/volume_stockage)', $generateur);
+        $rd = (float)$xp->evaluate('string(donnee_intermediaire/rendement_distribution)', $installation);
+        if (!in_array($type, [68, 69, 70, 71], true) || $volume <= 0 || $rd <= 0 || $rd > 1
+            || (int)$xp->evaluate('string(donnee_entree/enum_type_energie_id)', $generateur) !== 1
+            || (float)$xp->evaluate('string(donnee_intermediaire/rendement_generation)', $generateur) !== 1.0
+            || (float)$xp->evaluate('string(donnee_intermediaire/ratio_besoin_ecs)', $generateur) !== 1.0) {
+            return [];
+        }
+
+        // Tableau complet §11.6.2 : tranche de volume × type de ballon,
+        // sans lire l'identifiant de table éventuellement erroné du XML.
+        $tranche = match (true) { $volume <= 100 => 0, $volume <= 200 => 1, $volume <= 300 => 2, default => 3 };
+        $table = require __DIR__ . '/../../resources/tables/ecs/tv_pertes_stockage.php';
+        $coefficient = $table[4 * $tranche + $type - 67];
+        $qgwKwh = 8592 * 45 / 24 * $volume * $coefficient['cr'] / 1000;
+        $k = $coefficient['cat_c'] ? 1.08 : 1.0;
+        $xmlPerKwh = \CalculDpePHP\Common\IntermediateEnergyUnit::xmlPerKwh($doc);
+        foreach (['', '_depensier'] as $suffixe) {
+            $besoin = (float)$xp->evaluate('string(donnee_intermediaire/besoin_ecs' . $suffixe . ')', $installation) / $xmlPerKwh;
+            $conso = (float)$xp->evaluate('string(donnee_intermediaire/conso_ecs' . $suffixe . ')', $installation);
+            $pertesPubliees = $k * $conso - $besoin / $rd;
+            if ($besoin <= 0 || $conso <= 0 || $pertesPubliees <= 0
+                || abs($pertesPubliees * $nombre - $qgwKwh) > 0.001 * $qgwKwh) {
+                return [];
+            }
+        }
+        $motif = sprintf(
+            'les deux consommations ECS de la référence divisent les pertes du ballon individuel '
+            . '(%.3f kWh/an selon §11.6.2) par %d logements : %.3f au lieu de %.3f kWh/an '
+            . 'par appartement moyen (§17.1.3.2) ; le bilan énergétique et ses classes héritent de cette sous-estimation',
+            $qgwKwh, $nombre, $qgwKwh / $nombre, $qgwKwh,
+        );
+        $suspects = [];
+        foreach (['rendement_stockage', 'conso_ecs', 'conso_ecs_depensier',
+            'ep_conso_5_usages', 'ep_conso_5_usages_m2', 'classe_bilan_dpe',
+            'emission_ges_5_usages', 'emission_ges_5_usages_m2', 'classe_emission_ges'] as $tag) {
+            $suspects[$tag] = $motif;
+        }
+        return $suspects;
+    }
+
+
 }

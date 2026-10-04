@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fixture thermique minimale, sans adresse, identité ou numéro ADEME.
+     Un groupe ECS individuel, quatre logements, échantillon de deux visites.
+     §11.6.2 : Qgw = 741060 Wh ; §11.6.3 : Rs = 0.6452986129422349. -->
+<dpe>
+  <logement>
+    <caracteristique_generale>
+      <surface_habitable_logement>77.88</surface_habitable_logement>
+      <surface_habitable_immeuble>288.46</surface_habitable_immeuble>
+      <nombre_appartement>4</nombre_appartement>
+    </caracteristique_generale>
+    <installation_ecs_collection>
+      <installation_ecs>
+        <donnee_entree>
+          <enum_type_installation_id>1</enum_type_installation_id>
+          <enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id>
+          <surface_habitable>288.46</surface_habitable>
+        </donnee_entree>
+        <donnee_intermediaire>
+          <rendement_distribution>0.87</rendement_distribution>
+          <besoin_ecs>1172.92561172114</besoin_ecs>
+        </donnee_intermediaire>
+        <generateur_ecs_collection>
+          <generateur_ecs>
+            <donnee_entree>
+              <enum_type_energie_id>1</enum_type_energie_id>
+              <enum_type_generateur_ecs_id>69</enum_type_generateur_ecs_id>
+              <tv_pertes_stockage_id>6</tv_pertes_stockage_id>
+              <volume_stockage>200</volume_stockage>
+            </donnee_entree>
+          </generateur_ecs>
+        </generateur_ecs_collection>
+      </installation_ecs>
+    </installation_ecs_collection>
+  </logement>
+  <dpe_immeuble>
+    <logement_visite_collection>
+      <logement_visite><enum_typologie_logement_id>3</enum_typologie_logement_id><surface_habitable_logement>66.35</surface_habitable_logement></logement_visite>
+      <logement_visite><enum_typologie_logement_id>3</enum_typologie_logement_id><surface_habitable_logement>66.35</surface_habitable_logement></logement_visite>
+    </logement_visite_collection>
+  </dpe_immeuble>
+</dpe>

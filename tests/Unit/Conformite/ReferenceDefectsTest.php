@@ -527,4 +527,116 @@ XML);
             self::assertArrayNotHasKey($path, ReferenceDefects::detect([$path => '0'], $doc));
         }
     }
+    private function referenceAvecPertesBallon(float $diviseur = 18, string $version = '2', int $type = 70): DOMDocument
+    {
+        // Entrées fictives : le ballon de 100 L appartient à chaque appartement.
+        $cr = [68 => 0.39, 69 => 0.32, 70 => 0.27, 71 => 0.25][$type];
+        $k = $type === 71 ? 1.08 : 1.0;
+        $qgw = 8592 * 45 / 24 * 100 * $cr / 1000;
+        $conso = (1000 / 0.93 + $qgw / $diviseur) / $k;
+        $consoDep = (1400 / 0.93 + $qgw / $diviseur) / $k;
+        $becs = $version === '0.1.0' ? 1000000 : 1000;
+        $becsDep = $version === '0.1.0' ? 1400000 : 1400;
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<XML
+<dpe version="$version"><logement>
+<caracteristique_generale><enum_methode_application_dpe_log_id>10</enum_methode_application_dpe_log_id><nombre_appartement>18</nombre_appartement><surface_habitable_immeuble>540</surface_habitable_immeuble></caracteristique_generale>
+<installation_ecs_collection><installation_ecs>
+<donnee_entree><enum_type_installation_id>1</enum_type_installation_id><enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id><ratio_virtualisation>1</ratio_virtualisation><rdim>1</rdim><nombre_logement>1</nombre_logement><surface_habitable>540</surface_habitable></donnee_entree>
+<donnee_intermediaire><rendement_distribution>0.93</rendement_distribution><besoin_ecs>$becs</besoin_ecs><besoin_ecs_depensier>$becsDep</besoin_ecs_depensier><conso_ecs>$conso</conso_ecs><conso_ecs_depensier>$consoDep</conso_ecs_depensier></donnee_intermediaire>
+<generateur_ecs_collection><generateur_ecs><donnee_entree><enum_type_energie_id>1</enum_type_energie_id><enum_type_generateur_ecs_id>$type</enum_type_generateur_ecs_id><volume_stockage>100</volume_stockage></donnee_entree><donnee_intermediaire><rendement_generation>1</rendement_generation><ratio_besoin_ecs>1</ratio_besoin_ecs></donnee_intermediaire></generateur_ecs></generateur_ecs_collection>
+</installation_ecs></installation_ecs_collection></logement></dpe>
+XML);
+        return $doc;
+    }
+
+    public static function formatsEtBallonsPourPertesDivisees(): iterable
+    {
+        foreach (['2', '0.1.0'] as $format) {
+            foreach ([68, 69, 70, 71] as $type) {
+                yield $format . '/' . $type => [$format, $type];
+            }
+        }
+    }
+
+    #[DataProvider('formatsEtBallonsPourPertesDivisees')]
+    public function test_les_pertes_individuelles_divisees_par_le_nombre_de_logements_sont_signalees(string $format, int $type): void
+    {
+        $doc = $this->referenceAvecPertesBallon(18, $format, $type);
+        $suspects = ReferenceDefects::detect([], $doc);
+        self::assertArrayHasKey('conso_ecs', $suspects);
+        self::assertArrayHasKey('conso_ecs_depensier', $suspects);
+        self::assertArrayHasKey('classe_bilan_dpe', $suspects);
+        self::assertStringContainsString('par 18 logements', $suspects['conso_ecs']);
+        self::assertArrayNotHasKey('conso_ch', $suspects);
+        self::assertArrayNotHasKey('deperdition_enveloppe', $suspects);
+    }
+
+    public function test_des_pertes_normales_ou_un_simple_desaccord_ne_sont_pas_signales(): void
+    {
+        foreach ([1, 2, 3, 17, 19] as $diviseur) {
+            $doc = $this->referenceAvecPertesBallon($diviseur);
+            self::assertArrayNotHasKey('classe_bilan_dpe', ReferenceDefects::detect([], $doc));
+        }
+    }
+
+    public function test_le_defaut_de_pertes_exige_les_deux_scenarios_et_un_seul_groupe_individuel(): void
+    {
+        $xml = $this->referenceAvecPertesBallon()->saveXML();
+        foreach ([
+            ['enum_methode_application_dpe_log_id', '2'],
+            ['nombre_appartement', '1'],
+            ['enum_type_installation_id', '2'],
+            ['enum_methode_calcul_conso_id', '1'],
+            ['ratio_virtualisation', '0.5'],
+            ['rdim', '18'],
+            ['nombre_logement', '18'],
+            ['surface_habitable', '100'],
+            ['enum_type_generateur_ecs_id', '6'],
+            ['volume_stockage', '0'],
+            ['enum_type_energie_id', '2'],
+            ['rendement_distribution', '0'],
+            ['rendement_generation', '2'],
+            ['ratio_besoin_ecs', '0.5'],
+            ['besoin_ecs_depensier', '0'],
+            ['conso_ecs_depensier', '9999'],
+        ] as [$tag, $value]) {
+            $doc = new DOMDocument();
+            $doc->loadXML($xml);
+            $doc->getElementsByTagName($tag)->item(0)->textContent = $value;
+            self::assertArrayNotHasKey('classe_bilan_dpe', ReferenceDefects::detect([], $doc), $tag);
+        }
+        foreach (['installation_ecs', 'generateur_ecs'] as $tag) {
+            $doc = new DOMDocument();
+            $doc->loadXML($xml);
+            $node = $doc->getElementsByTagName($tag)->item(0);
+            $node->parentNode->appendChild($node->cloneNode(true));
+            self::assertArrayNotHasKey('classe_bilan_dpe', ReferenceDefects::detect([], $doc));
+        }
+        $doc = new DOMDocument();
+        $doc->loadXML($xml);
+        $doc->getElementsByTagName('installation_ecs')->item(0)->appendChild($doc->createElement('tv_fecs_id', '1'));
+        self::assertArrayNotHasKey('classe_bilan_dpe', ReferenceDefects::detect([], $doc));
+    }
+
+    public function test_un_ecart_imputable_aux_pertes_de_reference_reste_dans_le_bilan_brut(): void
+    {
+        $reference = $this->referenceAvecPertesBallon();
+        $logement = $reference->getElementsByTagName('logement')->item(0);
+        $sortie = $reference->createElement('sortie');
+        $ep = $reference->createElement('ep_conso');
+        $ep->appendChild($reference->createElement('classe_bilan_dpe', 'C'));
+        $sortie->appendChild($ep);
+        $logement->appendChild($sortie);
+        $actual = clone $reference;
+        $actual->getElementsByTagName('classe_bilan_dpe')->item(0)->textContent = 'D';
+        $comparator = new \CalculDpePHP\Conformite\CaseComparator(\CalculDpePHP\Conformite\ToleranceProfile::strict());
+        $rows = $comparator->compareDocuments($reference, $actual);
+        $classes = array_values(array_filter($rows, fn($row) => $row['tag'] === 'classe_bilan_dpe'));
+        self::assertCount(1, $classes);
+        self::assertSame('string_mismatch', $classes[0]['status']);
+        self::assertStringContainsString('par 18 logements', $classes[0]['reference_suspect']);
+    }
+
+
 }

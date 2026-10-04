@@ -560,6 +560,51 @@ XML;
         self::assertGreaterThan(0.0, (float) $ctx->get(StockageCalculator::qgwKey($node)));
     }
 
+    /**
+     * §11.6.2 p.74 et §17.1.2 p.107 : un seul groupe ECS conserve le ballon
+     * déclaré, indépendamment de la typologie renseignée et des visites.
+     * Le besoin par appartement et Rd étant figés, Qgw et Rs sont invariants.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('echantillonsDuGroupeUnique')]
+    public function test_un_groupe_ecs_unique_conserve_son_ballon_sur_un_echantillon_partiel(array $visites): void
+    {
+        $doc = new DOMDocument();
+        $doc->load(self::PROJECT_ROOT . '/tests/Fixtures/ecs/stockage-individuel-echantillon-partiel.xml');
+        $collection = $doc->getElementsByTagName('logement_visite_collection')->item(0);
+        while ($collection->firstChild !== null) {
+            $collection->removeChild($collection->firstChild);
+        }
+        foreach ($visites as [$surface, $typologie]) {
+            $visite = $doc->createElement('logement_visite');
+            $visite->appendChild($doc->createElement('surface_habitable_logement', (string) $surface));
+            if ($typologie !== null) {
+                $visite->appendChild($doc->createElement('enum_typologie_logement_id', (string) $typologie));
+            }
+            $collection->appendChild($visite);
+        }
+        $generateur = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        $context = $this->makeContext($doc);
+        (new StockageCalculator())->calculate($generateur, $context);
+
+        // Ballon 200 L, vertical autre/inconnu : Cr = 0,23, Qgw = 741060 Wh.
+        self::assertEqualsWithDelta(741060.0, $context->get(StockageCalculator::qgwKey($generateur)), 1e-6);
+        self::assertEqualsWithDelta(
+            0.6452986129422349,
+            (float) $doc->getElementsByTagName('rendement_stockage')->item(0)->textContent,
+            1e-9,
+        );
+    }
+
+    public static function echantillonsDuGroupeUnique(): iterable
+    {
+        yield 'deux visites même typologie' => [[[66.35, 3], [66.35, 3]]];
+        yield 'une visite même typologie' => [[[66.35, 3]]];
+        yield 'trois visites même typologie' => [[[66.35, 3], [66.35, 3], [77.88, 3]]];
+        yield 'typologies absentes' => [[[66.35, null], [66.35, null]]];
+        yield 'typologies différentes' => [[[66.35, 3], [77.88, 4]]];
+        yield 'surfaces différentes même typologie' => [[[30.0, 3], [100.0, 3]]];
+    }
+
     public function test_un_groupe_exhaustif_ne_divise_pas_le_ballon_par_le_nombre_de_visites(): void
     {
         [$doc, $node] = $this->buildGen(200, 1, 71, 8);
