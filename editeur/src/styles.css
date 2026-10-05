@@ -356,3 +356,15 @@ details[open] > summary { margin-bottom: .4em; }
 .nav-sections .nav-more { padding-left: .5em; }
 .sidebar app-icon { color: var(--muted); }
 .nav-group-head.current app-icon:not(.chev), .nav-item.active app-icon { color: var(--accent); }
+/* maquette 3D */
+.maquette { margin-bottom: 1em; }
+.maquette-head { display: flex; justify-content: space-between; align-items: baseline; }
+.maquette-view { position: relative; height: 420px; border-radius: 8px; background: linear-gradient(#f7f9fc, #e9edf2); overflow: hidden; cursor: grab; }
+.maquette-view.hidden { display: none; }
+.maquette-view canvas { display: block; }
+.maquette-tip { position: absolute; pointer-events: none; background: rgba(28, 34, 48, .92); color: #fff; padding: .4em .6em; border-radius: 6px; font-size: .82em; max-width: 320px; z-index: 2; }
+.compass-badge { position: absolute; top: .6em; right: .7em; background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: .15em .6em; font-size: .8em; font-weight: 700; color: var(--accent); }
+.maquette-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4em 1.5em; margin-top: .5em; }
+.maquette-foot p { margin: 0; max-width: 720px; }
+.legend { display: flex; flex-wrap: wrap; gap: .3em 1em; font-size: .8em; color: var(--muted); }
+.legend i { display: inline-block; width: .85em; height: .85em; border-radius: 2px; margin-right: .35em; vertical-align: -1px; border: 1px solid rgba(0,0,0,.15); }

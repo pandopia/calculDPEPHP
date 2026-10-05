@@ -66,6 +66,8 @@ export function validateDocument(d: Dossier, graph: RelationGraph): Issue[] {
       if (pruned.has(el)) return;
       const def = d.schema!.defFor(el);
       if (!def || def.kind !== 'complex' || isResultPath(def.path)) return;
+      // bloc importé sans aucune valeur : ignoré tant que rien n'y est saisi
+      if (d.meta.origine === 'import' && el.parentElement && !kindOf(el) && !hasAnyValue(el)) return;
       // une balise vide compte comme absente
       const present = new Set(childElements(el).filter((c) => !pruned.has(c)).map((c) => c.localName));
       const choices = new Map<number, boolean>();
@@ -74,6 +76,8 @@ export function validateDocument(d: Dossier, graph: RelationGraph): Issue[] {
         if (c.minOccurs < 1 || present.has(c.name) || isResultPath(c.path)) continue;
         if (c.choiceGroup !== null) continue;
         const kindChild = KINDS.find((k) => k.path === c.path);
+        // bloc absent : contrôlé seulement une fois renseigné (la validation XSD reste stricte)
+        if (c.kind === 'complex' && !kindChild) continue;
         const owner = ownerObject(el) ?? el;
         const nav = kindChild && !kindChild.parentKind ? { tab: kindChild.tab, section: kindChild.section } : undefined;
         out.push(issue({
@@ -266,4 +270,11 @@ function periodRange(label: string): [number, number] | null {
   if (m) return [Number(m[1]), 2200];
   m = /(\d{4})\s*-\s*(\d{4})/.exec(label);
   return m ? [Number(m[1]), Number(m[2])] : null;
+}
+
+/** Le sous-arbre porte-t-il au moins une valeur (texte non vide ou xsi:nil) ? */
+function hasAnyValue(el: Element): boolean {
+  if (!el.firstElementChild) return (el.textContent ?? '').trim() !== '' || isNil(el);
+  for (let c: Element | null = el.firstElementChild; c; c = c.nextElementSibling) if (hasAnyValue(c)) return true;
+  return false;
 }

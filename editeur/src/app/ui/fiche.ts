@@ -282,7 +282,7 @@ export class GroupComponent {
         }
 
         @if (f.links.length) {
-          <div class="links">@for (l of f.links; track l.uid) { <a href="" class="obj-chip" (click)="$event.preventDefault(); goUid(l.uid)">{{ l.label }} ›</a> }</div>
+          <div class="links">@for (l of f.links; track l.label) { <a href="" class="obj-chip" [class.muted]="!l.uid" (click)="$event.preventDefault(); l.uid ? goUid(l.uid) : nav.go(l.tab!, l.section!)">{{ l.label }} ›</a> }</div>
         }
 
         @for (g of f.groups; track g.key; let i = $index) {
@@ -332,7 +332,17 @@ export class FicheComponent {
   protected readonly closable = computed(() => this.nav.state().tab === 'controles');
   /** erreurs et avertissements seulement ; les informations restent dans « Contrôles » */
   /** seulement ce qui n'est pas déjà signalé sur un champ visible */
-  protected readonly attention = computed(() => (this.fiche()?.issues ?? []).filter((i) => i.gravite !== 'info' && !i.field));
+  protected readonly attention = computed(() => {
+    const f = this.fiche();
+    if (!f) return [];
+    const shown = new Set<string>();
+    const walk = (g: GroupView) => {
+      for (const x of [...g.fields, ...g.notApplicable]) shown.add(x.rel);
+      g.groups.forEach(walk);
+    };
+    f.groups.forEach(walk);
+    return f.issues.filter((i) => i.gravite !== 'info' && (!i.field || !shown.has(i.field)));
+  });
   protected readonly attentionErrors = computed(() => this.attention().filter((i) => i.gravite === 'erreur').length);
   protected readonly hasRelations = computed(() => {
     const f = this.fiche();

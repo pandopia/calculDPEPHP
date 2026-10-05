@@ -2,7 +2,7 @@ import { computed, Injectable, signal } from '@angular/core';
 import { Dossier } from '../core/state/dossier';
 import { buildSkeleton, NewDossierOptions } from '../core/state/skeleton';
 import { SchemaRegistry } from '../core/schema/schema-registry';
-import { buildFiche, buildModel, Model } from '../core/metier/model';
+import { buildAbsentFiche, buildFiche, buildModel, Model } from '../core/metier/model';
 import { computeChanges } from '../core/edition/change-set';
 import * as ed from '../core/edition/editor';
 import { decodeXmlBytes } from '../core/xml/safe-xml';
@@ -159,6 +159,12 @@ export class DossierService {
 
   rename(nom: string): void {
     this.run((d) => d.rename(nom));
+  }
+
+  absentFiche(path: string, label: string) {
+    const d = this.dossier();
+    const m = this.model();
+    return d && m ? buildAbsentFiche(d, m, path, label) : null;
   }
 
   fiche(uid: string) {

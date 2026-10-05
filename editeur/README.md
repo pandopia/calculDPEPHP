@@ -89,6 +89,12 @@ ressource réseau, 20 Mo et 64 niveaux maximum.
   et avertissements. Les sections vides sont repliées.
 - **Synthèse** : chiffres clés, étiquettes A→G, surfaces de l'enveloppe et
   vitrages par orientation, équipements, liste « À faire ».
+- **Maquette 3D approximative** (three.js, chargé à la demande) : volume déduit
+  des surfaces de murs par orientation, de la hauteur sous plafond et du
+  nombre de niveaux ; murs colorés selon ce sur quoi ils donnent, baies et
+  portes posées sur leur paroi support, planchers bas et hauts. Survol :
+  nom et surface ; clic : ouvre la fiche. Ordre d'idée seulement : le DPE ne
+  décrit pas la géométrie (`core/metier/maquette.ts`).
 - **Sections** : liste compacte à gauche (nom et valeurs clés), fiche de
   l'objet sélectionné à droite, ouverte d'emblée.
 - **Fiches** : valeurs en lecture, modifiables au clic (Entrée valide, Échap
@@ -100,6 +106,10 @@ ressource réseau, 20 Mo et 64 niveaux maximum.
   modifie dans le titre. Les relations s'affichent en pastilles cliquables.
 - **Bilan** : répartition des consommations par usage et des déperditions,
   tableau par énergie (valeurs du fichier source, arrondies à l'affichage).
+- **Blocs absents** (ex. adresse du propriétaire) : affichés avec leurs champs
+  vides et saisissables ; le bloc est créé à la première valeur et n'est
+  contrôlé qu'à partir de là. Un bloc importé sans aucune valeur est ignoré
+  par les contrôles en direct (la validation XSD, elle, reste stricte).
 - **Contrôles et export** : état et actions en tête, points à traiter
   regroupés par objet et repliables, détail par niveau de contrôle sur demande.
 - Le mode avancé (menu ⚙) affiche chemins XML, codes bruts et valeurs exactes.

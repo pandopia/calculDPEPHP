@@ -8,6 +8,7 @@ import { textOf } from '../core/edition/doc-ops';
 import { Issue } from '../core/validation/issues';
 import { TabKey } from '../core/metier/catalog';
 import { BarItem, BarsComponent, EtiquetteComponent } from './charts';
+import { Maquette3dComponent } from './maquette-3d';
 
 const num = (v: string | null) => (v === null || Number.isNaN(Number(v)) ? 0 : Number(v));
 
@@ -22,7 +23,7 @@ interface Todo {
 
 @Component({
   selector: 'app-synthese',
-  imports: [BarsComponent, EtiquetteComponent],
+  imports: [BarsComponent, EtiquetteComponent, Maquette3dComponent],
   template: `
     @let d = svc.dossier()!;
     <div class="synthese">
@@ -34,6 +35,8 @@ interface Todo {
           </div>
         }
       </section>
+
+      <app-maquette-3d />
 
       <div class="dash">
         <section class="card perf">

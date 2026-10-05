@@ -199,9 +199,8 @@ export function buildModel(d: Dossier): Model {
           status = 'absent';
           note = 'Résultat absent du fichier : il doit être produit par un moteur de calcul.';
         } else if (singletonDef && singletonDef.minOccurs > 0) {
-          status = 'a_completer';
-          missing++;
-          note = 'Bloc obligatoire absent.';
+          status = 'vide';
+          note = 'Bloc non renseigné : il sera contrôlé dès qu\'une valeur y sera saisie.';
         } else {
           status = 'non_applicable';
           note = singletonDef ? 'Bloc facultatif, non renseigné.' : 'Non prévu par la version du schéma de ce fichier.';
@@ -339,7 +338,7 @@ export interface FicheView {
   roles: RelationView[];
   issues: Issue[];
   attributes: { name: string; value: string | null; required: boolean; doc: string | null }[];
-  links: { label: string; uid: string }[];
+  links: { label: string; uid: string; tab?: TabKey; section?: string }[];
 }
 
 export function buildFiche(d: Dossier, model: Model, uid: string): FicheView | null {
@@ -355,7 +354,7 @@ export function buildFiche(d: Dossier, model: Model, uid: string): FicheView | n
   const groups: GroupView[] = [];
   const rootFields = buildGroup(ctx, el, '', kind ? 'Informations' : (view?.title ?? fieldMeta(el.localName, null).label), true);
   // les enfants complexes deviennent des groupes ; les liens vers d'autres sections restent des liens
-  const links: { label: string; uid: string }[] = [];
+  const links: FicheView["links"] = [];
   const nested: GroupView[] = [];
   for (const g of rootFields.groups) {
     const childEl = resolvePath(el, g.rel);
@@ -368,6 +367,21 @@ export function buildFiche(d: Dossier, model: Model, uid: string): FicheView | n
     nested.push(g);
   }
   rootFields.groups = [];
+  const hasContent = (g: GroupView): boolean => g.fields.length + g.notApplicable.length + g.repeatables.length + g.unknown.length > 0 || g.groups.some(hasContent);
+  for (let i = nested.length - 1; i >= 0; i--) if (!hasContent(nested[i]) && !nested[i].result) nested.splice(i, 1);
+  // sous-blocs ayant leur propre section (ex. adresses sous la localisation) : liens
+  const myPath = schemaPath(el);
+  for (const p of SINGLETON_PATHS) {
+    if (!p.startsWith(myPath + '/') || links.some((l) => model.objects.get(l.uid)?.xmlPath.endsWith(p.split('/').pop()!))) continue;
+    const between = p.slice(myPath.length + 1).split('/');
+    const intermediate = between.slice(0, -1).some((_, i) => SINGLETON_PATHS.has(myPath + '/' + between.slice(0, i + 1).join('/')));
+    if (intermediate) continue;
+    const sec = TABS.flatMap((t) => t.sections).find((s) => s.singleton === p);
+    const target = [...model.objects.values()].find((o) => o.section === sec?.key);
+    const tab = TABS.find((t) => t.sections.includes(sec!))?.key;
+    if (sec && target && !links.some((l) => l.uid === target.uid)) links.push({ label: sec.label, uid: target.uid });
+    else if (sec && !target) links.push({ label: `${sec.label} (à renseigner)`, uid: '', tab, section: sec.key });
+  }
   if (rootFields.fields.length || rootFields.notApplicable.length || rootFields.unknown.length || rootFields.repeatables.length) groups.push(rootFields);
   groups.push(...nested);
 
@@ -454,6 +468,7 @@ function buildGroup(ctx: FicheCtx, container: Element | null, rel: string, label
     const instances = children.filter((c) => c.localName === cdef.name);
     if (cdef.kind === 'complex' || cdef.kind === 'any') {
       if (SKIP_IN_FICHE(cdef)) continue;
+      if (SINGLETON_PATHS.has(cdef.path) && cdef.path !== containerPath) continue; // a sa propre section
       if (!def?.parent && cdef.path.split('/').length === 2) continue; // racine : chaque bloc a sa propre section
       if (cdef.maxOccurs === null || cdef.maxOccurs > 1) {
         group.repeatables.push({
@@ -574,3 +589,30 @@ export function stateLabel(state: ValueState): string {
 }
 
 export { relativePath, objectsOfKind, facetViolations };
+
+
+/**
+ * Fiche d'un bloc absent du fichier : ses champs s'affichent vides et
+ * saisissables. Ils sont rattachés au plus proche ancêtre présent ; la
+ * première valeur saisie crée le bloc à sa place dans le XML.
+ */
+export function buildAbsentFiche(d: Dossier, model: Model, path: string, label: string): FicheView | null {
+  const segments = path.split('/');
+  let el: Element | null = d.working.documentElement.localName === segments[0] ? d.working.documentElement : null;
+  let depth = 1;
+  for (; el && depth < segments.length; depth++) {
+    const next: Element | null = childElements(el).find((c) => c.localName === segments[depth]) ?? null;
+    if (!next) break;
+    el = next;
+  }
+  if (!el || depth >= segments.length) return null;
+  const uid = getUid(el);
+  if (!uid) return null;
+  const rel = segments.slice(depth).join('/');
+  const ctx: FicheCtx = { d, model, owner: el, baseOwner: d.baseIndex().get(uid) ?? null, kind: undefined, issues: [], results: false };
+  const group = buildGroup(ctx, null, rel, label, false);
+  return {
+    uid, title: label, kind: null, path, xmlPath: indexedPath(el) + '/' + rel, results: false,
+    groups: [{ ...group, present: true }], parent: null, children: [], outgoing: [], incoming: [], roles: [], issues: [], attributes: [], links: [],
+  };
+}

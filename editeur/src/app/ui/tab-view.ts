@@ -5,7 +5,7 @@ import { NavService } from '../services/nav.service';
 import { KIND_BY_KEY, TabKey } from '../core/metier/catalog';
 import { ObjectView, SectionView } from '../core/metier/model';
 import { addObject } from '../core/edition/editor';
-import { FicheComponent } from './fiche';
+import { FicheComponent, GroupComponent } from './fiche';
 import { BilanComponent } from './bilan';
 
 type Filtre = 'tous' | 'incomplets' | 'modifies' | 'erreurs';
@@ -13,7 +13,7 @@ type Filtre = 'tous' | 'incomplets' | 'modifies' | 'erreurs';
 /** Une section : liste compacte à gauche, fiche de l'objet sélectionné à droite. */
 @Component({
   selector: 'app-tab-view',
-  imports: [FormsModule, FicheComponent, BilanComponent],
+  imports: [FormsModule, FicheComponent, GroupComponent, BilanComponent],
   template: `
     @let sec = section();
     @if (sec) {
@@ -59,6 +59,15 @@ type Filtre = 'tous' | 'incomplets' | 'modifies' | 'erreurs';
         </div>
       } @else if (sec.singletonUid) {
         <div class="single"><app-fiche [uid]="sec.singletonUid" /></div>
+      } @else if (absent(); as af) {
+        <div class="single">
+          <div class="fiche">
+            <header class="fiche-head"><div class="fiche-title"><h2>{{ af.title }}</h2>
+              <div class="sub"><span class="kind">Bloc absent du fichier : il sera créé dès qu'une valeur y sera saisie, et contrôlé à ce moment-là.</span></div>
+            </div></header>
+            @for (g of af.groups; track g.key) { <app-group [group]="g" [uid]="af.uid" [top]="true" /> }
+          </div>
+        </div>
       } @else {
         <div class="single"><div class="fiche"><h2>{{ sec.def.label }}</h2><p class="muted">{{ sec.note }}</p></div></div>
       }
@@ -120,6 +129,15 @@ export class TabViewComponent {
     const o = uid ? m.objects.get(uid) : undefined;
     if (o && o.section === sec.def.key) return uid;
     return this.items()[0]?.uid ?? null;
+  });
+
+  /** bloc unique absent du fichier : champs vides saisissables */
+  protected readonly absent = computed(() => {
+    this.svc.revision();
+    const sec = this.section();
+    if (!sec?.def.singleton || sec.singletonUid || sec.def.results) return null;
+    if (this.svc.dossier()?.format.niveauSupport !== 'complet') return null;
+    return this.svc.absentFiche(sec.def.singleton, sec.def.label);
   });
 
   protected readonly canAdd = computed(() => {

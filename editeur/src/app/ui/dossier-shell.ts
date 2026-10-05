@@ -7,6 +7,7 @@ import { SyntheseComponent } from './synthese';
 import { TabViewComponent } from './tab-view';
 import { ControlesComponent } from './controles';
 import { frDate } from './labels';
+import { KIND_BY_KEY } from '../core/metier/catalog';
 import { IconComponent } from './icon';
 
 /**
@@ -85,8 +86,7 @@ import { IconComponent } from './icon';
                 @for (s of t.sections; track s.def.key) {
                   @if (!isDim(s) || isActive(t, s) || expanded().has(t.def.key)) {
                     <button class="nav-item" [class.active]="isActive(t, s)" [class.dim]="isDim(s)" (click)="open(t, s)" [title]="s.note ?? ''">
-                      <span class="nav-label">{{ s.def.label }}</span>
-                      @if (s.def.kind && s.count) { <span class="count">{{ s.count }}</span> }
+                      <span class="nav-label">{{ navLabel(s) }}</span>
                       @if (s.errors) { <span class="dot err" [title]="s.errors + ' erreur(s)'">{{ s.errors }}</span> }
                       @else if (s.missing + s.warnings) { <span class="dot miss" [title]="(s.missing + s.warnings) + ' avertissement(s)'">{{ s.missing + s.warnings }}</span> }
                     </button>
@@ -135,6 +135,14 @@ export class DossierShellComponent {
   }
 
   protected readonly expanded = signal(new Set<string>());
+
+  /** « 6 murs », « 1 ventilation » : le nombre devant le libellé */
+  protected navLabel(s: SectionView): string {
+    const k = s.def.kind ? KIND_BY_KEY.get(s.def.kind) : undefined;
+    if (!k || !s.count) return s.def.label;
+    const l = s.count > 1 ? k.plural : k.label;
+    return `${s.count} ${l.charAt(0).toLowerCase() + l.slice(1)}`;
+  }
   /** groupes dépliés : le groupe courant l'est d'office, les autres à la demande */
   private readonly openGroups = signal(new Set<string>());
   private readonly closedGroups = signal(new Set<string>());
