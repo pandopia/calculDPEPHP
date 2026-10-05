@@ -29,6 +29,8 @@ Le CLI cible : `bin/calcul-dpe input.xml` → enrichit le XML avec les balises `
 | `src/Pdf/` | Générateur PDF : modèle officiel en fond, données du XML par-dessus. Voir `resources/pdf/README.md`. |
 | `resources/pdf/` | Modèles officiels préparés (`bin/build-pdf-templates`), pictogrammes, polices. |
 | `resources/pdfsamples/` | Exemples XML + PDF réels, **local uniquement** (gitignore). |
+| `editeur/` | Application Angular (navigateur seul) d'édition des XML DPE : import, fiches métier, relations, export sans perte, validation XSD locale. Voir `editeur/README.md`. |
+| `editeur/public/schemas/` | XSD officiels de l'observatoire ADEME par version du modèle (1 à 2.6), plus récents que `resources/ademe_DPE.xsd`. |
 
 ## Workflow de calcul
 
