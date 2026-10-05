@@ -456,3 +456,28 @@ describe('balises vides de remplissage', () => {
     if (pe) expect(buildFiche(d, model, pe)!.children.map((c) => c.kind.key)).toEqual(['panneaux_pv']);
   });
 });
+
+describe('dossier vierge : objets par défaut', () => {
+  it('contient plancher bas, plancher haut, 4 murs orientés, ventilation, chauffage et ECS complets', async () => {
+    const schemas = nodeSchemas();
+    const { addDefaultObjects } = await import('../src/app/core/state/skeleton');
+    const schema = (await schemas.forVersion('2.6'))!;
+    const draft = await Dossier.fromSkeleton(buildSkeleton(schema, { version: '2.6', methodeApplication: '1' }), 'Maison', schemas);
+    addDefaultObjects(draft);
+    const d = await Dossier.fromSkeleton(draft.working, 'Maison', schemas);
+    const model = buildModel(d);
+    const count = (k: string) => [...model.objects.values()].filter((o) => o.kind?.key === k).length;
+    expect([count('plancher_bas'), count('plancher_haut'), count('mur'), count('ventilation')]).toEqual([1, 1, 4, 1]);
+    expect([count('installation_chauffage'), count('generateur_chauffage'), count('emetteur_chauffage')]).toEqual([1, 1, 1]);
+    expect([count('installation_ecs'), count('generateur_ecs')]).toEqual([1, 1]);
+    const orientations = [...model.objects.values()].filter((o) => o.kind?.key === 'mur').map((o) => o.summary.find((s) => s.label === 'Orientation')?.value);
+    expect(orientations.sort()).toEqual(['Est', 'Nord', 'Ouest', 'Sud']);
+    // état initial : rien n'apparaît comme modification, aucune référence cassée, uid uniques
+    expect(computeChanges(d)).toEqual([]);
+    expect(new RelationGraph(d.working).duplicateReferences.size).toBe(0);
+    expect(d.meta.resultatsObsoletes).toBe(false);
+    const gen = [...model.objects.values()].find((o) => o.kind?.key === 'generateur_chauffage')!;
+    expect(model.objects.get(gen.parentUid!)!.kind!.key).toBe('installation_chauffage');
+    expect(model.tabs.flatMap((t) => t.sections).find((s) => s.def.key === 'ventilations')!.status).not.toBe('vide');
+  });
+});

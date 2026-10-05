@@ -123,7 +123,7 @@ ressource réseau, 20 Mo et 64 niveaux maximum.
 | Version de modèle absente ou inconnue | Vue générique sans validation XSD ; aucune migration. |
 | DPE logement neuf (RT2012/RE2020), DPE tertiaire | Vue générique (structure du XSD) et édition de champs, sans fiches métier ni ajout d'objets. |
 | Audit énergétique, autre racine, XML mal formé | Refusés, avec le motif. |
-| Création d'un dossier | DPE logement existant, modèle 2.6 (seule version en vigueur). |
+| Création d'un dossier | DPE logement existant, modèle 2.6 (seule version en vigueur). Créés d'office, sans autre valeur que leur nom (et l'orientation des murs) : un plancher bas, un plancher haut, quatre murs (nord, sud, est, ouest), une ventilation, une installation de chauffage (avec un générateur et un émetteur) et une installation d'ECS (avec un générateur). |
 
 ## Règles documentées
 

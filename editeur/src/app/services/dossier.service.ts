@@ -1,6 +1,6 @@
 import { computed, Injectable, signal } from '@angular/core';
 import { Dossier } from '../core/state/dossier';
-import { buildSkeleton, NewDossierOptions } from '../core/state/skeleton';
+import { addDefaultObjects, buildSkeleton, NewDossierOptions } from '../core/state/skeleton';
 import { SchemaRegistry } from '../core/schema/schema-registry';
 import { buildAbsentFiche, buildFiche, buildModel, Model } from '../core/metier/model';
 import { computeChanges } from '../core/edition/change-set';
@@ -76,7 +76,10 @@ export class DossierService {
   async create(options: NewDossierOptions, nom: string): Promise<void> {
     const schema = await this.schemas.forVersion(options.version);
     if (!schema) throw new Error('Version de modèle non disponible.');
-    const d = await Dossier.fromSkeleton(buildSkeleton(schema, options), nom, this.schemas);
+    // objets présents dans tout logement, intégrés à l'état initial (pas des « modifications »)
+    const draft = await Dossier.fromSkeleton(buildSkeleton(schema, options), nom, this.schemas);
+    addDefaultObjects(draft);
+    const d = await Dossier.fromSkeleton(draft.working, nom, this.schemas);
     this.setDossier(d);
     this.scheduleSave(0);
   }
