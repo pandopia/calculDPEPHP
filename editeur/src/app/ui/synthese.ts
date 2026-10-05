@@ -36,8 +36,6 @@ interface Todo {
         }
       </section>
 
-      <app-maquette-3d />
-
       <div class="dash">
         <section class="card perf">
           <h2>Performance <span class="muted small">résultats du fichier source</span></h2>
@@ -97,6 +95,8 @@ interface Todo {
           <p class="muted small">Validation XSD complète et export : <a href="" (click)="$event.preventDefault(); nav.go('controles')">Vérifier et exporter</a></p>
         </section>
       </div>
+
+      <app-maquette-3d class="maquette-bottom" />
 
       <p class="format-line muted small">
         {{ d.format.libelleFamille }} · modèle {{ d.format.enumVersionId }} ({{ d.format.xsd ?? 'sans schéma' }})

@@ -368,3 +368,4 @@ details[open] > summary { margin-bottom: .4em; }
 .maquette-foot p { margin: 0; max-width: 720px; }
 .legend { display: flex; flex-wrap: wrap; gap: .3em 1em; font-size: .8em; color: var(--muted); }
 .legend i { display: inline-block; width: .85em; height: .85em; border-radius: 2px; margin-right: .35em; vertical-align: -1px; border: 1px solid rgba(0,0,0,.15); }
+.maquette-bottom { display: block; margin-top: 1em; }
