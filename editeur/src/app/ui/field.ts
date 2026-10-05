@@ -15,14 +15,14 @@ import { displayRounded } from '../core/edition/value-codec';
   imports: [NgTemplateOutlet],
   template: `
     @let f = field();
-    <div class="field" [class.editing]="editing()" [class.focused]="highlight()" [class.has-error]="hasError()" [class.has-warn]="hasWarn()" [attr.data-rel]="f.rel">
+    <div class="field" [class.editing]="editing()" [class.blank]="showControl() && !editing()" [class.focused]="highlight()" [class.has-error]="hasError()" [class.has-warn]="hasWarn()" [attr.data-rel]="f.rel">
       <div class="f-label" [title]="f.help ?? ''">
         {{ f.label }}@if (f.unit) {<span class="unit"> · {{ f.unit }}</span>}
         @if (f.required && f.state !== 'valeur' && !isReadonly()) { <span class="req" title="Obligatoire">obligatoire</span> }
         @if (f.modified) { <span class="mod-dot" [title]="'Modifié — valeur à l\\'import : ' + (f.before ?? '')"></span> }
       </div>
 
-      @if (!editing()) {
+      @if (!showControl()) {
         <div class="f-row">
           <button type="button" class="f-value" [class.empty]="f.state !== 'valeur'" [class.ro]="isReadonly()" [disabled]="isReadonly()" (click)="edit()">
             @if (f.state === 'valeur') {
@@ -41,7 +41,7 @@ import { displayRounded } from '../core/edition/value-codec';
         <div class="control">
           @switch (f.input) {
             @case ('reference') {
-              <select [id]="id" (change)="onRef($any($event.target).value)" (blur)="stop()" (keydown.escape)="editing.set(false)">
+              <select [id]="id" (change)="onRef($any($event.target).value)" (focus)="editing.set(true)" (blur)="stop()" (keydown.escape)="editing.set(false)">
                 <option value="" [selected]="!f.ref?.targets?.length">—</option>
                 @if (f.state === 'valeur' && !f.ref?.targets?.length) { <option value="__keep" selected>« {{ f.raw }} » (non résolu, conservé)</option> }
                 @for (c of f.ref?.candidates ?? []; track c.uid) { <option [value]="c.uid" [selected]="isTarget(c.uid)">{{ c.label }}</option> }
@@ -51,19 +51,19 @@ import { displayRounded } from '../core/edition/value-codec';
             @case ('oui_non') { <ng-container *ngTemplateOutlet="sel" /> }
             @default {
               <input [id]="id" type="text" [value]="f.state === 'valeur' ? (svc.advanced() ? f.raw : f.display) : ''" [placeholder]="placeholder()"
-                     (change)="commit($any($event.target).value, $event)" (blur)="stop()" (keydown.enter)="$any($event.target).blur()"
+                     (change)="commit($any($event.target).value, $event)" (focus)="editing.set(true)" (blur)="stop()" (keydown.enter)="$any($event.target).blur()"
                      (keydown.escape)="cancel($event)" [attr.inputmode]="f.input === 'number' || f.input === 'integer' ? 'decimal' : null" />
             }
           }
           <ng-template #sel>
-            <select [id]="id" (change)="commit($any($event.target).value, $event); editing.set(false)" (blur)="stop()" (keydown.escape)="editing.set(false)">
+            <select [id]="id" (change)="commit($any($event.target).value, $event); editing.set(false)" (focus)="editing.set(true)" (blur)="stop()" (keydown.escape)="editing.set(false)">
               <option value="" [selected]="f.state !== 'valeur'">—</option>
               @if (f.unknownCode) { <option [value]="f.raw" selected>Code inconnu « {{ f.raw }} » (conservé)</option> }
               @for (o of f.options; track o.code) { <option [value]="o.code" [selected]="o.code === f.raw">{{ svc.advanced() ? o.code + ' — ' : '' }}{{ o.label }}</option> }
             </select>
           </ng-template>
         </div>
-        @if (f.help) { <p class="help">{{ f.help }}</p> }
+        @if (f.help && editing()) { <p class="help">{{ f.help }}</p> }
       }
       @for (i of visibleIssues(); track i.id) { <p [class]="'field-issue g-' + i.gravite">{{ i.message }}</p> }
       @if (error()) { <p class="field-issue g-erreur">{{ error() }}</p> }
@@ -87,6 +87,8 @@ export class FieldComponent {
   protected readonly id = 'f' + Math.random().toString(36).slice(2);
 
   protected readonly isReadonly = computed(() => this.readonly() || this.field().readOnly);
+  /** champ vide et modifiable : saisie affichée d'emblée ; champ renseigné : lecture, édition au clic */
+  protected readonly showControl = computed(() => this.editing() || (!this.isReadonly() && this.field().state !== 'valeur'));
   /** erreurs et avertissements ; « à renseigner » est déjà signalé par l'étiquette « obligatoire » */
   protected readonly visibleIssues = computed(() => this.field().issues.filter((i) => i.gravite !== 'info' && i.niveau !== 'completude'));
   protected readonly hasError = computed(() => this.field().issues.some((i) => i.gravite === 'erreur') || !!this.error());

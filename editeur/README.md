@@ -98,7 +98,7 @@ ressource réseau, 20 Mo et 64 niveaux maximum.
   décrit pas la géométrie (`core/metier/maquette.ts`).
 - **Sections** : liste compacte à gauche (nom et valeurs clés), fiche de
   l'objet sélectionné à droite, ouverte d'emblée.
-- **Fiches** : valeurs en lecture, modifiables au clic (Entrée valide, Échap
+- **Fiches** : un champ vide s'affiche directement en saisie ; une valeur renseignée s'affiche en lecture, modifiable au clic (Entrée valide, Échap
   annule). Pour effacer une valeur : choisir « — » dans une liste, ou vider le
   champ texte ; la balise disparaît alors du XML exporté. Les champs sont rangés par thème (Situation, Dimensions,
   Composition, Isolation et performance, Système). Les champs facultatifs

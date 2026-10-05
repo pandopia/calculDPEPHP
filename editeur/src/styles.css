@@ -375,3 +375,8 @@ details[open] > summary { margin-bottom: .4em; }
 .calc-bar.stale { background: var(--warn-soft); }
 .badge-btn { border: none; cursor: pointer; font: inherit; font-size: .75em; }
 .modal.narrow { width: min(560px, 92vw); }
+/* champ vide : saisie directe */
+.field.blank .control { margin-top: .15em; }
+.field.blank input, .field.blank select { background: var(--surface-2); border-color: var(--border); }
+.field.blank input:focus, .field.blank select:focus { background: #fff; }
+.field.has-warn.blank input, .field.has-warn.blank select { border-color: #e2a400; }
