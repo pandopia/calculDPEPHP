@@ -29,7 +29,8 @@ import { IconComponent } from './icon';
           <h1 (dblclick)="editingName.set(true)" title="Double-cliquer pour renommer">{{ d.meta.nom }}</h1>
         }
         <span class="muted small">{{ d.format.libelleMethodeApplication ? cap(d.format.libelleMethodeApplication) : d.format.libelleFamille }} · modèle {{ d.format.enumVersionId ?? '?' }}</span>
-        @if (d.meta.resultatsObsoletes) { <span class="badge warn" title="Des données d'entrée ont changé depuis l'import">résultats à recalculer</span> }
+        @if (svc.calculEnCours()) { <span class="badge">calcul en cours…</span> }
+        @else if (d.meta.resultatsObsoletes) { <button class="badge warn badge-btn" (click)="svc.calculer()" title="Des données d'entrée ont changé : lancer le calcul">résultats à recalculer ↻</button> }
       </div>
       <div class="search">
         <input type="search" placeholder="Rechercher…" [ngModel]="query()" (ngModelChange)="query.set($event)" (keydown.escape)="query.set('')" />
@@ -112,6 +113,21 @@ import { IconComponent } from './icon';
         }
       </main>
     </div>
+
+    @if (svc.demandeConsentement()) {
+      <div class="modal-backdrop" (click)="svc.demandeConsentement.set(false)">
+        <div class="modal narrow" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+          <h2>Envoyer le dossier au moteur de calcul ?</h2>
+          <p>Le XML de travail est envoyé à <strong>{{ svc.moteur.destination }}</strong> ({{ svc.moteur.nom }}) pour calculer consommations, émissions, coûts et étiquettes.</p>
+          <p class="muted small">Il contient toutes les données du dossier, y compris adresses et identités si elles sont renseignées. Seuls les résultats reçus sont repris dans le dossier, et seulement si les données d'entrée revenues sont identiques à celles envoyées ; l'opération s'annule par Ctrl+Z.</p>
+          <label class="check"><input type="checkbox" #mem checked /> Ne plus demander sur ce poste</label>
+          <div class="modal-actions">
+            <button (click)="svc.demandeConsentement.set(false)">Annuler</button>
+            <button class="primary" (click)="svc.accepterEnvoi(mem.checked)">Envoyer et calculer</button>
+          </div>
+        </div>
+      </div>
+    }
   `,
 })
 export class DossierShellComponent {

@@ -7,10 +7,20 @@ import { computeChanges } from '../core/edition/change-set';
 import * as ed from '../core/edition/editor';
 import { decodeXmlBytes } from '../core/xml/safe-xml';
 import { BrowserXsdEngine, runXsdValidation, XsdReport } from '../core/validation/xsd-validation';
-import { AUCUN_MOTEUR, MoteurCalcul } from '../core/calcul/moteur-calcul';
+import { MoteurCalcul, MoteurPandopia } from '../core/calcul/moteur-calcul';
+import { integrerResultats } from '../core/calcul/integrer-resultats';
 import { DraftStore } from './draft-store';
 
 const LAST_KEY = 'calculdpe-editeur:dernier-dossier';
+const CONSENT_KEY = 'calculdpe-editeur:envoi-moteur-accepte';
+
+function readConsent(): boolean {
+  try {
+    return localStorage.getItem(CONSENT_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 export type SaveStatus = 'aucun' | 'en_attente' | 'enregistrement' | 'enregistre' | 'erreur';
 
@@ -28,7 +38,11 @@ export class DossierService {
     if (!res.ok) throw new Error(`Schéma ${file} introuvable.`);
     return res.text();
   });
-  readonly moteur: MoteurCalcul = AUCUN_MOTEUR;
+  readonly moteur: MoteurCalcul = new MoteurPandopia();
+  readonly calculEnCours = signal(false);
+  /** l'utilisateur a accepté l'envoi du XML au moteur (mémorisé sur ce poste) */
+  readonly consentementCalcul = signal(readConsent());
+  readonly demandeConsentement = signal(false);
   private readonly xsdEngine = new BrowserXsdEngine();
 
   readonly dossier = signal<Dossier | null>(null);
@@ -225,6 +239,51 @@ export class DossierService {
     } finally {
       this.xsdRunning.set(false);
     }
+  }
+
+  /** Lance le calcul ; demande d'abord l'accord d'envoi si besoin. */
+  async calculer(): Promise<void> {
+    const d = this.dossier();
+    if (!d || this.calculEnCours()) return;
+    if (!this.consentementCalcul()) {
+      this.demandeConsentement.set(true);
+      return;
+    }
+    this.calculEnCours.set(true);
+    try {
+      const envoye = d.exportXml();
+      const reponse = await this.moteur.calculer(envoye);
+      const r = integrerResultats(d, envoye, reponse, this.moteur.nom);
+      this.changed();
+      const etiq = r.avant.energie !== r.apres.energie || r.avant.climat !== r.apres.climat
+        ? ` Étiquettes : énergie ${r.avant.energie ?? '—'} → ${r.apres.energie ?? '—'}, climat ${r.avant.climat ?? '—'} → ${r.apres.climat ?? '—'}.`
+        : ` Étiquettes inchangées (${r.apres.energie ?? '—'} / ${r.apres.climat ?? '—'}).`;
+      this.toast('succes', `Calcul terminé.${etiq}`);
+    } catch (e) {
+      this.toast('erreur', e instanceof Error ? e.message : String(e));
+    } finally {
+      this.calculEnCours.set(false);
+    }
+  }
+
+  accepterEnvoi(memoriser: boolean): void {
+    this.demandeConsentement.set(false);
+    this.consentementCalcul.set(true);
+    if (memoriser) {
+      try {
+        localStorage.setItem(CONSENT_KEY, '1');
+      } catch {
+        /* commodité seulement */
+      }
+    }
+    void this.calculer();
+  }
+
+  /** « résultats du fichier source » ou « calculés par … le … » */
+  origineResultats(): string {
+    const c = this.dossier()?.meta.calcul;
+    if (!c) return 'résultats du fichier source';
+    return `calculés par ${c.moteur} le ${new Date(c.date).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}`;
   }
 
   exportXml(): string {

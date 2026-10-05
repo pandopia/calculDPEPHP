@@ -529,7 +529,7 @@ function emptyGroup(rel: string, label: string, result: boolean): GroupView {
 
 function groupLabel(name: string, def: ElementDef | null): string {
   if (name === 'donnee_entree') return 'Données saisies';
-  if (name === 'donnee_intermediaire') return 'Valeurs intermédiaires (fichier source)';
+  if (name === 'donnee_intermediaire') return 'Valeurs intermédiaires calculées';
   return fieldMeta(name, def).label;
 }
 

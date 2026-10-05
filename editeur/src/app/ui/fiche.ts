@@ -27,7 +27,7 @@ function essential(f: FieldView): boolean {
     @let g = group();
     @if (g.result && !top()) {
       <details class="group result" [open]="svc.advanced()">
-        <summary>{{ g.label }} <span class="muted">· {{ valued(g).length }} valeur(s)</span> <span class="badge res">résultat du fichier source</span></summary>
+        <summary>{{ g.label }} <span class="muted">· {{ valued(g).length }} valeur(s)</span> <span class="badge res" [title]="svc.origineResultats()">résultat</span></summary>
         @if (svc.dossier()!.meta.resultatsObsoletes) { <p class="warn-box small">À recalculer : des données d'entrée ont changé.</p> }
         <div class="fields">
           @for (f of valued(g); track f.rel) { <app-field [field]="f" [uid]="uid()" [kindKey]="kindKey()" [readonly]="!svc.advanced()" [rounded]="true" /> }
@@ -43,7 +43,7 @@ function essential(f: FieldView): boolean {
             }
           </h4>
         }
-        @if (g.result && top()) { <p class="muted small">Résultats du fichier source, en lecture seule. @if (svc.dossier()!.meta.resultatsObsoletes) { <strong class="warn-text">À recalculer.</strong> }</p> }
+        @if (g.result && top()) { <p class="muted small">Résultats {{ svc.origineResultats() }}, en lecture seule. @if (svc.dossier()!.meta.resultatsObsoletes) { <strong class="warn-text">À recalculer.</strong> }</p> }
 
         @for (b of buckets(); track b.key) {
           @if (buckets().length > 1) { <div class="theme-title">{{ b.label }}</div> }

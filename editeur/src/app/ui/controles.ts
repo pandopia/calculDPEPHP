@@ -134,7 +134,7 @@ interface IssueGroup {
             <li>{{ svc.changes().length }} modification(s) depuis {{ d.meta.origine === 'import' ? 'l\\'import' : 'la création' }}.</li>
             <li>{{ counts().erreur }} erreur(s), {{ counts().avertissement }} avertissement(s).</li>
             <li>Validation XSD : @if (xsd(); as r) { {{ r.message }} } @else { non lancée. }</li>
-            @if (d.meta.resultatsObsoletes) { <li><strong>Les résultats sont ceux du fichier source, non recalculés.</strong></li> }
+            @if (d.meta.resultatsObsoletes) { <li><strong>Les résultats ne sont pas à jour des dernières modifications</strong> ({{ svc.origineResultats() }}) : lancez le calcul avant d'exporter.</li> }
             <li>Version du modèle : {{ d.format.enumVersionId ?? 'inconnue' }} (pas de migration).</li>
           </ul>
           <p class="warn-box small">Document de travail : ni recalculé, ni validé par l'ADEME, sans numéro ADEME autre que celui du fichier d'origine.</p>
