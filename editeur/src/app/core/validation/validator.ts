@@ -28,8 +28,10 @@ export function validateDocument(d: Dossier, graph: RelationGraph): Issue[] {
   }
 
   // --- valeurs, codes, balises hors schéma
+  const pruned = d.prunable();
   if (d.schema) {
     const walk = (el: Element) => {
+      if (pruned.has(el)) return;
       const def = d.schema!.defFor(el);
       if (!def) {
         if (isObservatoireHeader(el)) return;
@@ -42,7 +44,7 @@ export function validateDocument(d: Dossier, graph: RelationGraph): Issue[] {
       if (def.kind === 'simple' && !isNil(el)) {
         const raw = el.textContent ?? '';
         const label = fieldMeta(el.localName, def).label;
-        if (raw !== '') {
+        if (raw.trim() !== '') {
           for (const v of facetViolations(raw, def)) {
             const unknownCode = def.enumLabels && !(raw in def.enumLabels);
             out.push(issue({
@@ -50,14 +52,8 @@ export function validateDocument(d: Dossier, graph: RelationGraph): Issue[] {
               ...loc(el), message: unknownCode ? `${label} : code « ${raw} » inconnu de la liste officielle de cette version — conservé tel quel.` : `${label} : ${v}`,
             }));
           }
-        } else if (def.minOccurs > 0 && !isResultPath(def.path)) {
-          out.push(issue({ niveau: 'completude', gravite: 'avertissement', ...loc(el), message: `${label} : balise présente mais vide (valeur obligatoire).` }));
-        } else if (facetViolations('', def).length || (def.base && def.base !== 'string')) {
-          out.push(issue({
-            niveau: 'champ', gravite: 'erreur', ...loc(el),
-            message: `${label} : balise vide, non conforme au type attendu. Retirez la balise (« Effacer ») ou déclarez-la nulle si le schéma l'autorise.`,
-          }));
         }
+        // valeur vide : ignorée (balise de remplissage, retirée à l'export)
       }
       if (def.kind === 'complex') childElements(el).forEach(walk);
     };
@@ -67,9 +63,11 @@ export function validateDocument(d: Dossier, graph: RelationGraph): Issue[] {
   // --- complétude selon le XSD (zones de saisie uniquement)
   if (d.schema && d.format.niveauSupport === 'complet') {
     const check = (el: Element) => {
+      if (pruned.has(el)) return;
       const def = d.schema!.defFor(el);
       if (!def || def.kind !== 'complex' || isResultPath(def.path)) return;
-      const present = new Set(childElements(el).map((c) => c.localName));
+      // une balise vide compte comme absente
+      const present = new Set(childElements(el).filter((c) => !pruned.has(c)).map((c) => c.localName));
       const choices = new Map<number, boolean>();
       for (const c of def.children) if (c.choiceGroup !== null && present.has(c.name)) choices.set(c.choiceGroup, true);
       for (const c of def.children) {
@@ -85,9 +83,7 @@ export function validateDocument(d: Dossier, graph: RelationGraph): Issue[] {
           xmlPath: indexedPath(el) + '/' + c.name,
           message: kindChild
             ? `Au moins ${c.minOccurs === 1 ? 'un' : c.minOccurs} « ${kindChild.label.toLowerCase()} » exigé par le schéma.`
-            : el !== owner && !el.firstElementChild
-              ? `Bloc « ${fieldMeta(el.localName, def).label} » présent mais vide : le XSD y exige « ${fieldMeta(c.name, c).label} ». Complétez-le ou retirez le bloc.`
-              : `${fieldMeta(c.name, c).label} : à renseigner (obligatoire selon le XSD).`,
+            : `${fieldMeta(c.name, c).label} : à renseigner (obligatoire selon le XSD).`,
         }));
       }
       for (const c of def.children) {

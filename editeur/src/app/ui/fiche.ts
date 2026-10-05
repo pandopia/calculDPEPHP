@@ -229,7 +229,7 @@ export class FicheComponent {
   });
   protected readonly view = computed(() => this.svc.model()?.objects.get(this.uid()) ?? null);
   protected readonly editable = computed(() => this.svc.dossier()?.format.niveauSupport === 'complet');
-  protected readonly closable = computed(() => !!this.fiche()?.kind || this.nav.state().tab === 'controles');
+  protected readonly closable = computed(() => this.nav.state().tab === 'controles');
   protected readonly relationsCount = computed(() => {
     const f = this.fiche();
     return f ? f.outgoing.length + f.incoming.length + f.roles.length : 0;

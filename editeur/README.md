@@ -66,6 +66,18 @@ commentaires, CDATA, `xsi:nil` et textes au caractère près ; il réindente
 seulement le contenu « éléments seuls ». Une balise ajoutée est insérée à la
 place prévue par l'ordre du schéma. Aucune conversion XML ↔ JSON.
 
+**Balises vides de remplissage.** Les logiciels de diagnostic écrivent
+souvent des balises vides (`<production_elec_enr/>`, `<numero_fiscal_local/>`,
+collections vides…). Elles sont ignorées partout (ni anomalie, ni « à
+compléter » ; un champ vide s'affiche « non renseigné ») et retirées sans
+avertissement du XML de travail exporté, ainsi que du document soumis à la
+validation XSD. Sont retirées : les balises vides facultatives, et les balises
+obligatoires dont la valeur vide est de toute façon invalide (nombre, code,
+motif). Restent : `xsi:nil`, balises portant un attribut, balises hors schéma,
+balises obligatoires dont le vide est valide (ex. une collection pouvant être
+vide). Voir `core/xml/prune.ts`. Le fichier d'origine reste téléchargeable
+intact.
+
 **Sécurité.** `<!DOCTYPE`/`<!ENTITY` refusés (pas d'entités externes), aucune
 ressource réseau, 20 Mo et 64 niveaux maximum.
 
@@ -97,7 +109,7 @@ ressource réseau, 20 Mo et 64 niveaux maximum.
   cohérence année / période de construction, dates, ouvertures plus grandes que
   leur mur, surfaces nulles.
 
-États de valeur distingués : **absent** (balise retirée), **balise vide**,
+États de valeur distingués : **absent** (une balise vide est traitée comme absente),
 **nul explicite** (`xsi:nil`, si le schéma l'autorise), **zéro** (valeur `0`),
 **non applicable** (règle documentée), **valeur par défaut** (codes « valeur
 forfaitaire » des méthodes de saisie, choisis explicitement).
@@ -156,6 +168,9 @@ conservée), section inconnue conservée, réimport, ajout rattaché, duplicatio
 valeur, code inconnu, obsolescence des résultats, annuler/rétablir, dossier
 vierge repris depuis un brouillon, validation XSD rattachée aux champs, formats
 hors périmètre.
+
+Un export sans modification est identique à l'original, aux balises vides de
+remplissage près (voir plus haut).
 
 Les fixtures (`tests/fixtures/`) sont des DPE publiés par l'observatoire ADEME
 (Licence Ouverte 2.0), anonymisés à la source.

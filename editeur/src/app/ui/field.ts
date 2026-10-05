@@ -53,8 +53,7 @@ import { GRAVITE_LABELS } from './labels';
             <button type="button" class="link small" (click)="menu.set(!menu())" title="Valeur absente, vide ou nulle">⋯</button>
             @if (menu()) {
               <div class="menu" (mouseleave)="menu.set(false)">
-                <button type="button" (click)="state('absent')" [disabled]="f.state === 'absent'">Effacer (balise retirée)</button>
-                <button type="button" (click)="state('vide')" [disabled]="f.state === 'vide'">Balise vide</button>
+                <button type="button" (click)="state('absent')" [disabled]="f.state === 'absent'">Effacer la valeur</button>
                 @if (f.nillable) { <button type="button" (click)="state('nil')" [disabled]="f.state === 'nil'">Déclarer nul (xsi:nil)</button> }
               </div>
             }
@@ -160,7 +159,7 @@ export class FieldComponent {
     this.svc.run((d) => setReference(d, this.uid(), f.ref!.key, value || null));
   }
 
-  protected state(s: 'absent' | 'vide' | 'nil'): void {
+  protected state(s: 'absent' | 'nil'): void {
     this.menu.set(false);
     this.svc.run((d) => setFieldState(d, this.uid(), this.field().rel, s));
   }

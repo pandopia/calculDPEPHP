@@ -44,7 +44,7 @@ type Filtre = 'tous' | 'incomplets' | 'modifies' | 'erreurs';
               <p class="warn-box">Résultats du fichier source, <strong>à recalculer</strong> : des données d'entrée ont changé ({{ svc.dossier()!.meta.motifsObsolescence.length }} modification(s) concernée(s)). Aucun graphe de dépendances de calcul fiable n'étant disponible, l'ensemble des résultats est considéré comme potentiellement obsolète.</p>
             }
             @if (sec.def.kind) {
-              <div class="list-pane" [class.with-fiche]="!!selectedUid()">
+              <div class="list-pane with-fiche">
                 <div class="list-toolbar">
                   <input type="search" placeholder="Rechercher dans {{ sec.def.label.toLowerCase() }}…" [ngModel]="query()" (ngModelChange)="query.set($event)" />
                   <div class="filters">
@@ -80,7 +80,7 @@ type Filtre = 'tous' | 'incomplets' | 'modifies' | 'erreurs';
                 }
               </div>
               @if (selectedUid()) {
-                <app-fiche class="fiche-pane" [uid]="selectedUid()!" (closed)="closeFiche()" />
+                <app-fiche class="fiche-pane" [uid]="selectedUid()!" />
               }
             } @else if (sec.singletonUid) {
               <app-fiche class="fiche-full" [uid]="sec.singletonUid" />
@@ -115,9 +115,12 @@ export class TabViewComponent {
   protected readonly selectedUid = computed(() => {
     const uid = this.nav.state().uid;
     const m = this.svc.model();
-    if (!uid || !m) return null;
-    const o = m.objects.get(uid);
-    return o && o.section === this.section()?.def.key ? uid : null;
+    const sec = this.section();
+    if (!m || !sec?.def.kind) return null;
+    const o = uid ? m.objects.get(uid) : undefined;
+    if (o && o.section === sec.def.key) return uid;
+    // sans sélection : premier objet de la liste filtrée
+    return this.items()[0]?.uid ?? null;
   });
 
   protected readonly items = computed<ObjectView[]>(() => {
@@ -165,10 +168,6 @@ export class TabViewComponent {
 
   protected select(o: ObjectView): void {
     this.nav.go(this.tab(), this.section()!.def.key, o.uid);
-  }
-
-  protected closeFiche(): void {
-    this.nav.go(this.tab(), this.section()!.def.key);
   }
 
   protected add(): void {

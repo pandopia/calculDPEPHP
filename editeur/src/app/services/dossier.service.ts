@@ -5,7 +5,6 @@ import { SchemaRegistry } from '../core/schema/schema-registry';
 import { buildFiche, buildModel, Model } from '../core/metier/model';
 import { computeChanges } from '../core/edition/change-set';
 import * as ed from '../core/edition/editor';
-import { exportXml } from '../core/xml/serializer';
 import { decodeXmlBytes } from '../core/xml/safe-xml';
 import { BrowserXsdEngine, runXsdValidation, XsdReport } from '../core/validation/xsd-validation';
 import { AUCUN_MOTEUR, MoteurCalcul } from '../core/calcul/moteur-calcul';
@@ -220,7 +219,7 @@ export class DossierService {
   }
 
   exportXml(): string {
-    return exportXml(this.dossier()!.working);
+    return this.dossier()!.exportXml();
   }
 
   download(content: string, fileName: string, type: string): void {

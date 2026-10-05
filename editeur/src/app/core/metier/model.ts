@@ -190,6 +190,9 @@ export function buildModel(d: Dossier): Model {
         status = minItems > 0 ? 'a_completer' : 'vide';
         if (minItems > 0) missing++;
         note = minItems > 0 ? `Au moins ${minItems} élément(s) exigé(s) par le schéma.` : 'Aucun élément déclaré (facultatif).';
+      } else if (sec.singleton && sUid && d.prunable().has(index.get(sUid)!)) {
+        status = 'vide';
+        note = 'Bloc facultatif non renseigné.';
       } else if (sec.singleton && !sUid) {
         if (sec.results) {
           status = 'absent';
@@ -369,8 +372,12 @@ export function buildFiche(d: Dossier, model: Model, uid: string): FicheView | n
 
   const graph = model.graph;
   const parentObj = kind?.parentKind ? ownerObject(el.parentElement) : null;
-  const children = KINDS.filter((k) => k.parentKind === kind?.key).map((k) => {
-    const items = [...model.objects.values()].filter((o) => o.kind?.key === k.key && o.parentUid === uid);
+  const elPath = schemaPath(el);
+  const children = KINDS.filter((k) =>
+    kind ? k.parentKind === kind.key
+      : !k.parentKind && el.parentElement !== null && k.path.startsWith(elPath + '/') && k.path.split('/').length === elPath.split('/').length + 2,
+  ).map((k) => {
+    const items = [...model.objects.values()].filter((o) => o.kind?.key === k.key && (kind ? o.parentUid === uid : true));
     return { kind: k, items: items.map((o) => ({ uid: o.uid, title: o.title, summary: o.summary.map((s) => s.value).join(' · ') })), min: d.schema?.def(k.path)?.minOccurs ?? 0 };
   });
 
@@ -514,12 +521,13 @@ function fieldView(ctx: FicheCtx, leaf: Element | null, rel: string, def: Elemen
   const { d } = ctx;
   const name = rel.split('/').pop()!;
   const meta = fieldMeta(name, def);
-  const state: ValueState = !leaf ? 'absent' : isNil(leaf) ? 'nil' : (leaf.textContent ?? '') === '' ? 'vide' : 'valeur';
+  // une balise vide (remplissage du logiciel d'origine) est traitée comme absente
+  const state: ValueState = !leaf ? 'absent' : isNil(leaf) ? 'nil' : (leaf.textContent ?? '').trim() === '' ? 'absent' : 'valeur';
   const raw = leaf && state === 'valeur' ? (leaf.textContent ?? '') : null;
   const ref = ctx.kind ? refsForField(ctx.kind, rel) : undefined;
   const baseLeaf = ctx.baseOwner ? resolvePath(ctx.baseOwner, rel) : null;
-  const baseState = !baseLeaf ? 'absent' : isNil(baseLeaf) ? 'nil' : (baseLeaf.textContent ?? '') === '' ? 'vide' : 'valeur';
-  const modified = ctx.baseOwner ? baseState !== state || (baseLeaf?.textContent ?? null) !== (leaf?.textContent ?? null) : state !== 'absent';
+  const baseState = !baseLeaf ? 'absent' : isNil(baseLeaf) ? 'nil' : (baseLeaf.textContent ?? '').trim() === '' ? 'absent' : 'valeur';
+  const modified = ctx.baseOwner ? baseState !== state || (state === 'valeur' && baseLeaf?.textContent !== leaf?.textContent) : state !== 'absent';
   const appl = applicability(ctx.kind, rel, (r) => textOf(ctx.owner, r));
   const input: FieldInput = ref
     ? 'reference'

@@ -170,7 +170,8 @@ describe('états de valeur', () => {
     expect(field().state).toBe('nil');
     expect(exportXml(d.working)).toMatch(/<surface_aiu xsi:nil="true"\/>/);
     setFieldState(d, mur, rel, 'vide');
-    expect(field().state).toBe('vide');
+    expect(field().state).toBe('absent'); // une balise vide est traitée comme non renseignée
+    expect(d.exportXml()).not.toMatch(/<surface_aiu/); // et retirée à l'export
     setFieldState(d, mur, rel, 'absent');
     expect(field().state).toBe('absent');
   });
@@ -419,5 +420,39 @@ describe('formats hors périmètre', () => {
     const d = await Dossier.fromImport('<audit><administratif/></audit>', 'audit.xml', schemas);
     expect(d.format.famille).toBe('audit');
     expect(d.format.niveauSupport).toBe('aucun');
+  });
+});
+
+describe('balises vides de remplissage', () => {
+  it('les ignore dans les contrôles et les retire à l\'export, sans rien changer d\'autre', async () => {
+    const xml = fixture(MAISON)
+      .replace('<production_elec_enr>', '<production_elec_enr_x>').replace('</administratif>', '<dpe_a_remplacer/></administratif>');
+    const d = await Dossier.fromImport(xml.replace('<production_elec_enr_x>', '<production_elec_enr>'), 'x.xml', schemas);
+    // bloc facultatif vide, comme le produisent certains logiciels
+    const logement = d.working.getElementsByTagName('logement')[0];
+    const pe = d.working.getElementsByTagName('production_elec_enr')[0] ?? logement.appendChild(d.working.createElementNS(null, 'production_elec_enr'));
+    while (pe.firstChild) pe.firstChild.remove();
+    d.revision++;
+    const model = buildModel(d);
+    expect(model.issues.filter((i) => /vide/.test(i.message))).toEqual([]);
+    expect(model.issues.filter((i) => /Production|Donnee entree|Panneaux/i.test(i.message))).toEqual([]);
+    const sec = model.tabs.flatMap((t) => t.sections).find((s) => s.def.key === 'production_elec')!;
+    expect(sec.status).toBe('vide');
+    const out = d.exportXml();
+    expect(out).not.toContain('<production_elec_enr');
+    expect(out).not.toMatch(/<dpe_a_remplacer\/>/);
+    const before = parseXml(exportXml(d.working)).getElementsByTagName('*').length;
+    expect(parseXml(out).getElementsByTagName('*').length).toBe(before - d.prunable().size);
+    // une collection obligatoire vide (mur_collection 1..1) est conservée
+    expect(out).toContain('<mur_collection>');
+  });
+
+  it('un bloc d\'informations ne liste pas les objets des autres onglets comme relations', async () => {
+    const d = await open(MAISON);
+    const model = buildModel(d);
+    const cg = model.tabs.find((t) => t.def.key === 'batiment')!.sections[0].singletonUid!;
+    expect(buildFiche(d, model, cg)!.children).toEqual([]);
+    const pe = model.tabs.flatMap((t) => t.sections).find((s) => s.def.key === 'production_elec')!.singletonUid;
+    if (pe) expect(buildFiche(d, model, pe)!.children.map((c) => c.kind.key)).toEqual(['panneaux_pv']);
   });
 });

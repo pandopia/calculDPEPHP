@@ -36,7 +36,8 @@ export async function runXsdValidation(d: Dossier, engine: XsdEngine): Promise<X
   if (!d.schema) {
     return { ...base, valid: null, issues: [], message: 'Aucun XSD associé à la version de ce fichier : validation impossible.' };
   }
-  const { text, lineToElement } = serialize(d.working, { omit: isObservatoireHeader });
+  const pruned = d.prunable();
+  const { text, lineToElement } = serialize(d.working, { omit: (el) => isObservatoireHeader(el) || pruned.has(el) });
   const result = await engine.validate(text, d.schema.xsdText);
   const issues = result.errors.map((e) => {
     const el = e.line !== null ? lineToElement.get(e.line) ?? null : null;

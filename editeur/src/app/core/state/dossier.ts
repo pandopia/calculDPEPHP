@@ -2,6 +2,7 @@ import { detectFormat, FormatInfo } from '../format/format-detector';
 import { SchemaHandle, SchemaRegistry } from '../schema/schema-registry';
 import { parseXml } from '../xml/safe-xml';
 import { serialize } from '../xml/serializer';
+import { prunableElements } from '../xml/prune';
 import { annotate, maxUid, uidIndex, UidCounter } from '../xml/uid';
 
 /**
@@ -52,6 +53,7 @@ export class Dossier {
   private undoStack: Snapshot[] = [];
   private workingIndex: { revision: number; index: Map<string, Element> } | null = null;
   private baselineIndex: Map<string, Element> | null = null;
+  private prunableCache: { revision: number; doc: Document; set: Set<Element> } | null = null;
   private redoStack: Snapshot[] = [];
 
   private constructor(
@@ -160,6 +162,20 @@ export class Dossier {
       this.workingIndex = { revision: this.revision, index: uidIndex(this.working) };
     }
     return this.workingIndex.index;
+  }
+
+  /** Éléments vides de remplissage (ignorés, retirés à l'export), par révision. */
+  prunable(): Set<Element> {
+    if (!this.prunableCache || this.prunableCache.revision !== this.revision || this.prunableCache.doc !== this.working) {
+      this.prunableCache = { revision: this.revision, doc: this.working, set: prunableElements(this.working, this.schema) };
+    }
+    return this.prunableCache.set;
+  }
+
+  /** XML de travail exporté : identifiants internes et balises vides de remplissage retirés. */
+  exportXml(): string {
+    const set = this.prunable();
+    return serialize(this.working, { omit: (el) => set.has(el) }).text;
   }
 
   baseIndex(): Map<string, Element> {
