@@ -6,88 +6,62 @@ import { KIND_BY_KEY, TabKey } from '../core/metier/catalog';
 import { ObjectView, SectionView } from '../core/metier/model';
 import { addObject } from '../core/edition/editor';
 import { FicheComponent } from './fiche';
-import { STATUS_LABELS } from './labels';
+import { BilanComponent } from './bilan';
 
 type Filtre = 'tous' | 'incomplets' | 'modifies' | 'erreurs';
 
+/** Une section : liste compacte à gauche, fiche de l'objet sélectionné à droite. */
 @Component({
   selector: 'app-tab-view',
-  imports: [FormsModule, FicheComponent],
+  imports: [FormsModule, FicheComponent, BilanComponent],
   template: `
-    @let tv = tabView();
     @let sec = section();
-    @if (tv) {
-      <div class="tab-layout">
-        <aside class="subnav">
-          @for (s of tv.sections; track s.def.key) {
-            <button [class.active]="sec?.def?.key === s.def.key" (click)="openSection(s)">
-              <span class="label">{{ s.def.label }}</span>
-              <span class="meta">
-                @if (s.def.kind) { <span class="count">{{ s.count }}</span> }
-                <span class="status" [class]="'status st-' + s.status" [title]="s.note ?? ''">{{ STATUS_LABELS[s.status] }}</span>
-              </span>
-            </button>
-          }
-          @if (tab() === 'resultats') {
-            <div class="engine-note">
-              <strong>Moteur de calcul</strong>
-              <p class="small">{{ svc.moteur.description }}</p>
-              <button disabled title="Aucun moteur connecté">Recalculer</button>
+    @if (sec) {
+      @if (sec.def.key === 'bilan') {
+        <app-bilan />
+      } @else if (sec.def.kind) {
+        <div class="split">
+          <div class="list-pane">
+            <div class="list-head">
+              <h2>{{ sec.def.label }} <span class="muted">{{ sec.count }}</span></h2>
+              @if (canAdd()) { <button class="primary small" (click)="add()">+ {{ kindLabel() }}</button> }
             </div>
-          }
-        </aside>
-
-        <section class="main">
-          @if (sec) {
-            @if (sec.note && (sec.status !== 'complet')) { <p class="info-box">{{ sec.note }}</p> }
-            @if (tab() === 'resultats' && svc.dossier()!.meta.resultatsObsoletes) {
-              <p class="warn-box">Résultats du fichier source, <strong>à recalculer</strong> : des données d'entrée ont changé ({{ svc.dossier()!.meta.motifsObsolescence.length }} modification(s) concernée(s)). Aucun graphe de dépendances de calcul fiable n'étant disponible, l'ensemble des résultats est considéré comme potentiellement obsolète.</p>
-            }
-            @if (sec.def.kind) {
-              <div class="list-pane with-fiche">
-                <div class="list-toolbar">
-                  <input type="search" placeholder="Rechercher dans {{ sec.def.label.toLowerCase() }}…" [ngModel]="query()" (ngModelChange)="query.set($event)" />
-                  <div class="filters">
-                    @for (f of filtres; track f.key) {
-                      <button [class.active]="filtre() === f.key" (click)="filtre.set(f.key)">{{ f.label }}</button>
-                    }
-                  </div>
-                  @if (canAdd()) { <button class="primary" (click)="add()">+ Ajouter {{ kindArticle() }}</button> }
-                </div>
-                @if (items().length === 0) {
-                  <p class="muted empty">{{ sec.count === 0 ? 'Aucun élément.' : 'Aucun élément ne correspond au filtre.' }}</p>
-                } @else {
-                  <ul class="cards">
-                    @for (o of items(); track o.uid) {
-                      <li class="obj-card" [class.selected]="selectedUid() === o.uid" (click)="select(o)">
-                        <div class="obj-head">
-                          <strong>{{ o.title }}</strong>
-                          <span class="flags">
-                            @if (o.added) { <span class="badge new">Ajouté</span> } @else if (o.modified) { <span class="badge mod">Modifié</span> }
-                            @if (o.errors) { <span class="badge err">{{ o.errors }} erreur(s)</span> }
-                            @if (o.missing) { <span class="badge miss">{{ o.missing }} à compléter</span> }
-                          </span>
-                        </div>
-                        <div class="obj-summary">
-                          @for (s of o.summary; track s.label) { <span><span class="muted">{{ s.label }} :</span> {{ s.value }}</span> }
-                        </div>
-                        @if (o.childUids.length) {
-                          <div class="obj-children muted small">{{ childSummary(o) }}</div>
-                        }
-                      </li>
-                    }
-                  </ul>
+            @if (sec.count > 6 || filtre() !== 'tous' || query()) {
+              <div class="list-toolbar">
+                <input type="search" placeholder="Filtrer…" [ngModel]="query()" (ngModelChange)="query.set($event)" />
+                @for (f of filtres(); track f.key) {
+                  <button class="chip-btn" [class.active]="filtre() === f.key" (click)="filtre.set(filtre() === f.key ? 'tous' : f.key)">{{ f.label }} {{ f.n }}</button>
                 }
               </div>
-              @if (selectedUid()) {
-                <app-fiche class="fiche-pane" [uid]="selectedUid()!" />
-              }
-            } @else if (sec.singletonUid) {
-              <app-fiche class="fiche-full" [uid]="sec.singletonUid" />
             }
-          }
-        </section>
-      </div>
+            @if (sec.note && sec.count === 0) { <p class="muted small">{{ sec.note }}</p> }
+            @if (items().length) {
+              <ul class="obj-list">
+                @for (o of items(); track o.uid) {
+                  <li [class.selected]="selectedUid() === o.uid" (click)="select(o)">
+                    <div class="ol-head">
+                      <span class="ol-title" [title]="o.title">{{ o.title }}</span>
+                      <span class="row-flags">
+                        @if (o.errors) { <span class="dot err" title="Erreur">!</span> } @else if (o.missing) { <span class="dot miss" title="À compléter">{{ o.missing }}</span> }
+                        @if (o.added) { <span class="mod-dot new" title="Ajouté"></span> } @else if (o.modified) { <span class="mod-dot" title="Modifié"></span> }
+                      </span>
+                    </div>
+                    <div class="ol-sub">
+                      @for (v of rowValues(o); track $index) { <span>{{ v }}</span> }
+                      @if (o.childUids.length) { <span>{{ childSummary(o) }}</span> }
+                    </div>
+                  </li>
+                }
+              </ul>
+            } @else if (sec.count) { <p class="muted">Aucun élément ne correspond.</p> }
+          </div>
+          @if (selectedUid()) { <app-fiche class="fiche-pane" [uid]="selectedUid()!" /> }
+        </div>
+      } @else if (sec.singletonUid) {
+        <div class="single"><app-fiche [uid]="sec.singletonUid" /></div>
+      } @else {
+        <div class="single"><div class="fiche"><h2>{{ sec.def.label }}</h2><p class="muted">{{ sec.note }}</p></div></div>
+      }
     }
   `,
 })
@@ -95,15 +69,8 @@ export class TabViewComponent {
   readonly tab = input.required<TabKey>();
   protected readonly svc = inject(DossierService);
   protected readonly nav = inject(NavService);
-  protected readonly STATUS_LABELS = STATUS_LABELS;
   protected readonly query = signal('');
   protected readonly filtre = signal<Filtre>('tous');
-  protected readonly filtres: { key: Filtre; label: string }[] = [
-    { key: 'tous', label: 'Tous' },
-    { key: 'incomplets', label: 'Incomplets' },
-    { key: 'modifies', label: 'Modifiés' },
-    { key: 'erreurs', label: 'En erreur' },
-  ];
 
   protected readonly tabView = computed(() => this.svc.model()?.tabs.find((t) => t.def.key === this.tab()) ?? null);
   protected readonly section = computed<SectionView | null>(() => {
@@ -112,6 +79,39 @@ export class TabViewComponent {
     const key = this.nav.state().section;
     return tv.sections.find((s) => s.def.key === key) ?? tv.sections[0] ?? null;
   });
+
+  private readonly all = computed<ObjectView[]>(() => {
+    const m = this.svc.model();
+    const sec = this.section();
+    return m && sec?.def.kind ? sec.uids.map((u) => m.objects.get(u)!) : [];
+  });
+  private tree(o: ObjectView): ObjectView[] {
+    const m = this.svc.model()!;
+    return [o, ...o.childUids.map((c) => m.objects.get(c)!)];
+  }
+  protected readonly filtres = computed(() => {
+    const all = this.all();
+    const n = (f: (o: ObjectView) => boolean) => all.filter((o) => this.tree(o).some(f)).length;
+    return ([
+      { key: 'incomplets', label: 'À compléter', n: n((x) => x.missing > 0) },
+      { key: 'erreurs', label: 'En erreur', n: n((x) => x.errors > 0) },
+      { key: 'modifies', label: 'Modifiés', n: n((x) => x.modified || x.added) },
+    ] as { key: Filtre; label: string; n: number }[]).filter((f) => f.n > 0 || this.filtre() === f.key);
+  });
+  protected readonly items = computed<ObjectView[]>(() => {
+    const q = this.query().trim().toLowerCase();
+    const f = this.filtre();
+    return this.all()
+      .filter((o) => !q || this.tree(o).some((x) => x.searchText.includes(q)))
+      .filter((o) => {
+        const t = this.tree(o);
+        if (f === 'incomplets') return t.some((x) => x.missing > 0);
+        if (f === 'modifies') return t.some((x) => x.modified || x.added);
+        if (f === 'erreurs') return t.some((x) => x.errors > 0);
+        return true;
+      });
+  });
+
   protected readonly selectedUid = computed(() => {
     const uid = this.nav.state().uid;
     const m = this.svc.model();
@@ -119,26 +119,7 @@ export class TabViewComponent {
     if (!m || !sec?.def.kind) return null;
     const o = uid ? m.objects.get(uid) : undefined;
     if (o && o.section === sec.def.key) return uid;
-    // sans sélection : premier objet de la liste filtrée
     return this.items()[0]?.uid ?? null;
-  });
-
-  protected readonly items = computed<ObjectView[]>(() => {
-    const m = this.svc.model();
-    const sec = this.section();
-    if (!m || !sec?.def.kind) return [];
-    const q = this.query().trim().toLowerCase();
-    const f = this.filtre();
-    return sec.uids
-      .map((u) => m.objects.get(u)!)
-      .filter((o) => !q || o.searchText.includes(q) || o.childUids.some((c) => m.objects.get(c)?.searchText.includes(q)))
-      .filter((o) => {
-        const tree = [o, ...o.childUids.map((c) => m.objects.get(c)!)];
-        if (f === 'incomplets') return tree.some((x) => x.missing > 0);
-        if (f === 'modifies') return tree.some((x) => x.modified || x.added);
-        if (f === 'erreurs') return tree.some((x) => x.errors > 0);
-        return true;
-      });
   });
 
   protected readonly canAdd = computed(() => {
@@ -146,9 +127,15 @@ export class TabViewComponent {
     return !!sec?.def.kind && !sec.def.results && this.svc.dossier()?.format.niveauSupport === 'complet';
   });
 
-  protected kindArticle(): string {
-    const k = KIND_BY_KEY.get(this.section()?.def.kind ?? '');
-    return k ? `${k.article} ${k.label.toLowerCase()}` : '';
+  protected kindLabel(): string {
+    return KIND_BY_KEY.get(this.section()?.def.kind ?? '')?.label ?? '';
+  }
+
+  /** valeurs clés en une ligne, sans étiquettes (l'ordre du type d'objet les rend lisibles) */
+  protected rowValues(o: ObjectView): string[] {
+    return o.summary.slice(0, 4).map((s) =>
+      /^\d+$/.test(s.value) || /^(oui|non|inconnu|inconnue)$/i.test(s.value) ? `${s.label} : ${s.value.toLowerCase()}` : s.value,
+    );
   }
 
   protected childSummary(o: ObjectView): string {
@@ -161,11 +148,6 @@ export class TabViewComponent {
     return [...counts].map(([l, n]) => `${n} ${l.toLowerCase()}`).join(' · ');
   }
 
-  protected openSection(s: SectionView): void {
-    this.query.set('');
-    this.nav.go(this.tab(), s.def.key, s.def.singleton ? s.singletonUid : null);
-  }
-
   protected select(o: ObjectView): void {
     this.nav.go(this.tab(), this.section()!.def.key, o.uid);
   }
@@ -173,8 +155,7 @@ export class TabViewComponent {
   protected add(): void {
     const sec = this.section()!;
     const kind = KIND_BY_KEY.get(sec.def.kind!)!;
-    const n = sec.count + 1;
-    const name = kind.nameField ? prompt(`Nom ${kind.article === 'une' ? 'de la' : 'du'} ${kind.label.toLowerCase()} :`, `${kind.label} ${n}`) : '';
+    const name = kind.nameField ? prompt(`Nom ${kind.article === 'une' ? 'de la' : 'du'} ${kind.label.toLowerCase()} :`, `${kind.label} ${sec.count + 1}`) : '';
     if (name === null) return;
     const uid = this.svc.run((d) => addObject(d, kind.key, { name: name || undefined }), `${kind.label} ajouté(e).`);
     if (uid) this.nav.go(this.tab(), sec.def.key, uid);

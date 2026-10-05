@@ -2,75 +2,140 @@ import { Component, computed, inject, input, output, signal } from '@angular/cor
 import { DossierService } from '../services/dossier.service';
 import { NavService } from '../services/nav.service';
 import { KIND_BY_KEY, KindDef, REFS } from '../core/metier/catalog';
-import { FicheView, GroupView } from '../core/metier/model';
+import { FicheView, FieldView, GroupView } from '../core/metier/model';
+import { isTechnical, themeOf, THEMES } from '../core/metier/field-themes';
 import { addGenericItem, addObject, removeGenericItem, setAttribute } from '../core/edition/editor';
 import { FieldComponent } from './field';
 import { DeleteDialogComponent } from './delete-dialog';
 import { DuplicateDialogComponent } from './duplicate-dialog';
-import { GRAVITE_LABELS } from './labels';
-import { NIVEAU_LABELS } from '../core/validation/issues';
+
+interface Bucket {
+  key: string;
+  label: string;
+  fields: FieldView[];
+}
+
+/** Un champ est « visible d'emblée » s'il porte une valeur, est attendu, signalé ou modifié. */
+function essential(f: FieldView): boolean {
+  return f.state === 'valeur' || f.state === 'nil' || f.modified || f.issues.some((i) => i.gravite !== 'info') || (f.required && f.applicable);
+}
 
 @Component({
   selector: 'app-group',
   imports: [FieldComponent],
   template: `
     @let g = group();
-    <fieldset class="group" [class.result]="g.result" [class.absent]="!g.present">
-      <legend>
-        {{ g.label }}
-        @if (g.result) { <span class="badge res" title="Valeurs écrites par le logiciel d'origine : non recalculées ici">Résultat du fichier source</span> }
-        @if (!g.present) { <span class="muted small">— absent du fichier</span> }
-        @if (g.optional && !g.result && editable()) {
-          @if (g.present && g.uid) { <button class="link small danger" (click)="removeBlock(g.uid)">Retirer ce bloc</button> }
-          @else if (!g.present) { <button class="link small" (click)="addBlock(g.rel)">Ajouter ce bloc</button> }
-        }
-      </legend>
-      @if (g.result && svc.dossier()!.meta.resultatsObsoletes && g.present) { <p class="warn-box small">À recalculer : des données d'entrée ont changé.</p> }
-      @if (g.result && !svc.advanced() && g.present) { <p class="muted small">Lecture seule. Le mode avancé permet de corriger une valeur saisie que le format range ici (puissance nominale, etc.).</p> }
-      <div class="fields">
-        @for (f of g.fields; track f.rel) { <app-field [field]="f" [uid]="uid()" [kindKey]="kindKey()" [readonly]="g.result && !svc.advanced()" /> }
-      </div>
-      @if (g.notApplicable.length) {
-        <details class="na">
-          <summary>{{ g.notApplicable.length }} champ(s) non applicable(s) pour les choix actuels</summary>
-          <p class="muted small">Masqués car non pertinents selon une règle documentée ({{ g.notApplicable[0].applicabilitySource }}). Ils restent saisissables.</p>
-          <div class="fields">
-            @for (f of g.notApplicable; track f.rel) { <app-field [field]="f" [uid]="uid()" [kindKey]="kindKey()" [readonly]="g.result && !svc.advanced()" /> }
-          </div>
-        </details>
-      }
-      @for (r of g.repeatables; track r.rel) {
-        <div class="repeatable">
-          <h4>{{ r.label }} <span class="muted">({{ r.items.length }})</span>
-            @if (r.canAdd && !g.result) { <button class="small" (click)="addItem(r.rel)">+ Ajouter</button> }
+    @if (g.result && !top()) {
+      <details class="group result" [open]="svc.advanced()">
+        <summary>{{ g.label }} <span class="muted">· {{ valued(g).length }} valeur(s)</span> <span class="badge res">résultat du fichier source</span></summary>
+        @if (svc.dossier()!.meta.resultatsObsoletes) { <p class="warn-box small">À recalculer : des données d'entrée ont changé.</p> }
+        <div class="fields">
+          @for (f of valued(g); track f.rel) { <app-field [field]="f" [uid]="uid()" [kindKey]="kindKey()" [readonly]="!svc.advanced()" [rounded]="true" /> }
+        </div>
+      </details>
+    } @else {
+      <section class="group" [class.absent]="!g.present">
+        @if (!top()) {
+          <h4 class="group-title">{{ g.label }}
+            @if (g.optional && !g.result && editable()) {
+              @if (g.present && g.uid) { <button class="link small danger" (click)="removeBlock(g.uid)">retirer</button> }
+              @else if (!g.present) { <button class="link small" (click)="addBlock(g.rel)">+ ajouter ce bloc</button> }
+            }
           </h4>
-          @for (it of r.items; track it.uid) {
-            <div class="repeat-item">
-              <app-group [group]="it.group" [uid]="it.uid" [kindKey]="null" />
-              @if (!g.result) { <button class="link danger small" (click)="removeItem(it.uid)">Retirer {{ it.label.toLowerCase() }}</button> }
+        }
+        @if (g.result && top()) { <p class="muted small">Résultats du fichier source, en lecture seule. @if (svc.dossier()!.meta.resultatsObsoletes) { <strong class="warn-text">À recalculer.</strong> }</p> }
+
+        @for (b of buckets(); track b.key) {
+          @if (buckets().length > 1) { <div class="theme-title">{{ b.label }}</div> }
+          <div class="fields">
+            @for (f of b.fields; track f.rel) { <app-field [field]="f" [uid]="uid()" [kindKey]="kindKey()" [readonly]="g.result && !svc.advanced()" [rounded]="g.result" /> }
+          </div>
+        }
+        @if (!buckets().length && !hiddenCount() && !g.repeatables.length && !g.groups.length) { <p class="muted small">Aucune donnée.</p> }
+
+        @if (hiddenCount() > 0) {
+          <button class="link small more" (click)="showAll.set(!showAll())">
+            {{ showAll() ? 'Masquer les champs vides' : '+ ' + hiddenCount() + ' champ(s) facultatif(s) vide(s)' }}
+          </button>
+          @if (showAll()) {
+            <div class="fields faded">
+              @for (f of hidden(); track f.rel) { <app-field [field]="f" [uid]="uid()" [kindKey]="kindKey()" [readonly]="g.result && !svc.advanced()" /> }
             </div>
           }
-        </div>
-      }
-      @for (sg of g.groups; track sg.key) { <app-group [group]="sg" [uid]="uid()" [kindKey]="kindKey()" /> }
-      @if (g.unknown.length) {
-        <div class="unknown">
-          <strong>Données non prévues par le schéma — conservées telles quelles à l'export</strong>
-          @for (u of g.unknown; track u.name) {
-            <div><code>{{ u.name }}</code> @if (svc.advanced()) { <pre>{{ u.xml }}</pre> }</div>
+        }
+
+        @if (technical().length) {
+          <details class="tech-details">
+            <summary>Détails techniques ({{ technical().length }})</summary>
+            <div class="fields">
+              @for (f of technical(); track f.rel) { <app-field [field]="f" [uid]="uid()" [kindKey]="kindKey()" [readonly]="g.result && !svc.advanced()" /> }
+            </div>
+          </details>
+        }
+
+        @for (r of g.repeatables; track r.rel) {
+          @if (r.items.length || (r.canAdd && !g.result && showAll())) {
+            <div class="repeatable">
+              <div class="theme-title">{{ r.label }} ({{ r.items.length }})
+                @if (r.canAdd && !g.result) { <button class="link small" (click)="addItem(r.rel)">+ ajouter</button> }
+              </div>
+              @for (it of r.items; track it.uid) {
+                <div class="repeat-item">
+                  <app-group [group]="it.group" [uid]="it.uid" [kindKey]="null" [top]="true" />
+                  @if (!g.result) { <button class="link danger small" (click)="removeItem(it.uid)">retirer</button> }
+                </div>
+              }
+            </div>
           }
-        </div>
-      }
-    </fieldset>
+        }
+        @for (sg of g.groups; track sg.key) {
+          @if (sg.present || sg.result || showAll()) { <app-group [group]="sg" [uid]="uid()" [kindKey]="kindKey()" /> }
+        }
+        @if (g.unknown.length) {
+          <div class="unknown">
+            <strong>Données hors schéma, conservées à l'export :</strong>
+            @for (u of g.unknown; track u.name) { <code>{{ u.name }}</code> }
+            @if (svc.advanced()) { @for (u of g.unknown; track u.name) { <pre>{{ u.xml }}</pre> } }
+          </div>
+        }
+      </section>
+    }
   `,
 })
 export class GroupComponent {
   readonly group = input.required<GroupView>();
   readonly uid = input.required<string>();
   readonly kindKey = input<string | null>(null);
+  /** groupe principal de la fiche : pas de titre */
+  readonly top = input(false);
+  /** champ déjà affiché ailleurs (nom de l'objet dans le titre) */
+  readonly hide = input<string | null>(null);
   protected readonly svc = inject(DossierService);
-
+  protected readonly showAll = signal(false);
   protected readonly editable = () => this.svc.dossier()?.format.niveauSupport === 'complet';
+
+  private readonly all = computed(() => [...this.group().fields, ...this.group().notApplicable].filter((f) => f.rel !== this.hide()));
+  private readonly flagged = (f: FieldView) => f.issues.some((i) => i.gravite !== 'info');
+  protected readonly technical = computed(() => this.all().filter((f) => isTechnical(f.name) && !this.flagged(f) && (f.state === 'valeur' || this.svc.advanced() || this.showAll())));
+  protected readonly hidden = computed(() => this.all().filter((f) => !isTechnical(f.name) && !essential(f)));
+  protected readonly hiddenCount = computed(() => this.hidden().length);
+  protected readonly buckets = computed<Bucket[]>(() => {
+    const visible = this.all().filter((f) => (!isTechnical(f.name) || this.flagged(f)) && essential(f));
+    if (visible.length <= 6) return visible.length ? [{ key: 'all', label: '', fields: visible }] : [];
+    const map = new Map<string, Bucket>();
+    for (const f of visible) {
+      const t = themeOf(f.name);
+      const key = t?.key ?? 'autres';
+      if (!map.has(key)) map.set(key, { key, label: t?.label ?? 'Autres caractéristiques', fields: [] });
+      map.get(key)!.fields.push(f);
+    }
+    const order = [...THEMES.map((t) => t.key), 'autres'];
+    return [...map.values()].sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+  });
+
+  protected valued(g: GroupView): FieldView[] {
+    return g.fields.filter((f) => f.state === 'valeur' && !/_depensier$/.test(f.name));
+  }
 
   protected addItem(rel: string): void {
     this.svc.run((d) => addGenericItem(d, this.uid(), rel));
@@ -99,112 +164,129 @@ export class GroupComponent {
     } @else {
       <article class="fiche">
         <header class="fiche-head">
-          <div>
-            @if (f.parent) { <a href="" class="small" (click)="$event.preventDefault(); goUid(f.parent.uid)">↑ {{ f.parent.label }}</a> }
-            <h2>{{ f.title }}</h2>
-            <span class="muted">{{ f.kind?.label ?? 'Bloc d\\'informations' }}</span>
-            @if (view()?.added) { <span class="badge new">Ajouté</span> } @else if (view()?.modified) { <span class="badge mod">Modifié depuis l'import</span> }
+          <div class="fiche-title">
+            @if (f.parent) { <a href="" class="crumb" (click)="$event.preventDefault(); goUid(f.parent.uid)">{{ short(f.parent.label) }} ›</a> }
+            @if (renaming()) {
+              <input class="title-input" [value]="nameValue()" (keydown.enter)="rename($any($event.target).value)" (blur)="rename($any($event.target).value)" (keydown.escape)="renaming.set(false)" />
+            } @else {
+              <h2 [title]="f.title" [class.editable]="canRename()" (click)="canRename() && startRename()">{{ f.title }} @if (canRename()) { <span class="pencil">✎</span> }</h2>
+            }
+            <div class="sub">
+              <span class="kind">{{ f.kind?.label ?? 'Informations' }}</span>
+              @if (view()?.added) { <span class="badge new">ajouté</span> } @else if (view()?.modified) { <span class="badge mod">modifié</span> }
+            </div>
           </div>
           <div class="fiche-actions">
-            @if (f.kind && !f.results && editable()) {
-              <button (click)="dupOpen.set(true)">Dupliquer</button>
-              <button class="danger" (click)="delOpen.set(true)">Supprimer</button>
+            @if (addOptions().length) {
+              <div class="dropdown">
+                <button (click)="addMenu.set(!addMenu())">+ Ajouter…</button>
+                @if (addMenu()) {
+                  <div class="menu right" (mouseleave)="addMenu.set(false)">
+                    @for (a of addOptions(); track a.label) { <button (click)="addMenu.set(false); a.run()">{{ a.label }}</button> }
+                  </div>
+                }
+              </div>
             }
-            @if (closable()) { <button class="link" (click)="closed.emit()" title="Fermer la fiche">✕</button> }
+            @if (f.kind && !f.results && editable()) {
+              <div class="dropdown">
+                <button class="icon" (click)="moreMenu.set(!moreMenu())" title="Autres actions">⋯</button>
+                @if (moreMenu()) {
+                  <div class="menu right" (mouseleave)="moreMenu.set(false)">
+                    <button (click)="moreMenu.set(false); dupOpen.set(true)">Dupliquer…</button>
+                    <button class="danger" (click)="moreMenu.set(false); delOpen.set(true)">Supprimer…</button>
+                  </div>
+                }
+              </div>
+            }
+            @if (closable()) { <button class="link" (click)="closed.emit()" title="Fermer">✕</button> }
           </div>
         </header>
+
+        @if (attention().length) {
+          <div class="attention" [class.err]="attentionErrors() > 0">
+            <button class="link" (click)="showIssues.set(!showIssues())">
+              {{ attentionErrors() ? '⛔' : '⚠' }} {{ attention().length }} point(s) à vérifier {{ showIssues() ? '▴' : '▾' }}
+            </button>
+            @if (showIssues()) {
+              <ul>
+                @for (i of attention(); track i.id) { <li (click)="focusField(i.field)">{{ i.message }}</li> }
+              </ul>
+            }
+          </div>
+        }
 
         @if (svc.advanced()) {
           <div class="tech small">
             <div><span class="muted">Chemin XML :</span> <code>{{ f.xmlPath }}</code></div>
-            <div><span class="muted">Chemin XSD :</span> <code>{{ f.path }}</code></div>
             <div><span class="muted">Identifiant interne :</span> <code>{{ f.uid }}</code> @if (view()?.reference) { · <span class="muted">reference :</span> <code>{{ view()!.reference }}</code> }</div>
           </div>
         }
 
-        @if (f.issues.length) {
-          <ul class="issues compact">
-            @for (i of f.issues; track i.id) {
-              <li [class]="'issue g-' + i.gravite" (click)="focusField(i.field)">
-                <span class="g">{{ GRAVITE_LABELS[i.gravite] }}</span><span class="msg">{{ i.message }}</span><span class="lvl muted">{{ NIVEAU_LABELS[i.niveau] }}</span>
-              </li>
-            }
-          </ul>
-        }
-
         @if (f.attributes.length) {
-          <fieldset class="group">
-            <legend>Attributs du document</legend>
-            @for (a of f.attributes; track a.name) {
-              <div class="field">
-                <label>{{ a.name === 'version' ? 'Version du schéma (attribut version)' : 'Attribut ' + a.name }} @if (a.required) { <span class="req">*</span> }</label>
-                <div class="control">
-                  <input type="text" [value]="a.value ?? ''" (change)="setAttr(a.name, $any($event.target).value)" [placeholder]="a.value === null ? 'non renseigné' : ''" />
+          <section class="group">
+            <h4 class="group-title">Attributs du document</h4>
+            <div class="fields">
+              @for (a of f.attributes; track a.name) {
+                <div class="field">
+                  <div class="f-label" [title]="a.doc ?? ''">{{ a.name === 'version' ? 'Version du schéma' : 'Attribut ' + a.name }} @if (a.required && a.value === null) { <span class="req">obligatoire</span> }</div>
+                  <input type="text" class="inline-input" [value]="a.value ?? ''" (change)="setAttr(a.name, $any($event.target).value)" />
                 </div>
-                @if (a.doc) { <p class="help">{{ a.doc }}</p> }
-                @if (a.required && a.value === null) { <p class="field-issue g-avertissement">Attribut obligatoire selon le XSD.</p> }
-              </div>
-            }
-          </fieldset>
+              }
+            </div>
+          </section>
         }
 
-        @if (relationsCount() > 0 || f.children.length) {
+        @if (hasRelations()) {
           <section class="relations">
-            <h3>Relations</h3>
             @for (c of f.children; track c.kind.key) {
               <div class="rel">
-                <div class="rel-label">{{ c.kind.plural }} <span class="muted">({{ c.items.length }})</span>
-                  @if (c.items.length < c.min) { <span class="badge miss">au moins {{ c.min }} requis</span> }
-                  @if (editable()) { <button class="small" (click)="addChild(c.kind)">+ Ajouter</button> }
+                <div class="rel-label">{{ c.kind.plural }}
+                  @if (c.items.length < c.min) { <span class="badge miss">au moins {{ c.min }}</span> }
                 </div>
-                <ul class="rel-items">
-                  @for (it of c.items; track it.uid) { <li><a href="" (click)="$event.preventDefault(); goUid(it.uid)">{{ it.title }}</a> <span class="muted small">{{ it.summary }}</span></li> }
-                </ul>
+                <div class="rel-items">
+                  @for (it of c.items; track it.uid) {
+                    <a href="" class="obj-chip" [title]="it.summary" (click)="$event.preventDefault(); goUid(it.uid)"><strong>{{ short(it.title) }}</strong> <span class="muted">{{ firstSummary(it.summary) }}</span></a>
+                  }
+                  @if (editable()) { <button class="chip-add" (click)="addChild(c.kind)">+ {{ c.kind.label.toLowerCase() }}</button> }
+                </div>
               </div>
             }
             @for (r of f.outgoing; track r.label) {
               <div class="rel">
-                <div class="rel-label">{{ r.label }} <span class="muted">→</span></div>
-                <ul class="rel-items">
+                <div class="rel-label">{{ r.label }}</div>
+                <div class="rel-items">
                   @for (it of r.items; track it.label) {
-                    <li>@if (it.uid) { <a href="" (click)="$event.preventDefault(); goUid(it.uid)">{{ it.label }}</a> <span class="muted small">{{ it.kindLabel }}</span> } @else { <span class="warn-text">{{ it.label }}</span> }</li>
+                    @if (it.uid) { <a href="" class="obj-chip" [title]="it.label" (click)="$event.preventDefault(); goUid(it.uid)">↗ {{ short(it.label) }}</a> }
+                    @else { <span class="obj-chip muted" [title]="it.label">non décrit dans le dossier</span> }
                   }
-                </ul>
+                </div>
               </div>
             }
             @for (r of f.incoming; track r.label) {
               <div class="rel">
-                <div class="rel-label"><span class="muted">←</span> {{ r.label }} <span class="muted">({{ r.items.length }})</span></div>
-                <ul class="rel-items">
-                  @for (it of r.items; track it.uid) { <li><a href="" (click)="$event.preventDefault(); goUid(it.uid)">{{ it.label }}</a> <span class="muted small">{{ it.kindLabel }}</span></li> }
-                </ul>
+                <div class="rel-label">{{ r.label }}</div>
+                <div class="rel-items">
+                  @for (it of r.items; track it.uid) { <a href="" class="obj-chip" [title]="it.label" (click)="$event.preventDefault(); goUid(it.uid)">↙ {{ short(it.label) }}</a> }
+                </div>
               </div>
             }
             @for (r of f.roles; track r.label) {
-              <div class="rel">
-                <div class="rel-label" [title]="r.doc ?? ''">{{ r.label }} <span class="muted small">(lien par rôle)</span></div>
-                <ul class="rel-items">
-                  @for (it of r.items; track it.uid) { <li><a href="" (click)="$event.preventDefault(); goUid(it.uid)">{{ it.label }}</a></li> }
-                  @empty { <li class="muted small">aucun</li> }
-                </ul>
-              </div>
+              @if (r.items.length) {
+                <div class="rel">
+                  <div class="rel-label" [title]="r.doc ?? ''">{{ r.label }}</div>
+                  <div class="rel-items">@for (it of r.items; track it.uid) { <a href="" class="obj-chip" (click)="$event.preventDefault(); goUid(it.uid)">{{ short(it.label) }}</a> }</div>
+                </div>
+              }
             }
           </section>
         }
-        @if (addFrom().length && editable()) {
-          <div class="add-from">
-            @for (a of addFrom(); track a.kind.key + a.refKey) {
-              <button (click)="addLinked(a.kind, a.refKey)">+ {{ a.label }}</button>
-            }
-          </div>
+
+        @if (f.links.length) {
+          <div class="links">@for (l of f.links; track l.uid) { <a href="" class="obj-chip" (click)="$event.preventDefault(); goUid(l.uid)">{{ l.label }} ›</a> }</div>
         }
 
-        @for (l of f.links; track l.uid) {
-          <p><a href="" (click)="$event.preventDefault(); goUid(l.uid)">→ {{ l.label }}</a></p>
-        }
-
-        @for (g of f.groups; track g.key) {
-          <app-group [group]="g" [uid]="f.uid" [kindKey]="f.kind?.key ?? null" />
+        @for (g of f.groups; track g.key; let i = $index) {
+          <app-group [group]="g" [uid]="f.uid" [kindKey]="f.kind?.key ?? null" [top]="g.key === 'donnee_entree' || (i === 0 && !g.result)" [hide]="nameRel()" />
         }
       </article>
 
@@ -218,10 +300,28 @@ export class FicheComponent {
   readonly closed = output<void>();
   protected readonly svc = inject(DossierService);
   protected readonly nav = inject(NavService);
-  protected readonly GRAVITE_LABELS = GRAVITE_LABELS;
-  protected readonly NIVEAU_LABELS = NIVEAU_LABELS;
   protected readonly delOpen = signal(false);
   protected readonly dupOpen = signal(false);
+  protected readonly addMenu = signal(false);
+  protected readonly moreMenu = signal(false);
+  protected readonly showIssues = signal(false);
+  protected readonly renaming = signal(false);
+
+  /** le nom de l'objet (champ description) s'édite dans le titre */
+  protected readonly nameRel = computed(() => this.fiche()?.kind?.nameField ?? null);
+  protected readonly canRename = computed(() => !!this.nameRel() && this.editable() && !this.fiche()?.results);
+  protected readonly nameValue = computed(() => (this.view()?.name ?? ''));
+
+  protected startRename(): void {
+    this.renaming.set(true);
+    setTimeout(() => (document.querySelector('.title-input') as HTMLInputElement | null)?.focus());
+  }
+
+  protected rename(value: string): void {
+    this.renaming.set(false);
+    const v = value.trim();
+    if (v && v !== this.nameValue()) this.svc.setValue(this.uid(), this.nameRel()!, v);
+  }
 
   protected readonly fiche = computed<FicheView | null>(() => {
     this.svc.revision();
@@ -230,24 +330,36 @@ export class FicheComponent {
   protected readonly view = computed(() => this.svc.model()?.objects.get(this.uid()) ?? null);
   protected readonly editable = computed(() => this.svc.dossier()?.format.niveauSupport === 'complet');
   protected readonly closable = computed(() => this.nav.state().tab === 'controles');
-  protected readonly relationsCount = computed(() => {
+  /** erreurs et avertissements seulement ; les informations restent dans « Contrôles » */
+  /** seulement ce qui n'est pas déjà signalé sur un champ visible */
+  protected readonly attention = computed(() => (this.fiche()?.issues ?? []).filter((i) => i.gravite !== 'info' && !i.field));
+  protected readonly attentionErrors = computed(() => this.attention().filter((i) => i.gravite === 'erreur').length);
+  protected readonly hasRelations = computed(() => {
     const f = this.fiche();
-    return f ? f.outgoing.length + f.incoming.length + f.roles.length : 0;
+    return !!f && (f.children.length + f.outgoing.length + f.incoming.length + f.roles.filter((r) => r.items.length).length) > 0;
   });
 
-  /** Objets que l'on peut créer déjà rattachés à celui-ci (ex. une fenêtre depuis un mur). */
-  protected readonly addFrom = computed(() => {
-    const k = this.fiche()?.kind;
-    if (!k) return [];
-    const out: { kind: KindDef; refKey: string; label: string }[] = [];
-    for (const r of REFS.filter((x) => x.mode === 'id' && x.toKinds.includes(k.key) && (x.key === 'paroi' || x.key === 'pt1'))) {
+  /** Créations possibles depuis cet objet : objets rattachés (ex. une fenêtre sur un mur). */
+  protected readonly addOptions = computed(() => {
+    const f = this.fiche();
+    if (!f || !this.editable() || f.results || !f.kind) return [];
+    const out: { label: string; run: () => void }[] = [];
+    for (const r of REFS.filter((x) => x.mode === 'id' && x.toKinds.includes(f.kind!.key) && (x.key === 'paroi' || x.key === 'pt1'))) {
       for (const fk of r.fromKinds) {
         const kind = KIND_BY_KEY.get(fk)!;
-        out.push({ kind, refKey: r.key, label: `${kind.label} sur cet élément` });
+        out.push({ label: `${kind.label} sur cet élément`, run: () => this.addLinked(kind, r.key) });
       }
     }
     return out;
   });
+
+  protected short(s: string): string {
+    return s.length > 60 ? s.slice(0, 57) + '…' : s;
+  }
+
+  protected firstSummary(s: string): string {
+    return s.split(' · ').slice(0, 2).join(' · ');
+  }
 
   protected goUid(uid: string): void {
     const m = this.svc.model();
@@ -271,11 +383,11 @@ export class FicheComponent {
   }
 
   protected addLinked(kind: KindDef, refKey: string): void {
-    const name = kind.nameField ? prompt(`Nom ${kind.article === 'une' ? 'de la' : 'du'} ${kind.label.toLowerCase()} :`, `${kind.label} — ${this.fiche()!.title}`) : '';
+    const name = kind.nameField ? prompt(`Nom ${kind.article === 'une' ? 'de la' : 'du'} ${kind.label.toLowerCase()} :`, `${kind.label} — ${this.short(this.fiche()!.title)}`) : '';
     if (name === null) return;
     const uid = this.svc.run(
       (d) => addObject(d, kind.key, { name: name || undefined, link: { refKey, targetUid: this.uid() } }),
-      `${kind.label} ajouté(e) et rattaché(e) à « ${this.fiche()!.title} ».`,
+      `${kind.label} ajouté(e) et rattaché(e).`,
     );
     if (uid) this.goUid(uid);
   }

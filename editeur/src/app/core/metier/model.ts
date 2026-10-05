@@ -4,7 +4,7 @@ import { Dossier } from '../state/dossier';
 import { childElements, indexedPath, resolvePath } from '../xml/safe-xml';
 import { getUid, uidIndex } from '../xml/uid';
 import { isNil, kindOf, objectsOfKind, ownerObject, relativePath, SINGLETON_PATHS, textOf } from '../edition/doc-ops';
-import { displayValue, facetViolations } from '../edition/value-codec';
+import { displayRounded, displayValue, facetViolations } from '../edition/value-codec';
 import { GRAVITE_ORDER, Issue } from '../validation/issues';
 import { validateDocument } from '../validation/validator';
 import { isObservatoireHeader } from '../format/format-detector';
@@ -121,7 +121,8 @@ export function buildModel(d: Dossier): Model {
         if (!leaf || v === null) return null;
         const def = d.schema?.def(schemaPath(leaf)) ?? null;
         const meta = fieldMeta(leaf.localName, def);
-        return { label: meta.label, value: displayValue(v, def) + (meta.unit && !def?.enumLabels ? ' ' + meta.unit : '') };
+        const shown = isResultPath(schemaPath(leaf)) && !def?.enumLabels ? displayRounded(v, 0) : displayValue(v, def);
+        return { label: meta.label, value: shown + (meta.unit && !def?.enumLabels ? ' ' + meta.unit : '') };
       })
       .filter((x): x is { label: string; value: string } => x !== null);
     const title = name ?? `${kind.label} n° ${position}`;

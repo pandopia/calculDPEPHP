@@ -6,18 +6,7 @@
  * balises `reference*`). Rien n'est déduit d'un exemple de fichier.
  */
 
-export type TabKey =
-  | 'synthese'
-  | 'general'
-  | 'batiment'
-  | 'enveloppe'
-  | 'ventilation'
-  | 'chauffage'
-  | 'ecs'
-  | 'autres'
-  | 'resultats'
-  | 'travaux'
-  | 'controles';
+export type TabKey = 'synthese' | 'general' | 'batiment' | 'enveloppe' | 'systemes' | 'resultats' | 'travaux' | 'controles';
 
 export interface TabDef {
   key: TabKey;
@@ -113,53 +102,53 @@ export const KINDS: KindDef[] = [
   },
   {
     key: 'ventilation', label: 'Ventilation', plural: 'Ventilations', article: 'une', path: `${LOG}/ventilation_collection/ventilation`,
-    tab: 'ventilation', section: 'ventilations', nameField: 'donnee_entree/description', idField: 'donnee_entree/reference',
+    tab: 'systemes', section: 'ventilations', nameField: 'donnee_entree/description', idField: 'donnee_entree/reference',
     summary: ['donnee_entree/enum_type_ventilation_id', 'donnee_entree/surface_ventile', 'donnee_entree/plusieurs_facade_exposee'],
   },
   {
     key: 'installation_chauffage', label: 'Installation de chauffage', plural: 'Installations de chauffage', article: 'une',
-    path: CH, tab: 'chauffage', section: 'installations_chauffage', nameField: 'donnee_entree/description', idField: 'donnee_entree/reference',
+    path: CH, tab: 'systemes', section: 'installations_chauffage', nameField: 'donnee_entree/description', idField: 'donnee_entree/reference',
     summary: ['donnee_entree/enum_type_installation_id', 'donnee_entree/enum_cfg_installation_ch_id', 'donnee_entree/surface_chauffee',
       'donnee_intermediaire/conso_ch'],
   },
   {
     key: 'generateur_chauffage', label: 'Générateur de chauffage', plural: 'Générateurs de chauffage', article: 'un',
-    path: `${CH}/generateur_chauffage_collection/generateur_chauffage`, tab: 'chauffage', section: 'installations_chauffage',
+    path: `${CH}/generateur_chauffage_collection/generateur_chauffage`, tab: 'systemes', section: 'installations_chauffage',
     parentKind: 'installation_chauffage', nameField: 'donnee_entree/description', idField: 'donnee_entree/reference',
     summary: ['donnee_entree/enum_type_generateur_ch_id', 'donnee_entree/enum_type_energie_id', 'donnee_entree/enum_lien_generateur_emetteur_id',
       'donnee_intermediaire/pn'],
   },
   {
     key: 'emetteur_chauffage', label: 'Émetteur de chauffage', plural: 'Émetteurs de chauffage', article: 'un',
-    path: `${CH}/emetteur_chauffage_collection/emetteur_chauffage`, tab: 'chauffage', section: 'installations_chauffage',
+    path: `${CH}/emetteur_chauffage_collection/emetteur_chauffage`, tab: 'systemes', section: 'installations_chauffage',
     parentKind: 'installation_chauffage', nameField: 'donnee_entree/description', idField: 'donnee_entree/reference',
     summary: ['donnee_entree/enum_type_emission_distribution_id', 'donnee_entree/surface_chauffee', 'donnee_entree/enum_lien_generateur_emetteur_id'],
   },
   {
     key: 'installation_ecs', label: 'Installation d\'eau chaude sanitaire', plural: 'Installations d\'ECS', article: 'une', path: ECS,
-    tab: 'ecs', section: 'installations_ecs', nameField: 'donnee_entree/description', idField: 'donnee_entree/reference',
+    tab: 'systemes', section: 'installations_ecs', nameField: 'donnee_entree/description', idField: 'donnee_entree/reference',
     summary: ['donnee_entree/enum_type_installation_id', 'donnee_entree/enum_cfg_installation_ecs_id', 'donnee_entree/surface_habitable',
       'donnee_intermediaire/conso_ecs'],
   },
   {
     key: 'generateur_ecs', label: 'Générateur d\'ECS', plural: 'Générateurs d\'ECS', article: 'un',
-    path: `${ECS}/generateur_ecs_collection/generateur_ecs`, tab: 'ecs', section: 'installations_ecs', parentKind: 'installation_ecs',
+    path: `${ECS}/generateur_ecs_collection/generateur_ecs`, tab: 'systemes', section: 'installations_ecs', parentKind: 'installation_ecs',
     nameField: 'donnee_entree/description', idField: 'donnee_entree/reference',
     summary: ['donnee_entree/enum_type_generateur_ecs_id', 'donnee_entree/enum_type_energie_id', 'donnee_entree/volume_stockage'],
   },
   {
     key: 'climatisation', label: 'Climatisation', plural: 'Climatisations', article: 'une', path: `${LOG}/climatisation_collection/climatisation`,
-    tab: 'autres', section: 'climatisations', nameField: 'donnee_entree/description', idField: 'donnee_entree/reference',
+    tab: 'systemes', section: 'climatisations', nameField: 'donnee_entree/description', idField: 'donnee_entree/reference',
     summary: ['donnee_entree/enum_type_generateur_fr_id', 'donnee_entree/enum_type_energie_id', 'donnee_entree/surface_clim'],
   },
   {
     key: 'panneaux_pv', label: 'Champ de panneaux photovoltaïques', plural: 'Panneaux photovoltaïques', article: 'un',
-    path: `${LOG}/production_elec_enr/panneaux_pv_collection/panneaux_pv`, tab: 'autres', section: 'panneaux_pv',
+    path: `${LOG}/production_elec_enr/panneaux_pv_collection/panneaux_pv`, tab: 'systemes', section: 'panneaux_pv',
     summary: ['surface_totale_capteurs', 'nombre_module', 'enum_orientation_pv_id', 'enum_inclinaison_pv_id'],
   },
   {
     key: 'descriptif_enr', label: 'Équipement d\'énergie renouvelable', plural: 'Énergies renouvelables (descriptif)', article: 'un',
-    path: 'dpe/descriptif_enr_collection/descriptif_enr', tab: 'autres', section: 'descriptif_enr', nameField: 'description',
+    path: 'dpe/descriptif_enr_collection/descriptif_enr', tab: 'systemes', section: 'descriptif_enr', nameField: 'description',
     summary: ['enum_categorie_enr_descriptif_id'],
   },
   {
@@ -214,8 +203,8 @@ export const KIND_BY_PATH = new Map(KINDS.map((k) => [k.path, k]));
 export const TABS: TabDef[] = [
   { key: 'synthese', label: 'Synthèse', sections: [] },
   {
-    key: 'general', label: 'Informations générales', sections: [
-      { key: 'document', label: 'Document (version, en-tête)', singleton: 'dpe' },
+    key: 'general', label: 'Dossier', sections: [
+      { key: 'document', label: 'Document', singleton: 'dpe' },
       { key: 'administratif', label: 'Administratif', singleton: 'dpe/administratif' },
       { key: 'diagnostiqueur', label: 'Diagnostiqueur et logiciel', singleton: 'dpe/administratif/diagnostiqueur' },
       { key: 'geolocalisation', label: 'Localisation et identifiants', singleton: 'dpe/administratif/geolocalisation' },
@@ -229,7 +218,7 @@ export const TABS: TabDef[] = [
     ],
   },
   {
-    key: 'batiment', label: 'Bâtiment / logement', sections: [
+    key: 'batiment', label: 'Bâtiment', sections: [
       { key: 'caracteristique_generale', label: 'Caractéristiques générales', singleton: `${LOG}/caracteristique_generale` },
       { key: 'meteo', label: 'Situation climatique', singleton: `${LOG}/meteo` },
       { key: 'logements_visites', label: 'Logements visités (DPE immeuble)', kind: 'logement_visite' },
@@ -247,11 +236,11 @@ export const TABS: TabDef[] = [
       { key: 'ponts_thermiques', label: 'Ponts thermiques', kind: 'pont_thermique' },
     ],
   },
-  { key: 'ventilation', label: 'Ventilation', sections: [{ key: 'ventilations', label: 'Systèmes de ventilation', kind: 'ventilation' }] },
-  { key: 'chauffage', label: 'Chauffage', sections: [{ key: 'installations_chauffage', label: 'Installations de chauffage', kind: 'installation_chauffage' }] },
-  { key: 'ecs', label: 'Eau chaude sanitaire', sections: [{ key: 'installations_ecs', label: 'Installations d\'ECS', kind: 'installation_ecs' }] },
   {
-    key: 'autres', label: 'Refroidissement et autres', sections: [
+    key: 'systemes', label: 'Équipements', sections: [
+      { key: 'ventilations', label: 'Ventilation', kind: 'ventilation' },
+      { key: 'installations_chauffage', label: 'Chauffage', kind: 'installation_chauffage' },
+      { key: 'installations_ecs', label: 'Eau chaude sanitaire', kind: 'installation_ecs' },
       { key: 'climatisations', label: 'Climatisation', kind: 'climatisation' },
       { key: 'production_elec', label: 'Production d\'électricité', singleton: `${LOG}/production_elec_enr` },
       { key: 'panneaux_pv', label: 'Panneaux photovoltaïques', kind: 'panneaux_pv' },
@@ -260,6 +249,7 @@ export const TABS: TabDef[] = [
   },
   {
     key: 'resultats', label: 'Résultats', sections: [
+      { key: 'bilan', label: 'Bilan', singleton: `${LOG}/sortie`, results: true },
       { key: 'deperdition', label: 'Déperditions', singleton: `${LOG}/sortie/deperdition`, results: true },
       { key: 'apport_et_besoin', label: 'Apports et besoins', singleton: `${LOG}/sortie/apport_et_besoin`, results: true },
       { key: 'ef_conso', label: 'Consommations en énergie finale', singleton: `${LOG}/sortie/ef_conso`, results: true },
@@ -273,7 +263,7 @@ export const TABS: TabDef[] = [
     ],
   },
   {
-    key: 'travaux', label: 'Recommandations et travaux', sections: [
+    key: 'travaux', label: 'Travaux', sections: [
       { key: 'descriptif_travaux', label: 'Commentaire général', singleton: 'dpe/descriptif_travaux' },
       { key: 'packs', label: 'Packs de travaux', kind: 'pack_travaux' },
       { key: 'gestes', label: 'Gestes d\'entretien', kind: 'descriptif_geste_entretien' },

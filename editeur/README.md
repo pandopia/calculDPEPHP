@@ -81,6 +81,27 @@ intact.
 **Sécurité.** `<!DOCTYPE`/`<!ENTITY` refusés (pas d'entités externes), aucune
 ressource réseau, 20 Mo et 64 niveaux maximum.
 
+## Interface
+
+- **Navigation** : une barre latérale unique (Dossier, Bâtiment, Enveloppe,
+  Équipements, Résultats, Travaux, Contrôles). Les compteurs ne s'affichent que
+  s'il y a quelque chose à faire ; les sections vides sont repliées.
+- **Synthèse** : chiffres clés, étiquettes A→G, surfaces de l'enveloppe et
+  vitrages par orientation, équipements, liste « À faire ».
+- **Sections** : liste compacte à gauche (nom et valeurs clés), fiche de
+  l'objet sélectionné à droite, ouverte d'emblée.
+- **Fiches** : valeurs en lecture, modifiables au clic (Entrée valide, Échap
+  annule). Les champs sont rangés par thème (Situation, Dimensions,
+  Composition, Isolation et performance, Système). Les champs facultatifs
+  vides, les détails techniques (référence, lignes de table forfaitaire…) et
+  les valeurs calculées du fichier source sont repliés. Le nom de l'objet se
+  modifie dans le titre. Les relations s'affichent en pastilles cliquables.
+- **Bilan** : répartition des consommations par usage et des déperditions,
+  tableau par énergie (valeurs du fichier source, arrondies à l'affichage).
+- **Contrôles et export** : état et actions en tête, points à traiter
+  regroupés par objet et repliables, détail par niveau de contrôle sur demande.
+- Le mode avancé (menu ⚙) affiche chemins XML, codes bruts et valeurs exactes.
+
 ## Formats supportés
 
 | Fichier | Prise en charge |

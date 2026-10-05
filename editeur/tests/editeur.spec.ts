@@ -67,8 +67,8 @@ describe('import et affichage métier', () => {
     expect(section('mur').tab).toBe('enveloppe');
     expect(section('baie_vitree').count).toBe(count(d.working, 'baie_vitree'));
     expect(section('installation_chauffage').count).toBe(2);
-    expect(section('installation_chauffage').tab).toBe('chauffage');
-    expect(section('climatisation').tab).toBe('autres');
+    expect(section('installation_chauffage').tab).toBe('systemes');
+    expect(section('climatisation').tab).toBe('systemes');
     const gens = [...model.objects.values()].filter((o) => o.kind?.key === 'generateur_chauffage');
     expect(gens.length).toBe(3);
     expect(gens.every((g) => g.parentUid && model.objects.get(g.parentUid)!.kind!.key === 'installation_chauffage')).toBe(true);
@@ -354,7 +354,7 @@ describe('nouveau dossier', () => {
     const values = [...xml.matchAll(/<([a-z_0-9]+)>([^<]+)<\/\1>/g)].map((m) => m[1]);
     expect(values.sort()).toEqual(['enum_methode_application_dpe_log_id', 'enum_modele_dpe_id', 'enum_version_id']);
     const model = buildModel(d);
-    expect(model.tabs.find((t) => t.def.key === 'ventilation')!.sections[0].status).toBe('a_completer');
+    expect(model.tabs.flatMap((t) => t.sections).find((x) => x.def.key === 'ventilations')!.status).toBe('a_completer');
     expect(model.tabs.find((t) => t.def.key === 'resultats')!.sections.find((s) => s.def.key === 'ep_conso')!.status).toBe('absent');
     expect(model.issues.filter((i) => i.niveau === 'completude').length).toBeGreaterThan(10);
 

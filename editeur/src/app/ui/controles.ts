@@ -8,6 +8,15 @@ import { FicheComponent } from './fiche';
 
 const NIVEAUX: Niveau[] = ['xml', 'format', 'xsd', 'champ', 'completude', 'references', 'metier', 'plausibilite', 'resultats'];
 
+interface IssueGroup {
+  key: string;
+  label: string;
+  issues: Issue[];
+  errors: number;
+  warnings: number;
+}
+
+/** Vérification et export : l'essentiel d'abord, le détail sur demande. */
 @Component({
   selector: 'app-controles',
   imports: [FicheComponent],
@@ -15,108 +24,103 @@ const NIVEAUX: Niveau[] = ['xml', 'format', 'xsd', 'champ', 'completude', 'refer
     @let d = svc.dossier()!;
     @let m = svc.model()!;
     <div class="controles">
-      <section class="card">
-        <h2>Validation</h2>
-        <table class="table compact levels">
-          <thead><tr><th>Niveau de contrôle</th><th class="num">Erreurs</th><th class="num">Avertissements</th><th class="num">Informations</th><th></th></tr></thead>
-          <tbody>
-            @for (n of niveaux; track n) {
-              <tr [class.active]="niveau() === n" class="clickable" (click)="niveau.set(niveau() === n ? null : n)">
-                <td>{{ NIVEAU_LABELS[n] }}
-                  @if (n === 'xml') { <span class="muted small">— vérifié à l'import</span> }
-                  @if (n === 'xsd') {
-                    <span class="muted small">— @if (xsd(); as r) { {{ r.message }} @if (r.revision !== svc.revision() && r.revision !== d.revision) { (avant les dernières modifications) } } @else { non lancée }</span>
-                  }
-                  @if (n === 'plausibilite') { <span class="muted small">— indicatif, non réglementaire</span> }
-                </td>
-                <td class="num">{{ count(n, 'erreur') || '' }}</td>
-                <td class="num">{{ count(n, 'avertissement') || '' }}</td>
-                <td class="num">{{ count(n, 'info') || '' }}</td>
-                <td class="right">@if (n === 'xsd') { <button class="primary small" (click)="$event.stopPropagation(); svc.validateXsd()" [disabled]="svc.xsdRunning() || !d.schema">{{ svc.xsdRunning() ? 'Validation…' : 'Lancer la validation XSD' }}</button> }</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-        <p class="muted small">La validation XSD est faite localement par libxml2 contre {{ d.format.xsd ?? 'aucun schéma' }}{{ d.format.enTeteObservatoire ? ', en-tête de l\\'observatoire (numero_dpe, statut) exclu' : '' }}. Un fichier conforme au XSD n'est <strong>ni recalculé, ni validé ni accepté par l'ADEME</strong> pour autant.</p>
-
-        <div class="filters">
-          <button [class.active]="gravite() === null" (click)="gravite.set(null)">Toutes</button>
-          @for (g of gravites; track g) { <button [class.active]="gravite() === g" (click)="gravite.set(g)">{{ GRAVITE_LABELS[g] }}s</button> }
-          @if (niveau()) { <span class="chip">{{ NIVEAU_LABELS[niveau()!] }} <button class="link small" (click)="niveau.set(null)">✕</button></span> }
+      <section class="card export-card">
+        <div class="export-status">
+          <div class="kpi"><span class="kpi-v" [class.err-text]="counts().erreur">{{ counts().erreur }}</span><span class="kpi-l">erreur(s)</span></div>
+          <div class="kpi"><span class="kpi-v" [class.warn-text]="counts().avertissement">{{ counts().avertissement }}</span><span class="kpi-l">avertissement(s)</span></div>
+          <div class="kpi"><span class="kpi-v">{{ svc.changes().length }}</span><span class="kpi-l">modification(s)</span></div>
+          <div class="kpi xsd">
+            <span class="kpi-l">Schéma {{ d.format.xsd ?? '—' }}</span>
+            @if (xsd(); as r) {
+              <span [class.ok-text]="r.valid" [class.err-text]="r.valid === false">{{ r.valid ? '✓ conforme' : r.valid === false ? '✕ ' + r.issues.length + ' écart(s)' : 'non vérifiable' }}</span>
+              @if (r.revision !== d.revision) { <span class="muted small">avant les dernières modifications</span> }
+            } @else { <span class="muted">non vérifié</span> }
+          </div>
         </div>
-        <ul class="issues">
-          @for (i of filtered(); track i.id) {
-            <li [class]="'issue g-' + i.gravite" (click)="nav.goIssue(m, i)">
-              <span class="g">{{ GRAVITE_LABELS[i.gravite] }}</span>
-              <span class="where">{{ where(i) }}</span>
-              <span class="msg">{{ i.message }} @if (svc.advanced() && i.detail) { <br /><code class="small">{{ i.detail }}</code> } @if (svc.advanced() && i.xmlPath) { <br /><code class="small">{{ i.xmlPath }}</code> } @if (i.source) { <br /><span class="muted small">Source : {{ i.source }}</span> }</span>
-              <span class="lvl muted">{{ NIVEAU_LABELS[i.niveau] }}</span>
-            </li>
-          } @empty { <li class="muted">Aucune anomalie pour ce filtre.</li> }
-        </ul>
-        @if (filtered().length >= limit()) { <button class="link" (click)="limit.set(limit() + 200)">Afficher plus…</button> }
+        <div class="export-actions">
+          <button (click)="svc.validateXsd()" [disabled]="svc.xsdRunning() || !d.schema">{{ svc.xsdRunning() ? 'Validation…' : 'Valider contre le XSD' }}</button>
+          <button class="primary" (click)="exportOpen.set(true)">Exporter le XML…</button>
+        </div>
+        <p class="muted small">Validation locale par libxml2. Un fichier conforme au XSD n'est ni recalculé, ni validé ni accepté par l'ADEME pour autant. Le brouillon s'enregistre tout seul dans ce navigateur.</p>
       </section>
 
       <section class="card">
-        <h2>Modifications depuis {{ d.meta.origine === 'import' ? 'l\\'import' : 'la création' }} ({{ svc.changes().length }})</h2>
+        <div class="section-head">
+          <h2>Points à traiter</h2>
+          <div class="filters">
+            @for (g of gravites; track g) {
+              <button class="chip-btn" [class.active]="gravite() === g" (click)="gravite.set(g)">{{ GRAVITE_LABELS[g] }}s {{ counts()[g] }}</button>
+            }
+          </div>
+        </div>
+        @if (groups().length === 0) { <p class="muted">Rien à signaler pour ce filtre.</p> }
+        <ul class="igroups">
+          @for (g of groups(); track g.key) {
+            <li class="igroup">
+              <button class="igroup-head" (click)="toggle(g.key)">
+                <span class="caret">{{ open().has(g.key) ? '▾' : '▸' }}</span>
+                <span class="igroup-label">{{ g.label }}</span>
+                <span class="igroup-preview muted small">{{ open().has(g.key) ? '' : g.issues[0].message }}</span>
+                @if (g.errors) { <span class="dot err">{{ g.errors }}</span> }
+                @if (g.warnings) { <span class="dot miss">{{ g.warnings }}</span> }
+                @if (!g.errors && !g.warnings) { <span class="count muted">{{ g.issues.length }}</span> }
+              </button>
+              @if (open().has(g.key)) {
+                <ul class="iitems">
+                  @for (i of g.issues; track i.id) {
+                    <li [class]="'g-' + i.gravite" (click)="nav.goIssue(m, i)">
+                      <span>{{ i.message }}</span>
+                      <span class="muted small">{{ NIVEAU_LABELS[i.niveau] }}</span>
+                      @if (svc.advanced() && (i.detail || i.xmlPath)) { <code class="small">{{ i.detail ?? i.xmlPath }}</code> }
+                      @if (i.source && svc.advanced()) { <span class="muted small">Source : {{ i.source }}</span> }
+                    </li>
+                  }
+                </ul>
+              }
+            </li>
+          }
+        </ul>
+        <details class="levels-details">
+          <summary>Détail par niveau de contrôle</summary>
+          <table class="table compact">
+            <thead><tr><th>Niveau</th><th class="num">Erreurs</th><th class="num">Avertissements</th><th class="num">Informations</th></tr></thead>
+            <tbody>
+              @for (n of niveaux; track n) {
+                <tr><td>{{ NIVEAU_LABELS[n] }}</td><td class="num">{{ count(n, 'erreur') || '' }}</td><td class="num">{{ count(n, 'avertissement') || '' }}</td><td class="num">{{ count(n, 'info') || '' }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </details>
+      </section>
+
+      <section class="card">
+        <h2>Modifications depuis {{ d.meta.origine === 'import' ? 'l\\'import' : 'la création' }} <span class="muted">{{ svc.changes().length }}</span></h2>
         @if (svc.changes().length === 0) {
-          <p class="muted">Aucune modification : l'export sera identique au fichier d'origine (hors mise en forme).</p>
+          <p class="muted">Aucune modification.</p>
         } @else {
           <table class="table compact">
             <thead><tr><th>Objet</th><th>Champ</th><th>Avant</th><th>Après</th></tr></thead>
             <tbody>
               @for (c of svc.changes(); track $index) {
                 <tr class="clickable" (click)="openChange(c)">
-                  <td>@if (c.type === 'ajout') { <span class="badge new">Ajout</span> } @else if (c.type === 'suppression') { <span class="badge err">Suppression</span> } {{ c.objet }}</td>
-                  <td>{{ c.champ ?? '' }} @if (svc.advanced()) { <br /><code class="small">{{ c.xmlPath }}</code> }</td>
-                  <td>{{ c.avant ?? '' }}</td>
+                  <td>@if (c.type === 'ajout') { <span class="badge new">ajout</span> } @else if (c.type === 'suppression') { <span class="badge err">suppression</span> } {{ c.objet }}</td>
+                  <td>{{ c.champ ?? '' }}</td>
+                  <td class="muted">{{ c.avant ?? '' }}</td>
                   <td><strong>{{ c.apres ?? '' }}</strong></td>
                 </tr>
               }
             </tbody>
           </table>
         }
-        @if (d.meta.resultatsObsoletes) {
-          <details>
-            <summary>Résultats à recalculer — {{ d.meta.motifsObsolescence.length }} modification(s) concernée(s)</summary>
-            <ul class="small">@for (x of d.meta.motifsObsolescence; track x) { <li>{{ x }}</li> }</ul>
-          </details>
-        }
-      </section>
-
-      <section class="card">
-        <h2>Enregistrer et exporter</h2>
-        <div class="export-grid">
-          <div>
-            <h3>Projet de travail</h3>
-            <p class="small">Enregistré automatiquement dans ce navigateur à chaque modification (brouillon, même incomplet ou en erreur). Pour le reprendre sur un autre poste, téléchargez-le.</p>
-            <button (click)="svc.save()">Enregistrer maintenant</button>
-            <button (click)="downloadDraft()">Télécharger le brouillon (.json)</button>
-          </div>
-          <div>
-            <h3>XML de travail</h3>
-            <p class="small">XML DPE produit à partir du dossier : document importé conservé, modifications appliquées. Identifiants internes retirés.</p>
-            <button class="primary" (click)="exportOpen.set(true)">Exporter le XML de travail…</button>
-          </div>
-          <div>
-            <h3>Fichier d'origine</h3>
-            @if (d.original) {
-              <p class="small">Le fichier importé est conservé tel quel, octet pour octet.</p>
-              <button (click)="svc.download(d.original, d.meta.nomFichier ?? 'original.xml', 'application/xml')">Télécharger l'original</button>
-            } @else { <p class="muted small">Dossier créé dans l'éditeur : pas de fichier d'origine.</p> }
-          </div>
-        </div>
       </section>
 
       @if (m.otherSections.length) {
         <section class="card">
           <h2>Autres données du fichier</h2>
-          <p class="small muted">Sections présentes dans le fichier mais non couvertes par les onglets métier (branche logement neuf ou tertiaire, extensions de logiciel…). Elles sont conservées à l'identique à l'export et s'ouvrent ici en vue générique, construite à partir du schéma.</p>
-          <ul>
-            @for (s of m.otherSections; track s.uid) {
-              <li><a href="" (click)="$event.preventDefault(); nav.go('controles', 'autres', s.uid)">{{ s.label }}</a> <code class="small muted">{{ s.path }}</code></li>
-            }
-          </ul>
+          <p class="small muted">Sections non couvertes par la navigation (logement neuf, tertiaire, extensions…), conservées à l'export, ouvertes ici en vue générique.</p>
+          <div class="links">
+            @for (s of m.otherSections; track s.uid) { <a href="" class="obj-chip" (click)="$event.preventDefault(); nav.go('controles', 'autres', s.uid)">{{ s.label }}</a> }
+          </div>
           @if (otherOpen(); as uid) { <app-fiche [uid]="uid" (closed)="nav.go('controles')" /> }
         </section>
       }
@@ -128,12 +132,12 @@ const NIVEAUX: Niveau[] = ['xml', 'format', 'xsd', 'champ', 'completude', 'refer
           <h2>Exporter le XML de travail</h2>
           <ul>
             <li>{{ svc.changes().length }} modification(s) depuis {{ d.meta.origine === 'import' ? 'l\\'import' : 'la création' }}.</li>
-            <li>{{ counts().erreur }} erreur(s) et {{ counts().avertissement }} avertissement(s) détectés par les contrôles.</li>
+            <li>{{ counts().erreur }} erreur(s), {{ counts().avertissement }} avertissement(s).</li>
             <li>Validation XSD : @if (xsd(); as r) { {{ r.message }} } @else { non lancée. }</li>
-            @if (d.meta.resultatsObsoletes) { <li><strong>Les résultats (consommations, étiquettes…) sont ceux du fichier source et n'ont pas été recalculés.</strong></li> }
-            <li>Version du modèle : {{ d.format.enumVersionId ?? 'inconnue' }} — le fichier n'est pas migré vers une autre version.</li>
+            @if (d.meta.resultatsObsoletes) { <li><strong>Les résultats sont ceux du fichier source, non recalculés.</strong></li> }
+            <li>Version du modèle : {{ d.format.enumVersionId ?? 'inconnue' }} (pas de migration).</li>
           </ul>
-          <p class="warn-box small">Ce XML est un document de travail. Il n'est ni recalculé, ni validé par l'ADEME, et ne porte aucun numéro ADEME qui n'ait figuré dans le fichier d'origine.</p>
+          <p class="warn-box small">Document de travail : ni recalculé, ni validé par l'ADEME, sans numéro ADEME autre que celui du fichier d'origine.</p>
           <div class="modal-actions">
             <button (click)="exportOpen.set(false)">Annuler</button>
             <button class="primary" (click)="doExport()">Télécharger le XML</button>
@@ -150,9 +154,8 @@ export class ControlesComponent {
   protected readonly GRAVITE_LABELS = GRAVITE_LABELS;
   protected readonly niveaux = NIVEAUX;
   protected readonly gravites: Gravite[] = ['erreur', 'avertissement', 'info'];
-  protected readonly niveau = signal<Niveau | null>(null);
-  protected readonly gravite = signal<Gravite | null>(null);
-  protected readonly limit = signal(200);
+  protected readonly gravite = signal<Gravite>('avertissement');
+  protected readonly open = signal(new Set<string>());
   protected readonly exportOpen = signal(false);
 
   protected readonly xsd = computed(() => this.svc.xsdReport());
@@ -161,24 +164,43 @@ export class ControlesComponent {
     return uid && this.svc.model()?.otherSections.some((s) => s.uid === uid) ? uid : null;
   });
   protected readonly all = computed<Issue[]>(() => [...(this.svc.xsdReport()?.issues ?? []), ...(this.svc.model()?.issues ?? [])]);
-  protected readonly filtered = computed(() =>
-    this.all()
-      .filter((i) => !this.niveau() || i.niveau === this.niveau())
-      .filter((i) => !this.gravite() || i.gravite === this.gravite())
-      .slice(0, this.limit()),
-  );
   protected readonly counts = computed(() => {
     const c = { erreur: 0, avertissement: 0, info: 0 };
     for (const i of this.all()) c[i.gravite]++;
     return c;
   });
 
+  /** anomalies regroupées par objet, pour la gravité choisie (erreurs + avertissements par défaut) */
+  protected readonly groups = computed<IssueGroup[]>(() => {
+    const g = this.gravite();
+    const wanted = (i: Issue) => (g === 'info' ? i.gravite === 'info' : g === 'erreur' ? i.gravite === 'erreur' : i.gravite !== 'info');
+    const map = new Map<string, IssueGroup>();
+    for (const i of this.all().filter(wanted)) {
+      const key = i.uid ?? i.nav?.section ?? 'document';
+      if (!map.has(key)) map.set(key, { key, label: this.where(i), issues: [], errors: 0, warnings: 0 });
+      const grp = map.get(key)!;
+      grp.issues.push(i);
+      if (i.gravite === 'erreur') grp.errors++;
+      if (i.gravite === 'avertissement') grp.warnings++;
+    }
+    return [...map.values()].sort((a, b) => b.errors - a.errors || b.warnings - a.warnings);
+  });
+
+  protected toggle(key: string): void {
+    const next = new Set(this.open());
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    this.open.set(next);
+  }
+
   protected count(n: Niveau, g: Gravite): number {
     return this.all().filter((i) => i.niveau === n && i.gravite === g).length;
   }
 
   protected where(i: Issue): string {
-    return (i.uid && this.svc.model()?.objects.get(i.uid)?.title) || (i.nav ? i.nav.section : 'Document');
+    const o = i.uid ? this.svc.model()?.objects.get(i.uid) : undefined;
+    if (o) return o.kind ? `${o.kind.label} · ${o.title}` : o.title;
+    return i.nav ? i.nav.section : 'Document';
   }
 
   protected openChange(c: Change): void {
@@ -189,9 +211,5 @@ export class ControlesComponent {
   protected doExport(): void {
     this.svc.download(this.svc.exportXml(), `${this.svc.baseName()}-travail.xml`, 'application/xml');
     this.exportOpen.set(false);
-  }
-
-  protected downloadDraft(): void {
-    this.svc.download(JSON.stringify(this.svc.dossier()!.toDraft()), `${this.svc.baseName()}.brouillon.json`, 'application/json');
   }
 }
