@@ -3,7 +3,7 @@ import { DossierService } from '../services/dossier.service';
 import { NavService } from '../services/nav.service';
 import {
   contexteImmeuble, controler, empreinte, liaisonsUtiles, liaisonsVides, Logement, logementsManquants, logementsVisites,
-  nettoyerLiaisons, Paroi, parois, POSITIONS, preRemplir, TypeLiaison, TYPES_LIAISON, TYPOLOGIES,
+  nettoyerLiaisons, Paroi, parois, POSITIONS, preRemplir, TypeLiaison, TYPES_LIAISON, TYPOLOGIES, UNITE,
 } from '../core/immeuble/logements';
 
 type Vue = 'logements' | 'liaisons' | 'resultats';
@@ -171,7 +171,7 @@ const fmt = (n: number | null | undefined, d = 0) => (n === null || n === undefi
                                 <td class="w1"><input type="checkbox" [disabled]="!p.reference" [checked]="!!p.reference && l.liaisons[t.key].includes(p.reference)" (change)="lier(l.id, p, $any($event.target).checked)" /></td>
                                 <td><button class="link" (click)="voirParoi(p)">{{ p.nom }}</button> @if (!p.reference) { <span class="err-text small">sans référence</span> }</td>
                                 <td class="muted">{{ p.orientation ?? '' }}</td>
-                                <td class="num">{{ fmt(p.surface, 2) }} m²</td>
+                                <td class="num">{{ fmt(p.surface, 2) }} {{ unite[p.type] }}</td>
                                 <td class="muted small">{{ partage(p) }}</td>
                               </tr>
                             }
@@ -189,8 +189,8 @@ const fmt = (n: number | null | undefined, d = 0) => (n === null || n === undefi
                     @for (p of paroisPar()[t.key]; track p.uid ?? p.nom) {
                       <li [class.selected]="paroiSel()?.uid === p.uid" (click)="selParoi.set(p.uid)">
                         <div class="ol-head"><span class="ol-title">{{ p.nom }}</span>
-                          @if (!nbLogementsParoi(p)) { <span class="dot miss" title="Reliée à aucun logement">0</span> }</div>
-                        <div class="ol-sub"><span>{{ t.label }}</span><span>{{ p.orientation ?? '' }}</span><span>{{ fmt(p.surface, 2) }} m²</span><span>{{ nbLogementsParoi(p) }} logement(s)</span></div>
+                          @if (!nbLogementsParoi(p) && !p.suitParois) { <span class="dot miss" title="Reliée à aucun logement">0</span> }</div>
+                        <div class="ol-sub"><span>{{ t.label }}</span><span>{{ p.orientation ?? '' }}</span><span>{{ fmt(p.surface, 2) }} {{ unite[p.type] }}</span><span>{{ partage(p) }}</span></div>
                       </li>
                     }
                   }
@@ -198,7 +198,7 @@ const fmt = (n: number | null | undefined, d = 0) => (n === null || n === undefi
                 @if (paroiSel(); as p) {
                   <div>
                     <div class="card-head">
-                      <h3>{{ p.nom }} <span class="muted small">{{ p.orientation ?? '' }} {{ fmt(p.surface, 2) }} m²</span></h3>
+                      <h3>{{ p.nom }} <span class="muted small">{{ p.orientation ?? '' }} {{ fmt(p.surface, 2) }} {{ unite[p.type] }}</span></h3>
                       @if (p.reference) {
                         <span class="calc-actions">
                           <button class="small" (click)="lierTous(p, true)">Tous</button>
@@ -207,6 +207,10 @@ const fmt = (n: number | null | undefined, d = 0) => (n === null || n === undefi
                         </span>
                       }
                     </div>
+                    @if (p.type === 'pont_thermique') {
+                      <p class="info-box small">@if (p.suitParois) { Ce pont thermique est rattaché à ses parois dans le XML : il suit les logements de ces parois. Une liaison directe ci-dessous prime sur ce rattachement. }
+                        @else { Pont thermique sans parois associées dans le XML (reference_1/reference_2) : cochez les logements qu'il borde. Sa longueur est répartie entre eux au prorata des surfaces. }</p>
+                    }
                     @if (!p.reference) { <p class="error-box small">Paroi sans référence : renseignez sa référence pour la relier.</p> }
                     @else {
                       <table class="table compact">
@@ -292,6 +296,7 @@ export class LogementsComponent {
   protected readonly types = TYPES_LIAISON;
   protected readonly positions = Object.entries(POSITIONS).map(([k, v]) => ({ k: Number(k), v }));
   protected readonly positionsMap = POSITIONS;
+  protected readonly unite = UNITE;
   protected readonly typologies = Object.entries(TYPOLOGIES).map(([k, v]) => ({ k: Number(k), v }));
   protected readonly vue = signal<Vue>('logements');
   protected readonly mode = signal<'logement' | 'paroi'>('paroi');
@@ -375,7 +380,7 @@ export class LogementsComponent {
 
   protected partage(p: Paroi): string {
     const n = this.nbLogementsParoi(p);
-    return n ? `${n} logement(s)` : 'aucun logement';
+    return n ? `${n} logement(s)` : p.suitParois ? 'suit ses parois' : 'aucun logement';
   }
 
   protected date(iso: string): string {

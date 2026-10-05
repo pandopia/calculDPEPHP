@@ -203,6 +203,9 @@ de l'immeuble ».
    dernier étage / Aucun », copie des liaisons d'un autre logement,
    pré-remplissage explicite (planchers selon l'étage, baies et portes selon
    leur paroi support), retrait des liaisons vers des parois supprimées.
+   Ponts thermiques : un pont rattaché à ses parois dans le XML
+   (`reference_1`/`reference_2`) suit leurs logements ; un pont « manuel »
+   sans paroi (fréquent chez LICIEL) se relie directement aux logements.
    Option d'approximation des parois non reliées (laissée au moteur, signalée
    dans les hypothèses).
 4. *Contrôles bloquants* : nombre de logements = nombre d'appartements,

@@ -67,7 +67,7 @@ describe('DPE des logements générés depuis l\'immeuble (§17.2.2)', () => {
     expect(controler(cfg, ctx, parois(d.working, d.schema)).filter((c) => c.gravite === 'erreur')).toEqual([]);
     const req = requete(cfg, ctx, '<dpe/>');
     expect(req.repartition).toEqual({ chauffage: 2, ecs: 1, coefficientIfc: null, approximerLiaisons: false });
-    expect(req.logements[0]).toMatchObject({ reference: 'Lot 1', liaisons: { murs: [], plancher: [], plafond: [], fenetre: [], porte: [] } });
+    expect(req.logements[0]).toMatchObject({ reference: 'Lot 1', liaisons: { murs: [], plancher: [], plafond: [], fenetre: [], porte: [], pont_thermique: [] } });
   });
 
   it('avec individualisation, exige que chaque paroi soit reliée, sauf approximation demandée', async () => {
@@ -84,6 +84,30 @@ describe('DPE des logements générés depuis l\'immeuble (§17.2.2)', () => {
     expect(liaisonsUtiles(cfg, ctx)).toBe(false);
     cfg.coefIfc = 1.5;
     expect(controler(cfg, ctx, liste).some((c) => /compris entre 0 et 1/.test(c.message))).toBe(true);
+  });
+
+  it('n\'exige une liaison de pont thermique que s\'il n\'est pas rattaché à ses parois', async () => {
+    const d = await dossier();
+    const ctx = contexteImmeuble(d.working);
+    const relies = (cfg: ConfigImmeuble, liste: ReturnType<typeof parois>) => {
+      for (const l of cfg.logements) for (const p of liste) if (p.reference && p.type !== 'pont_thermique') l.liaisons[p.type].push(p.reference);
+    };
+    const liste = parois(d.working, d.schema);
+    const ponts = liste.filter((p) => p.type === 'pont_thermique');
+    expect(ponts).toHaveLength(36);
+    expect(ponts.every((p) => p.suitParois)).toBe(true);
+    const cfg = complet(d);
+    cfg.repartitionChauffage = 1;
+    relies(cfg, liste);
+    expect(controler(cfg, ctx, liste).filter((c) => c.gravite === 'erreur')).toEqual([]);
+    // ponts « manuels » sans référence de paroi (export LICIEL)
+    for (const tag of ['reference_1', 'reference_2']) for (const e of Array.from(d.working.getElementsByTagName(tag))) e.remove();
+    const manuels = parois(d.working, d.schema);
+    expect(manuels.filter((p) => p.type === 'pont_thermique').some((p) => p.suitParois)).toBe(false);
+    const msg = controler(cfg, ctx, manuels).find((c) => c.gravite === 'erreur')?.message;
+    expect(msg).toMatch(/36 paroi\(s\) reliée\(s\) à aucun logement.*se relie directement aux logements/);
+    for (const l of cfg.logements) l.liaisons.pont_thermique = manuels.filter((p) => p.type === 'pont_thermique').map((p) => p.reference!);
+    expect(controler(cfg, ctx, manuels).filter((c) => c.gravite === 'erreur')).toEqual([]);
   });
 
   it('pré-remplit planchers selon l\'étage et baies selon leur paroi support', async () => {
@@ -148,6 +172,8 @@ describe('DPE des logements générés depuis l\'immeuble (§17.2.2)', () => {
     const repris = await Dossier.fromDraft(JSON.parse(JSON.stringify(d.toDraft())), nodeSchemas());
     expect(repris.immeuble().logements).toHaveLength(48);
     expect(repris.resultatsLogements?.empreinte).toBe('e');
+    d.meta.immeuble!.logements[0].liaisons = { murs: ['m'] } as never;
+    expect(d.immeuble().logements[0].liaisons.pont_thermique).toEqual([]);
     d.undo();
     expect(d.immeuble().logements).toHaveLength(0);
     expect(d.resultatsLogements?.empreinte).toBe('e');

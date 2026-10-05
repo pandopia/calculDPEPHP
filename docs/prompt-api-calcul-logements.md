@@ -58,7 +58,8 @@ Action `logementsAction()`. Requête `Content-Type: application/json` :
         "plancher": ["ref_pb_1"],
         "plafond": [],
         "fenetre": ["ref_baie_2"],
-        "porte": ["ref_porte_1"]
+        "porte": ["ref_porte_1"],
+        "pont_thermique": ["PTManuels_2"]
       }
     }
   ],
@@ -76,7 +77,7 @@ Correspondance avec les DTO :
 | `repartition.ecs` | `BuildingInput::$hotWaterDistribution` : 0 = ECS individuelle, 1 = collective |
 | `repartition.coefficientIfc` | `BuildingInput::$individualizationCoefficient` (`null` autorisé, sinon 0 ≤ x ≤ 1) |
 | `repartition.approximerLiaisons` | `BuildingInput::$approximateMissingAssociations` (défaut `false`) |
-| `logements[]` | `ApartmentInput` : `reference`, `surface`, `associations` = `liaisons` (clés `murs`, `plancher`, `plafond`, `fenetre`, `porte`, listes de `donnee_entree/reference` des parois), `position` (1 RDC, 2 intermédiaire, 3 dernier étage, ou `null`), `typology` = `typologie` (1 à 7 ou `null`), `visited` = `visite` |
+| `logements[]` | `ApartmentInput` : `reference`, `surface`, `associations` = `liaisons` (clés `murs`, `plancher`, `plafond`, `fenetre`, `porte`, `pont_thermique`, listes de `donnee_entree/reference` ; **transmettre toutes ces clés**, y compris `pont_thermique`, que le moteur utilise pour les ponts thermiques saisis sans `reference_1`/`reference_2`), `position` (1 RDC, 2 intermédiaire, 3 dernier étage, ou `null`), `typology` = `typologie` (1 à 7 ou `null`), `visited` = `visite` |
 | `logement` (facultatif) | `BuildingInput::$apartmentReference` : ne calculer que ce logement (l'immeuble et les clés de répartition restent calculés sur tous) |
 | `inclureXml` (facultatif, défaut `true`) | si `false`, ne pas renvoyer les XML (réponse légère, résultats seuls) |
 

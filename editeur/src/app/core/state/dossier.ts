@@ -4,7 +4,7 @@ import { parseXml } from '../xml/safe-xml';
 import { serialize } from '../xml/serializer';
 import { prunableElements } from '../xml/prune';
 import { annotate, maxUid, uidIndex, UidCounter } from '../xml/uid';
-import { ConfigImmeuble, configVide, ResultatsLogements } from '../immeuble/logements';
+import { ConfigImmeuble, configVide, normaliser, ResultatsLogements } from '../immeuble/logements';
 
 /**
  * Dossier de travail.
@@ -137,7 +137,7 @@ export class Dossier {
 
   /** Logements du DPE immeuble (configuration vide si absente). */
   immeuble(): ConfigImmeuble {
-    return this.meta.immeuble ?? configVide();
+    return this.meta.immeuble ? normaliser(this.meta.immeuble) : configVide();
   }
 
   /** Modifie les logements ou leurs liaisons, avec point d'annulation (n'affecte pas le calcul de l'immeuble). */

@@ -21,23 +21,28 @@ import { getUid } from '../xml/uid';
  * conservées dans le brouillon, jamais écrites dans le XML exporté.
  */
 
-export type TypeLiaison = 'murs' | 'plancher' | 'plafond' | 'fenetre' | 'porte';
+export type TypeLiaison = 'murs' | 'plancher' | 'plafond' | 'fenetre' | 'porte' | 'pont_thermique';
 
 export interface TypeLiaisonDef {
   key: TypeLiaison;
   kind: string;
   label: string;
+  /** surface (m²) ou, pour un pont thermique, longueur (m) */
   surface: string;
+  unite: string;
 }
 
 /** Clés du moteur (ApartmentInput::$associations) et objets XML correspondants. */
 export const TYPES_LIAISON: TypeLiaisonDef[] = [
-  { key: 'murs', kind: 'mur', label: 'Murs', surface: 'donnee_entree/surface_paroi_opaque' },
-  { key: 'plancher', kind: 'plancher_bas', label: 'Planchers bas', surface: 'donnee_entree/surface_paroi_opaque' },
-  { key: 'plafond', kind: 'plancher_haut', label: 'Planchers hauts', surface: 'donnee_entree/surface_paroi_opaque' },
-  { key: 'fenetre', kind: 'baie_vitree', label: 'Baies vitrées', surface: 'donnee_entree/surface_totale_baie' },
-  { key: 'porte', kind: 'porte', label: 'Portes', surface: 'donnee_entree/surface_porte' },
+  { key: 'murs', kind: 'mur', label: 'Murs', surface: 'donnee_entree/surface_paroi_opaque', unite: 'm²' },
+  { key: 'plancher', kind: 'plancher_bas', label: 'Planchers bas', surface: 'donnee_entree/surface_paroi_opaque', unite: 'm²' },
+  { key: 'plafond', kind: 'plancher_haut', label: 'Planchers hauts', surface: 'donnee_entree/surface_paroi_opaque', unite: 'm²' },
+  { key: 'fenetre', kind: 'baie_vitree', label: 'Baies vitrées', surface: 'donnee_entree/surface_totale_baie', unite: 'm²' },
+  { key: 'porte', kind: 'porte', label: 'Portes', surface: 'donnee_entree/surface_porte', unite: 'm²' },
+  { key: 'pont_thermique', kind: 'pont_thermique', label: 'Ponts thermiques', surface: 'donnee_entree/l', unite: 'm' },
 ];
+
+export const UNITE: Record<TypeLiaison, string> = Object.fromEntries(TYPES_LIAISON.map((t) => [t.key, t.unite])) as Record<TypeLiaison, string>;
 
 /** Libellés XSD de `logement_visite` (enum_position_etage_logement_id, enum_typologie_logement_id). */
 export const POSITIONS: Record<number, string> = { 1: 'Rez-de-chaussée', 2: 'Étage intermédiaire', 3: 'Dernier étage' };
@@ -70,7 +75,13 @@ export function configVide(): ConfigImmeuble {
 }
 
 export function liaisonsVides(): Record<TypeLiaison, string[]> {
-  return { murs: [], plancher: [], plafond: [], fenetre: [], porte: [] };
+  return { murs: [], plancher: [], plafond: [], fenetre: [], porte: [], pont_thermique: [] };
+}
+
+/** Brouillons antérieurs : types de liaison ajoutés depuis complétés à vide. */
+export function normaliser(cfg: ConfigImmeuble): ConfigImmeuble {
+  for (const l of cfg.logements) l.liaisons = { ...liaisonsVides(), ...l.liaisons };
+  return cfg;
 }
 
 // ---------------------------------------------------------------- immeuble
@@ -142,25 +153,45 @@ export interface Paroi {
   orientation: string | null;
   /** reference_paroi : mur ou plancher support d'une baie ou d'une porte */
   support: string | null;
+  /**
+   * Pont thermique rattaché à ses parois par reference_1/reference_2 : il
+   * suit alors les logements de ces parois, une liaison directe est facultative
+   * (elle prime si elle existe).
+   */
+  suitParois: boolean;
 }
 
 export function parois(doc: Document, schema: SchemaHandle | null): Paroi[] {
   const out: Paroi[] = [];
+  /** pont thermique → reference_2 et type de liaison */
+  const ponts = new Map<Paroi, { r2: string | null; liaison: string | null }>();
   for (const t of TYPES_LIAISON) {
     const kind = KIND_BY_KEY.get(t.kind)!;
     const orientations = schema?.def(`${kind.path}/donnee_entree/enum_orientation_id`)?.enumLabels ?? {};
     objectsOfKind(doc, kind).forEach((el, i) => {
       const o = textOf(el, 'donnee_entree/enum_orientation_id');
-      out.push({
+      const pont = t.key === 'pont_thermique';
+      const p: Paroi = {
         type: t.key,
         uid: getUid(el),
         reference: referenceValue(el, kind),
         nom: textOf(el, 'donnee_entree/description') ?? `${kind.label} ${i + 1}`,
         surface: numberOrNull(textOf(el, t.surface)),
         orientation: o ? (orientations[o] ?? o) : null,
-        support: textOf(el, 'donnee_entree/reference_paroi'),
-      });
+        support: textOf(el, pont ? 'donnee_entree/reference_1' : 'donnee_entree/reference_paroi'),
+        suitParois: false,
+      };
+      out.push(p);
+      if (pont) ponts.set(p, { r2: textOf(el, 'donnee_entree/reference_2'), liaison: textOf(el, 'donnee_entree/enum_type_liaison_id') });
     });
+  }
+  // même règle que le moteur : les deux références sur des parois décrites,
+  // ou une seule pour un plancher intermédiaire ou un refend (types 2 et 4)
+  const refs = new Set(out.filter((p) => p.type !== 'pont_thermique' && p.reference).map((p) => p.reference!));
+  for (const [p, { r2, liaison }] of ponts) {
+    const ok1 = !!p.support && refs.has(p.support);
+    const ok2 = !!r2 && refs.has(r2);
+    p.suitParois = (ok1 && ok2) || ((liaison === '2' || liaison === '4') && (ok1 || ok2));
   }
   return out;
 }
@@ -211,11 +242,14 @@ export function controler(cfg: ConfigImmeuble, ctx: ContexteImmeuble, liste: Par
     for (const l of cfg.logements) for (const t of TYPES_LIAISON) for (const r of l.liaisons[t.key]) {
       refs.set(`${t.key}:${r}`, (refs.get(`${t.key}:${r}`) ?? new Set()).add(l.id));
     }
-    const sansRef = liste.filter((p) => !p.reference);
+    const sansRef = liste.filter((p) => !p.reference && !p.suitParois);
     if (sansRef.length) err(`${sansRef.length} paroi(s) sans référence : elles ne peuvent pas être reliées aux logements.`);
-    const orphelines = liste.filter((p) => p.reference && !refs.has(`${p.type}:${p.reference}`));
+    const orphelines = liste.filter((p) => p.reference && !p.suitParois && !refs.has(`${p.type}:${p.reference}`));
     if (orphelines.length) {
-      const msg = `${orphelines.length} paroi(s) reliée(s) à aucun logement (${orphelines.slice(0, 4).map((p) => p.nom).join(', ')}${orphelines.length > 4 ? '…' : ''}).`;
+      let msg = `${orphelines.length} paroi(s) reliée(s) à aucun logement (${orphelines.slice(0, 4).map((p) => p.nom).join(', ')}${orphelines.length > 4 ? '…' : ''}).`;
+      if (orphelines.some((p) => p.type === 'pont_thermique')) {
+        msg += ' Un pont thermique sans paroi associée dans le XML (reference_1/reference_2) se relie directement aux logements qu\'il borde.';
+      }
       if (cfg.approximerLiaisons) out.push({ gravite: 'info', message: msg + ' Elles seront réparties par approximation (mur support, étage, sinon tous les logements).' });
       else err(msg + ' Reliez-les, ou autorisez l\'approximation.');
     }
