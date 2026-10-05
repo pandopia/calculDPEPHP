@@ -1,14 +1,11 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DossierService } from '../services/dossier.service';
 import { DraftStore, DraftSummary } from '../services/draft-store';
 import { NavService } from '../services/nav.service';
 import { VERSIONS_CREATION } from '../core/schema/schema-registry';
+import { distinct, findCode, MethodeEntry, parseMethodes } from '../core/metier/methode-application';
 
-interface TypeGroup {
-  label: string;
-  options: { code: string; label: string }[];
-}
 
 @Component({
   selector: 'app-accueil',
@@ -40,23 +37,35 @@ interface TypeGroup {
           <label class="field-label">Nom du dossier
             <input type="text" [(ngModel)]="nom" placeholder="ex. Maison Dupont" />
           </label>
-          <label class="field-label">Type de bien et de DPE
-            <select [(ngModel)]="methode">
+          <label class="field-label">Type de bien
+            <select [ngModel]="bien()" (ngModelChange)="setBien($event)">
               <option value="">— Choisir —</option>
-              @for (g of types(); track g.label) {
-                <optgroup [label]="g.label">
-                  @for (o of g.options; track o.code) { <option [value]="o.code">{{ o.label }}</option> }
-                </optgroup>
-              }
+              @for (b of biens(); track b) { <option [value]="b">{{ b }}</option> }
             </select>
           </label>
+          @if (chauffages().length) {
+            <label class="field-label">Chauffage
+              <select [ngModel]="chauffage()" (ngModelChange)="setChauffage($event)">
+                @if (chauffages().length > 1) { <option value="">— Choisir —</option> }
+                @for (c of chauffages(); track c) { <option [value]="c">{{ c }}</option> }
+              </select>
+            </label>
+          }
+          @if (ecsList().length) {
+            <label class="field-label">Eau chaude sanitaire
+              <select [ngModel]="ecs()" (ngModelChange)="ecs.set($event)">
+                @if (ecsList().length > 1) { <option value="">— Choisir —</option> }
+                @for (c of ecsList(); track c) { <option [value]="c">{{ c }}</option> }
+              </select>
+            </label>
+          }
           <label class="field-label">Version du modèle de données
             <select [(ngModel)]="version">
               @for (v of versions; track v) { <option [value]="v">{{ v }} — {{ versionLabel(v) }}</option> }
             </select>
           </label>
           <p class="muted small">Seule la version en vigueur est proposée. Le dossier démarre vide : seuls le type de bien, le modèle (DPE 3CL logement) et la version sont écrits ; tout le reste est à renseigner.</p>
-          <button class="primary" [disabled]="!methode" (click)="create()">Créer le dossier</button>
+          <button class="primary" [disabled]="!methode()" (click)="create()">Créer le dossier</button>
         </section>
       </div>
 
@@ -93,11 +102,22 @@ export class AccueilComponent implements OnInit {
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly drafts = signal<DraftSummary[]>([]);
-  protected readonly types = signal<TypeGroup[]>([]);
+  /** type de DPE décomposé en bien / chauffage / ECS (libellés officiels) */
+  private readonly methodes = signal<MethodeEntry[]>([]);
+  protected readonly bien = signal('');
+  protected readonly chauffage = signal('');
+  protected readonly ecs = signal('');
+  protected readonly biens = computed(() => distinct(this.methodes().map((e) => e.bien)));
+  protected readonly chauffages = computed(() => distinct(this.methodes().filter((e) => e.bien === this.bien()).map((e) => e.chauffage)));
+  protected readonly ecsList = computed(() =>
+    distinct(this.methodes().filter((e) => e.bien === this.bien() && e.chauffage === (this.chauffage() || null)).map((e) => e.ecs)),
+  );
+  protected readonly methode = computed(() =>
+    this.bien() ? findCode(this.methodes(), this.bien(), this.chauffage() || null, this.ecs() || null) : null,
+  );
   protected readonly versions = VERSIONS_CREATION;
   private versionLabels: Record<string, string> = {};
   protected nom = '';
-  protected methode = '';
   protected version = VERSIONS_CREATION[0];
 
   async ngOnInit(): Promise<void> {
@@ -116,18 +136,19 @@ export class AccueilComponent implements OnInit {
     const schema = await this.svc.schemas.forVersion(this.version);
     this.versionLabels = schema?.def('dpe/administratif/enum_version_id')?.enumLabels ?? {};
     const labels = schema?.def('dpe/logement/caracteristique_generale/enum_methode_application_dpe_log_id')?.enumLabels ?? {};
-    const groups: TypeGroup[] = [
-      { label: 'Maison individuelle', options: [] },
-      { label: 'Appartement', options: [] },
-      { label: 'Immeuble collectif', options: [] },
-      { label: 'Appartement généré à partir du DPE immeuble', options: [] },
-      { label: 'Issu d\'une étude thermique réglementaire (RT2012 / RE2020)', options: [] },
-    ];
-    for (const [code, label] of Object.entries(labels)) {
-      const g = /étude/.test(label) ? 4 : /généré/.test(label) ? 3 : /immeuble collectif/.test(label) ? 2 : /appartement/.test(label) ? 1 : 0;
-      groups[g].options.push({ code, label: label.charAt(0).toUpperCase() + label.slice(1) });
-    }
-    this.types.set(groups.filter((g) => g.options.length));
+    this.methodes.set(parseMethodes(labels));
+  }
+
+  protected setBien(b: string): void {
+    this.bien.set(b);
+    const ch = this.chauffages();
+    this.setChauffage(ch.length === 1 ? ch[0] : '');
+  }
+
+  protected setChauffage(c: string): void {
+    this.chauffage.set(c);
+    const e = this.ecsList();
+    this.ecs.set(e.length === 1 ? e[0] : '');
   }
 
   protected versionLabel(v: string): string {
@@ -171,7 +192,7 @@ export class AccueilComponent implements OnInit {
 
   protected async create(): Promise<void> {
     try {
-      await this.svc.create({ version: this.version, methodeApplication: this.methode }, this.nom.trim() || 'Nouveau dossier');
+      await this.svc.create({ version: this.version, methodeApplication: this.methode()! }, this.nom.trim() || 'Nouveau dossier');
       this.nav.go('synthese');
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : String(e));
