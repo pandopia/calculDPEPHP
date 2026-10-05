@@ -1,0 +1,2 @@
+# Exclu de l'archive du paquet Composer (Packagist) : application web séparée.
+/editeur export-ignore
