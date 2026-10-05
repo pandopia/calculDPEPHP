@@ -2,9 +2,10 @@
 
 Application web Angular, **100 % navigateur**, pour lire, comprendre, compléter
 et modifier un diagnostic de performance énergétique à partir de son XML ADEME,
-puis réexporter le XML. Aucun fichier n'est envoyé à un serveur : l'import,
-l'édition, la validation XSD et l'export se font localement ; les brouillons
-sont conservés dans le navigateur (IndexedDB).
+puis réexporter le XML. L'import, l'édition, la validation XSD et l'export se
+font localement ; les brouillons sont conservés dans le navigateur (IndexedDB).
+Seul le **calcul** envoie le XML de travail à un service externe (moteur
+Pandopia : calcul et rapport PDF), sur action explicite et après accord affiché la première fois.
 
 ## Lancer
 
@@ -97,7 +98,7 @@ ressource réseau, 20 Mo et 64 niveaux maximum.
   décrit pas la géométrie (`core/metier/maquette.ts`).
 - **Sections** : liste compacte à gauche (nom et valeurs clés), fiche de
   l'objet sélectionné à droite, ouverte d'emblée.
-- **Fiches** : valeurs en lecture, modifiables au clic (Entrée valide, Échap
+- **Fiches** : un champ vide s'affiche directement en saisie ; une valeur renseignée s'affiche en lecture, modifiable au clic (Entrée valide, Échap
   annule). Pour effacer une valeur : choisir « — » dans une liste, ou vider le
   champ texte ; la balise disparaît alors du XML exporté. Les champs sont rangés par thème (Situation, Dimensions,
   Composition, Isolation et performance, Système). Les champs facultatifs
@@ -152,14 +153,38 @@ hors borne est acceptée et signalée, pour qu'un brouillon reste enregistrable.
 
 ## Résultats et calcul
 
-Consommations, déperditions, étiquettes… sont affichés comme **résultats du
-fichier source**. Toute modification d'une donnée susceptible d'entrer dans le
-calcul (tout sauf descriptions, identités et adresses) marque l'ensemble des
-résultats « à recalculer » — faute de graphe de dépendances fiable — avec la
-liste des modifications concernées. Aucun recalcul n'est fabriqué :
-`core/calcul/moteur-calcul.ts` définit l'interface d'un moteur futur (aucun n'est
-connecté). Le XML exporté n'est présenté ni comme recalculé, ni comme validé ou
-accepté par l'ADEME ; aucun numéro ADEME n'est généré.
+Le bouton **Calculer** (synthèse, bilan, ou badge « résultats à recalculer »)
+envoie le XML de travail exporté au moteur Pandopia :
+
+```bash
+curl -X POST -H 'Content-Type: application/xml' --data-binary @dpe.xml \
+  https://app.pandopia.com/api/calculdpe/xmlademe
+```
+
+La première fois, une fenêtre indique la destination et le contenu envoyé
+(accord mémorisable sur le poste). La réponse n'est intégrée que si ses
+données d'entrée (tout sauf `donnee_intermediaire` et `sortie`) sont
+identiques à celles envoyées ; seules les zones de résultats sont alors
+remplacées, en une opération annulable, et les résultats sont présentés comme
+« calculés par … le … ». Sans calcul, les résultats sont ceux du fichier
+source ; toute modification d'une donnée susceptible d'entrer dans le calcul
+les marque « à recalculer ». Voir `core/calcul/` (le moteur est une interface :
+un autre service peut être branché).
+
+**Rapport PDF** (Contrôles, Bilan, menu ⚙) : le XML est envoyé à
+`POST https://app.pandopia.com/api/calculdpe/pdfademe`, qui renvoie le
+diagnostic au modèle officiel. Si les résultats sont absents ou pas à jour,
+l'éditeur propose de calculer d'abord. Si le dossier a été modifié depuis
+l'import, le numéro ADEME est retiré du XML envoyé : le rapport est produit
+« n° non attribué », avec la mention DOCUMENT NON OFFICIEL (le dossier et le
+XML exporté gardent le numéro).
+
+**Balises hors schéma** : affichées dans la fiche de l'objet concerné, elles
+se retirent une à une ou toutes à la fois (Contrôles et export), de façon
+annulable.
+
+Le XML exporté n'est jamais présenté comme validé ou accepté par l'ADEME ;
+aucun numéro ADEME n'est généré.
 
 ## Matrice de couverture
 
@@ -216,7 +241,7 @@ Les fixtures (`tests/fixtures/`) sont des DPE publiés par l'observatoire ADEME
 - **Règles conditionnelles** : seules celles listées plus haut sont
   implémentées ; les contrôles de cohérence de l'ADEME (moteur de contrôle de
   l'observatoire) ne sont pas reproduits.
-- **Pas de moteur de calcul** connecté : les résultats ne sont jamais recalculés.
+- **Calcul** : dépend de la disponibilité du service Pandopia (réseau requis).
 - **Pas de migration** de version : un fichier s'exporte dans sa version.
 - **DPE neuf et tertiaire** : vue générique uniquement.
 - **Encodage** : l'export est toujours en UTF-8 (déclaration comprise), même si

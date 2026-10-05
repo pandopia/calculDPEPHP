@@ -26,6 +26,8 @@ export interface DossierMeta {
   modifieLe: string;
   resultatsObsoletes: boolean;
   motifsObsolescence: string[];
+  /** dernier calcul intégré (absent : résultats du fichier source) */
+  calcul?: { moteur: string; date: string };
 }
 
 export interface DraftData {

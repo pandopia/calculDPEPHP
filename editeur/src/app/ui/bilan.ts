@@ -17,12 +17,17 @@ const fmt = (n: number, d = 0) => n.toLocaleString('fr-FR', { maximumFractionDig
     @let b = bilan();
     <div class="bilan">
       @if (!b) {
-        <div class="card"><h2>Bilan</h2><p class="muted">Aucun résultat dans le fichier : ils doivent être produits par un moteur de calcul (aucun n'est connecté).</p></div>
+        <div class="card"><h2>Bilan</h2><p class="muted">Aucun résultat pour l'instant.</p>
+          <button class="primary" (click)="svc.calculer()" [disabled]="svc.calculEnCours()">{{ svc.calculEnCours() ? 'Calcul…' : 'Calculer' }}</button></div>
       } @else {
-        <p class="info-box small">
-          Résultats écrits par le logiciel d'origine, <strong>non recalculés</strong> par cet outil.
-          @if (d.meta.resultatsObsoletes) { <strong class="warn-text">Des données d'entrée ont changé : ils sont à recalculer.</strong> }
-        </p>
+        <div class="calc-bar" [class.stale]="d.meta.resultatsObsoletes">
+          <span>Résultats {{ svc.origineResultats() }}.
+            @if (d.meta.resultatsObsoletes) { <strong class="warn-text">Des données d'entrée ont changé depuis : ils sont à recalculer.</strong> }</span>
+          <span class="calc-actions">
+            <button [class.primary]="d.meta.resultatsObsoletes" (click)="svc.calculer()" [disabled]="svc.calculEnCours()">{{ svc.calculEnCours() ? 'Calcul…' : 'Recalculer' }}</button>
+            <button (click)="svc.rapportPdf()" [disabled]="svc.pdfEnCours()">{{ svc.pdfEnCours() ? 'PDF en cours…' : 'Rapport PDF' }}</button>
+          </span>
+        </div>
         <div class="bilan-grid">
           <section class="card">
             <h3>Étiquette énergie</h3>

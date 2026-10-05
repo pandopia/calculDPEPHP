@@ -3,6 +3,7 @@ import { DossierService } from '../services/dossier.service';
 import { NavService } from '../services/nav.service';
 import { Gravite, Issue, Niveau, NIVEAU_LABELS } from '../core/validation/issues';
 import { Change } from '../core/edition/change-set';
+import { removeAllUnknown, unknownElements } from '../core/edition/editor';
 import { GRAVITE_LABELS } from './labels';
 import { FicheComponent } from './fiche';
 
@@ -39,6 +40,7 @@ interface IssueGroup {
         </div>
         <div class="export-actions">
           <button (click)="svc.validateXsd()" [disabled]="svc.xsdRunning() || !d.schema">{{ svc.xsdRunning() ? 'Validation…' : 'Valider contre le XSD' }}</button>
+          <button (click)="svc.rapportPdf()" [disabled]="svc.pdfEnCours()">{{ svc.pdfEnCours() ? 'PDF en cours…' : 'Rapport PDF' }}</button>
           <button class="primary" (click)="exportOpen.set(true)">Exporter le XML…</button>
         </div>
         <p class="muted small">Validation locale par libxml2. Un fichier conforme au XSD n'est ni recalculé, ni validé ni accepté par l'ADEME pour autant. Le brouillon s'enregistre tout seul dans ce navigateur.</p>
@@ -53,6 +55,10 @@ interface IssueGroup {
             }
           </div>
         </div>
+        @if (inconnues() > 0) {
+          <p class="unknown-bar small">{{ inconnues() }} balise(s) hors schéma : conservées à l'export, mais refusées par la validation XSD.
+            <button class="small" (click)="retirerInconnues()">Retirer les balises hors schéma</button></p>
+        }
         @if (groups().length === 0) { <p class="muted">Rien à signaler pour ce filtre.</p> }
         <ul class="igroups">
           @for (g of groups(); track g.key) {
@@ -134,7 +140,7 @@ interface IssueGroup {
             <li>{{ svc.changes().length }} modification(s) depuis {{ d.meta.origine === 'import' ? 'l\\'import' : 'la création' }}.</li>
             <li>{{ counts().erreur }} erreur(s), {{ counts().avertissement }} avertissement(s).</li>
             <li>Validation XSD : @if (xsd(); as r) { {{ r.message }} } @else { non lancée. }</li>
-            @if (d.meta.resultatsObsoletes) { <li><strong>Les résultats sont ceux du fichier source, non recalculés.</strong></li> }
+            @if (d.meta.resultatsObsoletes) { <li><strong>Les résultats ne sont pas à jour des dernières modifications</strong> ({{ svc.origineResultats() }}) : lancez le calcul avant d'exporter.</li> }
             <li>Version du modèle : {{ d.format.enumVersionId ?? 'inconnue' }} (pas de migration).</li>
           </ul>
           <p class="warn-box small">Document de travail : ni recalculé, ni validé par l'ADEME, sans numéro ADEME autre que celui du fichier d'origine.</p>
@@ -185,6 +191,18 @@ export class ControlesComponent {
     }
     return [...map.values()].sort((a, b) => b.errors - a.errors || b.warnings - a.warnings);
   });
+
+  protected readonly inconnues = computed(() => {
+    this.svc.revision();
+    const d = this.svc.dossier();
+    return d ? unknownElements(d).length : 0;
+  });
+
+  protected retirerInconnues(): void {
+    const n = this.inconnues();
+    if (!confirm(`Retirer ${n} balise(s) hors schéma ? Elles ne seront plus dans le XML exporté (annulable par Ctrl+Z).`)) return;
+    this.svc.run((d) => removeAllUnknown(d), `${n} balise(s) hors schéma retirée(s).`);
+  }
 
   protected toggle(key: string): void {
     const next = new Set(this.open());

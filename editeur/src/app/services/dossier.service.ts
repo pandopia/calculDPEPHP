@@ -7,10 +7,20 @@ import { computeChanges } from '../core/edition/change-set';
 import * as ed from '../core/edition/editor';
 import { decodeXmlBytes } from '../core/xml/safe-xml';
 import { BrowserXsdEngine, runXsdValidation, XsdReport } from '../core/validation/xsd-validation';
-import { AUCUN_MOTEUR, MoteurCalcul } from '../core/calcul/moteur-calcul';
+import { MoteurCalcul, MoteurPandopia, RapportPdfPandopia } from '../core/calcul/moteur-calcul';
+import { integrerResultats, xmlPourRapport } from '../core/calcul/integrer-resultats';
 import { DraftStore } from './draft-store';
 
 const LAST_KEY = 'calculdpe-editeur:dernier-dossier';
+const CONSENT_KEY = 'calculdpe-editeur:envoi-moteur-accepte';
+
+function readConsent(): boolean {
+  try {
+    return localStorage.getItem(CONSENT_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 export type SaveStatus = 'aucun' | 'en_attente' | 'enregistrement' | 'enregistre' | 'erreur';
 
@@ -28,7 +38,16 @@ export class DossierService {
     if (!res.ok) throw new Error(`Schéma ${file} introuvable.`);
     return res.text();
   });
-  readonly moteur: MoteurCalcul = AUCUN_MOTEUR;
+  readonly moteur: MoteurCalcul = new MoteurPandopia();
+  readonly calculEnCours = signal(false);
+  /** l'utilisateur a accepté l'envoi du XML au moteur (mémorisé sur ce poste) */
+  readonly consentementCalcul = signal(readConsent());
+  /** action en attente de l'accord d'envoi */
+  readonly demandeConsentement = signal<'calcul' | 'pdf' | null>(null);
+  readonly rapport = new RapportPdfPandopia();
+  readonly pdfEnCours = signal(false);
+  /** confirmation avant PDF : résultats absents ou pas à jour, numéro ADEME d'un dossier modifié */
+  readonly pdfConfirmation = signal<{ sansResultats: boolean; obsoletes: boolean } | null>(null);
   private readonly xsdEngine = new BrowserXsdEngine();
 
   readonly dossier = signal<Dossier | null>(null);
@@ -225,6 +244,97 @@ export class DossierService {
     } finally {
       this.xsdRunning.set(false);
     }
+  }
+
+  /** Lance le calcul ; demande d'abord l'accord d'envoi si besoin. */
+  async calculer(): Promise<boolean> {
+    const d = this.dossier();
+    if (!d || this.calculEnCours()) return false;
+    if (!this.consentementCalcul()) {
+      this.demandeConsentement.set('calcul');
+      return false;
+    }
+    this.calculEnCours.set(true);
+    try {
+      const envoye = d.exportXml();
+      const reponse = await this.moteur.calculer(envoye);
+      const r = integrerResultats(d, envoye, reponse, this.moteur.nom);
+      this.changed();
+      const etiq = r.avant.energie !== r.apres.energie || r.avant.climat !== r.apres.climat
+        ? ` Étiquettes : énergie ${r.avant.energie ?? '—'} → ${r.apres.energie ?? '—'}, climat ${r.avant.climat ?? '—'} → ${r.apres.climat ?? '—'}.`
+        : ` Étiquettes inchangées (${r.apres.energie ?? '—'} / ${r.apres.climat ?? '—'}).`;
+      this.toast('succes', `Calcul terminé.${etiq}`);
+      return true;
+    } catch (e) {
+      this.toast('erreur', e instanceof Error ? e.message : String(e));
+      return false;
+    } finally {
+      this.calculEnCours.set(false);
+    }
+  }
+
+  /** Rapport PDF du diagnostic ; confirme d'abord si les résultats ne sont pas à jour. */
+  rapportPdf(): void {
+    const d = this.dossier();
+    if (!d || this.pdfEnCours()) return;
+    if (!this.consentementCalcul()) {
+      this.demandeConsentement.set('pdf');
+      return;
+    }
+    const sansResultats = !d.working.getElementsByTagName('sortie').length;
+    if (sansResultats || d.meta.resultatsObsoletes) {
+      this.pdfConfirmation.set({ sansResultats, obsoletes: d.meta.resultatsObsoletes });
+      return;
+    }
+    void this.genererPdf(false);
+  }
+
+  async genererPdf(calculerAvant: boolean): Promise<void> {
+    this.pdfConfirmation.set(null);
+    const d = this.dossier();
+    if (!d) return;
+    if (calculerAvant && !(await this.calculer())) return;
+    this.pdfEnCours.set(true);
+    try {
+      // dossier modifié depuis l'import : rapport sans numéro ADEME (« non attribué », DOCUMENT NON OFFICIEL)
+      const { xml, numeroRetire } = xmlPourRapport(d, this.changes().length > 0);
+      const blob = await this.rapport.generer(xml);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${this.baseName()}-diagnostic.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      this.toast('succes', numeroRetire
+        ? `Rapport PDF téléchargé, sans le numéro ADEME ${numeroRetire} : le dossier a été modifié depuis l'import (mention « document non officiel »).`
+        : 'Rapport PDF téléchargé.');
+    } catch (e) {
+      this.toast('erreur', e instanceof Error ? e.message : String(e));
+    } finally {
+      this.pdfEnCours.set(false);
+    }
+  }
+
+  accepterEnvoi(memoriser: boolean): void {
+    const action = this.demandeConsentement();
+    this.demandeConsentement.set(null);
+    this.consentementCalcul.set(true);
+    if (memoriser) {
+      try {
+        localStorage.setItem(CONSENT_KEY, '1');
+      } catch {
+        /* commodité seulement */
+      }
+    }
+    if (action === 'pdf') this.rapportPdf();
+    else void this.calculer();
+  }
+
+  /** « résultats du fichier source » ou « calculés par … le … » */
+  origineResultats(): string {
+    const c = this.dossier()?.meta.calcul;
+    if (!c) return 'résultats du fichier source';
+    return `calculés par ${c.moteur} le ${new Date(c.date).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}`;
   }
 
   exportXml(): string {

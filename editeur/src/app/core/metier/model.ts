@@ -307,8 +307,8 @@ export interface GroupView {
   groups: GroupView[];
   /** éléments répétables génériques (ex. masques lointains) */
   repeatables: { name: string; label: string; rel: string; items: { uid: string; label: string; group: GroupView }[]; canAdd: boolean }[];
-  /** balises hors schéma conservées */
-  unknown: { name: string; xml: string }[];
+  /** balises hors schéma conservées (rel : chemin depuis l'objet propriétaire) */
+  unknown: { name: string; xml: string; rel?: string }[];
   present: boolean;
   /** identifiant du bloc (s'il est présent) */
   uid: string | null;
@@ -518,7 +518,7 @@ function buildGroup(ctx: FicheCtx, container: Element | null, rel: string, label
       group.fields.push({ ...fieldView(ctx, c, c.localName, null), readOnly: true });
       continue;
     }
-    group.unknown.push({ name: c.localName, xml: new XMLSerializer().serializeToString(c).replace(/ xmlns:ed="[^"]*"| ed:uid="[^"]*"/g, '').slice(0, 4000) });
+    group.unknown.push({ name: c.localName, rel: rel ? `${rel}/${c.localName}` : c.localName, xml: new XMLSerializer().serializeToString(c).replace(/ xmlns:ed="[^"]*"| ed:uid="[^"]*"/g, '').slice(0, 4000) });
   }
   return group;
 }
@@ -529,7 +529,7 @@ function emptyGroup(rel: string, label: string, result: boolean): GroupView {
 
 function groupLabel(name: string, def: ElementDef | null): string {
   if (name === 'donnee_entree') return 'Données saisies';
-  if (name === 'donnee_intermediaire') return 'Valeurs intermédiaires (fichier source)';
+  if (name === 'donnee_intermediaire') return 'Valeurs intermédiaires calculées';
   return fieldMeta(name, def).label;
 }
 

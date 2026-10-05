@@ -38,17 +38,20 @@ interface Todo {
 
       <div class="dash">
         <section class="card perf">
-          <h2>Performance <span class="muted small">résultats du fichier source</span></h2>
+          <div class="card-head">
+            <h2>Performance <span class="muted small">{{ svc.origineResultats() }}</span></h2>
+            <button class="small" [class.primary]="d.meta.resultatsObsoletes || !perf()" (click)="svc.calculer()" [disabled]="svc.calculEnCours()">{{ svc.calculEnCours() ? 'Calcul…' : 'Calculer' }}</button>
+          </div>
           @if (perf(); as p) {
             <div class="perf-scales">
               <div><h4>Énergie</h4><app-etiquette [classe]="p.e" [value]="p.ep" [stale]="d.meta.resultatsObsoletes" /></div>
               <div><h4>Climat</h4><app-etiquette type="climat" [classe]="p.c" [value]="p.ges" [stale]="d.meta.resultatsObsoletes" /></div>
             </div>
             <p class="small">Coût estimé : <strong>{{ p.cout }} €/an</strong>
-              @if (d.meta.resultatsObsoletes) { · <span class="warn-text">à recalculer</span> }
+              @if (d.meta.resultatsObsoletes) { · <a href="" class="warn-text" (click)="$event.preventDefault(); svc.calculer()">à recalculer</a> }
               · <a href="" (click)="$event.preventDefault(); nav.go('resultats', 'bilan')">voir le bilan</a></p>
           } @else {
-            <p class="muted">Aucun résultat dans le fichier (aucun moteur de calcul connecté).</p>
+            <p class="muted">Aucun résultat pour l'instant : lancez le calcul une fois les données saisies.</p>
           }
         </section>
 
