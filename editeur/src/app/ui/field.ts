@@ -42,7 +42,7 @@ import { displayRounded } from '../core/edition/value-codec';
           @switch (f.input) {
             @case ('reference') {
               <select [id]="id" (change)="onRef($any($event.target).value)" (blur)="stop()" (keydown.escape)="editing.set(false)">
-                <option value="" [selected]="!f.ref?.targets?.length">{{ f.state === 'valeur' ? '— dissocier —' : '— aucun —' }}</option>
+                <option value="" [selected]="!f.ref?.targets?.length">—</option>
                 @if (f.state === 'valeur' && !f.ref?.targets?.length) { <option value="__keep" selected>« {{ f.raw }} » (non résolu, conservé)</option> }
                 @for (c of f.ref?.candidates ?? []; track c.uid) { <option [value]="c.uid" [selected]="isTarget(c.uid)">{{ c.label }}</option> }
               </select>
@@ -57,22 +57,11 @@ import { displayRounded } from '../core/edition/value-codec';
           }
           <ng-template #sel>
             <select [id]="id" (change)="commit($any($event.target).value, $event); editing.set(false)" (blur)="stop()" (keydown.escape)="editing.set(false)">
-              @if (f.state !== 'valeur') { <option value="" selected>— choisir —</option> }
+              <option value="" [selected]="f.state !== 'valeur'">—</option>
               @if (f.unknownCode) { <option [value]="f.raw" selected>Code inconnu « {{ f.raw }} » (conservé)</option> }
               @for (o of f.options; track o.code) { <option [value]="o.code" [selected]="o.code === f.raw">{{ svc.advanced() ? o.code + ' — ' : '' }}{{ o.label }}</option> }
             </select>
           </ng-template>
-          @if (f.state === 'valeur' || f.nillable) {
-            <div class="state-menu">
-              <button type="button" class="link small" (mousedown)="$event.preventDefault()" (click)="menu.set(!menu())" title="Effacer…">⋯</button>
-              @if (menu()) {
-                <div class="menu">
-                  <button type="button" (mousedown)="$event.preventDefault()" (click)="state('absent')" [disabled]="f.state === 'absent'">Effacer la valeur</button>
-                  @if (f.nillable) { <button type="button" (mousedown)="$event.preventDefault()" (click)="state('nil')" [disabled]="f.state === 'nil'">Déclarer nul (xsi:nil)</button> }
-                </div>
-              }
-            </div>
-          }
         </div>
         @if (f.help) { <p class="help">{{ f.help }}</p> }
       }
@@ -92,7 +81,6 @@ export class FieldComponent {
   protected readonly svc = inject(DossierService);
   private readonly nav = inject(NavService);
   private readonly host = inject(ElementRef<HTMLElement>);
-  protected readonly menu = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly highlight = signal(false);
   protected readonly editing = signal(false);
@@ -141,7 +129,6 @@ export class FieldComponent {
     setTimeout(() => {
       if (!this.host.nativeElement.contains(document.activeElement)) {
         this.editing.set(false);
-        this.menu.set(false);
       }
     }, 120);
   }
@@ -172,10 +159,9 @@ export class FieldComponent {
   protected commit(value: string, event: Event): void {
     const f = this.field();
     this.error.set(null);
-    if (value === '' && f.state !== 'valeur') return;
-    if (value === '') {
-      this.error.set('Pour retirer la valeur, utilisez ⋯ « Effacer la valeur ».');
-      (event.target as HTMLInputElement).value = f.display;
+    if (value.trim() === '') {
+      // champ vidé ou « — » choisi : la valeur est retirée (aucune balise à l'export)
+      if (f.state !== 'absent') this.svc.run((d) => setFieldState(d, this.uid(), f.rel, 'absent'));
       return;
     }
     if (value === f.raw || (value === f.display && f.state === 'valeur')) return;
@@ -188,14 +174,8 @@ export class FieldComponent {
   protected onRef(value: string): void {
     if (value === '__keep') return;
     const f = this.field();
-    if (value === '' && f.state === 'valeur' && !confirm(`Dissocier « ${f.label} » ? La référence sera retirée.`)) return;
     this.svc.run((d) => setReference(d, this.uid(), f.ref!.key, value || null));
     this.editing.set(false);
   }
 
-  protected state(s: 'absent' | 'nil'): void {
-    this.menu.set(false);
-    this.editing.set(false);
-    this.svc.run((d) => setFieldState(d, this.uid(), this.field().rel, s));
-  }
 }

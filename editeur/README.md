@@ -83,15 +83,17 @@ ressource réseau, 20 Mo et 64 niveaux maximum.
 
 ## Interface
 
-- **Navigation** : une barre latérale unique (Dossier, Bâtiment, Enveloppe,
-  Équipements, Résultats, Travaux, Contrôles). Les compteurs ne s'affichent que
-  s'il y a quelque chose à faire ; les sections vides sont repliées.
+- **Navigation** : une barre latérale unique, groupes repliables avec icône
+  (Dossier, Bâtiment, Enveloppe, Équipements, Résultats, Travaux, Contrôles).
+  Le groupe courant est déplié ; chaque groupe affiche le total de ses erreurs
+  et avertissements. Les sections vides sont repliées.
 - **Synthèse** : chiffres clés, étiquettes A→G, surfaces de l'enveloppe et
   vitrages par orientation, équipements, liste « À faire ».
 - **Sections** : liste compacte à gauche (nom et valeurs clés), fiche de
   l'objet sélectionné à droite, ouverte d'emblée.
 - **Fiches** : valeurs en lecture, modifiables au clic (Entrée valide, Échap
-  annule). Les champs sont rangés par thème (Situation, Dimensions,
+  annule). Pour effacer une valeur : choisir « — » dans une liste, ou vider le
+  champ texte ; la balise disparaît alors du XML exporté. Les champs sont rangés par thème (Situation, Dimensions,
   Composition, Isolation et performance, Système). Les champs facultatifs
   vides, les détails techniques (référence, lignes de table forfaitaire…) et
   les valeurs calculées du fichier source sont repliés. Le nom de l'objet se

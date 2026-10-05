@@ -7,6 +7,7 @@ import { SyntheseComponent } from './synthese';
 import { TabViewComponent } from './tab-view';
 import { ControlesComponent } from './controles';
 import { frDate } from './labels';
+import { IconComponent } from './icon';
 
 /**
  * Cadre du dossier : en-tête compact, navigation latérale unique (groupes et
@@ -15,7 +16,7 @@ import { frDate } from './labels';
  */
 @Component({
   selector: 'app-dossier-shell',
-  imports: [FormsModule, SyntheseComponent, TabViewComponent, ControlesComponent],
+  imports: [FormsModule, SyntheseComponent, TabViewComponent, ControlesComponent, IconComponent],
   template: `
     @let d = svc.dossier()!;
     <header class="topbar">
@@ -67,28 +68,40 @@ import { frDate } from './labels';
 
     <div class="app-body">
       <nav class="sidebar">
-        <button class="nav-item top" [class.active]="nav.state().tab === 'synthese'" (click)="nav.go('synthese')">Synthèse</button>
+        <button class="nav-item top" [class.active]="nav.state().tab === 'synthese'" (click)="nav.go('synthese')">
+          <app-icon name="synthese" /><span class="nav-label">Synthèse</span>
+        </button>
         @for (t of groups(); track t.def.key) {
-          <div class="nav-group">
-            <div class="nav-group-title">{{ t.def.label }}
-              @if (t.errors) { <span class="dot err">{{ t.errors }}</span> } @else if (t.missing) { <span class="dot miss">{{ t.missing }}</span> }
-            </div>
-            @for (s of t.sections; track s.def.key) {
-              @if (!isDim(s) || isActive(t, s) || expanded().has(t.def.key)) {
-              <button class="nav-item" [class.active]="isActive(t, s)" [class.dim]="isDim(s)" (click)="open(t, s)" [title]="s.note ?? ''">
-                <span class="nav-label">{{ s.def.label }}</span>
-                @if (s.def.kind && s.count) { <span class="count">{{ s.count }}</span> }
-                @if (s.errors) { <span class="dot err" [title]="s.errors + ' erreur(s)'">{{ s.errors }}</span> }
-                @else if (s.missing) { <span class="dot miss" [title]="s.missing + ' à compléter'">{{ s.missing }}</span> }
-              </button>
-              }
-            }
-            @if (dimCount(t) > 0) {
-              <button class="nav-more" (click)="toggle(t.def.key)">{{ expanded().has(t.def.key) ? '− masquer les sections vides' : '+ ' + dimCount(t) + ' section(s) vide(s)' }}</button>
+          <div class="nav-group" [class.open]="isOpen(t)">
+            <button class="nav-group-head" [class.current]="nav.state().tab === t.def.key" (click)="toggleGroup(t)" [attr.aria-expanded]="isOpen(t)">
+              <app-icon name="chevron" [size]="14" class="chev" />
+              <app-icon [name]="t.def.key" />
+              <span class="nav-label">{{ t.def.label }}</span>
+              @if (t.errors) { <span class="dot err" [title]="t.errors + ' erreur(s)'">{{ t.errors }}</span> }
+              @if (alerts(t)) { <span class="dot miss" [title]="alerts(t) + ' avertissement(s) ou information(s) à compléter'">{{ alerts(t) }}</span> }
+            </button>
+            @if (isOpen(t)) {
+              <div class="nav-sections">
+                @for (s of t.sections; track s.def.key) {
+                  @if (!isDim(s) || isActive(t, s) || expanded().has(t.def.key)) {
+                    <button class="nav-item" [class.active]="isActive(t, s)" [class.dim]="isDim(s)" (click)="open(t, s)" [title]="s.note ?? ''">
+                      <span class="nav-label">{{ s.def.label }}</span>
+                      @if (s.def.kind && s.count) { <span class="count">{{ s.count }}</span> }
+                      @if (s.errors) { <span class="dot err" [title]="s.errors + ' erreur(s)'">{{ s.errors }}</span> }
+                      @else if (s.missing + s.warnings) { <span class="dot miss" [title]="(s.missing + s.warnings) + ' avertissement(s)'">{{ s.missing + s.warnings }}</span> }
+                    </button>
+                  }
+                }
+                @if (dimCount(t) > 0) {
+                  <button class="nav-more" (click)="toggle(t.def.key)">{{ expanded().has(t.def.key) ? '− masquer les sections vides' : '+ ' + dimCount(t) + ' section(s) vide(s)' }}</button>
+                }
+              </div>
             }
           </div>
         }
-        <button class="nav-item top" [class.active]="nav.state().tab === 'controles'" (click)="nav.go('controles')">Contrôles et export</button>
+        <button class="nav-item top" [class.active]="nav.state().tab === 'controles'" (click)="nav.go('controles')">
+          <app-icon name="controles" /><span class="nav-label">Contrôles et export</span>
+        </button>
       </nav>
 
       <main class="content">
@@ -122,6 +135,30 @@ export class DossierShellComponent {
   }
 
   protected readonly expanded = signal(new Set<string>());
+  /** groupes dépliés : le groupe courant l'est d'office, les autres à la demande */
+  private readonly openGroups = signal(new Set<string>());
+  private readonly closedGroups = signal(new Set<string>());
+
+  protected isOpen(t: TabView): boolean {
+    const key = t.def.key;
+    if (this.closedGroups().has(key)) return false;
+    return this.openGroups().has(key) || this.nav.state().tab === key;
+  }
+
+  protected toggleGroup(t: TabView): void {
+    const key = t.def.key;
+    const open = this.isOpen(t);
+    const o = new Set(this.openGroups());
+    const c = new Set(this.closedGroups());
+    if (open) { o.delete(key); c.add(key); } else { o.add(key); c.delete(key); }
+    this.openGroups.set(o);
+    this.closedGroups.set(c);
+  }
+
+  /** avertissements et éléments à compléter du groupe */
+  protected alerts(t: TabView): number {
+    return t.sections.reduce((n, s) => n + s.missing + s.warnings, 0);
+  }
 
   protected toggle(key: string): void {
     const next = new Set(this.expanded());
@@ -145,6 +182,9 @@ export class DossierShellComponent {
   }
 
   protected open(t: TabView, s: SectionView): void {
+    const c = new Set(this.closedGroups());
+    c.delete(t.def.key);
+    this.closedGroups.set(c);
     this.nav.go(t.def.key, s.def.key, s.def.singleton ? s.singletonUid : null);
   }
 

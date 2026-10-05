@@ -342,3 +342,17 @@ details[open] > summary { margin-bottom: .4em; }
 .iitems code { flex-basis: 100%; }
 .levels-details { margin-top: .8em; }
 .topbar button, .topbar .badge { white-space: nowrap; }
+/* barre latérale repliable */
+.nav-item.top { display: flex; gap: .55em; }
+.nav-group { margin-top: .25em; }
+.nav-group-head { display: flex; align-items: center; gap: .45em; width: 100%; border: none; background: none; text-align: left; padding: .45em .5em; border-radius: 6px; font-weight: 600; color: var(--text); }
+.nav-group-head:hover { background: var(--surface-2); }
+.nav-group-head.current { color: var(--accent); }
+.nav-group-head .chev { color: var(--muted); transition: transform .15s; }
+.nav-group.open .nav-group-head .chev { transform: rotate(90deg); }
+.nav-group-head .dot { margin-left: .1em; }
+.nav-sections { padding: 0 0 .4em 1.85em; }
+.nav-sections .nav-item { padding: .3em .5em; font-size: .95em; }
+.nav-sections .nav-more { padding-left: .5em; }
+.sidebar app-icon { color: var(--muted); }
+.nav-group-head.current app-icon:not(.chev), .nav-item.active app-icon { color: var(--accent); }
