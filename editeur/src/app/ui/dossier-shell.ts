@@ -9,6 +9,8 @@ import { ControlesComponent } from './controles';
 import { frDate } from './labels';
 import { KIND_BY_KEY } from '../core/metier/catalog';
 import { IconComponent } from './icon';
+import { LogementsComponent } from './logements';
+import { contexteImmeuble } from '../core/immeuble/logements';
 
 /**
  * Cadre du dossier : en-tête compact, navigation latérale unique (groupes et
@@ -17,7 +19,7 @@ import { IconComponent } from './icon';
  */
 @Component({
   selector: 'app-dossier-shell',
-  imports: [FormsModule, SyntheseComponent, TabViewComponent, ControlesComponent, IconComponent],
+  imports: [FormsModule, SyntheseComponent, TabViewComponent, ControlesComponent, IconComponent, LogementsComponent],
   template: `
     @let d = svc.dossier()!;
     <header class="topbar">
@@ -74,6 +76,12 @@ import { IconComponent } from './icon';
         <button class="nav-item top" [class.active]="nav.state().tab === 'synthese'" (click)="nav.go('synthese')">
           <app-icon name="synthese" /><span class="nav-label">Synthèse</span>
         </button>
+        @if (immeuble()) {
+          <button class="nav-item top" [class.active]="nav.state().tab === 'logements'" (click)="nav.go('logements')" title="Générer les DPE des appartements à partir du DPE immeuble">
+            <app-icon name="logements" /><span class="nav-label">DPE des logements</span>
+            @if (logementsCount()) { <span class="muted small">{{ logementsCount() }}</span> }
+          </button>
+        }
         @for (t of groups(); track t.def.key) {
           <div class="nav-group" [class.open]="isOpen(t)">
             <button class="nav-group-head" [class.current]="nav.state().tab === t.def.key" (click)="toggleGroup(t)" [attr.aria-expanded]="isOpen(t)">
@@ -110,6 +118,7 @@ import { IconComponent } from './icon';
         @switch (nav.state().tab) {
           @case ('synthese') { <app-synthese /> }
           @case ('controles') { <app-controles /> }
+          @case ('logements') { @if (immeuble()) { <app-logements /> } @else { <app-synthese /> } }
           @default { <app-tab-view [tab]="$any(nav.state().tab)" /> }
         }
       </main>
@@ -119,12 +128,12 @@ import { IconComponent } from './icon';
       <div class="modal-backdrop" (click)="svc.demandeConsentement.set(null)">
         <div class="modal narrow" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
           <h2>Envoyer le dossier au service Pandopia ?</h2>
-          <p>Le XML de travail est envoyé à <strong>{{ svc.moteur.destination }}</strong> pour {{ svc.demandeConsentement() === 'pdf' ? 'produire le rapport PDF du diagnostic' : 'calculer consommations, émissions, coûts et étiquettes' }}. Le même accord vaut pour le calcul et le rapport PDF.</p>
+          <p>Le XML de travail est envoyé à <strong>{{ svc.moteur.destination }}</strong> pour {{ svc.demandeConsentement() === 'pdf' ? 'produire le rapport PDF du diagnostic' : svc.demandeConsentement() === 'logements' ? 'générer les DPE des logements (avec la liste des logements et leurs liaisons aux parois)' : 'calculer consommations, émissions, coûts et étiquettes' }}. Le même accord vaut pour le calcul et le rapport PDF.</p>
           <p class="muted small">Il contient toutes les données du dossier, y compris adresses et identités si elles sont renseignées. Pour un calcul, seuls les résultats reçus sont repris, et seulement si les données d'entrée revenues sont identiques à celles envoyées ; l'opération s'annule par Ctrl+Z.</p>
           <label class="check"><input type="checkbox" #mem checked /> Ne plus demander sur ce poste</label>
           <div class="modal-actions">
             <button (click)="svc.demandeConsentement.set(null)">Annuler</button>
-            <button class="primary" (click)="svc.accepterEnvoi(mem.checked)">{{ svc.demandeConsentement() === 'pdf' ? 'Envoyer et produire le PDF' : 'Envoyer et calculer' }}</button>
+            <button class="primary" (click)="svc.accepterEnvoi(mem.checked)">{{ svc.demandeConsentement() === 'pdf' ? 'Envoyer et produire le PDF' : svc.demandeConsentement() === 'logements' ? 'Envoyer' : 'Envoyer et calculer' }}</button>
           </div>
         </div>
       </div>
@@ -158,6 +167,16 @@ export class DossierShellComponent {
   protected readonly menu = signal(false);
   protected readonly query = signal('');
 
+  /** DPE immeuble : accès à la génération des DPE logements (§17.2.2) */
+  protected readonly immeuble = computed(() => {
+    this.svc.revision();
+    const d = this.svc.dossier();
+    return !!d && d.format.famille === 'dpe_logement_existant' && contexteImmeuble(d.working).estImmeuble;
+  });
+  protected readonly logementsCount = computed(() => {
+    this.svc.revision();
+    return this.svc.dossier()?.immeuble().logements.length ?? 0;
+  });
   protected readonly groups = computed(() => (this.svc.model()?.tabs ?? []).filter((t) => t.sections.length));
   protected readonly results = computed<ObjectView[]>(() => {
     const q = this.query().trim().toLowerCase();

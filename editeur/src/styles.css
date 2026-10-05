@@ -383,3 +383,28 @@ details[open] > summary { margin-bottom: .4em; }
 .unknown-row { display: flex; gap: .8em; align-items: center; margin-top: .25em; }
 .calc-actions { display: flex; gap: .4em; }
 .unknown-bar { background: var(--warn-soft); border-radius: 6px; padding: .45em .7em; display: flex; justify-content: space-between; align-items: center; gap: 1em; }
+
+/* DPE des logements (§17.2.2) */
+.logements { display: flex; flex-direction: column; gap: 1em; max-width: 1200px; }
+.logements .repartition { margin-top: .6em; display: flex; flex-direction: column; gap: .3em; }
+.logements label.inline { display: inline-flex; align-items: center; gap: .4em; margin: .2em 1.2em .2em 0; }
+.logements .sub-tabs { display: flex; gap: .4em; }
+.logements .num-input { width: 7em; font: inherit; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: .3em .4em; text-align: right; }
+.logements .lgt-table input[type=text], .logements .lgt-table select { padding: .2em .35em; }
+.logements .lgt-table tr.has-error td:first-child { box-shadow: inset 3px 0 0 var(--err); }
+.logements .lgt-table tfoot td { border-bottom: none; font-weight: 600; }
+.logements .row-immeuble td { background: var(--surface-2); }
+.logements .num { text-align: right; }
+.logements .nowrap { white-space: nowrap; }
+.logements .w1 { width: 1%; }
+.logements .split { grid-template-columns: minmax(260px, 32%) 1fr; }
+.logements .split .obj-list { max-height: 70vh; overflow: auto; margin: 0; }
+.logements .compact-issues { margin: 0; padding: .5em 1em .5em 1.6em; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: .9em; }
+.logements .compact-issues li.g-erreur { color: var(--err); }
+.logements .compact-issues li.g-avertissement { color: var(--warn); }
+.logements .compact-issues li.g-info { color: var(--muted); }
+.classe { display: inline-block; min-width: 1.6em; text-align: center; font-weight: 700; color: #fff; border-radius: 4px; padding: 0 .3em; background: var(--muted); }
+.classe[data-c=A] { background: #009c6d; } .classe[data-c=B] { background: #52b153; } .classe[data-c=C] { background: #a5cc74; }
+.classe[data-c=D] { background: #e8d300; color: #3d3600; } .classe[data-c=E] { background: #f0b40f; } .classe[data-c=F] { background: #eb8235; } .classe[data-c=G] { background: #d7221f; }
+.classe.climat[data-c=A] { background: #f6edfd; color: #6b5c84; } .classe.climat[data-c=B] { background: #e4c7fb; color: #4b3b63; } .classe.climat[data-c=C] { background: #d5aaf6; }
+.classe.climat[data-c=D] { background: #c793f2; color: #fff; } .classe.climat[data-c=E] { background: #b071ea; } .classe.climat[data-c=F] { background: #8b4fcb; } .classe.climat[data-c=G] { background: #682aa6; }

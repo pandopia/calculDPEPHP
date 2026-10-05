@@ -4,6 +4,7 @@ import { parseXml } from '../xml/safe-xml';
 import { serialize } from '../xml/serializer';
 import { prunableElements } from '../xml/prune';
 import { annotate, maxUid, uidIndex, UidCounter } from '../xml/uid';
+import { ConfigImmeuble, configVide, ResultatsLogements } from '../immeuble/logements';
 
 /**
  * Dossier de travail.
@@ -28,6 +29,8 @@ export interface DossierMeta {
   motifsObsolescence: string[];
   /** dernier calcul intégré (absent : résultats du fichier source) */
   calcul?: { moteur: string; date: string };
+  /** DPE immeuble : logements et liaisons aux parois (§17.2.2), hors XML ADEME */
+  immeuble?: ConfigImmeuble;
 }
 
 export interface DraftData {
@@ -38,6 +41,8 @@ export interface DraftData {
   baseline: string;
   working: string;
   counter: number;
+  /** derniers DPE logements calculés (hors historique d'annulation) */
+  resultatsLogements?: ResultatsLogements | null;
 }
 
 interface Snapshot {
@@ -57,6 +62,8 @@ export class Dossier {
   private baselineIndex: Map<string, Element> | null = null;
   private prunableCache: { revision: number; doc: Document; set: Set<Element> } | null = null;
   private redoStack: Snapshot[] = [];
+  /** derniers DPE logements calculés : un résultat, pas une saisie, donc hors annulation */
+  resultatsLogements: ResultatsLogements | null = null;
 
   private constructor(
     public meta: DossierMeta,
@@ -110,7 +117,9 @@ export class Dossier {
     const working = parseXml(draft.working);
     const counter = new UidCounter(Math.max(draft.counter, maxUid(working), maxUid(baseline)));
     const { info, schema } = await detectFormat(working, schemas);
-    return new Dossier(draft.meta, info, schema, draft.original, baseline, working, counter);
+    const d = new Dossier(draft.meta, info, schema, draft.original, baseline, working, counter);
+    d.resultatsLogements = draft.resultatsLogements ?? null;
+    return d;
   }
 
   toDraft(): DraftData {
@@ -122,7 +131,28 @@ export class Dossier {
       baseline: serialize(this.baseline, { keepUids: true }).text,
       working: serialize(this.working, { keepUids: true }).text,
       counter: this.counter.value,
+      ...(this.resultatsLogements ? { resultatsLogements: this.resultatsLogements } : {}),
     };
+  }
+
+  /** Logements du DPE immeuble (configuration vide si absente). */
+  immeuble(): ConfigImmeuble {
+    return this.meta.immeuble ?? configVide();
+  }
+
+  /** Modifie les logements ou leurs liaisons, avec point d'annulation (n'affecte pas le calcul de l'immeuble). */
+  modifierImmeuble<T>(label: string, fn: (cfg: ConfigImmeuble) => T): T {
+    return this.transact(label, () => {
+      const cfg = structuredClone(this.immeuble());
+      const result = fn(cfg);
+      this.meta.immeuble = cfg;
+      return { result, affectsResults: [] };
+    });
+  }
+
+  setResultatsLogements(r: ResultatsLogements | null): void {
+    this.resultatsLogements = r;
+    this.touch();
   }
 
   /**
