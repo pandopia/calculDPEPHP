@@ -4,7 +4,7 @@ import { NavService } from '../services/nav.service';
 import { KIND_BY_KEY, KindDef, REFS } from '../core/metier/catalog';
 import { FicheView, FieldView, GroupView } from '../core/metier/model';
 import { isTechnical, themeOf, THEMES } from '../core/metier/field-themes';
-import { addGenericItem, addObject, removeGenericItem, setAttribute } from '../core/edition/editor';
+import { addGenericItem, addObject, removeGenericItem, removeUnknown, setAttribute } from '../core/edition/editor';
 import { FieldComponent } from './field';
 import { DeleteDialogComponent } from './delete-dialog';
 import { DuplicateDialogComponent } from './duplicate-dialog';
@@ -93,9 +93,14 @@ function essential(f: FieldView): boolean {
         }
         @if (g.unknown.length) {
           <div class="unknown">
-            <strong>Données hors schéma, conservées à l'export :</strong>
-            @for (u of g.unknown; track u.name) { <code>{{ u.name }}</code> }
-            @if (svc.advanced()) { @for (u of g.unknown; track u.name) { <pre>{{ u.xml }}</pre> } }
+            <strong>Balises hors schéma</strong> <span class="muted small">— conservées à l'export, mais refusées par la validation XSD</span>
+            @for (u of g.unknown; track u.name) {
+              <div class="unknown-row">
+                <code>{{ u.name }}</code>
+                @if (u.rel && editable()) { <button class="link small danger" (click)="removeUnknown(u.rel)">Retirer</button> }
+              </div>
+              @if (svc.advanced()) { <pre>{{ u.xml }}</pre> }
+            }
           </div>
         }
       </section>
@@ -135,6 +140,10 @@ export class GroupComponent {
 
   protected valued(g: GroupView): FieldView[] {
     return g.fields.filter((f) => f.state === 'valeur' && !/_depensier$/.test(f.name));
+  }
+
+  protected removeUnknown(rel: string): void {
+    this.svc.run((d) => removeUnknown(d, this.uid(), rel), 'Balise retirée (annulable par Ctrl+Z).');
   }
 
   protected addItem(rel: string): void {

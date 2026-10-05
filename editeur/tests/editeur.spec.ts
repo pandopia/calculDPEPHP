@@ -481,3 +481,42 @@ describe('dossier vierge : objets par défaut', () => {
     expect(model.tabs.flatMap((t) => t.sections).find((s) => s.def.key === 'ventilations')!.status).not.toBe('vide');
   });
 });
+
+describe('balises hors schéma', () => {
+  it('se retirent une à une ou toutes, sans toucher au reste, et s\'annulent', async () => {
+    const { removeUnknown, removeAllUnknown, unknownElements } = await import('../src/app/core/edition/editor');
+    // ce DPE réel contient déjà des balises data_complementaires écrites par son logiciel
+    const xml = fixture(MAISON).replace('</administratif>', '<extension_logiciel>a</extension_logiciel></administratif>');
+    const d = await Dossier.fromImport(xml, 'x.xml', schemas);
+    const initial = unknownElements(d);
+    expect(initial.map((e) => e.localName)).toContain('extension_logiciel');
+    expect(initial.filter((e) => e.localName === 'data_complementaires').length).toBeGreaterThan(0);
+    const owner = buildModel(d).objects.get(nearestOwnerUid(initial.find((e) => e.localName === 'data_complementaires')!))!;
+    const fiche = buildFiche(d, buildModel(d), owner.uid)!;
+    const u = fiche.groups.flatMap((g) => [g, ...g.groups]).flatMap((g) => g.unknown).find((x) => x.name === 'data_complementaires')!;
+    removeUnknown(d, owner.uid, u.rel!);
+    expect(unknownElements(d)).toHaveLength(initial.length - 1);
+    expect(() => removeUnknown(d, owner.uid, 'donnee_entree')).toThrow(/hors schéma/);
+    expect(removeAllUnknown(d)).toBe(initial.length - 1);
+    const out = exportXml(d.working);
+    expect(out).not.toContain('data_complementaires');
+    expect(out).not.toContain('extension_logiciel');
+    // rien d'autre n'a changé : identique à l'original privé de ses balises hors schéma
+    const ref = parseXml(xml);
+    for (const t of ['data_complementaires', 'extension_logiciel']) for (const e of Array.from(ref.getElementsByTagName(t))) e.remove();
+    expect(semanticDiff(ref, parseXml(out))).toEqual([]);
+    d.undo();
+    d.undo();
+    expect(unknownElements(d)).toHaveLength(initial.length);
+  });
+});
+
+function nearestOwnerUid(el: Element): string {
+  for (let n: Element | null = el.parentElement; n; n = n.parentElement) {
+    const k = n.localName;
+    if (['generateur_ecs', 'generateur_chauffage', 'installation_ecs', 'installation_chauffage', 'ventilation', 'emetteur_chauffage', 'climatisation'].includes(k)) {
+      return n.getAttributeNS('urn:calculdpe:editeur', 'uid')!;
+    }
+  }
+  throw new Error('propriétaire introuvable');
+}

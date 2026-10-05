@@ -109,3 +109,21 @@ function prunedPath(el: Element, pruned: Set<Element>): string {
 }
 
 export { serialize };
+
+/**
+ * XML envoyé pour le rapport PDF. Si le dossier a été modifié depuis l'import,
+ * le numéro ADEME (`numero_dpe` de l'en-tête observatoire) est retiré : le
+ * rapport est alors produit « non attribué », avec la mention DOCUMENT NON
+ * OFFICIEL, au lieu de faire passer un DPE modifié pour celui enregistré sous
+ * ce numéro. Le dossier lui-même n'est pas modifié.
+ */
+export function xmlPourRapport(d: Dossier, modifie: boolean): { xml: string; numeroRetire: string | null } {
+  const xml = d.exportXml();
+  if (!modifie) return { xml, numeroRetire: null };
+  const doc = parseXml(xml);
+  const num = childElements(doc.documentElement).find((c) => c.localName === 'numero_dpe');
+  if (!num) return { xml, numeroRetire: null };
+  const numero = num.textContent?.trim() || null;
+  num.remove();
+  return { xml: serialize(doc).text, numeroRetire: numero };
+}

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Dossier } from '../src/app/core/state/dossier';
 import { integrerResultats } from '../src/app/core/calcul/integrer-resultats';
-import { MoteurPandopia } from '../src/app/core/calcul/moteur-calcul';
+import { MoteurPandopia, RapportPdfPandopia } from '../src/app/core/calcul/moteur-calcul';
 import { buildModel } from '../src/app/core/metier/model';
 import { indexedPath, parseXml } from '../src/app/core/xml/safe-xml';
 import { semanticDiff } from '../src/app/core/xml/semantic-compare';
@@ -74,5 +74,34 @@ describe('intégration du calcul', () => {
     await expect(ko.calculer('<dpe/>')).rejects.toThrow(/HTTP 422.*XML invalide/);
     const down = new MoteurPandopia('https://exemple.test/calc', 1000, (async () => { throw new TypeError('network'); }) as unknown as typeof fetch);
     await expect(down.calculer('<dpe/>')).rejects.toThrow(/injoignable/);
+  });
+});
+
+describe('rapport PDF', () => {
+  const pdf = (body: BodyInit, status = 200, type = 'application/pdf') =>
+    (async () => new Response(body, { status, headers: { 'Content-Type': type } })) as unknown as typeof fetch;
+
+  it('renvoie le PDF produit par le service', async () => {
+    const blob = await new RapportPdfPandopia('https://exemple.test/pdf', 1000, pdf('%PDF-1.7\n…')).generer('<dpe/>');
+    expect(blob.size).toBeGreaterThan(5);
+  });
+  it('relaie le message d\'erreur JSON du service', async () => {
+    const s = new RapportPdfPandopia('https://exemple.test/pdf', 1000, pdf('{"error":"balise <logement> absente : non calculable par la méthode 3CL."}', 422, 'application/json'));
+    await expect(s.generer('<dpe/>')).rejects.toThrow(/HTTP 422\) : balise <logement> absente/);
+  });
+  it('refuse une réponse qui n\'est pas un PDF', async () => {
+    await expect(new RapportPdfPandopia('https://exemple.test/pdf', 1000, pdf('<html>ok</html>', 200, 'text/html')).generer('<dpe/>')).rejects.toThrow(/pas renvoyé de PDF/);
+  });
+});
+
+describe('numéro ADEME du rapport PDF', () => {
+  it('est conservé sans modification et retiré dès que le dossier est modifié', async () => {
+    const { xmlPourRapport } = await import('../src/app/core/calcul/integrer-resultats');
+    const d = await dossier();
+    expect(xmlPourRapport(d, false).xml).toContain('<numero_dpe>2600E0083091A</numero_dpe>');
+    const r = xmlPourRapport(d, true);
+    expect(r.numeroRetire).toBe('2600E0083091A');
+    expect(r.xml).not.toContain('numero_dpe');
+    expect(d.exportXml()).toContain('<numero_dpe>2600E0083091A</numero_dpe>'); // le dossier n'est pas touché
   });
 });

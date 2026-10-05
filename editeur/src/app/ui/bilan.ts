@@ -23,7 +23,10 @@ const fmt = (n: number, d = 0) => n.toLocaleString('fr-FR', { maximumFractionDig
         <div class="calc-bar" [class.stale]="d.meta.resultatsObsoletes">
           <span>Résultats {{ svc.origineResultats() }}.
             @if (d.meta.resultatsObsoletes) { <strong class="warn-text">Des données d'entrée ont changé depuis : ils sont à recalculer.</strong> }</span>
-          <button [class.primary]="d.meta.resultatsObsoletes" (click)="svc.calculer()" [disabled]="svc.calculEnCours()">{{ svc.calculEnCours() ? 'Calcul…' : 'Recalculer' }}</button>
+          <span class="calc-actions">
+            <button [class.primary]="d.meta.resultatsObsoletes" (click)="svc.calculer()" [disabled]="svc.calculEnCours()">{{ svc.calculEnCours() ? 'Calcul…' : 'Recalculer' }}</button>
+            <button (click)="svc.rapportPdf()" [disabled]="svc.pdfEnCours()">{{ svc.pdfEnCours() ? 'PDF en cours…' : 'Rapport PDF' }}</button>
+          </span>
         </div>
         <div class="bilan-grid">
           <section class="card">

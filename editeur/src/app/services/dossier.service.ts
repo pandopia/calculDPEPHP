@@ -7,8 +7,8 @@ import { computeChanges } from '../core/edition/change-set';
 import * as ed from '../core/edition/editor';
 import { decodeXmlBytes } from '../core/xml/safe-xml';
 import { BrowserXsdEngine, runXsdValidation, XsdReport } from '../core/validation/xsd-validation';
-import { MoteurCalcul, MoteurPandopia } from '../core/calcul/moteur-calcul';
-import { integrerResultats } from '../core/calcul/integrer-resultats';
+import { MoteurCalcul, MoteurPandopia, RapportPdfPandopia } from '../core/calcul/moteur-calcul';
+import { integrerResultats, xmlPourRapport } from '../core/calcul/integrer-resultats';
 import { DraftStore } from './draft-store';
 
 const LAST_KEY = 'calculdpe-editeur:dernier-dossier';
@@ -42,7 +42,12 @@ export class DossierService {
   readonly calculEnCours = signal(false);
   /** l'utilisateur a accepté l'envoi du XML au moteur (mémorisé sur ce poste) */
   readonly consentementCalcul = signal(readConsent());
-  readonly demandeConsentement = signal(false);
+  /** action en attente de l'accord d'envoi */
+  readonly demandeConsentement = signal<'calcul' | 'pdf' | null>(null);
+  readonly rapport = new RapportPdfPandopia();
+  readonly pdfEnCours = signal(false);
+  /** confirmation avant PDF : résultats absents ou pas à jour, numéro ADEME d'un dossier modifié */
+  readonly pdfConfirmation = signal<{ sansResultats: boolean; obsoletes: boolean } | null>(null);
   private readonly xsdEngine = new BrowserXsdEngine();
 
   readonly dossier = signal<Dossier | null>(null);
@@ -242,12 +247,12 @@ export class DossierService {
   }
 
   /** Lance le calcul ; demande d'abord l'accord d'envoi si besoin. */
-  async calculer(): Promise<void> {
+  async calculer(): Promise<boolean> {
     const d = this.dossier();
-    if (!d || this.calculEnCours()) return;
+    if (!d || this.calculEnCours()) return false;
     if (!this.consentementCalcul()) {
-      this.demandeConsentement.set(true);
-      return;
+      this.demandeConsentement.set('calcul');
+      return false;
     }
     this.calculEnCours.set(true);
     try {
@@ -259,15 +264,60 @@ export class DossierService {
         ? ` Étiquettes : énergie ${r.avant.energie ?? '—'} → ${r.apres.energie ?? '—'}, climat ${r.avant.climat ?? '—'} → ${r.apres.climat ?? '—'}.`
         : ` Étiquettes inchangées (${r.apres.energie ?? '—'} / ${r.apres.climat ?? '—'}).`;
       this.toast('succes', `Calcul terminé.${etiq}`);
+      return true;
     } catch (e) {
       this.toast('erreur', e instanceof Error ? e.message : String(e));
+      return false;
     } finally {
       this.calculEnCours.set(false);
     }
   }
 
+  /** Rapport PDF du diagnostic ; confirme d'abord si les résultats ne sont pas à jour. */
+  rapportPdf(): void {
+    const d = this.dossier();
+    if (!d || this.pdfEnCours()) return;
+    if (!this.consentementCalcul()) {
+      this.demandeConsentement.set('pdf');
+      return;
+    }
+    const sansResultats = !d.working.getElementsByTagName('sortie').length;
+    if (sansResultats || d.meta.resultatsObsoletes) {
+      this.pdfConfirmation.set({ sansResultats, obsoletes: d.meta.resultatsObsoletes });
+      return;
+    }
+    void this.genererPdf(false);
+  }
+
+  async genererPdf(calculerAvant: boolean): Promise<void> {
+    this.pdfConfirmation.set(null);
+    const d = this.dossier();
+    if (!d) return;
+    if (calculerAvant && !(await this.calculer())) return;
+    this.pdfEnCours.set(true);
+    try {
+      // dossier modifié depuis l'import : rapport sans numéro ADEME (« non attribué », DOCUMENT NON OFFICIEL)
+      const { xml, numeroRetire } = xmlPourRapport(d, this.changes().length > 0);
+      const blob = await this.rapport.generer(xml);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${this.baseName()}-diagnostic.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      this.toast('succes', numeroRetire
+        ? `Rapport PDF téléchargé, sans le numéro ADEME ${numeroRetire} : le dossier a été modifié depuis l'import (mention « document non officiel »).`
+        : 'Rapport PDF téléchargé.');
+    } catch (e) {
+      this.toast('erreur', e instanceof Error ? e.message : String(e));
+    } finally {
+      this.pdfEnCours.set(false);
+    }
+  }
+
   accepterEnvoi(memoriser: boolean): void {
-    this.demandeConsentement.set(false);
+    const action = this.demandeConsentement();
+    this.demandeConsentement.set(null);
     this.consentementCalcul.set(true);
     if (memoriser) {
       try {
@@ -276,7 +326,8 @@ export class DossierService {
         /* commodité seulement */
       }
     }
-    void this.calculer();
+    if (action === 'pdf') this.rapportPdf();
+    else void this.calculer();
   }
 
   /** « résultats du fichier source » ou « calculés par … le … » */

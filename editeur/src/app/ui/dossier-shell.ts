@@ -59,6 +59,7 @@ import { IconComponent } from './icon';
             <div class="menu right" (mouseleave)="menu.set(false)">
               <label class="menu-check"><input type="checkbox" [ngModel]="svc.advanced()" (ngModelChange)="svc.advanced.set($event)" /> Mode avancé (chemins XML, codes)</label>
               @if (d.original) { <button (click)="menu.set(false); svc.download(d.original, d.meta.nomFichier ?? 'original.xml', 'application/xml')">Télécharger le fichier d'origine</button> }
+              <button (click)="menu.set(false); svc.rapportPdf()">Rapport PDF du diagnostic</button>
               <button (click)="menu.set(false); downloadDraft()">Télécharger le brouillon</button>
               <button (click)="menu.set(false); editingName.set(true)">Renommer le dossier</button>
             </div>
@@ -115,15 +116,34 @@ import { IconComponent } from './icon';
     </div>
 
     @if (svc.demandeConsentement()) {
-      <div class="modal-backdrop" (click)="svc.demandeConsentement.set(false)">
+      <div class="modal-backdrop" (click)="svc.demandeConsentement.set(null)">
         <div class="modal narrow" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
-          <h2>Envoyer le dossier au moteur de calcul ?</h2>
-          <p>Le XML de travail est envoyé à <strong>{{ svc.moteur.destination }}</strong> ({{ svc.moteur.nom }}) pour calculer consommations, émissions, coûts et étiquettes.</p>
-          <p class="muted small">Il contient toutes les données du dossier, y compris adresses et identités si elles sont renseignées. Seuls les résultats reçus sont repris dans le dossier, et seulement si les données d'entrée revenues sont identiques à celles envoyées ; l'opération s'annule par Ctrl+Z.</p>
+          <h2>Envoyer le dossier au service Pandopia ?</h2>
+          <p>Le XML de travail est envoyé à <strong>{{ svc.moteur.destination }}</strong> pour {{ svc.demandeConsentement() === 'pdf' ? 'produire le rapport PDF du diagnostic' : 'calculer consommations, émissions, coûts et étiquettes' }}. Le même accord vaut pour le calcul et le rapport PDF.</p>
+          <p class="muted small">Il contient toutes les données du dossier, y compris adresses et identités si elles sont renseignées. Pour un calcul, seuls les résultats reçus sont repris, et seulement si les données d'entrée revenues sont identiques à celles envoyées ; l'opération s'annule par Ctrl+Z.</p>
           <label class="check"><input type="checkbox" #mem checked /> Ne plus demander sur ce poste</label>
           <div class="modal-actions">
-            <button (click)="svc.demandeConsentement.set(false)">Annuler</button>
-            <button class="primary" (click)="svc.accepterEnvoi(mem.checked)">Envoyer et calculer</button>
+            <button (click)="svc.demandeConsentement.set(null)">Annuler</button>
+            <button class="primary" (click)="svc.accepterEnvoi(mem.checked)">{{ svc.demandeConsentement() === 'pdf' ? 'Envoyer et produire le PDF' : 'Envoyer et calculer' }}</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (svc.pdfConfirmation(); as c) {
+      <div class="modal-backdrop" (click)="svc.pdfConfirmation.set(null)">
+        <div class="modal narrow" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+          <h2>Rapport PDF du diagnostic</h2>
+          @if (c.sansResultats) { <p>Le dossier n'a pas encore de résultats : le calcul est nécessaire avant de produire le rapport.</p> }
+          @else if (c.obsoletes) { <p class="warn-box small">Les résultats ne sont pas à jour des dernières modifications : le rapport afficherait des consommations et étiquettes périmées.</p> }
+          @if (d.format.numeroDpe && svc.changes().length) {
+            <p class="muted small">Le dossier ayant été modifié depuis l'import, le rapport sera produit sans le numéro ADEME {{ d.format.numeroDpe }} (mention « document non officiel »).</p>
+          }
+          <div class="modal-actions">
+            <button (click)="svc.pdfConfirmation.set(null)">Annuler</button>
+            @if (!c.sansResultats && c.obsoletes) { <button (click)="svc.genererPdf(false)">Produire avec les résultats actuels</button> }
+            @if (c.sansResultats || c.obsoletes) { <button class="primary" (click)="svc.genererPdf(true)">Calculer puis produire le PDF</button> }
+            @else { <button class="primary" (click)="svc.genererPdf(false)">Produire le PDF</button> }
           </div>
         </div>
       </div>

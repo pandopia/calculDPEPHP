@@ -447,3 +447,44 @@ export function setAttribute(d: Dossier, uid: string, name: string, value: strin
     return { result: undefined, affectsResults: [] };
   });
 }
+
+/** Éléments hors schéma (hors en-tête observatoire et contenus libres xs:any). */
+export function unknownElements(d: Dossier): Element[] {
+  const out: Element[] = [];
+  if (!d.schema) return out;
+  const walk = (el: Element) => {
+    for (let c = el.firstElementChild; c; c = c.nextElementSibling) {
+      if (c.parentElement === d.working.documentElement && (c.localName === 'numero_dpe' || c.localName === 'statut')) continue;
+      const def = d.schema!.defFor(c);
+      if (!def) {
+        if (!d.schema!.defFor(el)?.allowsAny) out.push(c);
+        continue;
+      }
+      if (def.kind === 'complex') walk(c);
+    }
+  };
+  walk(d.working.documentElement);
+  return out;
+}
+
+/** Retire une balise hors schéma (chemin relatif à l'objet propriétaire). */
+export function removeUnknown(d: Dossier, ownerUid: string, rel: string): void {
+  const owner = findObj(d, ownerUid);
+  const el = resolvePath(owner, rel);
+  if (!el) throw new EditError('Balise introuvable.');
+  if (!unknownElements(d).includes(el)) throw new EditError('Seules les balises hors schéma se retirent ici.');
+  d.transact(`Retirer la balise hors schéma ${el.localName}`, () => {
+    el.remove();
+    return { result: undefined, affectsResults: [] };
+  });
+}
+
+/** Retire toutes les balises hors schéma du dossier ; retourne leur nombre. */
+export function removeAllUnknown(d: Dossier): number {
+  const list = unknownElements(d);
+  if (!list.length) return 0;
+  return d.transact(`Retirer ${list.length} balise(s) hors schéma`, () => {
+    list.forEach((el) => el.remove());
+    return { result: list.length, affectsResults: [] };
+  });
+}

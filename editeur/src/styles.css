@@ -380,3 +380,6 @@ details[open] > summary { margin-bottom: .4em; }
 .field.blank input, .field.blank select { background: var(--surface-2); border-color: var(--border); }
 .field.blank input:focus, .field.blank select:focus { background: #fff; }
 .field.has-warn.blank input, .field.has-warn.blank select { border-color: #e2a400; }
+.unknown-row { display: flex; gap: .8em; align-items: center; margin-top: .25em; }
+.calc-actions { display: flex; gap: .4em; }
+.unknown-bar { background: var(--warn-soft); border-radius: 6px; padding: .45em .7em; display: flex; justify-content: space-between; align-items: center; gap: 1em; }

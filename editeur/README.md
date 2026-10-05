@@ -5,7 +5,7 @@ et modifier un diagnostic de performance énergétique à partir de son XML ADEM
 puis réexporter le XML. L'import, l'édition, la validation XSD et l'export se
 font localement ; les brouillons sont conservés dans le navigateur (IndexedDB).
 Seul le **calcul** envoie le XML de travail à un service externe (moteur
-Pandopia), sur action explicite et après accord affiché la première fois.
+Pandopia : calcul et rapport PDF), sur action explicite et après accord affiché la première fois.
 
 ## Lancer
 
@@ -170,6 +170,18 @@ remplacées, en une opération annulable, et les résultats sont présentés com
 source ; toute modification d'une donnée susceptible d'entrer dans le calcul
 les marque « à recalculer ». Voir `core/calcul/` (le moteur est une interface :
 un autre service peut être branché).
+
+**Rapport PDF** (Contrôles, Bilan, menu ⚙) : le XML est envoyé à
+`POST https://app.pandopia.com/api/calculdpe/pdfademe`, qui renvoie le
+diagnostic au modèle officiel. Si les résultats sont absents ou pas à jour,
+l'éditeur propose de calculer d'abord. Si le dossier a été modifié depuis
+l'import, le numéro ADEME est retiré du XML envoyé : le rapport est produit
+« n° non attribué », avec la mention DOCUMENT NON OFFICIEL (le dossier et le
+XML exporté gardent le numéro).
+
+**Balises hors schéma** : affichées dans la fiche de l'objet concerné, elles
+se retirent une à une ou toutes à la fois (Contrôles et export), de façon
+annulable.
 
 Le XML exporté n'est jamais présenté comme validé ou accepté par l'ADEME ;
 aucun numéro ADEME n'est généré.
