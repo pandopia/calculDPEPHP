@@ -5,6 +5,7 @@ import { NavService } from '../services/nav.service';
 import { FieldView, stateLabel } from '../core/metier/model';
 import { setFieldState, setReference } from '../core/edition/editor';
 import { displayRounded } from '../core/edition/value-codec';
+import { ORIGINES } from '../core/metier/sources';
 
 /**
  * Champ en lecture par défaut ; un clic sur la valeur passe en édition.
@@ -18,6 +19,23 @@ import { displayRounded } from '../core/edition/value-codec';
     <div class="field" [class.editing]="editing()" [class.blank]="showControl() && !editing()" [class.focused]="highlight()" [class.has-error]="hasError()" [class.has-warn]="hasWarn()" [attr.data-rel]="f.rel">
       <div class="f-label" [title]="f.help ?? ''">
         {{ f.label }}@if (f.unit) {<span class="unit"> · {{ f.unit }}</span>}
+        @if (origine(); as o) {
+          <span class="origine" [class.open]="menuOrigine()">
+            <button type="button" class="origine-btn" [class.vide]="!o.code" [attr.data-o]="o.code" (click)="$event.stopPropagation(); menuOrigine.set(!menuOrigine())"
+              [title]="o.code ? 'Origine : ' + libelleOrigine(o.code) + ' — cliquer pour changer' : 'Origine de la donnée non renseignée — cliquer pour la renseigner'"
+              [attr.aria-label]="'Origine de la donnée : ' + (o.code ? libelleOrigine(o.code) : 'non renseignée')">{{ o.code ? lettre(o.code) : '+' }}</button>
+            @if (menuOrigine()) {
+              <span class="menu origine-menu" role="menu" (mouseleave)="menuOrigine.set(false)">
+                <span class="origine-titre">Origine de la donnée</span>
+                @for (x of origines; track x.code) {
+                  <button type="button" role="menuitemradio" [attr.aria-checked]="x.code === o.code" [class.on]="x.code === o.code" (click)="choisirOrigine(x.code)"><b [attr.data-o]="x.code">{{ x.lettre }}</b> {{ x.label }}</button>
+                }
+                @if (o.code) { <button type="button" class="danger" (click)="choisirOrigine(null)">Retirer l'origine</button> }
+                @if (o.libelle) { <span class="muted small origine-fiche">Fiche technique : « {{ o.libelle }}@if (o.valeur) {: {{ o.valeur }}} »</span> }
+              </span>
+            }
+          </span>
+        }
         @if (f.required && f.state !== 'valeur' && !isReadonly()) { <span class="req" title="Obligatoire">obligatoire</span> }
         @if (f.modified) { <span class="mod-dot" [title]="'Modifié — valeur à l\\'import : ' + (f.before ?? '')"></span> }
       </div>
@@ -85,6 +103,30 @@ export class FieldComponent {
   protected readonly highlight = signal(false);
   protected readonly editing = signal(false);
   protected readonly id = 'f' + Math.random().toString(36).slice(2);
+  protected readonly origines = ORIGINES;
+  protected readonly menuOrigine = signal(false);
+  /** origine de la donnée (fiche technique) : seulement pour une valeur saisie */
+  protected readonly origine = computed(() => {
+    this.svc.revision();
+    const f = this.field();
+    if (f.state !== 'valeur' || this.isReadonly()) return null;
+    return this.svc.origine(this.uid(), f.rel);
+  });
+
+  protected lettre(code: string): string {
+    return ORIGINES.find((o) => o.code === code)?.lettre ?? '?';
+  }
+
+  protected libelleOrigine(code: string): string {
+    return ORIGINES.find((o) => o.code === code)?.label ?? `code ${code}`;
+  }
+
+  protected choisirOrigine(code: string | null): void {
+    this.menuOrigine.set(false);
+    const f = this.field();
+    const valeur = f.state === 'valeur' ? (f.display + (f.unit && !f.options.length ? ' ' + f.unit : '')) : null;
+    this.svc.definirOrigine(this.uid(), f.rel, code, f.label, valeur);
+  }
 
   protected readonly isReadonly = computed(() => this.readonly() || this.field().readOnly);
   /** champ vide et modifiable : saisie affichée d'emblée ; champ renseigné : lecture, édition au clic */

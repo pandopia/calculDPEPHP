@@ -478,3 +478,21 @@ details[open] > summary { margin-bottom: .4em; }
 .logements .icon-btn:disabled { color: var(--muted); opacity: .45; }
 .plan-page .loc-actions .vues .chip-btn { font-size: .88em; line-height: 1.4; padding: .3em .75em; }
 .plan-page .card-head:has(.loc-actions) { flex-wrap: wrap; row-gap: .5em; }
+
+/* origine de la donnée (fiches techniques) : pastille à une lettre, visible au survol */
+.f-label .origine { position: relative; display: inline-flex; }
+.origine-btn { border: 1px solid var(--border-strong); background: var(--surface); color: var(--muted); font-size: .72rem; font-weight: 700; line-height: 1; width: 1.35em; height: 1.35em; padding: 0; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .12s; cursor: pointer; }
+.field:hover .origine-btn, .origine-btn:focus-visible, .origine.open .origine-btn { opacity: 1; }
+.origine-btn.vide { border-style: dashed; font-weight: 400; }
+.origine-btn[data-o="1"], .origine-menu b[data-o="1"] { color: #8a6d00; border-color: #e3c870; background: #fff8dc; }
+.origine-btn[data-o="2"], .origine-menu b[data-o="2"] { color: #1b7f4b; border-color: #8fd1ad; background: #e5f5ec; }
+.origine-btn[data-o="3"], .origine-menu b[data-o="3"] { color: #1f5fbf; border-color: #9cbcec; background: #e8f0fc; }
+.origine-btn[data-o="4"], .origine-menu b[data-o="4"] { color: #6b4fbf; border-color: #c2b2ea; background: #f3eefc; }
+.origine-btn[data-o="5"], .origine-menu b[data-o="5"] { color: #a85a00; border-color: #e9b97c; background: #fff1e0; }
+.origine-btn[data-o="6"], .origine-menu b[data-o="6"] { color: #b42318; border-color: #ecaaa3; background: #fdecea; }
+.origine-menu { position: absolute; top: 1.6em; left: 0; z-index: 30; min-width: 270px; display: flex; flex-direction: column; padding: .3em; }
+.origine-menu .origine-titre { font-size: .75rem; color: var(--muted); padding: .2em .5em .3em; }
+.origine-menu button { display: flex; align-items: center; gap: .55em; text-align: left; font-size: .85rem; color: var(--text); }
+.origine-menu button.on { background: var(--accent-soft); }
+.origine-menu b { display: inline-flex; align-items: center; justify-content: center; width: 1.4em; height: 1.4em; border: 1px solid var(--border-strong); border-radius: 4px; font-size: .75rem; }
+.origine-menu .origine-fiche { padding: .4em .5em .2em; border-top: 1px solid var(--border); margin-top: .2em; white-space: normal; }

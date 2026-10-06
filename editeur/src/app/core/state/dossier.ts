@@ -5,6 +5,7 @@ import { serialize } from '../xml/serializer';
 import { prunableElements } from '../xml/prune';
 import { annotate, maxUid, uidIndex, UidCounter } from '../xml/uid';
 import { ConfigImmeuble, configVide, normaliser, ResultatsLogements } from '../immeuble/logements';
+import { synchroniserDescriptifs } from '../metier/descriptifs';
 
 /**
  * Dossier de travail.
@@ -191,6 +192,12 @@ export class Dossier {
     } catch (e) {
       this.restore(snapshot);
       throw e;
+    }
+    // descriptifs simplifiés tenus à jour des données saisies, dans la même opération
+    try {
+      synchroniserDescriptifs(this);
+    } catch {
+      /* jamais bloquant : les descriptifs en place restent */
     }
     this.undoStack.push(snapshot);
     if (this.undoStack.length > HISTORY_MAX) this.undoStack.shift();
