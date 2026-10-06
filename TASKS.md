@@ -164,6 +164,53 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Rouvrir si une référence publiant une valeur non nulle apparaît au corpus, ou
   avec un texte réglementaire donnant la formule.
 
+### TASK-K41 — §17.2.2 : répartition immeuble → appartement, et `coef_ifc` ignoré
+
+- [ ] Owner: __  | Phase: K  | Estimation: 6h  | Priorité: haute
+- Périmètre `appartement_issu_immeuble`, le plus faible du corpus. Sur
+  `2659E2542205P` (mode 34) les installations sont **exactes au bit près** à
+  l'échelle de l'immeuble — `besoin_ch` 109 083,6 et `conso_ch` 159 362,2
+  reproduits — et toute la divergence (63,98 % de conformité) vient de la
+  répartition vers l'appartement.
+- **`coef_ifc` n'est lu nulle part dans `src/`.** §17.2.2.2.2 p.118 en fait
+  pourtant le pivot de la méthode 2 :
+  `Cch_ap = (1 − coef_IFC) × Shap/Sh × Cch + coef_IFC × Clé_ap × Cch`.
+  27 fichiers du corpus le déclarent (26 à 1, un à 0,7).
+- **Acquis à ne pas re-découvrir : `cle_repartition_ecs` est la clé au besoin de
+  §17.2.2.1**, pas une clé surfacique. Vérifié exactement sur `2513E0565598L`
+  (0,041184), `2673E0034873H` (0,105223) et `zone_post2026coefelec_diag2356755`
+  (0,056227). Le prorata de Nadeq (§11.1) l'approche à 0,1–2 % près mais ne la
+  reproduit pas : garder la clé déclarée.
+- Mesuré et écarté : remplacer la clé déclarée par le prorata de Nadeq
+  (Nadeq_logement / Nadeq_immeuble) donne 7 400 → 7 414 écarts moteur (+14),
+  trois cas dégradés, aucun gagné.
+- La clé appliquée par la référence n'est ni la clé déclarée, ni la surface, ni
+  `cle × nombre_appartement` (7 cas sur 27). Sur le groupe `2600E0281xxx` elle
+  vaut exactement **6 × `cle_repartition_ch`** pour `nombre_appartement = 24` :
+  chercher le multiplicateur du côté du nombre de logements desservis par
+  l'installation et de l'échantillonnage, pas du nombre d'appartements.
+- Traiter avec TASK-H10 et TASK-H04, qui portent sur les mêmes fichiers.
+
+### TASK-K42 — 2659E2542205P : référence auto-contradictoire sur cinq balises
+
+- [ ] Owner: __  | Phase: K  | Estimation: 1h  | Priorité: basse
+- Dans un seul bloc `<sortie>`, la référence publie `apport_et_besoin/besoin_ch`
+  = 109 083,6 kWh (échelle immeuble) et `ef_conso/conso_ch` = 15 420,4 kWh
+  (échelle appartement). Une consommation inférieure au besoin qu'elle couvre
+  suppose un rendement global de 7,07 pour une chaudière gaz : impossible.
+- Quatre autres contradictions internes sur le même fichier :
+  `besoin_ch_depensier` (18 788) < `besoin_ch` (109 084) ;
+  `besoin_ecs_depensier` (10 522) < `besoin_ecs` (33 553) ; les six balises
+  d'auxiliaires à zéro pour un `conso_totale_auxiliaire` de 211,7 ;
+  `emission_ges_5_usages` de 4 325,4 pour une somme de `sortie_par_energie` de
+  57,0. Les deux premières sont déjà imputées par `ReferenceDefects`.
+- Le fichier déclare par ailleurs `cle_repartition_ecs` = 0,0454546, soit
+  exactement 84/1848, puis répartit l'ECS sur 24,326 — il n'utilise pas sa
+  propre clé.
+- Décider s'il relève de `CorpusLocator::REFERENCES_INVALIDES` : la preuve tient
+  sur le fichier seul, mais plusieurs autres modes 33/34 du corpus présentent la
+  même inversion d'échelle. Les examiner ensemble, pas un par un.
+
 ### TASK-K35 — 2113E0368523M : conso_ch et référence lacunaire
 
 - [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
