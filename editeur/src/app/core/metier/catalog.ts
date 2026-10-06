@@ -23,6 +23,11 @@ export interface SectionDef {
   /** Bloc de résultats : lecture seule. */
   results?: boolean;
   help?: string;
+  /**
+   * Sous-bloc d'une autre section (ex. diagnostiqueur sous administratif) :
+   * absent de la barre latérale, ouvert en colonne à droite de son parent.
+   */
+  parent?: string;
 }
 
 export interface KindDef {
@@ -206,12 +211,12 @@ export const TABS: TabDef[] = [
     key: 'general', label: 'Dossier', sections: [
       { key: 'document', label: 'Document', singleton: 'dpe' },
       { key: 'administratif', label: 'Administratif', singleton: 'dpe/administratif' },
-      { key: 'diagnostiqueur', label: 'Diagnostiqueur et logiciel', singleton: 'dpe/administratif/diagnostiqueur' },
-      { key: 'geolocalisation', label: 'Localisation et identifiants', singleton: 'dpe/administratif/geolocalisation' },
-      { key: 'adresse_bien', label: 'Adresse du bien', singleton: 'dpe/administratif/geolocalisation/adresses/adresse_bien' },
-      { key: 'adresse_proprietaire', label: 'Adresse du propriétaire', singleton: 'dpe/administratif/geolocalisation/adresses/adresse_proprietaire' },
-      { key: 'adresse_proprietaire_installation_commune', label: 'Adresse du propriétaire des installations communes', singleton: 'dpe/administratif/geolocalisation/adresses/adresse_proprietaire_installation_commune' },
-      { key: 'consentement', label: 'Formulaire de consentement', singleton: 'dpe/administratif/information_formulaire_consentement' },
+      { key: 'diagnostiqueur', label: 'Diagnostiqueur et logiciel', singleton: 'dpe/administratif/diagnostiqueur', parent: 'administratif' },
+      { key: 'geolocalisation', label: 'Localisation et identifiants', singleton: 'dpe/administratif/geolocalisation', parent: 'administratif' },
+      { key: 'adresse_bien', label: 'Adresse du bien', singleton: 'dpe/administratif/geolocalisation/adresses/adresse_bien', parent: 'geolocalisation' },
+      { key: 'adresse_proprietaire', label: 'Adresse du propriétaire', singleton: 'dpe/administratif/geolocalisation/adresses/adresse_proprietaire', parent: 'geolocalisation' },
+      { key: 'adresse_proprietaire_installation_commune', label: 'Adresse du propriétaire des installations communes', singleton: 'dpe/administratif/geolocalisation/adresses/adresse_proprietaire_installation_commune', parent: 'geolocalisation' },
+      { key: 'consentement', label: 'Formulaire de consentement', singleton: 'dpe/administratif/information_formulaire_consentement', parent: 'administratif' },
       { key: 'descriptifs', label: 'Descriptifs simplifiés', kind: 'descriptif_simplifie' },
       { key: 'fiches_techniques', label: 'Fiches techniques', kind: 'fiche_technique' },
       { key: 'justificatifs', label: 'Justificatifs', kind: 'justificatif' },
@@ -335,4 +340,20 @@ export function isResultPath(schemaPath: string): boolean {
 
 export function kindForPath(schemaPath: string): KindDef | undefined {
   return KIND_BY_PATH.get(schemaPath);
+}
+
+/** Sections de la racine jusqu'à `key` (sous-blocs ouverts en colonnes). */
+export function sectionChain(tab: TabKey, key: string | null): SectionDef[] {
+  const sections = TABS.find((t) => t.key === tab)?.sections ?? [];
+  const chain: SectionDef[] = [];
+  for (let s = sections.find((x) => x.key === key); s; s = s.parent ? sections.find((x) => x.key === s!.parent) : undefined) chain.unshift(s);
+  return chain;
+}
+
+/** `key` et tous ses sous-blocs, à toute profondeur. */
+export function sectionDescendants(tab: TabKey, key: string): string[] {
+  const sections = TABS.find((t) => t.key === tab)?.sections ?? [];
+  const out = [key];
+  for (let i = 0; i < out.length; i++) out.push(...sections.filter((s) => s.parent === out[i]).map((s) => s.key));
+  return out;
 }
