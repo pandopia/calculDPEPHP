@@ -11,7 +11,7 @@ import { isObservatoireHeader } from '../format/format-detector';
 import { applicability } from './display-rules';
 import { fieldMeta } from './field-meta';
 import { RelationGraph } from './relations';
-import { isResultPath, KIND_BY_KEY, KINDS, KindDef, refsForField, SectionDef, TabDef, TabKey, TABS } from './catalog';
+import { isResultPath, KIND_BY_KEY, KINDS, KindDef, refsForField, SectionDef, sectionDescendants, TabDef, TabKey, TABS } from './catalog';
 
 /** Vues métier calculées à partir du document de travail. */
 
@@ -615,4 +615,31 @@ export function buildAbsentFiche(d: Dossier, model: Model, path: string, label: 
     uid, title: label, kind: null, path, xmlPath: indexedPath(el) + '/' + rel, results: false,
     groups: [{ ...group, present: true }], parent: null, children: [], outgoing: [], incoming: [], roles: [], issues: [], attributes: [], links: [],
   };
+}
+
+export interface Signal {
+  errors: number;
+  /** avertissements et éléments à compléter */
+  warnings: number;
+}
+
+/** Points signalés sur un objet et ses sous-objets (ex. installation et ses générateurs). */
+export function objectSignal(model: Model, uid: string): Signal {
+  const out: Signal = { errors: 0, warnings: 0 };
+  const walk = (u: string) => {
+    const o = model.objects.get(u);
+    if (!o) return;
+    out.errors += o.errors;
+    out.warnings += o.warnings + o.missing;
+    o.childUids.forEach(walk);
+  };
+  walk(uid);
+  return out;
+}
+
+/** Points signalés sur une section et ses sous-blocs ouverts en colonnes. */
+export function sectionSignal(model: Model, tab: TabKey, key: string): Signal {
+  const keys = new Set(sectionDescendants(tab, key));
+  const secs = model.tabs.find((t) => t.def.key === tab)?.sections.filter((s) => keys.has(s.def.key)) ?? [];
+  return { errors: secs.reduce((n, s) => n + s.errors, 0), warnings: secs.reduce((n, s) => n + s.missing + s.warnings, 0) };
 }

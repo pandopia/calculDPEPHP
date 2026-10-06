@@ -2,7 +2,7 @@ import { Component, computed, inject, input, output, signal } from '@angular/cor
 import { DossierService } from '../services/dossier.service';
 import { NavService } from '../services/nav.service';
 import { KIND_BY_KEY, KindDef, REFS } from '../core/metier/catalog';
-import { FicheView, FieldView, GroupView } from '../core/metier/model';
+import { FicheView, FieldView, GroupView, objectSignal, sectionSignal, Signal } from '../core/metier/model';
 import { isTechnical, themeOf, THEMES } from '../core/metier/field-themes';
 import { addGenericItem, addObject, removeGenericItem, removeUnknown, setAttribute } from '../core/edition/editor';
 import { FieldComponent } from './field';
@@ -174,7 +174,7 @@ export class GroupComponent {
       <article class="fiche">
         <header class="fiche-head">
           <div class="fiche-title">
-            @if (f.parent) { <a href="" class="crumb" (click)="$event.preventDefault(); goUid(f.parent.uid)">{{ short(f.parent.label) }} ›</a> }
+            @if (f.parent && crumb()) { <a href="" class="crumb" (click)="$event.preventDefault(); goUid(f.parent.uid)">{{ short(f.parent.label) }} ›</a> }
             @if (renaming()) {
               <input class="title-input" [value]="nameValue()" (keydown.enter)="rename($any($event.target).value)" (blur)="rename($any($event.target).value)" (keydown.escape)="renaming.set(false)" />
             } @else {
@@ -254,7 +254,11 @@ export class GroupComponent {
                 </div>
                 <div class="rel-items">
                   @for (it of c.items; track it.uid) {
-                    <a href="" class="obj-chip" [title]="it.summary" (click)="$event.preventDefault(); goUid(it.uid)"><strong>{{ short(it.title) }}</strong> <span class="muted">{{ firstSummary(it.summary) }}</span></a>
+                    @let sig = objSignal(it.uid);
+                    <a href="" class="obj-chip" [class.open]="selectedChild() === it.uid" [title]="it.summary" (click)="$event.preventDefault(); goUid(it.uid)"><strong>{{ short(it.title) }}</strong> <span class="muted">{{ firstSummary(it.summary) }}</span>
+                      @if (sig.errors) { <span class="dot err" [title]="sig.errors + ' erreur(s)'">{{ sig.errors }}</span> }
+                      @else if (sig.warnings) { <span class="dot miss" [title]="sig.warnings + ' avertissement(s)'">{{ sig.warnings }}</span> }
+                      <span class="chev" aria-hidden="true">›</span></a>
                   }
                   @if (editable()) { <button class="chip-add" (click)="addChild(c.kind)">+ {{ c.kind.label.toLowerCase() }}</button> }
                 </div>
@@ -291,7 +295,13 @@ export class GroupComponent {
         }
 
         @if (f.links.length) {
-          <div class="links">@for (l of f.links; track l.label) { <a href="" class="obj-chip" [class.muted]="!l.uid" (click)="$event.preventDefault(); l.uid ? goUid(l.uid) : nav.go(l.tab!, l.section!)">{{ l.label }} ›</a> }</div>
+          <div class="links">@for (l of f.links; track l.label) {
+            @let sig = linkSignal(l);
+            <a href="" class="obj-chip" [class.muted]="!l.uid" [class.open]="!!selectedChild() && (selectedChild() === l.uid || selectedChild() === 'sec:' + linkSection(l))" (click)="$event.preventDefault(); l.uid ? goUid(l.uid) : nav.go(l.tab!, l.section!)">{{ l.label }}
+              @if (sig.errors) { <span class="dot err" [title]="sig.errors + ' erreur(s)'">{{ sig.errors }}</span> }
+              @else if (sig.warnings) { <span class="dot miss" [title]="sig.warnings + ' avertissement(s)'">{{ sig.warnings }}</span> }
+              <span class="chev" aria-hidden="true">›</span></a>
+          }</div>
         }
 
         @for (g of f.groups; track g.key; let i = $index) {
@@ -306,6 +316,12 @@ export class GroupComponent {
 })
 export class FicheComponent {
   readonly uid = input.required<string>();
+  /** sous-objet ou sous-bloc ouvert dans la colonne suivante (uid, ou « sec:clé » pour un bloc absent) */
+  readonly selectedChild = input<string | null>(null);
+  /** bouton de fermeture (colonne la plus à droite) */
+  readonly canClose = input(false);
+  /** lien « parent › » dans le titre : inutile quand le parent est affiché à gauche */
+  readonly crumb = input(true);
   readonly closed = output<void>();
   protected readonly svc = inject(DossierService);
   protected readonly nav = inject(NavService);
@@ -338,7 +354,24 @@ export class FicheComponent {
   });
   protected readonly view = computed(() => this.svc.model()?.objects.get(this.uid()) ?? null);
   protected readonly editable = computed(() => this.svc.dossier()?.format.niveauSupport === 'complet');
-  protected readonly closable = computed(() => this.nav.state().tab === 'controles');
+  protected readonly closable = computed(() => this.canClose() || this.nav.state().tab === 'controles');
+
+  protected objSignal(uid: string): Signal {
+    const m = this.svc.model();
+    return m ? objectSignal(m, uid) : { errors: 0, warnings: 0 };
+  }
+
+  /** section du sous-bloc lié (présent : celle de son objet ; absent : celle du lien) */
+  protected linkSection(l: FicheView['links'][number]): string | null {
+    return l.uid ? (this.svc.model()?.objects.get(l.uid)?.section ?? null) : (l.section ?? null);
+  }
+
+  protected linkSignal(l: FicheView['links'][number]): Signal {
+    const m = this.svc.model();
+    const sec = this.linkSection(l);
+    const tab = l.uid ? m?.objects.get(l.uid)?.tab : l.tab;
+    return m && sec && tab ? sectionSignal(m, tab, sec) : { errors: 0, warnings: 0 };
+  }
   /** erreurs et avertissements seulement ; les informations restent dans « Contrôles » */
   /** seulement ce qui n'est pas déjà signalé sur un champ visible */
   protected readonly attention = computed(() => {

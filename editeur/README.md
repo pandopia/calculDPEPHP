@@ -102,8 +102,17 @@ ressource réseau, 20 Mo et 64 niveaux maximum.
   portes posées sur leur paroi support, planchers bas et hauts. Survol :
   nom et surface ; clic : ouvre la fiche. Ordre d'idée seulement : le DPE ne
   décrit pas la géométrie (`core/metier/maquette.ts`).
-- **Sections** : liste compacte à gauche (nom et valeurs clés), fiche de
-  l'objet sélectionné à droite, ouverte d'emblée.
+- **Sections en colonnes** : liste compacte à gauche (nom et valeurs clés),
+  fiche de l'objet sélectionné à droite, ouverte d'emblée. Un sous-objet
+  (générateur, émetteur, baie d'espace tampon…) ou un sous-bloc (diagnostiqueur,
+  localisation, adresses, consentement sous Administratif) s'ouvre dans une
+  colonne supplémentaire à droite, son parent restant visible ; la liste se
+  resserre, ✕ ferme la dernière colonne. Un fil d'Ariane situe la fiche.
+  Les sous-blocs ne figurent plus dans la barre latérale : leurs alertes sont
+  cumulées sur la section parente.
+- **Pastilles d'alerte** : rouge (erreurs) ou orange (avertissements, champs
+  à compléter) sur chaque ligne de liste — sous-objets compris — et sur chaque
+  pastille de sous-objet ou de sous-bloc, pour savoir où aller.
 - **Fiches** : un champ vide s'affiche directement en saisie ; une valeur renseignée s'affiche en lecture, modifiable au clic (Entrée valide, Échap
   annule). Pour effacer une valeur : choisir « — » dans une liste, ou vider le
   champ texte ; la balise disparaît alors du XML exporté. Les champs sont rangés par thème (Situation, Dimensions,

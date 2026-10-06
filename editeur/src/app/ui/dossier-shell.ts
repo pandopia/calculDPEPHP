@@ -2,12 +2,12 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DossierService } from '../services/dossier.service';
 import { NavService } from '../services/nav.service';
-import { ObjectView, SectionView, TabView } from '../core/metier/model';
+import { ObjectView, SectionView, sectionSignal, Signal, TabView } from '../core/metier/model';
 import { SyntheseComponent } from './synthese';
 import { TabViewComponent } from './tab-view';
 import { ControlesComponent } from './controles';
 import { frDate } from './labels';
-import { KIND_BY_KEY } from '../core/metier/catalog';
+import { KIND_BY_KEY, sectionChain } from '../core/metier/catalog';
 import { IconComponent } from './icon';
 import { LogementsComponent } from './logements';
 import { contexteImmeuble } from '../core/immeuble/logements';
@@ -88,11 +88,12 @@ import { contexteImmeuble } from '../core/immeuble/logements';
             @if (isOpen(t)) {
               <div class="nav-sections">
                 @for (s of t.sections; track s.def.key) {
-                  @if (!isDim(s) || isActive(t, s) || expanded().has(t.def.key)) {
+                  @if (!s.def.parent && (!isDim(s) || isActive(t, s) || expanded().has(t.def.key))) {
+                    @let sig = signal(t, s);
                     <button class="nav-item" [class.active]="isActive(t, s)" [class.dim]="isDim(s)" (click)="open(t, s)" [title]="s.note ?? ''">
                       <span class="nav-label">{{ navLabel(s) }}</span>
-                      @if (s.errors) { <span class="dot err" [title]="s.errors + ' erreur(s)'">{{ s.errors }}</span> }
-                      @else if (s.missing + s.warnings) { <span class="dot miss" [title]="(s.missing + s.warnings) + ' avertissement(s)'">{{ s.missing + s.warnings }}</span> }
+                      @if (sig.errors) { <span class="dot err" [title]="sig.errors + ' erreur(s)'">{{ sig.errors }}</span> }
+                      @else if (sig.warnings) { <span class="dot miss" [title]="sig.warnings + ' avertissement(s)'">{{ sig.warnings }}</span> }
                     </button>
                   }
                 }
@@ -231,12 +232,20 @@ export class DossierShellComponent {
   }
 
   protected dimCount(t: TabView): number {
-    return t.sections.filter((s) => this.isDim(s) && !this.isActive(t, s)).length;
+    return t.sections.filter((s) => !s.def.parent && this.isDim(s) && !this.isActive(t, s)).length;
   }
 
+  /** section active, ou racine du sous-bloc actif (ouvert en colonne) */
   protected isActive(t: TabView, s: SectionView): boolean {
     const st = this.nav.state();
-    return st.tab === t.def.key && (st.section === s.def.key || (!st.section && t.sections[0] === s));
+    if (st.tab !== t.def.key) return false;
+    if (!st.section) return t.sections[0] === s;
+    return sectionChain(t.def.key, st.section)[0]?.key === s.def.key;
+  }
+
+  /** points signalés de la section et de ses sous-blocs */
+  protected signal(t: TabView, s: SectionView): Signal {
+    return sectionSignal(this.svc.model()!, t.def.key, s.def.key);
   }
 
   /** Section sans contenu ni action requise : atténuée, toujours accessible. */
