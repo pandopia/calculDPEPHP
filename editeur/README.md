@@ -155,6 +155,15 @@ accord).
   pas de champ et restent dans la section *Fiches techniques*. Une origine
   donnée à un champ sans ligne crée celle-ci dans la fiche du composant, au
   format des logiciels (« Libellé: valeur »).
+- **Descriptifs simplifiés** (phrases de la page 4 du rapport, « vue
+  d'ensemble ») : tenus à jour automatiquement, section masquée. Après chaque
+  modification, une catégorie (murs, planchers, baies et portes, chauffage,
+  ECS, refroidissement, ventilation, pilotage, photovoltaïque) dont la
+  description tirée des données change est réécrite à partir de la saisie ;
+  sinon les textes du logiciel d'origine sont conservés, ou restaurés si l'on
+  revient en arrière (`core/metier/descriptifs.ts`). Un fichier importé non
+  modifié, ou modifié sans effet sur la description (une surface), reste
+  identique à l'export.
 - **Pastilles d'alerte** : rouge (erreurs) ou orange (avertissements, champs
   à compléter) sur chaque ligne de liste — sous-objets compris — et sur chaque
   pastille de sous-objet ou de sous-bloc, pour savoir où aller.

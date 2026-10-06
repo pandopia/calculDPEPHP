@@ -28,6 +28,8 @@ export interface SectionDef {
    * absent de la barre latérale, ouvert en colonne à droite de son parent.
    */
   parent?: string;
+  /** section tenue automatiquement, absente de la barre latérale */
+  hidden?: boolean;
 }
 
 export interface KindDef {
@@ -217,7 +219,7 @@ export const TABS: TabDef[] = [
       { key: 'adresse_proprietaire', label: 'Adresse du propriétaire', singleton: 'dpe/administratif/geolocalisation/adresses/adresse_proprietaire', parent: 'geolocalisation' },
       { key: 'adresse_proprietaire_installation_commune', label: 'Adresse du propriétaire des installations communes', singleton: 'dpe/administratif/geolocalisation/adresses/adresse_proprietaire_installation_commune', parent: 'geolocalisation' },
       { key: 'consentement', label: 'Formulaire de consentement', singleton: 'dpe/administratif/information_formulaire_consentement', parent: 'administratif' },
-      { key: 'descriptifs', label: 'Descriptifs simplifiés', kind: 'descriptif_simplifie' },
+      { key: 'descriptifs', label: 'Descriptifs simplifiés', kind: 'descriptif_simplifie', hidden: true },
       { key: 'fiches_techniques', label: 'Fiches techniques', kind: 'fiche_technique' },
       { key: 'justificatifs', label: 'Justificatifs', kind: 'justificatif' },
     ],

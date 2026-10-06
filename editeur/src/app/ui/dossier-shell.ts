@@ -94,7 +94,7 @@ import { contexteImmeuble } from '../core/immeuble/logements';
             @if (isOpen(t)) {
               <div class="nav-sections">
                 @for (s of t.sections; track s.def.key) {
-                  @if (!s.def.parent && (!isDim(s) || isActive(t, s) || expanded().has(t.def.key))) {
+                  @if (!s.def.parent && !s.def.hidden && (!isDim(s) || isActive(t, s) || expanded().has(t.def.key))) {
                     @let sig = signal(t, s);
                     <button class="nav-item" [class.active]="isActive(t, s)" [class.dim]="isDim(s)" (click)="open(t, s)" [title]="s.note ?? ''">
                       <span class="nav-label">{{ navLabel(s) }}</span>
@@ -239,7 +239,7 @@ export class DossierShellComponent {
   }
 
   protected dimCount(t: TabView): number {
-    return t.sections.filter((s) => !s.def.parent && this.isDim(s) && !this.isActive(t, s)).length;
+    return t.sections.filter((s) => !s.def.parent && !s.def.hidden && this.isDim(s) && !this.isActive(t, s)).length;
   }
 
   /** section active, ou racine du sous-bloc actif (ouvert en colonne) */
