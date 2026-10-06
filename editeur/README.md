@@ -139,6 +139,22 @@ accord).
   resserre, ✕ ferme la dernière colonne. Un fil d'Ariane situe la fiche.
   Les sous-blocs ne figurent plus dans la barre latérale : leurs alertes sont
   cumulées sur la section parente.
+- **Origine des données** : au survol d'un champ saisi d'un composant (mur,
+  plancher, baie, porte, pont thermique, chauffage et ses générateurs et
+  émetteurs, ECS, refroidissement, ventilation, caractéristiques générales),
+  une pastille à une lettre indique son origine — **D** valeur par défaut,
+  **M** mesuré/observé, **J** document justificatif, **L** obtenu en ligne,
+  **E** estimé, **P** valeur par défaut pénalisante — et un clic la change.
+  L'origine est lue et écrite dans les fiches techniques du XML
+  (`sous_fiche_technique/enum_origine_donnee_id`), que le XSD ne relie à aucun
+  champ : le rattachement est reconstitué (`core/metier/sources.ts`), fiche →
+  objet par concordance des valeurs, ligne → champ par les libellés des
+  logiciels. Mesuré sur 389 DPE réels (94 % LICIEL) : 97 % des fiches
+  rattachées à leur objet, 67 % des lignes à un champ renseigné ; les autres
+  (masques lointains, « placement », « constaté dans les logements »…) n'ont
+  pas de champ et restent dans la section *Fiches techniques*. Une origine
+  donnée à un champ sans ligne crée celle-ci dans la fiche du composant, au
+  format des logiciels (« Libellé: valeur »).
 - **Pastilles d'alerte** : rouge (erreurs) ou orange (avertissements, champs
   à compléter) sur chaque ligne de liste — sous-objets compris — et sur chaque
   pastille de sous-objet ou de sous-bloc, pour savoir où aller.

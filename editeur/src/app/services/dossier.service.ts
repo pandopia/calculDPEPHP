@@ -11,6 +11,7 @@ import { MoteurCalcul, MoteurPandopia, RapportPdfPandopia, ServiceLogementsPando
 import { ConfigImmeuble, contexteImmeuble, controler, empreinte, lireReponse, parois, requete, resultats } from '../core/immeuble/logements';
 import { integrerResultats, xmlPourRapport } from '../core/calcul/integrer-resultats';
 import { DraftStore } from './draft-store';
+import { cleSource, definirOrigine, indexerSources, origineApplicable } from '../core/metier/sources';
 import { AdresseBan, appliquerAdresse } from '../core/localisation/geocodage';
 
 const LAST_KEY = 'calculdpe-editeur:dernier-dossier';
@@ -80,6 +81,27 @@ export class DossierService {
     const r = d?.resultatsLogements;
     return !!d && !!r && r.empreinte !== empreinte(d.exportXml(), d.immeuble());
   });
+  /** origine des données d'après les fiches techniques (voir core/metier/sources.ts) */
+  readonly sources = computed(() => {
+    this.revision();
+    const d = this.dossier();
+    return d && d.format.niveauSupport === 'complet' ? indexerSources(d.working, d.schema) : null;
+  });
+
+  /** Origine d'un champ : null si non documentable (champ non saisi, objet sans fiche technique). */
+  origine(uid: string, rel: string): { code: string | null; libelle: string | null; valeur: string | null } | null {
+    const d = this.dossier();
+    const idx = this.sources();
+    if (!d || !idx || !origineApplicable(d, uid, rel)) return null;
+    const s = idx.champs.get(cleSource(uid, rel));
+    return { code: s?.origine ?? null, libelle: s?.libelle ?? null, valeur: s?.valeur ?? null };
+  }
+
+  definirOrigine(uid: string, rel: string, code: string | null, libelle: string, valeur: string | null): void {
+    const idx = this.sources();
+    if (idx) this.run((d) => definirOrigine(d, idx, uid, rel, code, libelle, valeur));
+  }
+
   readonly changes = computed(() => {
     this.revision();
     const d = this.dossier();
