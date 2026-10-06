@@ -72,6 +72,13 @@ export class DossierService {
     const d = this.dossier();
     return d ? buildModel(d) : null;
   });
+  /** DPE logements calculés sur d'autres entrées que l'état actuel du dossier */
+  readonly logementsPerimes = computed(() => {
+    this.revision();
+    const d = this.dossier();
+    const r = d?.resultatsLogements;
+    return !!d && !!r && r.empreinte !== empreinte(d.exportXml(), d.immeuble());
+  });
   readonly changes = computed(() => {
     this.revision();
     const d = this.dossier();
@@ -384,16 +391,25 @@ export class DossierService {
       return;
     }
     this.pdfLogementEnCours.set(reference);
+    // onglet ouvert pendant le clic (sinon bloqué comme fenêtre surgissante), rempli à l'arrivée du PDF
+    const onglet = window.open('', '_blank');
+    onglet?.document.write(`<!doctype html><meta charset="utf-8"><title>DPE ${escapeHtml(reference)}</title><p style="font:15px system-ui,sans-serif;margin:2em">Production du rapport PDF du logement ${escapeHtml(reference)}…</p>`);
     try {
       const blob = await this.serviceLogements.pdf(requete(d.immeuble(), contexteImmeuble(d.working), d.exportXml(), reference));
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${this.baseName()}-${reference.replace(/[^\w.-]+/g, '_')}.pdf`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-      this.toast('succes', `Rapport PDF du logement ${reference} téléchargé.`);
+      const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      if (onglet && !onglet.closed) {
+        onglet.location.href = url;
+      } else {
+        // onglet bloqué par le navigateur : téléchargement
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${this.baseName()}-${reference.replace(/[^\w.-]+/g, '_')}.pdf`;
+        a.click();
+        this.toast('info', `Ouverture d'un onglet bloquée par le navigateur : rapport PDF du logement ${reference} téléchargé.`);
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (e) {
+      onglet?.close();
       this.toast('erreur', e instanceof Error ? e.message : String(e));
     } finally {
       this.pdfLogementEnCours.set(null);
@@ -459,4 +475,8 @@ export class DossierService {
   dismissToast(id: number): void {
     this.toasts.update((t) => t.filter((x) => x.id !== id));
   }
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }

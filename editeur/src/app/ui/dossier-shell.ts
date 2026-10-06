@@ -76,12 +76,6 @@ import { contexteImmeuble } from '../core/immeuble/logements';
         <button class="nav-item top" [class.active]="nav.state().tab === 'synthese'" (click)="nav.go('synthese')">
           <app-icon name="synthese" /><span class="nav-label">Synthèse</span>
         </button>
-        @if (immeuble()) {
-          <button class="nav-item top" [class.active]="nav.state().tab === 'logements'" (click)="nav.go('logements')" title="Générer les DPE des appartements à partir du DPE immeuble">
-            <app-icon name="logements" /><span class="nav-label">DPE des logements</span>
-            @if (logementsCount()) { <span class="muted small">{{ logementsCount() }}</span> }
-          </button>
-        }
         @for (t of groups(); track t.def.key) {
           <div class="nav-group" [class.open]="isOpen(t)">
             <button class="nav-group-head" [class.current]="nav.state().tab === t.def.key" (click)="toggleGroup(t)" [attr.aria-expanded]="isOpen(t)">
@@ -112,6 +106,12 @@ import { contexteImmeuble } from '../core/immeuble/logements';
         <button class="nav-item top" [class.active]="nav.state().tab === 'controles'" (click)="nav.go('controles')">
           <app-icon name="controles" /><span class="nav-label">Contrôles et export</span>
         </button>
+        @if (immeuble()) {
+          <button class="nav-item top" [class.active]="nav.state().tab === 'logements'" (click)="nav.go('logements')" title="Générer les DPE des appartements à partir du DPE immeuble">
+            <app-icon name="logements" /><span class="nav-label">DPE des logements</span>
+            @if (logementsCount()) { <span class="muted small">{{ logementsCount() }}</span> }
+          </button>
+        }
       </nav>
 
       <main class="content">

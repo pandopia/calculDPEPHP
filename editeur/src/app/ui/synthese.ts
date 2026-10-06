@@ -99,6 +99,34 @@ interface Todo {
         </section>
       </div>
 
+      @if (logements(); as lg) {
+        <section class="card recap-logements">
+          <div class="card-head">
+            <h2>DPE des logements <span class="muted small">calculés le {{ lg.date }}</span></h2>
+            <a href="" (click)="$event.preventDefault(); nav.go('logements')">voir le détail</a>
+          </div>
+          @if (svc.logementsPerimes()) { <p class="warn-box small">Le dossier ou les logements ont changé depuis ce calcul : à recalculer.</p> }
+          <p class="small">{{ lg.ok }} logement(s) calculé(s)@if (lg.ko) { , <span class="err-text">{{ lg.ko }} en erreur</span> }
+            @if (lg.ep) { · énergie primaire {{ lg.ep }} kWh/m²/an }@if (lg.ges) { · émissions {{ lg.ges }} kg CO₂/m²/an }</p>
+          <div class="recap-grid">
+            @for (s of lg.series; track s.titre) {
+              <div>
+                <h4>{{ s.titre }}</h4>
+                <ul class="recap-classes" [class.climat]="s.climat">
+                  @for (c of s.classes; track c.c) {
+                    <li [class.vide]="!c.n">
+                      <span class="classe" [class.climat]="s.climat" [attr.data-c]="c.c">{{ c.c }}</span>
+                      <span class="b-track"><span class="b-fill" [style.width.%]="c.pct"></span></span>
+                      <span class="recap-n">{{ c.n }}</span>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
       <app-maquette-3d class="maquette-bottom" />
 
       <p class="format-line muted small">
@@ -112,6 +140,37 @@ interface Todo {
 export class SyntheseComponent {
   protected readonly svc = inject(DossierService);
   protected readonly nav = inject(NavService);
+
+  /** Récapitulatif des DPE logements générés depuis l'immeuble (§17.2.2), s'ils ont été calculés. */
+  protected readonly logements = computed(() => {
+    this.svc.revision();
+    const r = this.svc.dossier()?.resultatsLogements;
+    if (!r || !r.logements.length) return null;
+    const s = r.logements.map((l) => l.synthese).filter((x) => x !== null);
+    const classes = (f: (x: (typeof s)[number]) => string | null) => {
+      const n = (c: string) => s.filter((x) => f(x) === c).length;
+      const max = Math.max(1, ...'ABCDEFG'.split('').map(n));
+      return 'ABCDEFG'.split('').map((c) => ({ c, n: n(c), pct: (n(c) / max) * 100 }));
+    };
+    const ep = s.map((x) => x.epM2).filter((v) => v !== null);
+    const ges = s.map((x) => x.gesM2).filter((v) => v !== null);
+    const r0 = (v: number) => Math.round(v).toLocaleString('fr-FR');
+    const plage = (v: number[]) => {
+      if (!v.length) return null;
+      const [min, max] = [r0(Math.min(...v)), r0(Math.max(...v))];
+      return min === max ? min : `de ${min} à ${max}`;
+    };
+    return {
+      date: new Date(r.date).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }),
+      ok: s.length,
+      ko: r.logements.length - s.length,
+      ep: plage(ep), ges: plage(ges),
+      series: [
+        { titre: 'Étiquettes énergie', climat: false, classes: classes((x) => x.classeEnergie) },
+        { titre: 'Étiquettes climat', climat: true, classes: classes((x) => x.classeClimat) },
+      ],
+    };
+  });
 
   private root(): Element {
     this.svc.revision();
