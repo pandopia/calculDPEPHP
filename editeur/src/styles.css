@@ -449,3 +449,22 @@ details[open] > summary { margin-bottom: .4em; }
   .columns > .list-pane, .columns.deep > .list-pane { flex-basis: 85vw; }
   .columns > .col, .columns > .col.col-last { min-width: 85vw; }
 }
+
+/* plan et localisation */
+.plan-page { display: flex; flex-direction: column; gap: 1em; max-width: 1400px; }
+.plan-page .adresse { font-size: 1.05em; font-weight: 600; margin: .2em 0; }
+.plan-page .carte { width: 100%; height: 360px; border: 0; border-radius: 8px; margin-top: .6em; background: var(--surface-2); }
+.plan-page .carte-accord { display: flex; flex-wrap: wrap; align-items: center; gap: .4em 1.2em; }
+.plan-page .carte-accord p { margin: 0; flex: 1 1 100%; }
+.plan-page .button-link { font-size: .88em; text-decoration: none; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: .3em .7em; color: var(--text); }
+.plan-page .button-link:hover { border-color: var(--accent); color: var(--accent); }
+.plan-page .plan-card { padding-bottom: 0; overflow: hidden; }
+.plan-page .plan-editeur { display: block; height: 78vh; min-height: 520px; margin: 0 -1.2em; overflow-x: auto; }
+.plan-page .plan-attente { display: flex; align-items: center; gap: .8em; padding: 2em 1em; color: var(--muted); }
+.adresse-ban { position: relative; margin: .4em 0; }
+.adresse-ban .ab-spin { position: absolute; right: .6em; top: .55em; }
+.adresse-ban .ab-liste { position: absolute; z-index: 20; left: 0; right: 0; list-style: none; margin: .2em 0 0; padding: .2em; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: 0 6px 18px rgba(0,0,0,.12); max-height: 280px; overflow: auto; }
+.adresse-ban .ab-liste li { padding: .4em .5em; border-radius: 4px; cursor: pointer; display: flex; flex-direction: column; }
+.adresse-ban .ab-liste li.actif, .adresse-ban .ab-liste li:hover { background: var(--accent-soft); }
+.adresse-ban .ab-source { margin: .2em 0 0; }
+.nowrap { white-space: nowrap; }

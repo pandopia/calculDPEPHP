@@ -6,7 +6,7 @@
  * balises `reference*`). Rien n'est déduit d'un exemple de fichier.
  */
 
-export type TabKey = 'synthese' | 'general' | 'batiment' | 'enveloppe' | 'systemes' | 'resultats' | 'travaux' | 'controles' | 'logements';
+export type TabKey = 'synthese' | 'general' | 'batiment' | 'enveloppe' | 'systemes' | 'resultats' | 'travaux' | 'controles' | 'logements' | 'plan';
 
 export interface TabDef {
   key: TabKey;

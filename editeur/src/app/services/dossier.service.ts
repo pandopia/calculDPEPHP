@@ -11,6 +11,7 @@ import { MoteurCalcul, MoteurPandopia, RapportPdfPandopia, ServiceLogementsPando
 import { ConfigImmeuble, contexteImmeuble, controler, empreinte, lireReponse, parois, requete, resultats } from '../core/immeuble/logements';
 import { integrerResultats, xmlPourRapport } from '../core/calcul/integrer-resultats';
 import { DraftStore } from './draft-store';
+import { AdresseBan, appliquerAdresse } from '../core/localisation/geocodage';
 
 const LAST_KEY = 'calculdpe-editeur:dernier-dossier';
 const CONSENT_KEY = 'calculdpe-editeur:envoi-moteur-accepte';
@@ -107,12 +108,13 @@ export class DossierService {
     this.scheduleSave(0);
   }
 
-  async create(options: NewDossierOptions, nom: string): Promise<void> {
+  async create(options: NewDossierOptions, nom: string, adresse?: AdresseBan): Promise<void> {
     const schema = await this.schemas.forVersion(options.version);
     if (!schema) throw new Error('Version de modèle non disponible.');
     // objets présents dans tout logement, intégrés à l'état initial (pas des « modifications »)
     const draft = await Dossier.fromSkeleton(buildSkeleton(schema, options), nom, this.schemas);
     addDefaultObjects(draft);
+    if (adresse) appliquerAdresse(draft, adresse);
     const d = await Dossier.fromSkeleton(draft.working, nom, this.schemas);
     this.setDossier(d);
     this.scheduleSave(0);
@@ -414,6 +416,19 @@ export class DossierService {
     } finally {
       this.pdfLogementEnCours.set(null);
     }
+  }
+
+  /** Adresse du bien choisie dans la Base Adresse Nationale (annulable). */
+  definirAdresse(a: AdresseBan): void {
+    this.run((d) => appliquerAdresse(d, a), `Adresse du bien : ${a.label} (annulable par Ctrl+Z).`);
+  }
+
+  /** Plan dessiné : enregistré dans le brouillon local, sans recalculer les vues du dossier. */
+  enregistrerPlan(p: Record<string, unknown> | null): void {
+    const d = this.dossier();
+    if (!d) return;
+    d.setPlan(p);
+    this.scheduleSave(1500);
   }
 
   xmlLogement(reference: string): void {

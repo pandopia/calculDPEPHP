@@ -5,11 +5,13 @@ import { DraftStore, DraftSummary } from '../services/draft-store';
 import { NavService } from '../services/nav.service';
 import { VERSIONS_CREATION } from '../core/schema/schema-registry';
 import { distinct, findCode, MethodeEntry, parseMethodes } from '../core/metier/methode-application';
+import { AdresseBan } from '../core/localisation/geocodage';
+import { AdresseBanComponent } from './adresse-ban';
 
 
 @Component({
   selector: 'app-accueil',
-  imports: [FormsModule],
+  imports: [FormsModule, AdresseBanComponent],
   template: `
     <main class="accueil">
       <header class="accueil-header">
@@ -37,6 +39,10 @@ import { distinct, findCode, MethodeEntry, parseMethodes } from '../core/metier/
           <label class="field-label">Nom du dossier
             <input type="text" [(ngModel)]="nom" placeholder="ex. Maison Dupont" />
           </label>
+          <div class="field-label">Adresse du bien <span class="muted">(facultatif)</span>
+            <app-adresse-ban (choisie)="adresse.set($event)" />
+            @if (adresse(); as a) { <span class="ok-text small">✓ {{ a.label }} — géolocalisée, carte et fond de plan disponibles</span> }
+          </div>
           <label class="field-label">Type de bien
             <select [ngModel]="bien()" (ngModelChange)="setBien($event)">
               <option value="">— Choisir —</option>
@@ -75,12 +81,22 @@ import { distinct, findCode, MethodeEntry, parseMethodes } from '../core/metier/
           <p class="muted">Aucun brouillon enregistré dans ce navigateur.</p>
         } @else {
           <table class="table">
-            <thead><tr><th>Dossier</th><th>Origine</th><th>Dernière modification</th><th>Résultats</th><th></th></tr></thead>
+            <thead><tr><th>Dossier</th><th>Adresse</th><th>Type</th><th>Étiquettes</th><th>Dernière modification</th><th>Résultats</th><th></th></tr></thead>
             <tbody>
               @for (d of drafts(); track d.id) {
                 <tr>
-                  <td><a href="" (click)="$event.preventDefault(); open(d.id)">{{ d.nom }}</a></td>
-                  <td>{{ d.origine === 'import' ? 'Import ' + (d.nomFichier ?? '') : 'Nouveau dossier' }}</td>
+                  @let r = d.resume;
+                  <td><a href="" (click)="$event.preventDefault(); open(d.id)">{{ d.nom }}</a>
+                    <div class="muted small">{{ d.origine === 'import' ? 'Import ' + (d.nomFichier ?? '') : 'Créé dans l’éditeur' }}</div></td>
+                  <td>@if (r.adresse) { {{ r.adresse }} } @else { <span class="muted">—</span> }</td>
+                  <td>@if (r.type) { {{ r.type }} } @else { <span class="muted">—</span> }
+                    @if (r.surface || r.logements) { <div class="muted small">@if (r.logements) { {{ r.logements }} logement{{ r.logements > 1 ? 's' : '' }} · } @if (r.surface) { {{ fmt(r.surface) }} m² }</div> }</td>
+                  <td class="nowrap">
+                    @if (r.classeEnergie || r.classeClimat) {
+                      <span class="classe" [attr.data-c]="r.classeEnergie" title="Étiquette énergie">{{ r.classeEnergie ?? '?' }}</span>
+                      <span class="classe climat" [attr.data-c]="r.classeClimat" title="Étiquette climat">{{ r.classeClimat ?? '?' }}</span>
+                    } @else { <span class="muted">—</span> }
+                  </td>
                   <td>{{ date(d.modifieLe) }}</td>
                   <td>@if (d.resultatsObsoletes) { <span class="badge warn">À recalculer</span> } @else { — }</td>
                   <td class="right"><button class="link danger" (click)="remove(d)">Supprimer</button></td>
@@ -95,6 +111,10 @@ import { distinct, findCode, MethodeEntry, parseMethodes } from '../core/metier/
 })
 export class AccueilComponent implements OnInit {
   private readonly svc = inject(DossierService);
+
+  protected fmt(n: number): string {
+    return n.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+  }
   private readonly store = inject(DraftStore);
   private readonly nav = inject(NavService);
 
@@ -118,6 +138,7 @@ export class AccueilComponent implements OnInit {
   protected readonly versions = VERSIONS_CREATION;
   private versionLabels: Record<string, string> = {};
   protected nom = '';
+  protected readonly adresse = signal<AdresseBan | null>(null);
   protected version = VERSIONS_CREATION[0];
 
   async ngOnInit(): Promise<void> {
@@ -192,7 +213,8 @@ export class AccueilComponent implements OnInit {
 
   protected async create(): Promise<void> {
     try {
-      await this.svc.create({ version: this.version, methodeApplication: this.methode()! }, this.nom.trim() || 'Nouveau dossier');
+      const a = this.adresse() ?? undefined;
+      await this.svc.create({ version: this.version, methodeApplication: this.methode()! }, this.nom.trim() || a?.label || 'Nouveau dossier', a);
       this.nav.go('synthese');
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : String(e));
