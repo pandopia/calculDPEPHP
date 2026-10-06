@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { DossierService } from '../services/dossier.service';
 import { NavService } from '../services/nav.service';
@@ -41,9 +41,9 @@ function charger(url: string, type: 'script' | 'style'): Promise<void> {
       <section class="card">
         <div class="card-head">
           <h2>Localisation <span class="muted small">géocodage BAN du XML</span></h2>
-          <span class="calc-actions">
+          <span class="calc-actions loc-actions">
             @if (cartes() && (l || adresse())) {
-              <span class="filters">
+              <span class="filters vues">
                 <button class="chip-btn" [class.active]="vue() === 'plan'" (click)="vue.set('plan')">Plan</button>
                 <button class="chip-btn" [class.active]="vue() === 'satellite'" (click)="vue.set('satellite')">Satellite</button>
                 @if (l) { <button class="chip-btn" [class.active]="vue() === 'streetview'" (click)="vue.set('streetview')" title="Voir le bien depuis la rue">Street View</button> }
@@ -69,7 +69,7 @@ function charger(url: string, type: 'script' | 'style'): Promise<void> {
             <button class="primary small" (click)="accepterCartes(mem.checked)">Afficher les cartes</button>
           </div>
         } @else if (carteUrl(); as url) {
-          <iframe class="carte" [src]="url" [title]="vue() === 'streetview' ? 'Google Street View devant le bien' : 'Carte Google Maps du bien'" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+          <iframe #carte class="carte" [src]="url" [title]="vue() === 'streetview' ? 'Google Street View devant le bien' : 'Carte Google Maps du bien'" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
           @if (vue() === 'streetview') { <p class="muted small">Panorama le plus proche du point d'adresse : faites glisser l'image pour vous tourner vers le bien.</p> }
         }
       </section>
@@ -150,7 +150,24 @@ export class PlanComponent {
     return this.cartes() && l ? { lat: l.lat, lng: l.lng, zoom: 19 } : null;
   });
 
+  private readonly carte = viewChild<ElementRef<HTMLIFrameElement>>('carte');
+
   constructor() {
+    // Glisser commencé dans la carte (ou Street View) et relâché en dehors :
+    // le relâchement arrive à la page, jamais à l'iframe Google (autre
+    // domaine), qui reste « bouton enfoncé » et fait tourner la vue au retour
+    // de la souris. Aucun moyen de lui transmettre ce relâchement : on la
+    // recharge, ce qui la remet dans son état de départ.
+    const relache = () => {
+      const f = this.carte()?.nativeElement;
+      if (f && document.activeElement === f) {
+        f.src = f.src;
+        f.blur();
+      }
+    };
+    document.addEventListener('mouseup', relache, true);
+    inject(DestroyRef).onDestroy(() => document.removeEventListener('mouseup', relache, true));
+
     // g-plan garde son propre brouillon, unique pour tous les dossiers
     // (localStorage « gplan-autosave »), et propose de le restaurer : il
     // pourrait s'agir du plan d'un autre dossier. Le plan de chaque dossier

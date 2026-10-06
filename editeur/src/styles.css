@@ -468,3 +468,13 @@ details[open] > summary { margin-bottom: .4em; }
 .adresse-ban .ab-liste li.actif, .adresse-ban .ab-liste li:hover { background: var(--accent-soft); }
 .adresse-ban .ab-source { margin: .2em 0 0; }
 .nowrap { white-space: nowrap; }
+
+.plan-page .loc-actions { align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.plan-page .loc-actions .vues { display: inline-flex; gap: .3em; margin-right: 1em; }
+.plan-page .loc-actions .button-link, .plan-page .loc-actions > button { white-space: nowrap; line-height: 1.4; padding: .3em .7em; font-size: .88em; }
+
+.logements .icon-btn.doc { color: #c62828; }
+.logements .icon-btn.doc:hover:not(:disabled) { background: #fdecea; }
+.logements .icon-btn:disabled { color: var(--muted); opacity: .45; }
+.plan-page .loc-actions .vues .chip-btn { font-size: .88em; line-height: 1.4; padding: .3em .75em; }
+.plan-page .card-head:has(.loc-actions) { flex-wrap: wrap; row-gap: .5em; }

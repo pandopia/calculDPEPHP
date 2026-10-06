@@ -253,14 +253,22 @@ const fmt = (n: number | null | undefined, d = 0) => (n === null || n === undefi
             </div>
             <div class="card">
               <table class="table compact lgt-table">
-                <thead><tr><th>Logement</th><th class="num">Surface</th><th>Énergie</th><th>Climat</th><th class="num">kWh EF/an</th><th class="num">kg CO₂/an</th><th class="num">€/an</th><th class="center">PDF</th><th></th></tr></thead>
+                <thead><tr><th>Logement</th><th class="num">Surface</th><th>Énergie</th><th>Climat</th><th class="num">kWh EF/an</th><th class="num">kg CO₂/an</th><th class="num">€/an</th><th class="center">PDF</th><th class="center">XML</th></tr></thead>
                 <tbody>
                   @if (r.batiment.synthese; as b) {
                     <tr class="row-immeuble">
                       <td><strong>Immeuble</strong></td><td class="num">{{ fmt(b.surface, 1) }} m²</td>
                       <td><span class="classe" [attr.data-c]="b.classeEnergie">{{ b.classeEnergie ?? '?' }}</span> {{ fmt(b.epM2) }} kWh/m²</td>
                       <td><span class="classe climat" [attr.data-c]="b.classeClimat">{{ b.classeClimat ?? '?' }}</span> {{ fmt(b.gesM2) }} kg/m²</td>
-                      <td class="num">{{ fmt(b.ef) }}</td><td class="num">{{ fmt(b.ges) }}</td><td class="num">{{ fmt(b.cout) }}</td><td></td><td></td>
+                      <td class="num">{{ fmt(b.ef) }}</td><td class="num">{{ fmt(b.ges) }}</td><td class="num">{{ fmt(b.cout) }}</td>
+                      <td class="center">
+                        <button class="icon-btn doc" (click)="svc.rapportPdf()" [disabled]="svc.pdfEnCours()" title="Ouvrir le rapport PDF du DPE de l'immeuble dans un nouvel onglet" aria-label="Rapport PDF de l'immeuble">
+                          @if (svc.pdfEnCours()) { <span class="spinner small-spinner" aria-hidden="true"></span> } @else { <app-icon name="pdf" /> }
+                        </button>
+                      </td>
+                      <td class="center">
+                        <button class="icon-btn doc" (click)="xmlImmeuble()" title="XML ADEME calculé de l'immeuble" aria-label="XML de l'immeuble"><app-icon name="xml" /></button>
+                      </td>
                     </tr>
                   } @else if (r.batiment.erreur) {
                     <tr><td><strong>Immeuble</strong></td><td colspan="8" class="err-text">{{ r.batiment.erreur }}</td></tr>
@@ -274,13 +282,14 @@ const fmt = (n: number | null | undefined, d = 0) => (n === null || n === undefi
                         <td><span class="classe climat" [attr.data-c]="s.classeClimat">{{ s.classeClimat ?? '?' }}</span> {{ fmt(s.gesM2) }} kg/m²</td>
                         <td class="num">{{ fmt(s.ef) }}</td><td class="num">{{ fmt(s.ges) }}</td><td class="num">{{ fmt(s.cout) }}</td>
                         <td class="center">
-                          <button class="icon-btn" (click)="svc.pdfLogement(l.reference)" [disabled]="!!svc.pdfLogementEnCours() || perime()"
+                          <button class="icon-btn doc" (click)="svc.pdfLogement(l.reference)" [disabled]="!!svc.pdfLogementEnCours() || perime()"
                             [title]="perime() ? 'Résultats à recalculer avant le PDF' : 'Ouvrir le rapport PDF du DPE de ce logement dans un nouvel onglet'" [attr.aria-label]="'Rapport PDF de ' + l.reference">
                             @if (svc.pdfLogementEnCours() === l.reference) { <span class="spinner small-spinner" aria-hidden="true"></span> } @else { <app-icon name="pdf" /> }
                           </button>
                         </td>
-                        <td class="nowrap">
-                          @if (svc.xmlLogements().has(l.reference)) { <button class="small" (click)="svc.xmlLogement(l.reference)" title="XML ADEME calculé du logement">XML</button> }
+                        <td class="center">
+                          <button class="icon-btn doc" (click)="svc.xmlLogement(l.reference)" [disabled]="!svc.xmlLogements().has(l.reference)"
+                            [title]="svc.xmlLogements().has(l.reference) ? 'XML ADEME calculé du logement' : 'XML non conservé après rechargement de la page : relancez le calcul pour le télécharger'" [attr.aria-label]="'XML de ' + l.reference"><app-icon name="xml" /></button>
                         </td>
                       } @else {
                         <td colspan="8" class="err-text">{{ l.erreur ?? 'Résultat absent.' }}</td>
@@ -381,6 +390,10 @@ export class LogementsComponent {
   /** « 3 logements », « 1 résultat » */
   protected nombre(n: number, mot: string): string {
     return `${n} ${mot}${n > 1 ? 's' : ''}`;
+  }
+
+  protected xmlImmeuble(): void {
+    this.svc.download(this.svc.exportXml(), `${this.svc.baseName()}-immeuble.xml`, 'application/xml');
   }
 
   protected erreurLogement(id: string): boolean {

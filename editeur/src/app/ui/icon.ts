@@ -15,6 +15,7 @@ const PATHS: Record<string, string> = {
   logements: '<rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 7h2M14 7h2M8 11h2M14 11h2M8 15h2M14 15h2M10 21v-3h4v3"/>',
   pdf: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9 13v5M9 13h1.5a1.5 1.5 0 0 1 0 3H9M15 13v5M15 13h2M15 15.5h1.5"/>',
   plan: '<path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/>',
+  xml: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M10 12.5 8 15l2 2.5M14 12.5l2 2.5-2 2.5"/>',
   chevron: '<path d="M9 6l6 6-6 6"/>',
 };
 

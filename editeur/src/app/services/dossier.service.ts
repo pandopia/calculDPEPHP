@@ -311,26 +311,40 @@ export class DossierService {
     this.pdfConfirmation.set(null);
     const d = this.dossier();
     if (!d) return;
-    if (calculerAvant && !(await this.calculer())) return;
+    // onglet ouvert pendant le clic, avant toute attente (sinon bloqué comme fenêtre surgissante)
+    const onglet = ongletPdf(`DPE ${d.meta.nom}`);
+    if (calculerAvant && !(await this.calculer())) { onglet?.close(); return; }
     this.pdfEnCours.set(true);
     try {
       // dossier modifié depuis l'import : rapport sans numéro ADEME (« non attribué », DOCUMENT NON OFFICIEL)
       const { xml, numeroRetire } = xmlPourRapport(d, this.changes().length > 0);
       const blob = await this.rapport.generer(xml);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${this.baseName()}-diagnostic.pdf`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      const ouvert = this.afficherPdf(onglet, blob, `${this.baseName()}-diagnostic.pdf`);
+      const action = ouvert ? 'Rapport PDF ouvert dans un nouvel onglet' : 'Rapport PDF téléchargé (ouverture d’onglet bloquée par le navigateur)';
       this.toast('succes', numeroRetire
-        ? `Rapport PDF téléchargé, sans le numéro ADEME ${numeroRetire} : le dossier a été modifié depuis l'import (mention « document non officiel »).`
-        : 'Rapport PDF téléchargé.');
+        ? `${action}, sans le numéro ADEME ${numeroRetire} : le dossier a été modifié depuis l'import (mention « document non officiel »).`
+        : `${action}.`);
     } catch (e) {
+      onglet?.close();
       this.toast('erreur', e instanceof Error ? e.message : String(e));
     } finally {
       this.pdfEnCours.set(false);
     }
+  }
+
+  /** PDF dans l'onglet préparé, sinon (onglet bloqué) téléchargement. Retourne vrai si ouvert dans l'onglet. */
+  private afficherPdf(onglet: Window | null, blob: Blob, nomFichier: string): boolean {
+    const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    if (onglet && !onglet.closed) {
+      onglet.location.href = url;
+      return true;
+    }
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomFichier;
+    a.click();
+    return false;
   }
 
   // ------------------------------------------------------------ DPE logements (§17.2.2)
@@ -393,23 +407,12 @@ export class DossierService {
       return;
     }
     this.pdfLogementEnCours.set(reference);
-    // onglet ouvert pendant le clic (sinon bloqué comme fenêtre surgissante), rempli à l'arrivée du PDF
-    const onglet = window.open('', '_blank');
-    onglet?.document.write(`<!doctype html><meta charset="utf-8"><title>DPE ${escapeHtml(reference)}</title><p style="font:15px system-ui,sans-serif;margin:2em">Production du rapport PDF du logement ${escapeHtml(reference)}…</p>`);
+    const onglet = ongletPdf(`DPE ${reference}`);
     try {
       const blob = await this.serviceLogements.pdf(requete(d.immeuble(), contexteImmeuble(d.working), d.exportXml(), reference));
-      const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-      if (onglet && !onglet.closed) {
-        onglet.location.href = url;
-      } else {
-        // onglet bloqué par le navigateur : téléchargement
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${this.baseName()}-${reference.replace(/[^\w.-]+/g, '_')}.pdf`;
-        a.click();
+      if (!this.afficherPdf(onglet, blob, `${this.baseName()}-${reference.replace(/[^\w.-]+/g, '_')}.pdf`)) {
         this.toast('info', `Ouverture d'un onglet bloquée par le navigateur : rapport PDF du logement ${reference} téléchargé.`);
       }
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (e) {
       onglet?.close();
       this.toast('erreur', e instanceof Error ? e.message : String(e));
@@ -490,6 +493,13 @@ export class DossierService {
   dismissToast(id: number): void {
     this.toasts.update((t) => t.filter((x) => x.id !== id));
   }
+}
+
+/** Onglet d'attente pour un PDF, ouvert pendant le clic (null si le navigateur le bloque). */
+function ongletPdf(titre: string): Window | null {
+  const w = window.open('', '_blank');
+  w?.document.write(`<!doctype html><meta charset="utf-8"><title>${escapeHtml(titre)}</title><p style="font:15px system-ui,sans-serif;margin:2em">Production du rapport PDF « ${escapeHtml(titre)} »…</p>`);
+  return w;
 }
 
 function escapeHtml(s: string): string {
