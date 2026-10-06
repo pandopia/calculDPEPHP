@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { googleMapsEmbed, googleMapsLien, lambert93VersWgs84, localisation } from '../src/app/core/localisation/localisation';
+import { googleMapsEmbed, googleMapsLien, googleStreetViewEmbed, googleStreetViewLien, lambert93VersWgs84, localisation } from '../src/app/core/localisation/localisation';
 import { appliquerAdresse, rechercherAdresses } from '../src/app/core/localisation/geocodage';
 import { compacterPlan } from '../src/app/core/localisation/plan-compact';
 import { Dossier } from '../src/app/core/state/dossier';
@@ -23,6 +23,8 @@ describe('localisation du bien', () => {
     const p = { lat: 45.76468, lng: 4.82771 };
     expect(googleMapsEmbed(p, true)).toBe('https://maps.google.com/maps?q=45.764680,4.827710&z=19&t=k&output=embed');
     expect(googleMapsLien(null, '3 Rue Juiverie 69005 Lyon')).toContain('query=3%20Rue%20Juiverie');
+    expect(googleStreetViewEmbed(p)).toBe('https://maps.google.com/maps?layer=c&cbll=45.764680,4.827710&cbp=11,0,0,0,0&output=svembed');
+    expect(googleStreetViewLien(p)).toBe('https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=45.764680,4.827710');
   });
 });
 

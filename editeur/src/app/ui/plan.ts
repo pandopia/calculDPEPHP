@@ -4,7 +4,7 @@ import { DossierService } from '../services/dossier.service';
 import { NavService } from '../services/nav.service';
 import { textOf } from '../core/edition/doc-ops';
 import { resolvePath } from '../core/xml/safe-xml';
-import { adresseTexte, googleMapsEmbed, googleMapsEmbedAdresse, googleMapsLien, localisation } from '../core/localisation/localisation';
+import { adresseTexte, googleMapsEmbed, googleMapsEmbedAdresse, googleMapsLien, googleStreetViewEmbed, googleStreetViewLien, localisation } from '../core/localisation/localisation';
 import { PlanEditeurComponent } from './plan-editeur';
 import { AdresseBanComponent } from './adresse-ban';
 import { compacterPlan, encodeurJpeg } from '../core/localisation/plan-compact';
@@ -44,11 +44,13 @@ function charger(url: string, type: 'script' | 'style'): Promise<void> {
           <span class="calc-actions">
             @if (cartes() && (l || adresse())) {
               <span class="filters">
-                <button class="chip-btn" [class.active]="!satellite()" (click)="satellite.set(false)">Plan</button>
-                <button class="chip-btn" [class.active]="satellite()" (click)="satellite.set(true)">Satellite</button>
+                <button class="chip-btn" [class.active]="vue() === 'plan'" (click)="vue.set('plan')">Plan</button>
+                <button class="chip-btn" [class.active]="vue() === 'satellite'" (click)="vue.set('satellite')">Satellite</button>
+                @if (l) { <button class="chip-btn" [class.active]="vue() === 'streetview'" (click)="vue.set('streetview')" title="Voir le bien depuis la rue">Street View</button> }
               </span>
             }
             @if (l || adresse()) { <a class="button-link" [href]="lienGoogle()" target="_blank" rel="noopener">Ouvrir dans Google Maps ↗</a> }
+            @if (l) { <a class="button-link" [href]="lienStreetView()" target="_blank" rel="noopener" title="Street View en plein écran, dans un nouvel onglet">Street View ↗</a> }
             @if (editable() && (l || adresse())) { <button class="small" (click)="recherche.set(!recherche())">{{ recherche() ? 'Annuler' : 'Changer l’adresse' }}</button> }
           </span>
         </div>
@@ -67,7 +69,8 @@ function charger(url: string, type: 'script' | 'style'): Promise<void> {
             <button class="primary small" (click)="accepterCartes(mem.checked)">Afficher les cartes</button>
           </div>
         } @else if (carteUrl(); as url) {
-          <iframe class="carte" [src]="url" title="Carte Google Maps du bien" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          <iframe class="carte" [src]="url" [title]="vue() === 'streetview' ? 'Google Street View devant le bien' : 'Carte Google Maps du bien'" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+          @if (vue() === 'streetview') { <p class="muted small">Panorama le plus proche du point d'adresse : faites glisser l'image pour vous tourner vers le bien.</p> }
         }
       </section>
 
@@ -101,7 +104,7 @@ export class PlanComponent {
   protected readonly svc = inject(DossierService);
   protected readonly nav = inject(NavService);
   private readonly sanitizer = inject(DomSanitizer);
-  protected readonly satellite = signal(true);
+  protected readonly vue = signal<'plan' | 'satellite' | 'streetview'>('satellite');
   protected readonly recherche = signal(false);
   protected readonly editable = computed(() => this.svc.dossier()?.format.niveauSupport === 'complet');
   protected readonly cartes = signal(lireAccord());
@@ -130,10 +133,17 @@ export class PlanComponent {
   protected readonly carteUrl = computed<SafeResourceUrl | null>(() => {
     const l = this.loc();
     const a = this.adresse();
-    const url = l ? googleMapsEmbed(l, this.satellite()) : a ? googleMapsEmbedAdresse(a, this.satellite()) : null;
+    const v = this.vue();
+    const url = l
+      ? (v === 'streetview' ? googleStreetViewEmbed(l) : googleMapsEmbed(l, v === 'satellite'))
+      : a ? googleMapsEmbedAdresse(a, v !== 'plan') : null;
     return url ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null;
   });
   protected readonly lienGoogle = computed(() => googleMapsLien(this.loc(), this.adresse()));
+  protected readonly lienStreetView = computed(() => {
+    const l = this.loc();
+    return l ? googleStreetViewLien(l) : '';
+  });
   /** fond satellite du plan centré sur le bien, seulement après accord */
   protected readonly pointFond = computed(() => {
     const l = this.loc();

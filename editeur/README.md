@@ -107,9 +107,11 @@ accord).
     d'appel), en une modification annulable. C'est le référentiel attendu par
     le XSD ; l'API de géocodage Google ne fournit pas ces champs et exigerait
     une clé exposée dans le site public.
-  - *Carte* : Google Maps intégrée (plan ou satellite, sans clé d'API) au point
-    BAN converti en latitude/longitude (`core/localisation/`), et lien
-    « Ouvrir dans Google Maps ». Affichée après accord, mémorisable sur le poste
+  - *Carte* : Google Maps intégrée (plan, satellite ou **Street View** pour
+    voir le bien depuis la rue, sans clé d'API) au point BAN converti en
+    latitude/longitude (`core/localisation/`), et liens « Ouvrir dans Google
+    Maps » et « Street View » (plein écran, liens officiels Google Maps).
+    Street View montre le panorama le plus proche, orienté au nord. Affichée après accord, mémorisable sur le poste
     (la position part chez Google et chez les serveurs de tuiles).
   - *Plan* : éditeur **g-plan** (`vendor/README.md`), fond satellite centré sur
     le bien, surface dessinée comparée à la surface habitable déclarée. Chargé
