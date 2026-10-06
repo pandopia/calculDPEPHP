@@ -254,8 +254,11 @@ final class Page1Synthese implements PageRenderer
         [$min, $max] = $data->fourchetteTotale();
 
         $top = $entre->y0 - 17.5;
-        $slot1 = new Box($entre->x1 + 3, $top, $et->x0 - 3, $entre->y1 + 5);
-        $slot2 = new Box($et->x1 + 3, $top, $parAn->x0 - 3, $entre->y1 + 5);
+        // Le masque s'arrête juste sous les chiffres d'exemple (sans jambage) :
+        // plus bas, il couperait le haut des deux ronds de la réglette rose.
+        $bas = $entre->y1 + 2;
+        $slot1 = new Box($entre->x1 + 3, $top, $et->x0 - 3, $bas);
+        $slot2 = new Box($et->x1 + 3, $top, $parAn->x0 - 3, $bas);
         $pdf->mask($slot1, $slot1->x0 + 5, $slot1->y0 - 1);
         $pdf->mask($slot2, $slot2->x0 + 5, $slot2->y0 - 1);
 
