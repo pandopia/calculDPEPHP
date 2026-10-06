@@ -11,13 +11,13 @@ import { compacterPlan, encodeurJpeg } from '../core/localisation/plan-compact';
 
 const CARTES_KEY = 'calculdpe-editeur:cartes-acceptees';
 
-/** Charge une seule fois un script ou une feuille de style servis avec l'application. */
+/** Charge une seule fois une feuille de style servie avec l'application. */
 const chargements = new Map<string, Promise<void>>();
-function charger(url: string, type: 'script' | 'style'): Promise<void> {
+function chargerStyle(url: string): Promise<void> {
   let p = chargements.get(url);
   if (!p) {
     p = new Promise<void>((resolve, reject) => {
-      const el = type === 'script' ? Object.assign(document.createElement('script'), { src: url }) : Object.assign(document.createElement('link'), { rel: 'stylesheet', href: url });
+      const el = Object.assign(document.createElement('link'), { rel: 'stylesheet', href: url });
       el.onload = () => resolve();
       el.onerror = () => { chargements.delete(url); reject(new Error(`${url} introuvable`)); };
       document.head.appendChild(el);
@@ -173,9 +173,9 @@ export class PlanComponent {
     // pourrait s'agir du plan d'un autre dossier. Le plan de chaque dossier
     // est déjà dans son brouillon : on écarte celui de la librairie.
     try { localStorage.removeItem('gplan-autosave'); } catch { /* stockage indisponible */ }
-    // Fabric.js (global window.fabric) et les styles MapLibre exigés par g-plan,
-    // servis avec l'application et chargés à la première ouverture du plan
-    Promise.all([charger('vendor/fabric.min.js', 'script'), charger('vendor/maplibre-gl.css', 'style')])
+    // styles MapLibre exigés par g-plan, servis avec l'application et chargés à
+    // la première ouverture du plan (Fabric 7 est importé par g-plan lui-même)
+    chargerStyle('vendor/maplibre-gl.css')
       .then(() => this.etat.set('pret'))
       .catch((e: Error) => { this.erreur.set(e.message); this.etat.set('erreur'); });
   }
