@@ -191,6 +191,30 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   l'installation et de l'échantillonnage, pas du nombre d'appartements.
 - Traiter avec TASK-H10 et TASK-H04, qui portent sur les mêmes fichiers.
 
+### TASK-K43 — 2684E2439344J : la référence calcule sur 70 logements et en déclare 40
+
+- [ ] Owner: __  | Phase: K  | Estimation: 1h  | Priorité: basse
+- Mode 11, conformité 89,84 %. Les deux seuls écarts imputables au moteur se
+  reproduisent **à la décimale** avec un nombre de logements de 70, alors que
+  `caracteristique_generale/nombre_appartement` vaut **40** :
+  - `installation_chauffage/donnee_intermediaire/conso_ch` : notre valeur
+    bâtiment 70 536,0037 divisée par 70 donne 1 007,6572, publié 1 007,65682 ;
+  - `conso_auxiliaire_distribution_ch` : 70 circulateurs au plancher de 30 W de
+    §15.2.1, soit 2 100 W x 4 499 h x 0,0130584 = 123,374, publié 123,374. Nous
+    calculons un circulateur unique à l'échelle du bâtiment (591,4 W), ce que
+    prescrit §15.2.1 pour une installation collective
+    (`enum_type_installation_id` = 2).
+- La preuve tient sur le fichier seul : une `sous_fiche_technique` y décrit
+  « Surface chauffée: 70 x 42,6 m² », soit 2 982 m² ≈ `surface_habitable_immeuble`
+  = 2 980, quand 40 x 42,6 ne ferait que 1 704 m². Le compte déclaré est donc
+  faux, et seul un texte libre porte le bon.
+- La référence applique par ailleurs deux clés différentes dans le même fichier :
+  1/70 pour la consommation de l'installation, `cle_repartition_ch` = 0,0130584
+  pour la sortie — qui, elle, concorde avec la nôtre.
+- Ne rien changer : le bon décompte n'est lisible que dans un champ descriptif,
+  qu'aucune règle de la méthode ne désigne. À reprendre si plusieurs références
+  présentent la même contradiction, pour décider d'une imputation `ReferenceDefects`.
+
 ### TASK-K42 — 2659E2542205P : référence auto-contradictoire sur cinq balises
 
 - [ ] Owner: __  | Phase: K  | Estimation: 1h  | Priorité: basse
