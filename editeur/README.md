@@ -107,9 +107,14 @@ accord).
     d'appel), en une modification annulable. C'est le référentiel attendu par
     le XSD ; l'API de géocodage Google ne fournit pas ces champs et exigerait
     une clé exposée dans le site public.
-  - *Carte* : Google Maps intégrée (plan ou satellite, sans clé d'API) au point
-    BAN converti en latitude/longitude (`core/localisation/`), et lien
-    « Ouvrir dans Google Maps ». Affichée après accord, mémorisable sur le poste
+  - *Carte* : Google Maps intégrée (plan, satellite ou **Street View** pour
+    voir le bien depuis la rue, sans clé d'API) au point BAN converti en
+    latitude/longitude (`core/localisation/`), et liens « Ouvrir dans Google
+    Maps » et « Street View » (plein écran, liens officiels Google Maps).
+    Street View montre le panorama le plus proche, orienté au nord. Un
+    glisser commencé dans la carte et relâché en dehors laisserait l'iframe
+    Google « bouton enfoncé » (le relâchement ne lui parvient pas) : elle est
+    alors rechargée, et revient à sa vue de départ. Affichée après accord, mémorisable sur le poste
     (la position part chez Google et chez les serveurs de tuiles).
   - *Plan* : éditeur **g-plan** (`vendor/README.md`), fond satellite centré sur
     le bien, surface dessinée comparée à la surface habitable déclarée. Chargé
@@ -247,7 +252,10 @@ de l'immeuble ».
    intégré au dossier avec les mêmes garde-fous que le calcul simple, chaque
    logement est résumé (étiquettes, kWh/m², kg CO₂/m², énergie finale, GES,
    coût). PDF d'un logement : `POST …/pdflogement` (même corps + `logement`).
-   XML calculé d'un logement téléchargeable tant que la page reste ouverte.
+   Colonnes PDF et XML (icônes) pour chaque logement et pour l'immeuble ; les
+   PDF s'ouvrent dans un nouvel onglet (téléchargés si le navigateur bloque
+   l'onglet). XML calculé d'un logement disponible tant que la page reste
+   ouverte.
    Contrat complet : `docs/prompt-api-calcul-logements.md` (racine du dépôt).
 
 Les logements et leurs liaisons n'ont pas d'emplacement dans le XSD ADEME : ils

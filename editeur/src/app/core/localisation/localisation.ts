@@ -70,6 +70,19 @@ export function googleMapsLien(l: { lat: number; lng: number } | null, adresse: 
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 }
 
+/**
+ * Street View intégré au point du bien, sans clé d'API (panorama le plus
+ * proche, orienté au nord : on tourne la vue à la souris).
+ */
+export function googleStreetViewEmbed(l: { lat: number; lng: number }): string {
+  return `https://maps.google.com/maps?layer=c&cbll=${l.lat.toFixed(6)},${l.lng.toFixed(6)}&cbp=11,0,0,0,0&output=svembed`;
+}
+
+/** Street View en plein écran, par les liens officiels Google Maps (sans clé). */
+export function googleStreetViewLien(l: { lat: number; lng: number }): string {
+  return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${l.lat.toFixed(6)},${l.lng.toFixed(6)}`;
+}
+
 export function googleMapsEmbedAdresse(adresse: string, satellite: boolean): string {
   return `https://maps.google.com/maps?q=${encodeURIComponent(adresse)}&z=18&t=${satellite ? 'k' : 'm'}&output=embed`;
 }
