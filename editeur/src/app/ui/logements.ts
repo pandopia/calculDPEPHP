@@ -1,8 +1,9 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { IconComponent } from './icon';
 import { DossierService } from '../services/dossier.service';
 import { NavService } from '../services/nav.service';
 import {
-  contexteImmeuble, controler, empreinte, liaisonsUtiles, liaisonsVides, Logement, logementsManquants, logementsVisites,
+  contexteImmeuble, controler, liaisonsUtiles, liaisonsVides, Logement, logementsManquants, logementsVisites,
   nettoyerLiaisons, Paroi, parois, POSITIONS, preRemplir, TypeLiaison, TYPES_LIAISON, TYPOLOGIES, UNITE,
 } from '../core/immeuble/logements';
 
@@ -17,6 +18,7 @@ const fmt = (n: number | null | undefined, d = 0) => (n === null || n === undefi
  */
 @Component({
   selector: 'app-logements',
+  imports: [IconComponent],
   template: `
     @let d = svc.dossier()!;
     @let c = ctx();
@@ -65,9 +67,9 @@ const fmt = (n: number | null | undefined, d = 0) => (n === null || n === undefi
       </div>
 
       <div class="filters sub-tabs">
-        <button class="chip-btn" [class.active]="vue() === 'logements'" (click)="vue.set('logements')">Logements {{ cfg.logements.length }}</button>
+        <button class="chip-btn" [class.active]="vue() === 'logements'" (click)="vue.set('logements')">{{ nombre(cfg.logements.length, 'logement') }}</button>
         <button class="chip-btn" [class.active]="vue() === 'liaisons'" (click)="vue.set('liaisons')" [disabled]="!cfg.logements.length">Liaisons aux parois</button>
-        <button class="chip-btn" [class.active]="vue() === 'resultats'" (click)="vue.set('resultats')">Résultats @if (d.resultatsLogements) { {{ d.resultatsLogements.logements.length }} }</button>
+        <button class="chip-btn" [class.active]="vue() === 'resultats'" (click)="vue.set('resultats')">{{ d.resultatsLogements ? nombre(d.resultatsLogements.logements.length, 'résultat') : 'Résultats' }}</button>
       </div>
 
       @if (controles().length && vue() !== 'resultats') {
@@ -234,7 +236,15 @@ const fmt = (n: number | null | undefined, d = 0) => (n === null || n === undefi
         }
         @case ('resultats') {
           @let r = d.resultatsLogements;
-          @if (!r) {
+          @if (svc.logementsEnCours()) {
+            <div class="card calcul-attente" role="status" aria-live="polite">
+              <span class="spinner" aria-hidden="true"></span>
+              <div>
+                <strong>Calcul des DPE logements en cours…</strong>
+                <p class="muted small">Calcul de l'immeuble, du besoin de chauffage de chaque logement puis de son DPE ({{ nombre(cfg.logements.length, 'logement') }}). Cela peut prendre jusqu'à quelques minutes.</p>
+              </div>
+            </div>
+          } @else if (!r) {
             <div class="card"><p class="muted">Aucun DPE logement calculé pour l'instant.</p></div>
           } @else {
             <div class="calc-bar" [class.stale]="perime()">
@@ -243,17 +253,17 @@ const fmt = (n: number | null | undefined, d = 0) => (n === null || n === undefi
             </div>
             <div class="card">
               <table class="table compact lgt-table">
-                <thead><tr><th>Logement</th><th class="num">Surface</th><th>Énergie</th><th>Climat</th><th class="num">kWh EF/an</th><th class="num">kg CO₂/an</th><th class="num">€/an</th><th></th></tr></thead>
+                <thead><tr><th>Logement</th><th class="num">Surface</th><th>Énergie</th><th>Climat</th><th class="num">kWh EF/an</th><th class="num">kg CO₂/an</th><th class="num">€/an</th><th class="center">PDF</th><th></th></tr></thead>
                 <tbody>
                   @if (r.batiment.synthese; as b) {
                     <tr class="row-immeuble">
                       <td><strong>Immeuble</strong></td><td class="num">{{ fmt(b.surface, 1) }} m²</td>
                       <td><span class="classe" [attr.data-c]="b.classeEnergie">{{ b.classeEnergie ?? '?' }}</span> {{ fmt(b.epM2) }} kWh/m²</td>
                       <td><span class="classe climat" [attr.data-c]="b.classeClimat">{{ b.classeClimat ?? '?' }}</span> {{ fmt(b.gesM2) }} kg/m²</td>
-                      <td class="num">{{ fmt(b.ef) }}</td><td class="num">{{ fmt(b.ges) }}</td><td class="num">{{ fmt(b.cout) }}</td><td></td>
+                      <td class="num">{{ fmt(b.ef) }}</td><td class="num">{{ fmt(b.ges) }}</td><td class="num">{{ fmt(b.cout) }}</td><td></td><td></td>
                     </tr>
                   } @else if (r.batiment.erreur) {
-                    <tr><td><strong>Immeuble</strong></td><td colspan="7" class="err-text">{{ r.batiment.erreur }}</td></tr>
+                    <tr><td><strong>Immeuble</strong></td><td colspan="8" class="err-text">{{ r.batiment.erreur }}</td></tr>
                   }
                   @for (l of r.logements; track l.reference) {
                     <tr>
@@ -263,19 +273,24 @@ const fmt = (n: number | null | undefined, d = 0) => (n === null || n === undefi
                         <td><span class="classe" [attr.data-c]="s.classeEnergie">{{ s.classeEnergie ?? '?' }}</span> {{ fmt(s.epM2) }} kWh/m²</td>
                         <td><span class="classe climat" [attr.data-c]="s.classeClimat">{{ s.classeClimat ?? '?' }}</span> {{ fmt(s.gesM2) }} kg/m²</td>
                         <td class="num">{{ fmt(s.ef) }}</td><td class="num">{{ fmt(s.ges) }}</td><td class="num">{{ fmt(s.cout) }}</td>
+                        <td class="center">
+                          <button class="icon-btn" (click)="svc.pdfLogement(l.reference)" [disabled]="!!svc.pdfLogementEnCours() || perime()"
+                            [title]="perime() ? 'Résultats à recalculer avant le PDF' : 'Ouvrir le rapport PDF du DPE de ce logement dans un nouvel onglet'" [attr.aria-label]="'Rapport PDF de ' + l.reference">
+                            @if (svc.pdfLogementEnCours() === l.reference) { <span class="spinner small-spinner" aria-hidden="true"></span> } @else { <app-icon name="pdf" /> }
+                          </button>
+                        </td>
                         <td class="nowrap">
-                          <button class="small" (click)="svc.pdfLogement(l.reference)" [disabled]="!!svc.pdfLogementEnCours() || perime()" [title]="perime() ? 'Résultats à recalculer avant le PDF' : 'Rapport PDF du DPE de ce logement'">{{ svc.pdfLogementEnCours() === l.reference ? 'PDF…' : 'PDF' }}</button>
                           @if (svc.xmlLogements().has(l.reference)) { <button class="small" (click)="svc.xmlLogement(l.reference)" title="XML ADEME calculé du logement">XML</button> }
                         </td>
                       } @else {
-                        <td colspan="7" class="err-text">{{ l.erreur ?? 'Résultat absent.' }}</td>
+                        <td colspan="8" class="err-text">{{ l.erreur ?? 'Résultat absent.' }}</td>
                       }
                     </tr>
                   }
                 </tbody>
                 @if (totaux(); as t) {
                   <tfoot><tr><td class="muted">Somme des logements</td><td class="num">{{ fmt(t.surface, 1) }} m²</td><td></td><td></td>
-                    <td class="num">{{ fmt(t.ef) }}</td><td class="num">{{ fmt(t.ges) }}</td><td class="num">{{ fmt(t.cout) }}</td><td></td></tr></tfoot>
+                    <td class="num">{{ fmt(t.ef) }}</td><td class="num">{{ fmt(t.ges) }}</td><td class="num">{{ fmt(t.cout) }}</td><td></td><td></td></tr></tfoot>
                 }
               </table>
               @if (r.hypotheses.length) {
@@ -306,6 +321,8 @@ export class LogementsComponent {
 
   constructor() {
     if (this.svc.dossier()?.resultatsLogements) this.vue.set('resultats');
+    // le calcul lancé (contrôles passés, envoi accepté) s'affiche dans l'onglet des résultats
+    effect(() => { if (this.svc.logementsEnCours()) this.vue.set('resultats'); });
   }
 
   protected readonly ctx = computed(() => {
@@ -353,18 +370,18 @@ export class LogementsComponent {
     const ps = this.listeParois();
     return ps.find((p) => p.uid === this.selParoi()) ?? ps[0] ?? null;
   });
-  protected readonly perime = computed(() => {
-    this.svc.revision();
-    const d = this.svc.dossier()!;
-    const r = d.resultatsLogements;
-    return !!r && r.empreinte !== empreinte(d.exportXml(), d.immeuble());
-  });
+  protected readonly perime = this.svc.logementsPerimes;
   protected readonly totaux = computed(() => {
     const ls = this.svc.dossier()!.resultatsLogements?.logements.map((l) => l.synthese).filter((s) => !!s) ?? [];
     if (!ls.length) return null;
     const sum = (f: (s: (typeof ls)[number]) => number | null) => ls.reduce((n, s) => n + (f(s) ?? 0), 0);
     return { surface: sum((s) => s!.surface), ef: sum((s) => s!.ef), ges: sum((s) => s!.ges), cout: sum((s) => s!.cout) };
   });
+
+  /** « 3 logements », « 1 résultat » */
+  protected nombre(n: number, mot: string): string {
+    return `${n} ${mot}${n > 1 ? 's' : ''}`;
+  }
 
   protected erreurLogement(id: string): boolean {
     return this.erreurs().some((c) => c.logementId === id);
