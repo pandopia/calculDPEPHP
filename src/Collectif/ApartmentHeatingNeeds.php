@@ -90,9 +90,10 @@ final class ApartmentHeatingNeeds
                 $assumptions[] = 'Paroi ' . $reference . ' sans liaison : répartition approximative entre ' . $rule . ', au prorata des surfaces habitables (§17.2.2.2.2).';
             }
         }
+        $bridges = self::bridges($input, $a, $xp, $members, $apartments, $assumptions);
         $needs = [];
         foreach ($input->apartments as $apt) {
-            $doc = self::project($source, $apt, $members);
+            $doc = self::project($source, $apt, $members, $bridges);
             $out = DefaultDpeEngineFactory::create()->calculateDocument($doc, true);
             $need = (new NodeAccessor($out))->getFloatOrNull('//sortie/apport_et_besoin/' . ($cooling ? 'besoin_fr' : 'besoin_ch'));
             if ($need === null || !is_finite($need) || $need < 0) {
@@ -105,8 +106,57 @@ final class ApartmentHeatingNeeds
         return $needs;
     }
 
-    /** @param array<string, array<string, float>> $members */
-    private static function project(DOMDocument $source, ApartmentInput $apt, array $members): DOMDocument
+    /**
+     * Logements concernés par chaque pont thermique, dans l'ordre du document.
+     * Une liaison explicite (`associations['pont_thermique']`) prime ; sinon
+     * le pont suit ses parois (`reference_1`/`reference_2` du XSD) : il borde
+     * les logements communs aux deux parois, ou ceux de la seule paroi décrite
+     * pour un plancher intermédiaire ou un refend. Les logiciels qui saisissent des
+     * ponts « manuels » sans référence de paroi exigent l'une ou l'autre, ou
+     * l'approximation explicite (tous les logements, au prorata des surfaces).
+     *
+     * @param array<string, array<string, float>> $members
+     * @param array<string, float> $apartments
+     * @param list<string> $assumptions
+     * @return list<array<string, float>>
+     */
+    private static function bridges(BuildingInput $input, NodeAccessor $a, DOMXPath $xp, array $members, array $apartments, array &$assumptions): array
+    {
+        $bridges = [];
+        foreach ($xp->query('//pont_thermique/donnee_entree') as $de) {
+            $reference = $a->getStringOrNull('./reference', $de);
+            $direct = [];
+            foreach ($input->apartments as $apt) {
+                if ($reference !== null && in_array($reference, $apt->associations['pont_thermique'] ?? [], true)) {
+                    $direct[$apt->reference] = $apt->surface;
+                }
+            }
+            if ($direct) { $bridges[] = $direct; continue; }
+            $type = $a->getIntOrNull('./enum_type_liaison_id', $de);
+            $r1 = $a->getStringOrNull('./reference_1', $de);
+            $r2 = $a->getStringOrNull('./reference_2', $de);
+            $m1 = $r1 !== null ? ($members[$r1] ?? null) : null;
+            $m2 = $r2 !== null ? ($members[$r2] ?? null) : null;
+            if ($m1 !== null && $m2 !== null) { $bridges[] = array_intersect_key($m1, $m2); continue; }
+            // Plancher intermédiaire ou refend : l'élément intérieur n'est pas
+            // une paroi déperditive décrite, seule la paroi décrite compte,
+            // qu'elle soit référencée en premier ou en second.
+            if (in_array($type, [2, 4], true) && ($m1 ?? $m2) !== null) { $bridges[] = $m1 ?? $m2; continue; }
+            $name = $reference ?? $a->getStringOrNull('./description', $de) ?? '?';
+            if (!$input->approximateMissingAssociations) {
+                throw new RuntimeException('Pont thermique ' . $name . ' sans parois associées (reference_1/reference_2) ni liaison logement : besoins de répartition incomplets.');
+            }
+            $bridges[] = $apartments;
+            $assumptions[] = 'Pont thermique ' . $name . ' sans liaison : réparti entre tous les logements, au prorata des surfaces habitables (§17.2.2.2.2).';
+        }
+        return $bridges;
+    }
+
+    /**
+     * @param array<string, array<string, float>> $members
+     * @param list<array<string, float>> $bridges
+     */
+    private static function project(DOMDocument $source, ApartmentInput $apt, array $members, array $bridges): DOMDocument
     {
         $doc = clone $source;
         $xp = new DOMXPath($doc);
@@ -141,19 +191,9 @@ final class ApartmentHeatingNeeds
                 }
             }
         }
-        foreach (iterator_to_array($xp->query('//pont_thermique')) as $bridge) {
+        foreach (iterator_to_array($xp->query('//pont_thermique')) as $i => $bridge) {
             $de = $xp->query('./donnee_entree', $bridge)->item(0);
-            $type = $a->getIntOrNull('./enum_type_liaison_id', $de);
-            $r1 = $a->getStringOrNull('./reference_1', $de);
-            $r2 = $a->getStringOrNull('./reference_2', $de);
-            if ($r1 === null || !isset($members[$r1])) {
-                throw new RuntimeException('Association de pont thermique aux parois absente.');
-            }
-            $linked = $members[$r1];
-            if ($r2 !== null && isset($members[$r2])) { $linked = array_intersect_key($linked, $members[$r2]); }
-            elseif (!in_array($type, [2, 4], true)) {
-                throw new RuntimeException('Deuxième paroi de pont thermique non associée.');
-            }
+            $linked = $bridges[$i];
             if (!isset($linked[$apt->reference])) {
                 $bridge->parentNode->removeChild($bridge);
                 continue;

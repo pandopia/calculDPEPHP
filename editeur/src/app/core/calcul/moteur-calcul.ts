@@ -122,3 +122,61 @@ export class RapportPdfPandopia {
     return blob;
   }
 }
+
+/**
+ * DPE des logements générés depuis le DPE immeuble (§17.2.2), par le service
+ * Pandopia :
+ *   POST /api/calculdpe/logements    JSON → JSON (immeuble + chaque logement)
+ *   POST /api/calculdpe/pdflogement  JSON (avec `logement`) → application/pdf
+ * Contrat : voir core/immeuble/logements.ts (RequeteLogements, ReponseLogements).
+ */
+export class ServiceLogementsPandopia {
+  readonly destination: string;
+
+  constructor(
+    private readonly base = 'https://app.pandopia.com/api/calculdpe',
+    private readonly timeoutMs = 300000,
+    private readonly fetcher: typeof fetch = (...a) => fetch(...a),
+  ) {
+    this.destination = new URL(base).host;
+  }
+
+  async calculer(requete: unknown): Promise<unknown> {
+    const res = await this.post('logements', requete, 'Le calcul des logements');
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new MoteurCalculError('Réponse du calcul des logements inattendue (JSON attendu).');
+    }
+  }
+
+  async pdf(requete: unknown): Promise<Blob> {
+    const res = await this.post('pdflogement', requete, 'Le rapport PDF du logement');
+    const blob = await res.blob();
+    const head = new Uint8Array(await blob.slice(0, 5).arrayBuffer());
+    if (String.fromCharCode(...head) !== '%PDF-') throw new MoteurCalculError('Réponse inattendue : le service n\'a pas renvoyé de PDF.');
+    return blob;
+  }
+
+  private async post(action: string, body: unknown, quoi: string): Promise<Response> {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
+    let res: Response;
+    try {
+      res = await this.fetcher(`${this.base}/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      });
+    } catch {
+      throw new MoteurCalculError(ctrl.signal.aborted ? `${quoi} n'a pas abouti en ${this.timeoutMs / 1000} s.` : `Service Pandopia injoignable (${this.destination}).`);
+    } finally {
+      clearTimeout(timer);
+    }
+    if (res.status === 404) throw new MoteurCalculError(`${quoi} n'est pas encore disponible sur ${this.destination} (HTTP 404).`);
+    if (!res.ok) throw new MoteurCalculError(`${quoi} a été refusé (HTTP ${res.status})${errorDetail(await res.text())}`);
+    return res;
+  }
+}

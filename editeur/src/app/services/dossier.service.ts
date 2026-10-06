@@ -7,7 +7,8 @@ import { computeChanges } from '../core/edition/change-set';
 import * as ed from '../core/edition/editor';
 import { decodeXmlBytes } from '../core/xml/safe-xml';
 import { BrowserXsdEngine, runXsdValidation, XsdReport } from '../core/validation/xsd-validation';
-import { MoteurCalcul, MoteurPandopia, RapportPdfPandopia } from '../core/calcul/moteur-calcul';
+import { MoteurCalcul, MoteurPandopia, RapportPdfPandopia, ServiceLogementsPandopia } from '../core/calcul/moteur-calcul';
+import { ConfigImmeuble, contexteImmeuble, controler, empreinte, lireReponse, parois, requete, resultats } from '../core/immeuble/logements';
 import { integrerResultats, xmlPourRapport } from '../core/calcul/integrer-resultats';
 import { DraftStore } from './draft-store';
 
@@ -43,7 +44,14 @@ export class DossierService {
   /** l'utilisateur a accepté l'envoi du XML au moteur (mémorisé sur ce poste) */
   readonly consentementCalcul = signal(readConsent());
   /** action en attente de l'accord d'envoi */
-  readonly demandeConsentement = signal<'calcul' | 'pdf' | null>(null);
+  readonly demandeConsentement = signal<'calcul' | 'pdf' | 'logements' | null>(null);
+  readonly serviceLogements = new ServiceLogementsPandopia();
+  readonly logementsEnCours = signal(false);
+  /** référence du logement dont le PDF est en cours */
+  readonly pdfLogementEnCours = signal<string | null>(null);
+  /** XML calculés des logements, gardés en mémoire seulement (volumineux) */
+  readonly xmlLogements = signal(new Map<string, string>());
+  private pdfLogementEnAttente: string | null = null;
   readonly rapport = new RapportPdfPandopia();
   readonly pdfEnCours = signal(false);
   /** confirmation avant PDF : résultats absents ou pas à jour, numéro ADEME d'un dossier modifié */
@@ -145,6 +153,7 @@ export class DossierService {
     }
     this.dossier.set(d);
     this.xsdReport.set(null);
+    this.xmlLogements.set(new Map());
     this.revision.update((r) => r + 1);
   }
 
@@ -315,6 +324,87 @@ export class DossierService {
     }
   }
 
+  // ------------------------------------------------------------ DPE logements (§17.2.2)
+
+  modifierImmeuble<T>(label: string, fn: (cfg: ConfigImmeuble) => T, success?: string): T | undefined {
+    return this.run((d) => d.modifierImmeuble(label, fn), success);
+  }
+
+  /** Calcule l'immeuble et génère le DPE de chacun de ses logements. */
+  async calculerLogements(): Promise<boolean> {
+    const d = this.dossier();
+    if (!d || this.logementsEnCours()) return false;
+    const cfg = d.immeuble();
+    const ctx = contexteImmeuble(d.working);
+    const bloquants = controler(cfg, ctx, parois(d.working, d.schema)).filter((c) => c.gravite === 'erreur');
+    if (bloquants.length) {
+      this.toast('erreur', `Calcul des logements impossible : ${bloquants[0].message}${bloquants.length > 1 ? ` (et ${bloquants.length - 1} autre(s) point(s))` : ''}`);
+      return false;
+    }
+    if (!this.consentementCalcul()) {
+      this.pdfLogementEnAttente = null;
+      this.demandeConsentement.set('logements');
+      return false;
+    }
+    this.logementsEnCours.set(true);
+    try {
+      const envoye = d.exportXml();
+      const rep = lireReponse(await this.serviceLogements.calculer(requete(cfg, ctx, envoye)));
+      const notes: string[] = [];
+      if (rep.batiment.xml) {
+        try {
+          integrerResultats(d, envoye, rep.batiment.xml, this.moteur.nom);
+        } catch (e) {
+          notes.push('Résultats de l\'immeuble non intégrés : ' + (e instanceof Error ? e.message : String(e)));
+        }
+      }
+      const r = resultats(rep, empreinte(envoye, cfg), this.moteur.nom);
+      r.hypotheses.push(...notes);
+      d.setResultatsLogements(r);
+      this.xmlLogements.set(new Map(rep.logements.filter((l) => l.xml).map((l) => [l.reference, l.xml!])));
+      this.changed();
+      const ko = r.logements.filter((l) => l.erreur).length;
+      this.toast(ko ? 'info' : 'succes', `DPE logements calculés : ${r.logements.length - ko} réussi(s)${ko ? `, ${ko} en erreur` : ''}.`);
+      return true;
+    } catch (e) {
+      this.toast('erreur', e instanceof Error ? e.message : String(e));
+      return false;
+    } finally {
+      this.logementsEnCours.set(false);
+    }
+  }
+
+  /** Rapport PDF du DPE d'un logement, produit par le service à partir de l'immeuble. */
+  async pdfLogement(reference: string): Promise<void> {
+    const d = this.dossier();
+    if (!d || this.pdfLogementEnCours()) return;
+    if (!this.consentementCalcul()) {
+      this.pdfLogementEnAttente = reference;
+      this.demandeConsentement.set('logements');
+      return;
+    }
+    this.pdfLogementEnCours.set(reference);
+    try {
+      const blob = await this.serviceLogements.pdf(requete(d.immeuble(), contexteImmeuble(d.working), d.exportXml(), reference));
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${this.baseName()}-${reference.replace(/[^\w.-]+/g, '_')}.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      this.toast('succes', `Rapport PDF du logement ${reference} téléchargé.`);
+    } catch (e) {
+      this.toast('erreur', e instanceof Error ? e.message : String(e));
+    } finally {
+      this.pdfLogementEnCours.set(null);
+    }
+  }
+
+  xmlLogement(reference: string): void {
+    const xml = this.xmlLogements().get(reference);
+    if (xml) this.download(xml, `${this.baseName()}-${reference.replace(/[^\w.-]+/g, '_')}.xml`, 'application/xml');
+  }
+
   accepterEnvoi(memoriser: boolean): void {
     const action = this.demandeConsentement();
     this.demandeConsentement.set(null);
@@ -327,7 +417,11 @@ export class DossierService {
       }
     }
     if (action === 'pdf') this.rapportPdf();
-    else void this.calculer();
+    else if (action === 'logements') {
+      const ref = this.pdfLogementEnAttente;
+      this.pdfLogementEnAttente = null;
+      void (ref ? this.pdfLogement(ref) : this.calculerLogements());
+    } else void this.calculer();
   }
 
   /** « résultats du fichier source » ou « calculés par … le … » */

@@ -57,7 +57,8 @@ src/app/core/                 logique pure, testée hors navigateur
                  opérations (champ, ajout, duplication, suppression), saisie ↔ XML, récapitulatif
   validation/    validator, xsd-validation, issues contrôles en direct, XSD (libxml2 WebAssembly)
   state/         dossier, skeleton               document de travail, historique, dossier vierge
-  calcul/        moteur-calcul                    point d'extension d'un moteur (aucun connecté)
+  calcul/        moteur-calcul                    point d'extension d'un moteur, service Pandopia
+  immeuble/      logements                        DPE logements générés depuis le DPE immeuble (§17.2.2)
 src/app/services/  dossier.service (état, autosauvegarde), draft-store (IndexedDB), nav.service (URL)
 src/app/ui/        accueil, dossier-shell, synthese, tab-view, fiche, field, dialogues, controles
 ```
@@ -183,6 +184,45 @@ l'éditeur propose de calculer d'abord. Si le dossier a été modifié depuis
 l'import, le numéro ADEME est retiré du XML envoyé : le rapport est produit
 « n° non attribué », avec la mention DOCUMENT NON OFFICIEL (le dossier et le
 XML exporté gardent le numéro).
+
+**DPE des logements** (entrée « DPE des logements » de la barre latérale,
+présente pour un DPE immeuble, méthodes 6 à 9 et 26 à 30) : processus de la
+méthode 3CL §17.2.2, « génération des DPE des appartements à partir des données
+de l'immeuble ».
+
+1. *Logements* : référence, surface habitable, position (RDC, intermédiaire,
+   dernier étage), typologie, visité. Création d'un coup jusqu'au
+   `nombre_appartement` déclaré (surface restante répartie à parts égales),
+   reprise des `logement_visite` du XML, duplication.
+2. *Répartition* : chauffage individuel → au besoin de chauffage de chaque
+   logement ; collectif → choix avec individualisation des frais (coefficient
+   IFC, 0,7 par défaut) ou sans (prorata des surfaces). ECS : selon le besoin
+   d'ECS (nombre d'occupants conventionnel).
+3. *Liaisons aux parois* (utiles seulement quand le besoin de chauffage
+   intervient) : par logement ou par paroi, avec « Tous / RDC / intermédiaire /
+   dernier étage / Aucun », copie des liaisons d'un autre logement,
+   pré-remplissage explicite (planchers selon l'étage, baies et portes selon
+   leur paroi support), retrait des liaisons vers des parois supprimées.
+   Ponts thermiques : un pont rattaché à ses parois dans le XML
+   (`reference_1`/`reference_2`) suit leurs logements ; un pont « manuel »
+   sans paroi (fréquent chez LICIEL) se relie directement aux logements.
+   Option d'approximation des parois non reliées (laissée au moteur, signalée
+   dans les hypothèses).
+4. *Contrôles bloquants* : nombre de logements = nombre d'appartements,
+   somme des surfaces = surface de l'immeuble, références uniques, répartition
+   déterminée, chaque paroi reliée (sauf approximation).
+5. *Calcul* : `POST https://app.pandopia.com/api/calculdpe/logements` (JSON :
+   XML de travail, répartition, logements et liaisons) ; l'immeuble calculé est
+   intégré au dossier avec les mêmes garde-fous que le calcul simple, chaque
+   logement est résumé (étiquettes, kWh/m², kg CO₂/m², énergie finale, GES,
+   coût). PDF d'un logement : `POST …/pdflogement` (même corps + `logement`).
+   XML calculé d'un logement téléchargeable tant que la page reste ouverte.
+   Contrat complet : `docs/prompt-api-calcul-logements.md` (racine du dépôt).
+
+Les logements et leurs liaisons n'ont pas d'emplacement dans le XSD ADEME : ils
+sont conservés dans le brouillon (annulables comme toute saisie) et n'entrent
+jamais dans le XML exporté. Les résultats deviennent « à recalculer » dès que
+le XML de travail (hors résultats) ou les logements changent (empreinte).
 
 **Balises hors schéma** : affichées dans la fiche de l'objet concerné, elles
 se retirent une à une ou toutes à la fois (Contrôles et export), de façon
