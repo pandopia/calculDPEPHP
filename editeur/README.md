@@ -118,7 +118,9 @@ accord).
     (la position part chez Google et chez les serveurs de tuiles).
   - *Plan* : éditeur **g-plan** (`vendor/README.md`), fond satellite centré sur
     le bien, surface dessinée comparée à la surface habitable déclarée. Chargé
-    à la demande (g-plan, MapLibre et Fabric.js hors du bundle initial). Le
+    à la demande (g-plan 2, MapLibre 6 et Fabric.js 7 hors du bundle initial).
+    Le plan se géoréférence à la capture du fond : le mode « Carte » de g-plan
+    (fonds satellite, vectoriel, cadastre) est alors disponible. Le
     plan est conservé dans le brouillon, hors XML ADEME ; son fond de carte
     PNG est ré-encodé en JPEG aux mêmes dimensions (≈ 15 Mo → 1 Mo). Le
     brouillon global de g-plan (`localStorage` « gplan-autosave ») est écarté :

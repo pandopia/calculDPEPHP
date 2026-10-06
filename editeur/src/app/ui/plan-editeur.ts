@@ -1,5 +1,5 @@
 import { Component, input, output } from '@angular/core';
-import { FloorplanProject, PlanEditorComponent, ProjectStats } from 'g-plan';
+import { FloorplanProject, PlanEditorComponent, ProjectStats, provideGPlan } from 'g-plan';
 
 /**
  * Éditeur de plan g-plan. Seul composant à importer la librairie : il n'est
@@ -8,6 +8,10 @@ import { FloorplanProject, PlanEditorComponent, ProjectStats } from 'g-plan';
 @Component({
   selector: 'app-plan-editeur',
   imports: [PlanEditorComponent],
+  // maplibre-gl 6 : son worker (décodage des fonds vectoriels) est servi avec
+  // l'application (angular.json → assets → vendor/maplibre-gl-{worker,shared}.mjs).
+  // URL relative : résolue sous le base-href (/calculDPEPHP/ sur GitHub Pages).
+  providers: [provideGPlan({ maplibreWorkerUrl: 'vendor/maplibre-gl-worker.mjs' })],
   template: `
     <ng-gplan-plan-editor
       [project]="projet()"
