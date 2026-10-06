@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { DraftData } from '../core/state/dossier';
+import { resumeDossier, ResumeDossier } from '../core/state/resume';
 
 /**
  * Brouillons conservés dans le navigateur (IndexedDB), jamais envoyés à un
@@ -17,6 +18,7 @@ export interface DraftSummary {
   nomFichier: string | null;
   modifieLe: string;
   resultatsObsoletes: boolean;
+  resume: ResumeDossier;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -51,7 +53,7 @@ export class DraftStore {
     return all
       .map((d) => ({
         id: d.meta.id, nom: d.meta.nom, origine: d.meta.origine, nomFichier: d.meta.nomFichier,
-        modifieLe: d.meta.modifieLe, resultatsObsoletes: d.meta.resultatsObsoletes,
+        modifieLe: d.meta.modifieLe, resultatsObsoletes: d.meta.resultatsObsoletes, resume: resumeDossier(d.working),
       }))
       .sort((a, b) => b.modifieLe.localeCompare(a.modifieLe));
   }

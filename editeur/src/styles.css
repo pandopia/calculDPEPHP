@@ -467,3 +467,4 @@ details[open] > summary { margin-bottom: .4em; }
 .adresse-ban .ab-liste li { padding: .4em .5em; border-radius: 4px; cursor: pointer; display: flex; flex-direction: column; }
 .adresse-ban .ab-liste li.actif, .adresse-ban .ab-liste li:hover { background: var(--accent-soft); }
 .adresse-ban .ab-source { margin: .2em 0 0; }
+.nowrap { white-space: nowrap; }
