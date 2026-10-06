@@ -164,56 +164,39 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Rouvrir si une référence publiant une valeur non nulle apparaît au corpus, ou
   avec un texte réglementaire donnant la formule.
 
-### TASK-K41 — §17.2.2 : répartition immeuble → appartement, et `coef_ifc` ignoré
+### TASK-K41 — §17.2.2 : la clé de répartition du chauffage n'est pas dans le fichier
 
-- [~CLA] Owner: CLA  | Phase: K  | Estimation: 6h  | Priorité: haute
-- Périmètre `appartement_issu_immeuble`, le plus faible du corpus. Sur
-  `2659E2542205P` (mode 34) les installations sont **exactes au bit près** à
-  l'échelle de l'immeuble — `besoin_ch` 109 083,6 et `conso_ch` 159 362,2
-  reproduits — et toute la divergence (63,98 % de conformité) vient de la
-  répartition vers l'appartement.
-- **`coef_ifc` n'est lu nulle part dans `src/`.** §17.2.2.2.2 p.118 en fait
-  pourtant le pivot de la méthode 2 :
-  `Cch_ap = (1 − coef_IFC) × Shap/Sh × Cch + coef_IFC × Clé_ap × Cch`.
-  27 fichiers du corpus le déclarent (26 à 1, un à 0,7).
-- **Acquis à ne pas re-découvrir : `cle_repartition_ecs` est la clé au besoin de
-  §17.2.2.1**, pas une clé surfacique. Vérifié exactement sur `2513E0565598L`
-  (0,041184), `2673E0034873H` (0,105223) et `zone_post2026coefelec_diag2356755`
-  (0,056227). Le prorata de Nadeq (§11.1) l'approche à 0,1–2 % près mais ne la
-  reproduit pas : garder la clé déclarée.
-- Mesuré et écarté : remplacer la clé déclarée par le prorata de Nadeq
-  (Nadeq_logement / Nadeq_immeuble) donne 7 400 → 7 414 écarts moteur (+14),
-  trois cas dégradés, aucun gagné.
-- La clé appliquée par la référence n'est ni la clé déclarée, ni la surface, ni
-  `cle × nombre_appartement` (7 cas sur 27). Sur le groupe `2600E0281xxx` elle
-  vaut exactement **6 × `cle_repartition_ch`** pour `nombre_appartement = 24` :
-  chercher le multiplicateur du côté du nombre de logements desservis par
-  l'installation et de l'échantillonnage, pas du nombre d'appartements.
-- Traiter avec TASK-H10 et TASK-H04, qui portent sur les mêmes fichiers.
-
-### TASK-K43 — 2684E2439344J : la référence calcule sur 70 logements et en déclare 40
-
-- [ ] Owner: __  | Phase: K  | Estimation: 1h  | Priorité: basse
-- Mode 11, conformité 89,84 %. Les deux seuls écarts imputables au moteur se
-  reproduisent **à la décimale** avec un nombre de logements de 70, alors que
-  `caracteristique_generale/nombre_appartement` vaut **40** :
-  - `installation_chauffage/donnee_intermediaire/conso_ch` : notre valeur
-    bâtiment 70 536,0037 divisée par 70 donne 1 007,6572, publié 1 007,65682 ;
-  - `conso_auxiliaire_distribution_ch` : 70 circulateurs au plancher de 30 W de
-    §15.2.1, soit 2 100 W x 4 499 h x 0,0130584 = 123,374, publié 123,374. Nous
-    calculons un circulateur unique à l'échelle du bâtiment (591,4 W), ce que
-    prescrit §15.2.1 pour une installation collective
-    (`enum_type_installation_id` = 2).
-- La preuve tient sur le fichier seul : une `sous_fiche_technique` y décrit
-  « Surface chauffée: 70 x 42,6 m² », soit 2 982 m² ≈ `surface_habitable_immeuble`
-  = 2 980, quand 40 x 42,6 ne ferait que 1 704 m². Le compte déclaré est donc
-  faux, et seul un texte libre porte le bon.
-- La référence applique par ailleurs deux clés différentes dans le même fichier :
-  1/70 pour la consommation de l'installation, `cle_repartition_ch` = 0,0130584
-  pour la sortie — qui, elle, concorde avec la nôtre.
-- Ne rien changer : le bon décompte n'est lisible que dans un champ descriptif,
-  qu'aucune règle de la méthode ne désigne. À reprendre si plusieurs références
-  présentent la même contradiction, pour décider d'une imputation `ReferenceDefects`.
+- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: basse
+- Périmètre `appartement_issu_immeuble` : 61 cas, 1 902 écarts moteur, 31,2 par
+  cas — le plus faible du corpus. Instruit à fond ; **quatre pistes mesurées,
+  aucune retenue**. Ne pas les reprendre sans élément nouveau.
+- **`coef_ifc` n'est pas un manque.** §17.2.2.2.2 p.118 écrit
+  `Cch_ap = (1 − coef_IFC) × Shap/Sh × Cch + coef_IFC × Clé_ap × Cch`, et 27
+  fichiers le déclarent — mais `cle_repartition_ch` **porte déjà le mélange**.
+  Sur `2657E1981571R`, le seul cas à `coef_ifc` = 0,7, la référence applique
+  `cle_repartition_ch` = 0,0126619 tel quel ; appliquer la formule donnerait
+  0,0121153. Les 26 autres sont à `coef_ifc` = 1, où la formule se réduit à
+  `Clé_ap`. L'implémenter reviendrait à compter l'individualisation deux fois.
+- **La clé que la référence applique n'est pas reconstructible.** Sur les 12 cas
+  à écart de `sortie/ef_conso/conso_ch`, la clé implicite ne correspond ni au
+  prorata de surface, ni à 1/`nombre_appartement`, ni au prorata de Nadeq —
+  aucune des trois sur aucun des 12. Les neuf cas de mode 33/34 déclarent tous
+  `cle_repartition_ch` = 1,0, donc aucune clé exploitable. §17.2.2.2.2 fait
+  dépendre `Clé_ap` du besoin de chauffage **de l'appartement**, calculé lors du
+  DPE immeuble et jamais sérialisé : l'enveloppe décrite est celle de l'immeuble.
+- **`pertes_distribution_ecs_recup` : règle exacte mais inapplicable.** La
+  référence multiplie le Tau de §15.2.3 par
+  `Σ surface_habitable(installations ECS) / surface_habitable_immeuble` —
+  vérifié **exactement sur 20 observations réparties sur 4 bâtiments**
+  (Sh 2 064, 5 688, 348,3 et 269,7). Mesuré : 7 426 → 7 463 écarts moteur
+  (+37) en le restreignant aux installations individuelles, 7 483 (+57) sans
+  cette restriction. Sur `2400E0669882V` le correctif remet les deux balises de
+  pertes en tolérance et fait sortir `besoin_ch` (0 → 7) et `conso_ch` (6 → 15) :
+  **la référence publie une valeur de pertes qu'elle n'utilise pas dans son
+  propre `besoin_ch`**, et c'est la nôtre qui est cohérente avec son besoin.
+- Reste exploitable : le gros du périmètre est l'ECS (450 écarts), dont 35 cas
+  sur 44 ont aussi `pertes_stockage_ecs_recup` divergent — c'est TASK-K26, pas
+  §17.2.2.
 
 ### TASK-K42 — 2659E2542205P : référence auto-contradictoire sur cinq balises
 
