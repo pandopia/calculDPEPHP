@@ -166,7 +166,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K41 — §17.2.2 : répartition immeuble → appartement, et `coef_ifc` ignoré
 
-- [ ] Owner: __  | Phase: K  | Estimation: 6h  | Priorité: haute
+- [~CLA] Owner: CLA  | Phase: K  | Estimation: 6h  | Priorité: haute
 - Périmètre `appartement_issu_immeuble`, le plus faible du corpus. Sur
   `2659E2542205P` (mode 34) les installations sont **exactes au bit près** à
   l'échelle de l'immeuble — `besoin_ch` 109 083,6 et `conso_ch` 159 362,2
