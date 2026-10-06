@@ -58,10 +58,23 @@
                 "glob": "xmllint.wasm",
                 "input": "node_modules/xmllint-wasm",
                 "output": "xmllint"
+              },
+              {
+                "glob": "fabric.min.js",
+                "input": "node_modules/fabric/dist",
+                "output": "vendor"
+              },
+              {
+                "glob": "maplibre-gl.css",
+                "input": "node_modules/maplibre-gl/dist",
+                "output": "vendor"
               }
             ],
             "styles": [
               "src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "maplibre-gl"
             ]
           },
           "configurations": {

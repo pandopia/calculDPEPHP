@@ -85,8 +85,11 @@ balises obligatoires dont le vide est valide (ex. une collection pouvant être
 vide). Voir `core/xml/prune.ts`. Le fichier d'origine reste téléchargeable
 intact.
 
-**Sécurité.** `<!DOCTYPE`/`<!ENTITY` refusés (pas d'entités externes), aucune
-ressource réseau, 20 Mo et 64 niveaux maximum.
+**Sécurité.** `<!DOCTYPE`/`<!ENTITY` refusés (pas d'entités externes), 20 Mo
+et 64 niveaux maximum. Accès réseau, tous à l'initiative de l'utilisateur :
+calcul et rapport PDF (service Pandopia, après accord), recherche d'adresse
+(Base Adresse Nationale), cartes et fonds de plan (Google Maps, tuiles, après
+accord).
 
 ## Interface
 
@@ -96,6 +99,25 @@ ressource réseau, 20 Mo et 64 niveaux maximum.
   et avertissements. Les sections vides sont repliées.
 - **Synthèse** : chiffres clés, étiquettes A→G, surfaces de l'enveloppe et
   vitrages par orientation, équipements, liste « À faire ».
+- **Plan et localisation** (barre latérale, sous Synthèse) :
+  - *Localisation* : l'adresse du bien se recherche dans la Base Adresse
+    Nationale (api-adresse.data.gouv.fr, saisie semi-automatique), dès la
+    création du dossier ou ensuite. Le choix remplit `adresse_bien` (champs
+    brut et `ban_*`, dont `ban_x`/`ban_y` Lambert 93, statut de géocodage, date
+    d'appel), en une modification annulable. C'est le référentiel attendu par
+    le XSD ; l'API de géocodage Google ne fournit pas ces champs et exigerait
+    une clé exposée dans le site public.
+  - *Carte* : Google Maps intégrée (plan ou satellite, sans clé d'API) au point
+    BAN converti en latitude/longitude (`core/localisation/`), et lien
+    « Ouvrir dans Google Maps ». Affichée après accord, mémorisable sur le poste
+    (la position part chez Google et chez les serveurs de tuiles).
+  - *Plan* : éditeur **g-plan** (`vendor/README.md`), fond satellite centré sur
+    le bien, surface dessinée comparée à la surface habitable déclarée. Chargé
+    à la demande (g-plan, MapLibre et Fabric.js hors du bundle initial). Le
+    plan est conservé dans le brouillon, hors XML ADEME ; son fond de carte
+    PNG est ré-encodé en JPEG aux mêmes dimensions (≈ 15 Mo → 1 Mo). Le
+    brouillon global de g-plan (`localStorage` « gplan-autosave ») est écarté :
+    il serait commun à tous les dossiers.
 - **Maquette 3D approximative** (three.js, chargé à la demande) : volume déduit
   des surfaces de murs par orientation, de la hauteur sous plafond et du
   nombre de niveaux ; murs colorés selon ce sur quoi ils donnent, baies et

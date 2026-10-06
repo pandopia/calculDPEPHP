@@ -43,7 +43,12 @@ export interface DraftData {
   counter: number;
   /** derniers DPE logements calculés (hors historique d'annulation) */
   resultatsLogements?: ResultatsLogements | null;
+  /** plan dessiné (projet g-plan sérialisé), hors XML ADEME */
+  plan?: PlanProjet | null;
 }
+
+/** Projet de plan g-plan sérialisé (FloorplanProject), opaque pour le dossier. */
+export type PlanProjet = Record<string, unknown>;
 
 interface Snapshot {
   label: string;
@@ -64,6 +69,8 @@ export class Dossier {
   private redoStack: Snapshot[] = [];
   /** derniers DPE logements calculés : un résultat, pas une saisie, donc hors annulation */
   resultatsLogements: ResultatsLogements | null = null;
+  /** plan dessiné : document de travail à part, ni dans le XML ni dans l'historique d'annulation */
+  plan: PlanProjet | null = null;
 
   private constructor(
     public meta: DossierMeta,
@@ -119,6 +126,7 @@ export class Dossier {
     const { info, schema } = await detectFormat(working, schemas);
     const d = new Dossier(draft.meta, info, schema, draft.original, baseline, working, counter);
     d.resultatsLogements = draft.resultatsLogements ?? null;
+    d.plan = draft.plan ?? null;
     return d;
   }
 
@@ -132,6 +140,7 @@ export class Dossier {
       working: serialize(this.working, { keepUids: true }).text,
       counter: this.counter.value,
       ...(this.resultatsLogements ? { resultatsLogements: this.resultatsLogements } : {}),
+      ...(this.plan ? { plan: this.plan } : {}),
     };
   }
 
@@ -148,6 +157,15 @@ export class Dossier {
       this.meta.immeuble = cfg;
       return { result, affectsResults: [] };
     });
+  }
+
+  /**
+   * Plan modifié dans l'éditeur graphique. Ne déclenche pas de révision :
+   * le plan n'entre ni dans le modèle métier ni dans le calcul.
+   */
+  setPlan(p: PlanProjet | null): void {
+    this.plan = p;
+    this.meta.modifieLe = new Date().toISOString();
   }
 
   setResultatsLogements(r: ResultatsLogements | null): void {

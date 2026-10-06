@@ -5,11 +5,13 @@ import { DraftStore, DraftSummary } from '../services/draft-store';
 import { NavService } from '../services/nav.service';
 import { VERSIONS_CREATION } from '../core/schema/schema-registry';
 import { distinct, findCode, MethodeEntry, parseMethodes } from '../core/metier/methode-application';
+import { AdresseBan } from '../core/localisation/geocodage';
+import { AdresseBanComponent } from './adresse-ban';
 
 
 @Component({
   selector: 'app-accueil',
-  imports: [FormsModule],
+  imports: [FormsModule, AdresseBanComponent],
   template: `
     <main class="accueil">
       <header class="accueil-header">
@@ -37,6 +39,10 @@ import { distinct, findCode, MethodeEntry, parseMethodes } from '../core/metier/
           <label class="field-label">Nom du dossier
             <input type="text" [(ngModel)]="nom" placeholder="ex. Maison Dupont" />
           </label>
+          <div class="field-label">Adresse du bien <span class="muted">(facultatif)</span>
+            <app-adresse-ban (choisie)="adresse.set($event)" />
+            @if (adresse(); as a) { <span class="ok-text small">✓ {{ a.label }} — géolocalisée, carte et fond de plan disponibles</span> }
+          </div>
           <label class="field-label">Type de bien
             <select [ngModel]="bien()" (ngModelChange)="setBien($event)">
               <option value="">— Choisir —</option>
@@ -118,6 +124,7 @@ export class AccueilComponent implements OnInit {
   protected readonly versions = VERSIONS_CREATION;
   private versionLabels: Record<string, string> = {};
   protected nom = '';
+  protected readonly adresse = signal<AdresseBan | null>(null);
   protected version = VERSIONS_CREATION[0];
 
   async ngOnInit(): Promise<void> {
@@ -192,7 +199,8 @@ export class AccueilComponent implements OnInit {
 
   protected async create(): Promise<void> {
     try {
-      await this.svc.create({ version: this.version, methodeApplication: this.methode()! }, this.nom.trim() || 'Nouveau dossier');
+      const a = this.adresse() ?? undefined;
+      await this.svc.create({ version: this.version, methodeApplication: this.methode()! }, this.nom.trim() || a?.label || 'Nouveau dossier', a);
       this.nav.go('synthese');
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : String(e));

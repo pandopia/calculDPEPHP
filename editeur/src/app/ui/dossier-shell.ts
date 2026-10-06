@@ -10,6 +10,7 @@ import { frDate } from './labels';
 import { KIND_BY_KEY, sectionChain } from '../core/metier/catalog';
 import { IconComponent } from './icon';
 import { LogementsComponent } from './logements';
+import { PlanComponent } from './plan';
 import { contexteImmeuble } from '../core/immeuble/logements';
 
 /**
@@ -19,7 +20,7 @@ import { contexteImmeuble } from '../core/immeuble/logements';
  */
 @Component({
   selector: 'app-dossier-shell',
-  imports: [FormsModule, SyntheseComponent, TabViewComponent, ControlesComponent, IconComponent, LogementsComponent],
+  imports: [FormsModule, SyntheseComponent, TabViewComponent, ControlesComponent, IconComponent, LogementsComponent, PlanComponent],
   template: `
     @let d = svc.dossier()!;
     <header class="topbar">
@@ -76,6 +77,11 @@ import { contexteImmeuble } from '../core/immeuble/logements';
         <button class="nav-item top" [class.active]="nav.state().tab === 'synthese'" (click)="nav.go('synthese')">
           <app-icon name="synthese" /><span class="nav-label">Synthèse</span>
         </button>
+        @if (d.format.famille === 'dpe_logement_existant') {
+          <button class="nav-item top" [class.active]="nav.state().tab === 'plan'" (click)="nav.go('plan')" title="Localisation sur la carte et dessin du plan">
+            <app-icon name="plan" /><span class="nav-label">Plan et localisation</span>
+          </button>
+        }
         @for (t of groups(); track t.def.key) {
           <div class="nav-group" [class.open]="isOpen(t)">
             <button class="nav-group-head" [class.current]="nav.state().tab === t.def.key" (click)="toggleGroup(t)" [attr.aria-expanded]="isOpen(t)">
@@ -119,6 +125,7 @@ import { contexteImmeuble } from '../core/immeuble/logements';
         @switch (nav.state().tab) {
           @case ('synthese') { <app-synthese /> }
           @case ('controles') { <app-controles /> }
+          @case ('plan') { <app-plan /> }
           @case ('logements') { @if (immeuble()) { <app-logements /> } @else { <app-synthese /> } }
           @default { <app-tab-view [tab]="$any(nav.state().tab)" /> }
         }
