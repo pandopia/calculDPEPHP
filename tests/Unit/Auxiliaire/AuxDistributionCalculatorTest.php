@@ -235,6 +235,44 @@ XML);
     }
 
     /**
+     * §15.2.1 : `Sh` dimensionne le circuit piloté par un circulateur. Dans un
+     * DPE d'appartement, une installation **individuelle** ne dessert que le
+     * logement — la surface de l'immeuble, renseignée pour les usages
+     * collectifs de §17.2.1, ne doit pas servir d'échelle.
+     */
+    public function testInstallationIndividuelleDUnAppartementResteALEchelleDuLogement(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<logement><caracteristique_generale>
+<enum_methode_application_dpe_log_id>2</enum_methode_application_dpe_log_id>
+<surface_habitable_logement>71</surface_habitable_logement><surface_habitable_immeuble>864</surface_habitable_immeuble>
+</caracteristique_generale><installation_chauffage_collection><installation_chauffage><donnee_entree>
+<surface_chauffee>71</surface_chauffee><nombre_niveau_installation_ch>1</nombre_niveau_installation_ch><enum_type_installation_id>1</enum_type_installation_id>
+</donnee_entree><emetteur_chauffage_collection><emetteur_chauffage><donnee_entree>
+<enum_type_emission_distribution_id>31</enum_type_emission_distribution_id><enum_temp_distribution_ch_id>3</enum_temp_distribution_ch_id>
+</donnee_entree></emetteur_chauffage></emetteur_chauffage_collection></installation_chauffage></installation_chauffage_collection>
+<installation_ecs_collection/><sortie/></logement>
+XML);
+        $context = $this->buildCtx($document, [
+            'enveloppe.dp_parois' => 232.0,
+            'enveloppe.dp_pont_thermique' => 30.0,
+            'ventilation.hvent' => 60.0,
+            'ventilation.hperm' => 10.0,
+            'ecs.besoin_ecs_mensuel' => [],
+        ]);
+
+        (new AuxDistributionCalculator())->calculate($document->documentElement, $context);
+
+        // A l'échelle de l'immeuble, Pcircem retomberait sur son plancher de
+        // 30 W ; à celle du logement il le dépasse largement.
+        self::assertGreaterThan(
+            30.0 * 4000.0 / 1000.0,
+            $this->efValue($document, 'conso_auxiliaire_distribution_ch'),
+        );
+    }
+
+    /**
      * Verify ECS bouclage against bat_post2026 reference: expected ≈ 204.38 kWh.
      * Parameters: sh=1034.74, niv=6, isolated=1, enum_bouclage_reseau_ecs_id=2
      * Lb = 4×sqrt(172.46) + 6×5.5 = 85.53 m, ΔPb = 27.11 kPa

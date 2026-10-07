@@ -54,6 +54,24 @@ final class ReferenceDefects
     private const CONFORT_ETE_PATH = 'dpe/logement/sortie/confort_ete';
 
     /**
+     * Grandeurs que les formats historiques publient en Wh : apports, pertes
+     * récupérées et besoin d'ECS porté par l'installation.
+     */
+    private const BALISES_EN_WATTHEURES = [
+        'apport_interne_ch',
+        'apport_solaire_ch',
+        'fraction_apport_gratuit_ch',
+        'fraction_apport_gratuit_depensier_ch',
+        'pertes_distribution_ecs_recup',
+        'pertes_distribution_ecs_recup_depensier',
+        'pertes_generateur_ch_recup',
+        'pertes_generateur_ch_recup_depensier',
+        'pertes_stockage_ecs_recup',
+        'besoin_ecs',
+        'besoin_ecs_depensier',
+    ];
+
+    /**
      * Postes qui composent le total des auxiliaires, et nom du total, dans
      * chacun des quatre blocs de sortie qui les publient.
      *
@@ -119,6 +137,7 @@ final class ReferenceDefects
             $suspects += self::ventilationSansPuissanceMaisConsommatrice($expected, $referenceDoc);
             $suspects += self::bouclageEcsSansAuxiliaire($expected, $referenceDoc);
             $suspects += self::pontThermiqueKPorteDejaLaLongueur($referenceDoc);
+            $suspects += self::apportsSerialisesEnWattheures($referenceDoc);
         }
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
@@ -200,6 +219,59 @@ final class ReferenceDefects
      *
      * @return array<string, string>
      */
+    /**
+     * Balises d'apports et de pertes récupérées sérialisées en Wh alors que les
+     * besoins du même bloc sont en kWh.
+     *
+     * Preuve sur le fichier seul : la somme des apports dépasse le besoin de
+     * chauffage d'un facteur supérieur à 100 — impossible, le besoin étant ce
+     * qui reste une fois les apports déduits — **et** la référence publie
+     * `fraction_apport_gratuit_ch` exactement à 1, la valeur de saturation
+     * qu'on obtient en divisant des wattheures par des kilowattheures. Les deux
+     * ensemble ne s'expliquent que par un mélange d'unités à la sérialisation.
+     *
+     * Les formats 0.1.0, 8.x et 9.x publient légitimement ces grandeurs en Wh
+     * (cf. `IntermediateEnergyUnit`) : leur fraction reste alors une valeur
+     * ordinaire, et ce test ne les retient pas.
+     *
+     * @return array<string, string>
+     */
+    private static function apportsSerialisesEnWattheures(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+        $bloc = $xpath->query('//sortie/apport_et_besoin')?->item(0);
+        if (!$bloc instanceof DOMElement) {
+            return [];
+        }
+
+        $besoin = self::nombreEnfant($xpath, './besoin_ch', $bloc);
+        $apports = (self::nombreEnfant($xpath, './apport_interne_ch', $bloc) ?? 0.0)
+                 + (self::nombreEnfant($xpath, './apport_solaire_ch', $bloc) ?? 0.0);
+        $fraction = self::nombreEnfant($xpath, './fraction_apport_gratuit_ch', $bloc);
+
+        if ($besoin === null || $besoin <= 0.0 || $fraction === null) {
+            return [];
+        }
+        if ($apports / $besoin <= 100.0 || abs($fraction - 1.0) > 1e-9) {
+            return [];
+        }
+
+        $motif = sprintf(
+            'la référence sérialise les apports et les pertes récupérées en Wh (%.0f) '
+            . 'quand les besoins du même bloc sont en kWh (%.0f), et publie en conséquence '
+            . 'une fraction d’apports gratuits saturée à 1',
+            $apports,
+            $besoin,
+        );
+
+        $suspects = [];
+        foreach (self::BALISES_EN_WATTHEURES as $balise) {
+            $suspects[$balise] = $motif;
+        }
+
+        return $suspects;
+    }
+
     private static function qp0SerialiseEnKilowatts(DOMDocument $doc): array
     {
         $xpath = new DOMXPath($doc);

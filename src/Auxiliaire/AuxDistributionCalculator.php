@@ -201,11 +201,18 @@ final class AuxDistributionCalculator implements CalculatorInterface
         // Surface habitable de référence pour Lem/shFactor (= bâtiment complet pour immeuble, sinon logement)
         $modeApp = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $logement);
         $isAppartementMixte = $modeApp !== null && in_array($modeApp, [31, 32, 35], true);
+        $shLogement = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement) ?? 0.0;
         $shRef = $isAppartementMixte
-            ? ($accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement) ?? 0.0)
+            ? $shLogement
             : ($accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement)
-                ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement)
+                ?? $shLogement
                 ?? 0.0);
+        // §15.2.1 : `Sh` dimensionne le circuit piloté par UN circulateur. Dans
+        // un DPE d'appartement, une installation individuelle ne dessert que le
+        // logement décrit, même quand le fichier renseigne aussi la surface de
+        // l'immeuble pour les usages collectifs de §17.2.1.
+        $isDpeAppartement = $modeApp !== null
+            && in_array($modeApp, [2, 3, 4, 5, 31, 32, 35, 36, 37], true);
 
         foreach ($collection->childNodes as $install) {
             if (!$install instanceof DOMElement || $install->nodeName !== 'installation_chauffage') {
@@ -214,13 +221,15 @@ final class AuxDistributionCalculator implements CalculatorInterface
 
             $surfChauffee = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $install) ?? 0.0;
             $niv          = $accessor->getFloatOrNull('./donnee_entree/nombre_niveau_installation_ch', $install) ?? 1.0;
-            $shCalc       = $shRef > 0.0 ? $shRef : $surfChauffee;
+            $typeInstall = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $install);
+
+            $shCalc = ($isDpeAppartement && $typeInstall === 1 && $shLogement > 0.0)
+                ? $shLogement
+                : ($shRef > 0.0 ? $shRef : $surfChauffee);
 
             if ($shCalc <= 0.0 || $niv <= 0.0) {
                 continue;
             }
-
-            $typeInstall = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $install);
 
             // Installation collective multi-bâtiment (type 3) alimentée par un
             // **vrai** réseau de chaleur urbain : la distribution en amont est
