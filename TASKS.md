@@ -197,8 +197,12 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Reste exploitable : le gros du périmètre est l'ECS (450 écarts), dont 35 cas
   sur 44 ont aussi `pertes_stockage_ecs_recup` divergent — c'est TASK-K26, pas
   §17.2.2.
+- Cas supplémentaire du même mal, instruit et laissé : `2675E2540542G` (mode 10,
+  78,66 %) — `pn` publié à 18 kW contre 5 kW chez nous parce que Pdim est
+  calculé à une autre échelle, et des clés d'auxiliaires au rapport exact de
+  1,125.
 
-### TASK-K44 — Doublage d'un mur isolé et dépensier des auxiliaires : références partagées
+### TASK-K51 — Doublage d'un mur isolé et dépensier des auxiliaires : références partagées
 
 - [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
 - Deux hypothèses mesurées sur `2662E2542580D` (maison individuelle, 74,19 %),
