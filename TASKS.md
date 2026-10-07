@@ -198,6 +198,29 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   sur 44 ont aussi `pertes_stockage_ecs_recup` divergent — c'est TASK-K26, pas
   §17.2.2.
 
+### TASK-K44 — Doublage d'un mur isolé et dépensier des auxiliaires : références partagées
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
+- Deux hypothèses mesurées sur `2662E2542580D` (maison individuelle, 74,19 %),
+  toutes deux écartées faute de majorité. Ne pas les reprendre sans cas neufs.
+- **Doublage sur un mur isolé.** Ce fichier publie `umur0` = 2,5 (valeur nue de
+  la table) sur des murs qui portent à la fois un doublage connu
+  (`enum_type_doublage_id` = 5, R = 0,21) et une isolation rapportée, puis
+  `umur` = 1/(1/2,5 + R_isolant) — le doublage n'entre pas. Son seul mur **non**
+  isolé publie en revanche 1,40845 = 1/(1/2 + 0,21), doublage compris.
+  §3.2.1.2 p.16 dit pourtant « pour l'ensemble des parois ». Le corpus donne
+  53 murs isolés à doublage appliqué contre 22 sans : notre lecture reste la
+  majoritaire, et c'est celle du texte.
+- **Dépensier des auxiliaires de génération.** §15.1.1 ne définit Qaux_g qu'avec
+  `Bch_g` ; nous prenons `besoin_ch + besoin_ch_depensier` au dépensier.
+  `2233E0258018C` implique `besoin_ch_depensier` seul (rapport 1,2395 contre
+  2,2395), mais remplacer la somme coûte **+181 écarts sur 153 cas**. Ce même
+  2662E2542580D implique au contraire un facteur 1,86, supérieur à la somme :
+  les références ne s'accordent pas entre elles. La somme est conservée.
+- `protection_solaire_exterieure` : la règle « une seule baie non-nord sans
+  fermeture suffit » donne 78 bonnes réponses sur 96 ; la variante « au moins
+  une baie avec fermeture » n'en donne que 65. Conservée telle quelle.
+
 ### TASK-K42 — 2659E2542205P : référence auto-contradictoire sur cinq balises
 
 - [ ] Owner: __  | Phase: K  | Estimation: 1h  | Priorité: basse
