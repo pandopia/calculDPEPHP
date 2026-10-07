@@ -47,6 +47,9 @@ final class MultiGenerateurs implements CalculatorInterface
     use StrategieComputeTrait;
 
     // cfg_id → [position → factor]
+    /** `enum_type_generateur_ch_id` = 106 : chaudière électrique. */
+    private const CHAUDIERE_ELECTRIQUE = 106;
+
     private const FACTORS = [
         6 => [1 => 0.75, 2 => 0.25],  // §9.1.4.1 — chaudière bois + PAC relève
         8 => [1 => 0.80, 2 => 0.20],  // §9.1.4.2 — PAC + chaudière relève
@@ -131,8 +134,13 @@ final class MultiGenerateurs implements CalculatorInterface
             }
             $type = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $gen);
             $normalise = GenerateurChAlias::normalizeNode($type, $gen);
+            // §9.1.4.2 parle d'une « chaudière en relève de PAC » sans
+            // restreindre son énergie : la chaudière électrique (enum 106) en
+            // est une au même titre que les chaudières à combustion.
             $role = $normalise >= 1 && $normalise <= 19 ? 'pac'
-                : (($normalise >= 55 && $normalise <= 68) || ($normalise >= 75 && $normalise <= 97) ? 'chaudiere' : null);
+                : (($normalise >= 55 && $normalise <= 68)
+                    || ($normalise >= 75 && $normalise <= 97)
+                    || $normalise === self::CHAUDIERE_ELECTRIQUE ? 'chaudiere' : null);
             $rg = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen);
             if ($role === null || isset($couple[$role]) || $rg === null || $rg <= 0.0) {
                 return false;

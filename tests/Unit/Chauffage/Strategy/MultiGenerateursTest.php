@@ -51,6 +51,10 @@ final class MultiGenerateursTest extends TestCase
         yield 'hybride en H2' => [147, 149, '4', 0.83, false, 1.0];
         yield 'hybride en H3 inversée' => [147, 149, '8', 0.88, true, 1.0];
         yield 'cinq logements avec systèmes individuels' => [147, 149, '1', 0.8, true, 5.0];
+        // §9.1.4.2 ne restreint pas l'énergie de la chaudière en relève : une
+        // chaudière électrique (106) en est une au même titre qu'une chaudière
+        // à combustion.
+        yield 'relève par chaudière électrique' => [7, 106, '1', 0.8, false, 1.0];
     }
 
     public function testConserveLeCalculHistoriqueSiLesGenerateursSontIndistincts(): void

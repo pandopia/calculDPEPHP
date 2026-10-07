@@ -164,6 +164,87 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Rouvrir si une référence publiant une valeur non nulle apparaît au corpus, ou
   avec un texte réglementaire donnant la formule.
 
+### TASK-K41 — §17.2.2 : la clé de répartition du chauffage n'est pas dans le fichier
+
+- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: basse
+- Périmètre `appartement_issu_immeuble` : 61 cas, 1 902 écarts moteur, 31,2 par
+  cas — le plus faible du corpus. Instruit à fond ; **quatre pistes mesurées,
+  aucune retenue**. Ne pas les reprendre sans élément nouveau.
+- **`coef_ifc` n'est pas un manque.** §17.2.2.2.2 p.118 écrit
+  `Cch_ap = (1 − coef_IFC) × Shap/Sh × Cch + coef_IFC × Clé_ap × Cch`, et 27
+  fichiers le déclarent — mais `cle_repartition_ch` **porte déjà le mélange**.
+  Sur `2657E1981571R`, le seul cas à `coef_ifc` = 0,7, la référence applique
+  `cle_repartition_ch` = 0,0126619 tel quel ; appliquer la formule donnerait
+  0,0121153. Les 26 autres sont à `coef_ifc` = 1, où la formule se réduit à
+  `Clé_ap`. L'implémenter reviendrait à compter l'individualisation deux fois.
+- **La clé que la référence applique n'est pas reconstructible.** Sur les 12 cas
+  à écart de `sortie/ef_conso/conso_ch`, la clé implicite ne correspond ni au
+  prorata de surface, ni à 1/`nombre_appartement`, ni au prorata de Nadeq —
+  aucune des trois sur aucun des 12. Les neuf cas de mode 33/34 déclarent tous
+  `cle_repartition_ch` = 1,0, donc aucune clé exploitable. §17.2.2.2.2 fait
+  dépendre `Clé_ap` du besoin de chauffage **de l'appartement**, calculé lors du
+  DPE immeuble et jamais sérialisé : l'enveloppe décrite est celle de l'immeuble.
+- **`pertes_distribution_ecs_recup` : règle exacte mais inapplicable.** La
+  référence multiplie le Tau de §15.2.3 par
+  `Σ surface_habitable(installations ECS) / surface_habitable_immeuble` —
+  vérifié **exactement sur 20 observations réparties sur 4 bâtiments**
+  (Sh 2 064, 5 688, 348,3 et 269,7). Mesuré : 7 426 → 7 463 écarts moteur
+  (+37) en le restreignant aux installations individuelles, 7 483 (+57) sans
+  cette restriction. Sur `2400E0669882V` le correctif remet les deux balises de
+  pertes en tolérance et fait sortir `besoin_ch` (0 → 7) et `conso_ch` (6 → 15) :
+  **la référence publie une valeur de pertes qu'elle n'utilise pas dans son
+  propre `besoin_ch`**, et c'est la nôtre qui est cohérente avec son besoin.
+- Reste exploitable : le gros du périmètre est l'ECS (450 écarts), dont 35 cas
+  sur 44 ont aussi `pertes_stockage_ecs_recup` divergent — c'est TASK-K26, pas
+  §17.2.2.
+- Cas supplémentaire du même mal, instruit et laissé : `2675E2540542G` (mode 10,
+  78,66 %) — `pn` publié à 18 kW contre 5 kW chez nous parce que Pdim est
+  calculé à une autre échelle, et des clés d'auxiliaires au rapport exact de
+  1,125.
+
+### TASK-K51 — Doublage d'un mur isolé et dépensier des auxiliaires : références partagées
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
+- Deux hypothèses mesurées sur `2662E2542580D` (maison individuelle, 74,19 %),
+  toutes deux écartées faute de majorité. Ne pas les reprendre sans cas neufs.
+- **Doublage sur un mur isolé.** Ce fichier publie `umur0` = 2,5 (valeur nue de
+  la table) sur des murs qui portent à la fois un doublage connu
+  (`enum_type_doublage_id` = 5, R = 0,21) et une isolation rapportée, puis
+  `umur` = 1/(1/2,5 + R_isolant) — le doublage n'entre pas. Son seul mur **non**
+  isolé publie en revanche 1,40845 = 1/(1/2 + 0,21), doublage compris.
+  §3.2.1.2 p.16 dit pourtant « pour l'ensemble des parois ». Le corpus donne
+  53 murs isolés à doublage appliqué contre 22 sans : notre lecture reste la
+  majoritaire, et c'est celle du texte.
+- **Dépensier des auxiliaires de génération.** §15.1.1 ne définit Qaux_g qu'avec
+  `Bch_g` ; nous prenons `besoin_ch + besoin_ch_depensier` au dépensier.
+  `2233E0258018C` implique `besoin_ch_depensier` seul (rapport 1,2395 contre
+  2,2395), mais remplacer la somme coûte **+181 écarts sur 153 cas**. Ce même
+  2662E2542580D implique au contraire un facteur 1,86, supérieur à la somme :
+  les références ne s'accordent pas entre elles. La somme est conservée.
+- `protection_solaire_exterieure` : la règle « une seule baie non-nord sans
+  fermeture suffit » donne 78 bonnes réponses sur 96 ; la variante « au moins
+  une baie avec fermeture » n'en donne que 65. Conservée telle quelle.
+
+### TASK-K42 — 2659E2542205P : référence auto-contradictoire sur cinq balises
+
+- [ ] Owner: __  | Phase: K  | Estimation: 1h  | Priorité: basse
+- Dans un seul bloc `<sortie>`, la référence publie `apport_et_besoin/besoin_ch`
+  = 109 083,6 kWh (échelle immeuble) et `ef_conso/conso_ch` = 15 420,4 kWh
+  (échelle appartement). Une consommation inférieure au besoin qu'elle couvre
+  suppose un rendement global de 7,07 pour une chaudière gaz : impossible.
+- Quatre autres contradictions internes sur le même fichier :
+  `besoin_ch_depensier` (18 788) < `besoin_ch` (109 084) ;
+  `besoin_ecs_depensier` (10 522) < `besoin_ecs` (33 553) ; les six balises
+  d'auxiliaires à zéro pour un `conso_totale_auxiliaire` de 211,7 ;
+  `emission_ges_5_usages` de 4 325,4 pour une somme de `sortie_par_energie` de
+  57,0. Les deux premières sont déjà imputées par `ReferenceDefects`.
+- Le fichier déclare par ailleurs `cle_repartition_ecs` = 0,0454546, soit
+  exactement 84/1848, puis répartit l'ECS sur 24,326 — il n'utilise pas sa
+  propre clé.
+- Décider s'il relève de `CorpusLocator::REFERENCES_INVALIDES` : la preuve tient
+  sur le fichier seul, mais plusieurs autres modes 33/34 du corpus présentent la
+  même inversion d'échelle. Les examiner ensemble, pas un par un.
+
 ### TASK-K35 — 2113E0368523M : conso_ch et référence lacunaire
 
 - [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse

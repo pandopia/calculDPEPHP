@@ -172,4 +172,17 @@ final class Umur0CalculatorTest extends TestCase
             self::table(2, 20.0) . '<enduit_isolant_paroi_ancienne>1</enduit_isolant_paroi_ancienne>'
         ), 1e-9);
     }
+
+    /**
+     * §3.2.1.2 p.16 restreint la correction d'enduit aux parois « anciennes,
+     * c'est-à-dire constituées de matériaux traditionnels à savoir pierres,
+     * terre, mur à colombage, brique ancienne ». Une brique creuse n'en est
+     * pas une : la case cochée par le diagnostiqueur reste sans effet.
+     */
+    public function testEnduitIsolantIgnoreHorsParoiAncienne(): void
+    {
+        self::assertEqualsWithDelta(2.00, $this->umur0(
+            self::table(10, 20.0) . '<enduit_isolant_paroi_ancienne>1</enduit_isolant_paroi_ancienne>'
+        ), 1e-9);
+    }
 }

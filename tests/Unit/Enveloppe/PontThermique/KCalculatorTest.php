@@ -78,6 +78,66 @@ XML, $adjacency, $liaison));
         self::assertSame($expected, $document->getElementsByTagName('k')->item(0)?->textContent);
     }
 
+    public static function formatsEtFraction(): iterable
+    {
+        // tv_pont_thermique_id = 64 vaut 0,73 ; la liaison refend/mur en porte
+        // la moitié (XSD : « dans le cas des ponts thermiques refend/mur […]
+        // cette valeur est à 0,5 »).
+        yield 'format natif ADEME' => ['2', '0.73'];
+        yield 'format 0.1.0' => ['0.1.0', '0.73'];
+        yield 'export 8.x' => ['8.0.2', '0.365'];
+        yield 'export 9.x' => ['9.2.2', '0.365'];
+    }
+
+    /**
+     * Les exports historiques 7.x, 8.x et 9.x publient un `k` dont la fraction
+     * de §3.4.2 est déjà retirée ; le format natif ADEME publie le coefficient
+     * entier et n'applique la fraction qu'à la déperdition.
+     */
+    #[DataProvider('formatsEtFraction')]
+    public function testFractionDuPontPorteeParKSelonLeFormat(string $version, string $attendu): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(sprintf(<<<'XML'
+<logement version="%s">
+  <enveloppe>
+    <mur_collection>
+      <mur>
+        <donnee_entree>
+          <reference>mur-1</reference>
+          <enum_type_adjacence_id>1</enum_type_adjacence_id>
+          <enum_type_isolation_id>3</enum_type_isolation_id>
+        </donnee_entree>
+      </mur>
+    </mur_collection>
+    <pont_thermique_collection>
+      <pont_thermique>
+        <donnee_entree>
+          <reference_1>mur-1</reference_1>
+          <reference_2>NC</reference_2>
+          <tv_pont_thermique_id>64</tv_pont_thermique_id>
+          <enum_methode_saisie_pont_thermique_id>1</enum_methode_saisie_pont_thermique_id>
+          <enum_type_liaison_id>4</enum_type_liaison_id>
+          <pourcentage_valeur_pont_thermique>0.500</pourcentage_valeur_pont_thermique>
+        </donnee_entree>
+      </pont_thermique>
+    </pont_thermique_collection>
+  </enveloppe>
+</logement>
+XML, $version));
+
+        $context = new CalculationContext(
+            document: $document,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        );
+        $pont = $document->getElementsByTagName('pont_thermique')->item(0);
+        self::assertInstanceOf(DOMElement::class, $pont);
+
+        (new KCalculator())->calculate($pont, $context);
+
+        self::assertSame($attendu, $document->getElementsByTagName('k')->item(0)?->textContent);
+    }
+
     public function testKeepsMenuiserieJunctionOnCirculationWall(): void
     {
         $document = new DOMDocument();

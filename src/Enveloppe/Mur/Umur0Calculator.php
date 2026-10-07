@@ -20,7 +20,8 @@ use RuntimeException;
  *      - 20 (cloison de plâtre)      → Umur0 = 3.33 (cas spécial §3.2.1.2)
  *      - 3,4 (saisie directe)        → la valeur saisie est lue dans le XML (umur0)
  *      - 5 (non saisi car U direct)  → ne s'applique pas (cf. UmurCalculator)
- *   2. Application de l'enduit isolant si `enduit_isolant_paroi_ancienne == 1` :
+ *   2. Application de l'enduit isolant si `enduit_isolant_paroi_ancienne == 1`
+ *      **et** que la structure est une paroi ancienne (pierre, terre, colombage) :
  *      Umur0 = 1 / (1/Umur0_sansEnduit + R_enduit) avec R_enduit = 0,7 m².K/W
  *   3. Application du doublage selon `enum_type_doublage_id` :
  *      - 1 inconnu  → comportement à clarifier (pour le moment : pas de R)
@@ -43,6 +44,22 @@ final class Umur0Calculator implements CalculatorInterface
 {
     /** Plafond de Umur_nu — §3.2.1.1 schéma "Min(Umur0 ; 2,5)". */
     private const UMUR_NU_PLAFOND = 2.5;
+
+    /** §3.2.1.2 p.16 : résistance de l'enduit isolant d'une paroi ancienne. */
+    private const R_ENDUIT = 0.7;
+
+    /**
+     * §3.2.1.2 p.16 : la correction d'enduit ne vaut que « pour les parois dites
+     * "anciennes", c'est-à-dire constituées de matériaux traditionnels à savoir
+     * pierres, terre, mur à colombage, brique ancienne ».
+     *
+     * `enum_materiaux_structure_mur_id` : 2 et 3 pierre de taille et moellons,
+     * 4 pisé ou béton de terre, 5 et 6 pan de bois, 21 autre matériau
+     * traditionnel ancien. Les autres structures ne sont pas des parois
+     * anciennes au sens du paragraphe, quand bien même le diagnostiqueur
+     * coche l'enduit.
+     */
+    private const MATERIAUX_PAROI_ANCIENNE = [2, 3, 4, 5, 6, 21];
 
     public function id(): string
     {
@@ -80,10 +97,10 @@ final class Umur0Calculator implements CalculatorInterface
 
         $umur0Brut = $this->resolveUmur0Brut($methodeU0, $materiau, $epaisseur, $entree, $accessor, $context);
 
-        // Enduit isolant pour parois anciennes
+        // Enduit isolant, et seulement sur une paroi ancienne (§3.2.1.2 p.16)
         $enduit = $accessor->getIntOrNull('./enduit_isolant_paroi_ancienne', $entree) ?? 0;
-        if ($enduit === 1) {
-            $umur0Brut = 1.0 / (1.0 / $umur0Brut + 0.7);
+        if ($enduit === 1 && in_array($materiau, self::MATERIAUX_PAROI_ANCIENNE, true)) {
+            $umur0Brut = 1.0 / (1.0 / $umur0Brut + self::R_ENDUIT);
         }
 
         // Doublage
