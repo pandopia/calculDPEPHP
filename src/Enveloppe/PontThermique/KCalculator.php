@@ -116,16 +116,19 @@ final class KCalculator implements CalculatorInterface
         // Forfait (méthode=1) : lookup direct par tv_pont_thermique_id (comme open3cl)
         if ($methode === 1 || $methode === null) {
             $tvId = $accessor->getIntOrNull('./tv_pont_thermique_id', $entree);
+            $pourcentage = $accessor->getFloatOrNull('./pourcentage_valeur_pont_thermique', $entree);
             if ($tvId !== null) {
                 $table = $context->tables->load('enveloppe/tv_pont_thermique_id');
                 if (isset($table[$tvId])) {
                     $k = (float)$table[$tvId];
-                    // Format 7.x : les limites intermédiaires du logement
-                    // portent explicitement la fraction du pont affectée au lot.
-                    // Le coefficient est partagé, la longueur reste géométrique.
-                    if (str_starts_with($context->document->documentElement?->getAttribute('version') ?? '', '7.')
-                        && $accessor->getIntOrNull('./enum_type_liaison_id', $entree) === 2) {
-                        $k *= $accessor->getFloatOrNull('./pourcentage_valeur_pont_thermique', $entree) ?? 1.0;
+                    // Le XSD réserve `pourcentage_valeur_pont_thermique` aux
+                    // liaisons refend/mur et plancher intermédiaire/mur, où il
+                    // vaut 0,5 : la moitié du pont revient au logement. Les
+                    // formats 7.x, 8.x et 9.x publient un `k` déjà partagé ;
+                    // les formats 2 et 0.1.0 publient le coefficient entier et
+                    // n'appliquent la fraction qu'à la déperdition.
+                    if (self::fractionPorteeParK($context) && $pourcentage !== null) {
+                        $k *= $pourcentage;
                         $context->set('enveloppe.pt_fraction_in_k.' . $node->getNodePath(), true);
                     }
                     $this->writeK($node, $accessor, $k);
@@ -182,6 +185,23 @@ final class KCalculator implements CalculatorInterface
         if (in_array($this->readAdjacenceOfParoi($floor), [14, 15, 16, 17, 18, 22], true)) { return 0.0; }
         if (!$this->estParoiLourde($floor) || !$this->estParoiLourde($wall)) { return 0.0; }
         return $this->lookupPbMur($table, $this->isolationKey($isolation), $floor, $context);
+    }
+
+    /**
+     * Vrai si le format du fichier publie un `k` dont la fraction de §3.4.2 est
+     * déjà retirée. Les exports historiques 7.x, 8.x et 9.x le font ; le format
+     * natif ADEME (2) et le format 0.1.0 publient le coefficient entier.
+     */
+    private static function fractionPorteeParK(CalculationContext $context): bool
+    {
+        $version = $context->document->documentElement?->getAttribute('version') ?? '';
+
+        foreach (['7.', '8.', '9.'] as $prefixe) {
+            if (str_starts_with($version, $prefixe)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private function writeK(DOMElement $node, NodeAccessor $accessor, float $k): void
