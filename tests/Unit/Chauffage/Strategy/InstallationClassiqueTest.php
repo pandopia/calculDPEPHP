@@ -145,6 +145,45 @@ XML;
         );
     }
 
+    /**
+     * §17.2.2 : dans un DPE d'appartement généré depuis l'immeuble, une
+     * installation collective conserve le besoin de l'immeuble. Le type 3 —
+     * « installation collective multi-bâtiment modélisée comme un réseau de
+     * chaleur » — en est une : sa `surface_chauffee` ne doit pas proratiser
+     * le besoin une seconde fois.
+     */
+    public function testReseauDeChaleurMultiBatimentGardeLeBesoinDeLImmeuble(): void
+    {
+        [$doc, $node] = $this->buildXml(
+            bchImmeuble: 98392.54,
+            bchDepImmeuble: 123839.07,
+            gv: 2000.0,
+            surfaceChauffee: 50.0,
+            shImmeuble: 1321.0,
+            hsp: 2.5,
+            nbreAppartement: 28,
+            rdim: 1.0,
+            ratioVirt: 1.0,
+            methode: 1,
+            typeInstall: 3,
+            nombreEchantillon: 1,
+            i0: 0.92,
+            re: 0.95,
+            rd: 0.95,
+            rr: 0.95,
+            rg: 0.99,
+            applicationMethod: 34,
+        );
+
+        (new InstallationClassique())->calculate($node, $this->makeContext($doc, 98392.54, 123839.07, 2000.0));
+
+        self::assertEqualsWithDelta(
+            98392.54,
+            (float) $doc->getElementsByTagName('besoin_ch')->item(0)?->textContent,
+            self::TOL,
+        );
+    }
+
     public function testUsesDepensierGenerationYieldWhenAvailable(): void
     {
         [$doc, $node] = $this->buildXml(

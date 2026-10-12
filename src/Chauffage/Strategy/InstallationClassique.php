@@ -155,8 +155,13 @@ final class InstallationClassique implements CalculatorInterface
         // La division par rdim produit ensuite le besoin du logement moyen ;
         // appliquer en plus surface_chauffee / Sh ferait une double
         // proratisation.
+        // Une installation collective l'est aussi bien à l'échelle du bâtiment
+        // (type 2) qu'à celle de plusieurs bâtiments (type 3, « modélisée comme
+        // un réseau de chaleur ») : dans les deux cas elle dessert tout
+        // l'immeuble, quelle que soit la `surface_chauffee` déclarée.
+        $estCollective = $typeInstall === 2 || $typeInstall === 3;
         $surfaceRatio = GeneratedApartment::isGenerated($logementNode, $accessor)
-            && ($typeInstall === 2 || $methodeLog === 33)
+            && ($estCollective || $methodeLog === 33)
             ? 1.0
             : ($shImmeuble > 0.0 ? $de / $shImmeuble : 1.0);
         $besoinInstall    = $bchImmeuble    * $surfaceRatio;

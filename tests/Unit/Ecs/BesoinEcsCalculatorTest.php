@@ -216,6 +216,51 @@ XML;
     }
 
     /**
+     * §17.2.2.3.1 : dans un DPE d'appartement généré depuis l'immeuble, le
+     * système collectif est calculé à l'échelle de l'immeuble puis réparti.
+     * Le type 3 — « installation collective multi-bâtiment modélisée comme un
+     * réseau de chaleur » — dessert l'immeuble au même titre que le type 2 :
+     * sa `surface_habitable` ne doit pas proratiser le besoin une seconde fois.
+     */
+    public function testReseauDeChaleurMultiBatimentGardeLeBesoinDeLImmeuble(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale>
+        <enum_methode_application_dpe_log_id>34</enum_methode_application_dpe_log_id>
+        <surface_habitable_logement>50</surface_habitable_logement>
+        <surface_habitable_immeuble>1321</surface_habitable_immeuble>
+        <nombre_appartement>28</nombre_appartement>
+    </caracteristique_generale>
+    <installation_ecs_collection>
+        <installation_ecs>
+            <donnee_entree>
+                <enum_type_installation_id>3</enum_type_installation_id>
+                <surface_habitable>50</surface_habitable>
+                <nombre_logement>28</nombre_logement>
+                <rdim>1</rdim>
+            </donnee_entree>
+        </installation_ecs>
+    </installation_ecs_collection>
+</logement>
+XML);
+        $node = $doc->getElementsByTagName('logement')->item(0);
+        $ctx = $this->makeContext($doc, ['apport.nadeq' => 34.13977]);
+
+        (new BesoinEcsCalculator())->calculate($node, $ctx);
+
+        $sortie = (float)$doc->getElementsByTagName('besoin_ecs')->item(0)->textContent;
+        $installation = (float)$doc
+            ->getElementsByTagName('installation_ecs')->item(0)
+            ->getElementsByTagName('besoin_ecs')->item(0)->textContent;
+        // L'installation porte le besoin de l'immeuble, pas sa fraction
+        // surfacique (qui vaudrait 50/1321 du total).
+        self::assertEqualsWithDelta($sortie, $installation, self::TOL);
+    }
+
+    /**
      * Décembre = 24 jours (pas 31) — occupation conventionnelle §11.1 p.71.
      */
     public function testDecemberIs24Days(): void
