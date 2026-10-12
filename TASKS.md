@@ -225,28 +225,40 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   fermeture suffit » donne 78 bonnes réponses sur 96 ; la variante « au moins
   une baie avec fermeture » n'en donne que 65. Conservée telle quelle.
 
-### TASK-K52 — 2659E2595696Y : un seul générateur décrit pour deux logements visités
+### TASK-K52 — Un générateur décrit pour N logements : trois références, deux verdicts
 
-- [~CLA] Owner: CLA  | Phase: K  | Estimation: 3h  | Priorité: moyenne
-- Mode 10, 78,57 %, 42 écarts. L'immeuble compte **2 logements, tous deux
-  visités** (55,01 + 49,52 = 104,53 m² = `surface_habitable_immeuble`), et une
-  seule `installation_chauffage` de type **individuel** dont la
-  `surface_chauffee` vaut 104,53 — elle couvre donc les deux logements — avec
-  `nombre_logement_echantillon` = 1 et `rdim` = 1.
-- `ExhaustiveInstallationNormalizer` reconnaît ce format et ramène
-  `enum_methode_calcul_conso_id` de 4 à 1 pendant le calcul, ce qui fait
-  retomber `BesoinChauffageCalculator::generatorMultiplicity` sur `rdim` = 1.
-- **La référence compte deux générateurs** : `pertes_generateur_ch_recup` vaut
-  0,538758 contre 0,269377 chez nous, soit exactement le double. Une
-  installation individuelle qui couvre N logements a N générateurs, chacun avec
-  son QP0.
-- Restent aussi, non expliqués : `conso_ch` de l'installation à 6 514,13 contre
-  12 304,05 (nous sommes 1,89 fois trop haut alors que notre `besoin_ch` est
-  juste et notre `rendement_generation` plus élevé, 0,9230 contre 0,871677), et
-  `conso_auxiliaire_distribution_ch` au rapport 1,6486.
-- Mesurer avant de toucher au normaliseur : c'est une couche de compatibilité à
-  gardes explicites (version XSD, éditeur, millésime du moteur, exhaustivité
-  des visites), et l'élargir sans mesure romprait les cas qu'elle protège.
+- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: basse
+- Instruit à fond sur `2659E2595696Y` (mode 10, 78,57 %). **Trois correctifs
+  écrits, mesurés, puis retirés** : ils gagnent 36 écarts sur le corpus sans en
+  dégrader un seul, mais contredisent deux références de `tests/Unit/Xml/Fixtures`.
+  Ne pas les reprendre sans un élément qui départage.
+- La configuration : mode 10, installation `enum_type_installation_id` = 1
+  (individuelle), `enum_methode_calcul_conso_id` = 4 ramené à 1 par
+  `ExhaustiveInstallationNormalizer`, `rdim` = 1, `nombre_logement_echantillon`
+  = 1, et `surface_chauffee` égale à `surface_habitable_immeuble`. Une seule
+  description pour N logements.
+- **Ce que demande 2659E2595696Y** (2 logements, tous deux visités) : N = 2
+  générateurs. Vérifié à six décimales sur trois grandeurs indépendantes —
+  `rendement_generation` passe de 0,92300 à **0,87167636743401** contre
+  0,871677 publié dès que le profil de charge voit GV/2 ;
+  `pertes_generateur_ch_recup` vaut exactement le double du nôtre ; et le
+  circulateur de §15.2.1 suit le même facteur. Le cas passe de 78,57 % à
+  **94,64 %**, 42 écarts à 6.
+- **Ce que demandent `exhaustif-117` et `exhaustif-8`** : N = 1, la description
+  agrégée vaut pour un seul système. Mêmes mode, type, méthode, `rdim` et
+  `nombre_logement_echantillon`, mais 117 et 8 logements. Avec les correctifs,
+  leur `ep_conso_5_usages_m2` passe de 123 à 128 et de 143 à 144.
+- Aucun discriminant trouvé : ni le mode, ni le type d'installation, ni la
+  méthode de calcul, ni `nombre_logement_echantillon`, ni la surface. Le seul
+  écart visible est le nombre de logements (2 contre 117 et 8) et la puissance
+  par logement (12 kW contre 3,4 et 6,9), mais Pn est **calculé** par le moteur
+  depuis GV : il ne peut pas servir de discriminant sans circularité.
+- Les 6 écarts résiduels de 2659E2595696Y après correctifs : 4 sur le
+  `conso_ch` publié à l'installation et au générateur, que la référence écrit
+  par système quand nous écrivons le total du groupe. Ce n'est pas un défaut :
+  **120 installations du corpus sur 281** à générateurs tous à combustion
+  publient un `conso_ch` inférieur à leur propre `besoin_ch`, soit un rendement
+  supérieur à 1. C'est une convention du format, pas une erreur isolée.
 
 ### TASK-K42 — 2659E2542205P : référence auto-contradictoire sur cinq balises
 
