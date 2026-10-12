@@ -225,6 +225,29 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   fermeture suffit » donne 78 bonnes réponses sur 96 ; la variante « au moins
   une baie avec fermeture » n'en donne que 65. Conservée telle quelle.
 
+### TASK-K52 — 2659E2595696Y : un seul générateur décrit pour deux logements visités
+
+- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- Mode 10, 78,57 %, 42 écarts. L'immeuble compte **2 logements, tous deux
+  visités** (55,01 + 49,52 = 104,53 m² = `surface_habitable_immeuble`), et une
+  seule `installation_chauffage` de type **individuel** dont la
+  `surface_chauffee` vaut 104,53 — elle couvre donc les deux logements — avec
+  `nombre_logement_echantillon` = 1 et `rdim` = 1.
+- `ExhaustiveInstallationNormalizer` reconnaît ce format et ramène
+  `enum_methode_calcul_conso_id` de 4 à 1 pendant le calcul, ce qui fait
+  retomber `BesoinChauffageCalculator::generatorMultiplicity` sur `rdim` = 1.
+- **La référence compte deux générateurs** : `pertes_generateur_ch_recup` vaut
+  0,538758 contre 0,269377 chez nous, soit exactement le double. Une
+  installation individuelle qui couvre N logements a N générateurs, chacun avec
+  son QP0.
+- Restent aussi, non expliqués : `conso_ch` de l'installation à 6 514,13 contre
+  12 304,05 (nous sommes 1,89 fois trop haut alors que notre `besoin_ch` est
+  juste et notre `rendement_generation` plus élevé, 0,9230 contre 0,871677), et
+  `conso_auxiliaire_distribution_ch` au rapport 1,6486.
+- Mesurer avant de toucher au normaliseur : c'est une couche de compatibilité à
+  gardes explicites (version XSD, éditeur, millésime du moteur, exhaustivité
+  des visites), et l'élargir sans mesure romprait les cas qu'elle protège.
+
 ### TASK-K42 — 2659E2542205P : référence auto-contradictoire sur cinq balises
 
 - [ ] Owner: __  | Phase: K  | Estimation: 1h  | Priorité: basse
