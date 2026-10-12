@@ -227,7 +227,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K52 — 2659E2595696Y : un seul générateur décrit pour deux logements visités
 
-- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
+- [~CLA] Owner: CLA  | Phase: K  | Estimation: 3h  | Priorité: moyenne
 - Mode 10, 78,57 %, 42 écarts. L'immeuble compte **2 logements, tous deux
   visités** (55,01 + 49,52 = 104,53 m² = `surface_habitable_immeuble`), et une
   seule `installation_chauffage` de type **individuel** dont la
