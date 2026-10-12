@@ -187,9 +187,14 @@ final class BesoinEcsCalculator implements CalculatorInterface
             $exhaustive = \CalculDpePHP\Collectif\EcsInstallationMultiplicity::exhaustiveHomogeneousOrNull($inst, $accessor);
             if ($exhaustive !== null) {
                 $ratio = 1.0 / $exhaustive;
-            } elseif (GeneratedApartment::isGenerated($node, $accessor) && $typeId === 2) {
+            } elseif (GeneratedApartment::isGenerated($node, $accessor)
+                && ($typeId === 2 || $typeId === 3)) {
                 // §17.2.2.3.1 : le système collectif est d'abord calculé à
                 // l'échelle immeuble ; Cecs est réparti ensuite au logement.
+                // Le type 3, « installation collective multi-bâtiment modélisée
+                // comme un réseau de chaleur », dessert l'immeuble au même
+                // titre que le type 2, quelle que soit la `surface_habitable`
+                // déclarée sur l'installation.
                 $ratio = 1.0 / $rdim;
             } elseif ($isGeneratedFromImmeuble && $allIndividual && $nbApt > 1
                 && (!in_array($modeAppId, [10, 11, 12, 13], true)
