@@ -45,6 +45,40 @@ final class BesoinChauffageCalculatorTest extends TestCase
     }
 
     /**
+     * §9.1.1 p.57 : `Qgen_rec_j = 0,48 × Cper × Qp0 × Dper_j` récupère les
+     * pertes de **tout** générateur à combustion placé dans le volume chauffé.
+     * Un chauffe-eau gaz dans le logement en est un, même quand le chauffage
+     * vient d'un réseau de chaleur : la durée de fonctionnement propre à
+     * l'usage ECS est déjà prévue par la formule.
+     */
+    public function testLesPertesRecupereesComptentUnGenerateurEcsEnVolumeChauffe(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<?xml version="1.0"?>
+<logement>
+  <installation_ecs_collection><installation_ecs><generateur_ecs><donnee_entree>
+    <enum_usage_generateur_id>2</enum_usage_generateur_id>
+    <position_volume_chauffe>1</position_volume_chauffe>
+    <presence_ventouse>0</presence_ventouse>
+  </donnee_entree><donnee_intermediaire>
+    <pn>24000</pn><qp0>960</qp0>
+  </donnee_intermediaire></generateur_ecs></installation_ecs></installation_ecs_collection>
+  <sortie/>
+</logement>
+XML);
+        $contexte = $this->makeContext($doc, '1', '1', [
+            'enveloppe.dp_parois' => 200.0,
+            'apport.fj_mensuel' => array_fill(1, 12, 0.3),
+            'apport.fj_mensuel_dep' => array_fill(1, 12, 0.3),
+        ]);
+
+        (new BesoinChauffageCalculator())->calculate($doc->documentElement, $contexte);
+
+        self::assertGreaterThan(0.0, (float) $contexte->get('ch.pertes_generateur_recup', 0.0));
+    }
+
+    /**
      * Sans fraction (F=0), besoin_ch = GV × Σ(DH19) / 1000.
      */
     public function testBesoinWithZeroFraction(): void

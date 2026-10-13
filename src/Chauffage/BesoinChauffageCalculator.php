@@ -51,6 +51,10 @@ final class BesoinChauffageCalculator implements CalculatorInterface
             '\CalculDpePHP\Ecs\BesoinEcsCalculator',
             '\CalculDpePHP\Ecs\Rendement\StockageCalculator', // publie Qg,w dans le contexte
             '\CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator', // writes qp0/pn
+            // §9.1.1 : les pertes récupérées de génération comptent aussi les
+            // générateurs d'ECS seuls placés en volume chauffé ; leur QP0 doit
+            // donc être écrit avant.
+            '\CalculDpePHP\Ecs\Rendement\CombustionCalculator',
         ];
     }
 
@@ -167,8 +171,24 @@ final class BesoinChauffageCalculator implements CalculatorInterface
         $accessor = new NodeAccessor($context->document);
 
         // Générateurs à combustion en volume chauffé avec QP0 calculé
-        $gens = [];
+        // §9.1.1 : les pertes récupérées sont celles de tout générateur à
+        // combustion placé dans le volume chauffé, y compris un générateur
+        // d'ECS seul — le `match` sur l'usage plus bas lui donne sa propre
+        // durée de fonctionnement. Un générateur mixte est déjà décrit côté
+        // chauffage : ne pas le compter deux fois.
+        $noeuds = [];
         foreach ($context->document->getElementsByTagName('generateur_chauffage') as $gen) {
+            $noeuds[] = $gen;
+        }
+        foreach ($context->document->getElementsByTagName('generateur_ecs') as $gen) {
+            if ($gen instanceof DOMElement
+                && $accessor->getIntOrNull('./donnee_entree/enum_usage_generateur_id', $gen) === 2) {
+                $noeuds[] = $gen;
+            }
+        }
+
+        $gens = [];
+        foreach ($noeuds as $gen) {
             $qp0 = $accessor->getFloatOrNull('./donnee_intermediaire/qp0', $gen);
             if ($qp0 === null || $qp0 <= 0.0) {
                 continue;
