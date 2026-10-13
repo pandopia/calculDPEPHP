@@ -214,7 +214,8 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         $pnKw = $pnW / 1000.0;
 
         // Facteurs E, F (ventouse)
-        $ventouse = $accessor->getIntOrNull('./donnee_entree/presence_ventouse', $node) ?? 0;
+        $ventouse = ($accessor->getIntOrNull('./donnee_entree/presence_ventouse', $node) === 1
+            && $accessor->getIntOrNull('./donnee_entree/presence_regulation_combustion', $node) === 1) ? 1 : 0;
         $e = self::E_TAB[$ventouse] ?? self::E_TAB[0];
         $f = self::F_TAB[$ventouse] ?? self::F_TAB[0];
 

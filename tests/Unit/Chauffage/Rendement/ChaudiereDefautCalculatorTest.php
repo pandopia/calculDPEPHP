@@ -8,6 +8,7 @@ use CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -267,6 +268,62 @@ XML;
         (new ChaudiereDefautCalculator())->calculate($doc->getElementsByTagName('generateur_chauffage')->item(0), $context);
 
         $this->assertEqualsWithDelta(5000.0, (float)$doc->getElementsByTagName('pn')->item(0)->textContent, 0.1);
+    }
+
+    /**
+     * §13.2.2 p.88 : E et F valent 2,5 / -0,8 en « absence de ventilateur ou
+     * autre dispositif de circulation d'air ou de produit de combustion dans
+     * le circuit de combustion », 1,75 / -0,55 en sa présence. Le XSD décrit
+     * `presence_ventouse` comme « présence d'un système de ventouse **ou avec
+     * un ventilateur** pour l'évacuation des fumées » : une ventouse seule
+     * renseigne sur le conduit, pas sur le circuit de combustion. C'est
+     * `presence_regulation_combustion` — « un organe de régulation pour le
+     * système de chauffage à combustion », donc un brûleur modulant — qui
+     * l'établit.
+     *
+     * @return iterable<string, array{int, int, float}>
+     */
+    public static function facteursQp0(): iterable
+    {
+        // Pn = 24 kW : (2,5 - 0,8 log 24) x 24 x 10 = 334,999442 ;
+        //             (1,75 - 0,55 log 24) x 24 x 10 = 237,812116.
+        yield 'ventouse et régulation de combustion' => [1, 1, 237.812116];
+        yield 'ventouse sans régulation' => [1, 0, 334.999442];
+        yield 'ni ventouse ni régulation' => [0, 0, 334.999442];
+        yield 'régulation sans ventouse' => [0, 1, 334.999442];
+    }
+
+    #[DataProvider('facteursQp0')]
+    public function testFacteursQp0SelonLeCircuitDeCombustion(int $ventouse, int $regulation, float $attendu): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(sprintf(<<<'XML'
+<logement>
+    <caracteristique_generale><surface_habitable_logement>60.73</surface_habitable_logement></caracteristique_generale>
+    <meteo><enum_zone_climatique_id>6</enum_zone_climatique_id><enum_classe_altitude_id>1</enum_classe_altitude_id></meteo>
+    <installation_chauffage>
+        <donnee_entree><surface_chauffee>60.73</surface_chauffee></donnee_entree>
+        <generateur_chauffage_collection><generateur_chauffage><donnee_entree>
+            <enum_type_generateur_ch_id>90</enum_type_generateur_ch_id>
+            <tv_generateur_combustion_id>6</tv_generateur_combustion_id>
+            <enum_methode_saisie_carac_sys_id>2</enum_methode_saisie_carac_sys_id>
+            <pn>24000</pn>
+            <presence_ventouse>%d</presence_ventouse>
+            <presence_regulation_combustion>%d</presence_regulation_combustion>
+        </donnee_entree></generateur_chauffage></generateur_chauffage_collection>
+    </installation_chauffage>
+</logement>
+XML, $ventouse, $regulation));
+        $context = new CalculationContext(
+            document: $doc,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+            zoneClimatique: '6',
+            classeAltitude: '1',
+        );
+
+        (new ChaudiereDefautCalculator())->calculate($doc->getElementsByTagName('generateur_chauffage')->item(0), $context);
+
+        $this->assertEqualsWithDelta($attendu, (float)$doc->getElementsByTagName('qp0')->item(0)->textContent, 0.001);
     }
 
     /** Le mode mixte 33 ne transforme pas sa chaudière individuelle en chaudière collective. */
