@@ -343,7 +343,8 @@ final class CombustionCalculator implements CalculatorInterface
                     PuissanceDimensionnement::isChaudierePost2006($node),
                 ) * 1000.0;
             }
-            $ventose     = $accessor->getIntOrNull('./donnee_entree/presence_ventouse', $node) ?? 0;
+            $ventose     = ($accessor->getIntOrNull('./donnee_entree/presence_ventouse', $node) === 1
+                && $this->regulationCombustionDuGenerateur($node, $accessor)) ? 1 : 0;
             $e = [0 => 2.5, 1 => 1.75][$ventose] ?? 2.5;
             $f = [0 => -0.8, 1 => -0.55][$ventose] ?? -0.8;
             // pnW = Pn_bâtiment (déjà plaffonné) pour installations collectives sans pn saisi
@@ -637,6 +638,32 @@ final class CombustionCalculator implements CalculatorInterface
         $el = $doc->createElement('donnee_intermediaire');
         $parent->appendChild($el);
         return $el;
+    }
+
+    /**
+     * `presence_regulation_combustion` n'existe que sur les générateurs de
+     * chauffage. Pour un générateur d'ECS mixte, on lit celui du générateur de
+     * chauffage auquel il est apparié.
+     */
+    private function regulationCombustionDuGenerateur(DOMElement $node, NodeAccessor $accessor): bool
+    {
+        $propre = $accessor->getIntOrNull('./donnee_entree/presence_regulation_combustion', $node);
+        if ($propre !== null) {
+            return $propre === 1;
+        }
+        $mixte = $accessor->getStringOrNull('./donnee_entree/reference_generateur_mixte', $node);
+        if ($mixte === null || $mixte === '') {
+            return false;
+        }
+        foreach ($node->ownerDocument->getElementsByTagName('generateur_chauffage') as $gen) {
+            if (!$gen instanceof DOMElement) {
+                continue;
+            }
+            if ($accessor->getStringOrNull('./donnee_entree/reference_generateur_mixte', $gen) === $mixte) {
+                return $accessor->getIntOrNull('./donnee_entree/presence_regulation_combustion', $gen) === 1;
+            }
+        }
+        return false;
     }
 
     private function removeChild(DOMElement $parent, string $name): void
