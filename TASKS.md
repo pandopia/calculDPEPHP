@@ -225,6 +225,31 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   fermeture suffit » donne 78 bonnes réponses sur 96 ; la variante « au moins
   une baie avec fermeture » n'en donne que 65. Conservée telle quelle.
 
+### TASK-K53 — 2633E1486544G : besoin d'ECS d'une installation couvrant l'immeuble
+
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
+- Mode 11, 80,4 %. `besoin_ecs` vaut exactement **14 fois** le nôtre, soit
+  `nombre_appartement` : la référence met le besoin de l'immeuble sur
+  l'installation, nous celui de l'appartement moyen. `pertes_stockage_ecs_recup`
+  suit en 1/14.
+- L'installation est individuelle (`enum_type_installation_id` = 1) mais sa
+  `surface_habitable` vaut 523,45 m², soit toute la surface de l'immeuble, avec
+  `nombre_logement` = 1 et `rdim` = 1. `BesoinEcsCalculator` la traite comme un
+  appartement moyen et divise par 14.
+- **Deux gardes mesurés et écartés** :
+  - « la surface couvre l'immeuble donc le besoin est entier » : +212 écarts,
+    huit cas dégradés ;
+  - « tous les logements sont visités » (14 visites pour 14 appartements) :
+    +24, un seul cas dégradé mais de 27 — `2688E0016745Q`, qui a **exactement
+    la même configuration** (mode 10, 7 visites pour 7 appartements, une
+    installation individuelle de 514,5 m² = tout l'immeuble, `nombre_logement`
+    = 1, `rdim` = 1) et publie, lui, le besoin d'un seul logement.
+- Le seul écart entre les deux est le mode — 11 contre 10 — sur une seule
+  observation de chaque côté. Trop mince pour en faire une règle.
+- Reste aussi `pn` à 115 kW contre 120 kW chez nous, soit les 5 kW de
+  TASK-K31.
+- Même famille que TASK-K41 et TASK-K52 : la traiter avec elles.
+
 ### TASK-K52 — Un générateur décrit pour N logements : trois références, deux verdicts
 
 - [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: basse
