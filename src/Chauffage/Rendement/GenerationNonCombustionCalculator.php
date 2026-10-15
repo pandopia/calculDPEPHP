@@ -84,6 +84,12 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
         19 => ['h1h2' => ['autres' => 3.0, 'plancher_plafond' => 3.3], 'h3' => ['autres' => 3.5, 'plancher_plafond' => 4.0]],
     ];
 
+    /**
+     * `enum_type_emission_distribution_id` des planchers et plafonds chauffants :
+     * 6-9 rayonnants électriques, 11-18 sur réseau d'eau chaude.
+     */
+    private const EMETTEURS_PLANCHER_PLAFOND = [6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18];
+
     /** enum_zone_climatique_id valant H3 */
     private const ZONE_H3_ID = 8;
 
@@ -173,9 +179,45 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
 
         $zoneId    = $this->resolveZone($context, $accessor);
         $zoneKey   = ($zoneId === self::ZONE_H3_ID) ? 'h3' : 'h1h2';
-        $emType    = $context->get('installation.emetteur_type', 'autres');
+        $emType    = $this->typeEmetteur($node, $accessor, $context);
 
         return (float)($row[$zoneKey][$emType] ?? $row[$zoneKey]['autres'] ?? 2.2);
+    }
+
+    /**
+     * §12.4.2 p.80 : le SCAP par défaut d'une PAC se lit sur deux colonnes,
+     * « Autres » et « Planchers / Plafonds ». La colonne se déduit des
+     * émetteurs de l'installation, `enum_type_emission_distribution_id` 6 à 9
+     * (rayonnants électriques) et 11 à 18 (planchers et plafonds sur réseau
+     * d'eau chaude) désignant un plancher ou un plafond chauffant.
+     *
+     * Le contexte garde la priorité quand un calculateur amont l'a renseigné.
+     */
+    private function typeEmetteur(
+        DOMElement $node,
+        NodeAccessor $accessor,
+        CalculationContext $context,
+    ): string {
+        $depuisContexte = $context->get('installation.emetteur_type');
+        if (is_string($depuisContexte) && $depuisContexte !== '') {
+            return $depuisContexte;
+        }
+
+        $installation = $node->parentNode?->parentNode;
+        if (!$installation instanceof DOMElement || $installation->nodeName !== 'installation_chauffage') {
+            return 'autres';
+        }
+        foreach ($installation->getElementsByTagName('emetteur_chauffage') as $emetteur) {
+            if (!$emetteur instanceof DOMElement) {
+                continue;
+            }
+            $type = $accessor->getIntOrNull('./donnee_entree/enum_type_emission_distribution_id', $emetteur);
+            if ($type !== null && in_array($type, self::EMETTEURS_PLANCHER_PLAFOND, true)) {
+                return 'plancher_plafond';
+            }
+        }
+
+        return 'autres';
     }
 
     /**
