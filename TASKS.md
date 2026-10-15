@@ -716,3 +716,22 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   texte qui vise explicitement le scénario dépensier.
 - Implémentation mesurée : `PrixEnergie::tarifer()` avec un second panier
   servant d'assiette aux tranches, appelé depuis `CoutCalculator`.
+
+### TASK-K55 — `production_ecs_solaire` : huit cas, aucun reproduit
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- Le corpus ne publie la balise que huit fois, et nos huit valeurs diffèrent,
+  du simple au centuple : rapports obtenu/attendu de 0,010 ; 0,033 ; 0,272 ;
+  0,468 ; 0,497 ; 0,501 ; 0,537 ; 2,324. Aucune hypothèse testée ne les
+  réconcilie (`besoin × fecs`, `× 2 fecs`, `conso_ecs`).
+- `FacteurCouvertureSolaireEcsCalculator` écrit `besoin_ecs × fecs`. Deux
+  pistes à instruire avant toute correction : l'unité — le XSD annonce des
+  kWh alors que les références sérialisent des Wh, comme nous — et le
+  périmètre : « Dans le cas d'un DPE immeuble ou d'un DPE appartement à
+  partir de l'immeuble c'est la consommation de l'installation à l'immeuble
+  qu'il faut saisir » (XSD), que nous n'appliquons pas. Les plus gros écarts
+  (2682E0040604B ×96, 2631E0794109B ×30) sont des DPE de modes 7 et 6.
+- Sur 2655E2140736I la référence écrit exactement son propre `conso_ecs`
+  (1 253,18 kWh) sous la balise alors que `fecs` vaut 0,5 : le solaire y
+  couvrirait la totalité de la consommation restante. Contradiction interne,
+  à ne pas reproduire.
