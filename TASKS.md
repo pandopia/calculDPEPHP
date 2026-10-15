@@ -696,3 +696,23 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   Ne pas imposer de facteur gaz à tout générateur électrique dans le moteur.
   Mesurer les branches chauffage/ECS sur des entrées valides et comparer les
   retours archivés. Preuves : même rapport et corpus privé que TASK-K49.
+
+### TASK-K54 — Tranche tarifaire du scénario dépensier : deux lectures d'éditeurs
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- Les coûts dépensiers sont tarifés chez nous sur leur propre panier : la
+  tranche de l'annexe tarifaire est choisie sur la consommation dépensière.
+  LICIEL applique au dépensier le prix unitaire établi sur le conventionnel,
+  à la sixième décimale près (vérifié sur 2659E2632857F, 2659E2632938I,
+  2659E2625548C, 2655E2140736I : `cout_ch_depensier` et `cout_ecs_depensier`
+  y sont tous deux courts du même rapport, 0,987 à 0,957).
+- Mesuré en A/B isolé sur 408 cas : partager la tranche vaut −69 écarts, mais
+  le gain est **entièrement** porté par les 47 fichiers LICIEL du corpus, et
+  les 10 fichiers des trois autres éditeurs (4.1.1, DPEWIN, EXPERTEC) y
+  régressent tous. Égalité entre moteurs, pas majorité.
+- L'annexe tarifaire tranche plutôt dans l'autre sens — « les frais annuels
+  sont établis à partir de la formule de la plage de consommation
+  correspondante » — et c'est la lecture en place. Ne rien changer sans un
+  texte qui vise explicitement le scénario dépensier.
+- Implémentation mesurée : `PrixEnergie::tarifer()` avec un second panier
+  servant d'assiette aux tranches, appelé depuis `CoutCalculator`.
