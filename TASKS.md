@@ -222,8 +222,14 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   2662E2542580D implique au contraire un facteur 1,86, supérieur à la somme :
   les références ne s'accordent pas entre elles. La somme est conservée.
 - `protection_solaire_exterieure` : la règle « une seule baie non-nord sans
-  fermeture suffit » donne 78 bonnes réponses sur 96 ; la variante « au moins
-  une baie avec fermeture » n'en donne que 65. Conservée telle quelle.
+  fermeture suffit » donne 86 bonnes réponses sur 105 ; la variante « au moins
+  une baie avec fermeture » n'en donnait que 65. Conservée telle quelle.
+  Aucun seuil de surface ne sépare les 19 désaccords : les références qui
+  répondent 1 malgré une baie sans fermeture vont de 0,23 m² (2659E2512272I)
+  à 3,42 m² couvrant **100 %** du vitrage non-nord (2400E0038579Y), quand
+  d'autres répondent 0 dès 0,35 m² (2400E0046693A) ou 3,9 % du vitrage
+  (2400E0023332N). Cinq références répondent même 0 sans aucune baie non-nord
+  à protéger. Ne pas chercher de seuil : les moteurs ne s'accordent pas.
 
 ### TASK-K53 — 2633E1486544G : besoin d'ECS d'une installation couvrant l'immeuble
 
