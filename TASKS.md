@@ -735,3 +735,28 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   (1 253,18 kWh) sous la balise alors que `fecs` vaut 0,5 : le solaire y
   couvrirait la totalité de la consommation restante. Contradiction interne,
   à ne pas reproduire.
+
+### TASK-K56 — Ligne E/F de QP0 : une référence contredit son propre moteur
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- 2662E2642251Q (maison, mode 1) : `qp0` 334,999 attendu contre 237,812.
+  C'est l'unique racine du fichier — forcer la ligne « absence de
+  ventilateur » le fait passer de 83,21 % à 99,27 %, 46 écarts à 2.
+- Le générateur déclare `presence_ventouse = 1` et
+  `presence_regulation_combustion = 1`, et la référence applique pourtant
+  E = 2,5 / F = −0,8. Le XSD décrit `presence_ventouse` comme « présence d'un
+  système de ventouse **ou avec un ventilateur** pour l'évacuation des
+  fumées » : la ligne « présence de ventilateur » de §13.2.2 p.88 est la
+  lecture littérale, et c'est la nôtre.
+- Le même moteur (BBS_Slama_2025.11.1.0, LICIEL) applique E = 1,75 à trois
+  générateurs de description strictement identique — type 90 ou 93, ventouse
+  et régulation à 1, Pn 24 kW (2659E0944890K, 2669E0334575D, 2682E0333661M).
+  Rien dans le fichier ne les distingue, sinon le périmètre du DPE : les
+  trois sont des DPE immeuble (mode 6), le nôtre une maison.
+- Variante mesurée en A/B isolé sur 409 cas : exiger en plus un périmètre
+  collectif vaut −44 écarts, portés **en totalité** par ce seul fichier,
+  sans aucune dégradation. Écartée : le périmètre du DPE ne dit rien de la
+  présence d'un ventilateur dans le circuit de combustion, et les quatre
+  observations qui la soutiennent viennent d'un seul moteur.
+- À reprendre si le corpus livre un DPE de maison dont la référence applique
+  E = 1,75 avec ventouse et régulation, ou l'inverse en immeuble.
