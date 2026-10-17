@@ -114,7 +114,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K39 — Auxiliaires de génération : répartir le besoin entre générateurs
 
-- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
+- [~CLA] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
 - §15.1.1 p.97 : « Bch_g : besoin annuel d'énergie **assuré par le générateur** »,
   et « dans les cas où le générateur n'assure pas 100 % du besoin, seule la part
   du besoin qu'il couvre est prise en compte ».
