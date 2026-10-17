@@ -24,7 +24,8 @@ Le CLI cible : `bin/calcul-dpe input.xml` → enrichit le XML avec les balises `
 | `bin/fetch-official-corpus` | Construit un jeu de cas stratifié depuis l'open data ADEME, avec manifeste de provenance. |
 | `resources/XML/official/` | Jeux de tests documentés (manifestes suivis en git, XML non versionnés). |
 | `src/Conformite/` | Outillage de mesure d'écart (extraction, familles, tolérances, rapport). |
-| `TASKS.md` | Liste concise des seules tâches non terminées ou différées. |
+| `TASKS.md` | Liste concise des seules tâches encore actionnables. |
+| `TASKS_DONE.md` | Enquêtes closes sans changement de code : verdicts mesurés et variantes écartées, à ne pas réinstruire. |
 | `bin/dpe-pdf` | Rapport PDF d'un DPE depuis son XML ADEME (`CalculDpePHP::genererPdf`). |
 | `src/Pdf/` | Générateur PDF : modèle officiel en fond, données du XML par-dessus. Voir `resources/pdf/README.md`. |
 | `resources/pdf/` | Modèles officiels préparés (`bin/build-pdf-templates`), pictogrammes, polices. |
@@ -110,6 +111,11 @@ contexte consommé à chaque lecture :
 5. Quand une TASK existante est terminée, **supprime entièrement son bloc de
    `TASKS.md`** au lieu de la conserver en `[x]`. Le commit et l'historique Git
    assurent la traçabilité du travail accompli.
+   **Exception** : une tâche close *sans* changement de code — verdict mesuré,
+   variante écartée avec son coût, convention d'éditeur constatée — part dans
+   `TASKS_DONE.md` au lieu d'être supprimée. Ses chiffres ont coûté cher à
+   établir et évitent de reprendre une piste déjà payée. Ne rouvrir un bloc
+   archivé que si la condition de réouverture qu'il énonce est remplie.
 6. Si le travail courant révèle un problème hors scope, ajoute une nouvelle
    tâche concise seulement si tu ne le corriges pas immédiatement.
 
