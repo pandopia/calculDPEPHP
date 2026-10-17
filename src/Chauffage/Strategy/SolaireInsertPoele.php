@@ -11,6 +11,7 @@ use CalculDpePHP\Chauffage\Rendement\DistributionCalculator;
 use CalculDpePHP\Chauffage\Rendement\EmissionCalculator;
 use CalculDpePHP\Chauffage\Rendement\GenerationNonCombustionCalculator;
 use CalculDpePHP\Chauffage\Rendement\RegulationCalculator;
+use CalculDpePHP\Chauffage\Rendement\RendementGenerateur;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -107,7 +108,7 @@ final class SolaireInsertPoele implements CalculatorInterface
                     ?? self::FACTORS[$genPos]
                     ?? (1.0 / max(1, $genPos));
 
-                $rg  = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen) ?? 1.0;
+                $rg  = RendementGenerateur::lire($accessor, $gen) ?? 1.0;
                 $i0  = $this->linkedEmetteurFloat($accessor, $node, $gen, 'i0')
                     ?? $this->weightedEmetteurFloat($accessor, $node, 'i0') ?? 1.0;
                 $re  = $this->linkedEmetteurFloat($accessor, $node, $gen, 'rendement_emission')

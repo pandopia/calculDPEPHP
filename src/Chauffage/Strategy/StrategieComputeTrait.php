@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Chauffage\Strategy;
 
+use CalculDpePHP\Chauffage\Rendement\RendementGenerateur;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
@@ -214,7 +215,9 @@ trait StrategieComputeTrait
         $somme = 0.0;
         $n = 0;
         foreach ($generateurs as $generateur) {
-            $valeur = $accessor->getFloatOrNull("./donnee_intermediaire/{$field}", $generateur);
+            $valeur = $field === 'rendement_generation'
+                ? RendementGenerateur::lire($accessor, $generateur)
+                : $accessor->getFloatOrNull("./donnee_intermediaire/{$field}", $generateur);
             if ($valeur === null) {
                 continue;
             }
@@ -334,7 +337,9 @@ trait StrategieComputeTrait
             if (!($gen instanceof DOMElement) || $gen->nodeName !== 'generateur_chauffage') {
                 continue;
             }
-            $value = $accessor->getFloatOrNull("./donnee_intermediaire/{$field}", $gen);
+            $value = $field === 'rendement_generation'
+                ? RendementGenerateur::lire($accessor, $gen)
+                : $accessor->getFloatOrNull("./donnee_intermediaire/{$field}", $gen);
             if ($value === null) {
                 continue;
             }

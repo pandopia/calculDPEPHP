@@ -32,6 +32,7 @@ use DOMElement;
  * @spec-source  resources/specsplitted/12-rendements-installations/04-generation-non-combustion.md
  * @xml-input    generateur_chauffage.donnee_entree.{enum_type_generateur_ch_id, scop}
  * @xml-output   generateur_chauffage.donnee_intermediaire.{rendement_generation, scop}
+ * @see          \CalculDpePHP\Chauffage\Rendement\RendementGenerateur
  * @depends-on   (aucun)
  * @tables       (aucune — valeurs SCOP intégrées d'après §12.4.2)
  */
@@ -135,8 +136,12 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
         if ($genId >= self::PAC_RANGE[0] && $genId <= self::PAC_RANGE[1]) {
             $scop = $this->resolvePacScop($node, $accessor, $context, $genId);
             $di   = $accessor->ensureDonneeIntermediaire($node);
+            // XSD : `scop` est publié « en remplacement du Rg pour les
+            // générateurs thermodynamique », et `rendement_generation` vaut
+            // « pour tous les générateurs sauf thermodynamique ». Une PAC ne
+            // publie donc que son SCOP ; RendementGenerateur::lire() le relit
+            // là où Ich a besoin du rendement de génération.
             $accessor->setChildValue($di, 'scop', $scop);
-            $accessor->setChildValue($di, 'rendement_generation', $scop);
             return;
         }
 

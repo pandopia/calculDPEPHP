@@ -7,6 +7,7 @@ namespace CalculDpePHP\Chauffage\Strategy;
 use CalculDpePHP\Collectif\ChauffageInstallationMultiplicity;
 use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Chauffage\Rendement\RendementGenerateur;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
@@ -270,7 +271,7 @@ final class InstallationClassique implements CalculatorInterface
         foreach ($generateurs as $gen) {
             if ($accessor->getIntOrNull('./donnee_entree/priorite_generateur_cascade', $gen) !== 1
                 || ($accessor->getFloatOrNull('./donnee_intermediaire/pn', $gen) ?? 0.0) <= 0.0
-                || ($accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen) ?? 0.0) <= 0.0) {
+                || (RendementGenerateur::lire($accessor, $gen) ?? 0.0) <= 0.0) {
                 return false;
             }
             $puissanceTotale += $accessor->getFloatOrNull('./donnee_intermediaire/pn', $gen);
@@ -281,7 +282,7 @@ final class InstallationClassique implements CalculatorInterface
         foreach ($generateurs as $gen) {
             $part = $accessor->getFloatOrNull('./donnee_intermediaire/pn', $gen) / $puissanceTotale;
             $partsBesoin[$gen->getNodePath()] = $part;
-            $rg = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen);
+            $rg = RendementGenerateur::lire($accessor, $gen);
             $reference = $accessor->getStringOrNull('./donnee_entree/reference', $gen);
             $rgDep = $reference !== null ? ($rendementsDep[$reference] ?? $rg) : $rg;
             $c = $besoinMoy * $part * $intermittence / max(1e-9, $rg * $rendementEmissionDistributionRegulation);
@@ -324,7 +325,7 @@ final class InstallationClassique implements CalculatorInterface
             if (\CalculDpePHP\Chauffage\GenerateurChAlias::isHybride($genId)) {
                 $hasHybride = true;
             }
-            $rgGen = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen) ?? 1.0;
+            $rgGen = RendementGenerateur::lire($accessor, $gen) ?? 1.0;
             $gens[] = [$gen, \CalculDpePHP\Chauffage\GenerateurChAlias::isHybridePac($genId), $rgGen];
         }
         return ($hasHybride && count($gens) >= 2) ? $gens : null;
@@ -377,7 +378,9 @@ final class InstallationClassique implements CalculatorInterface
             if (!($gen instanceof DOMElement) || $gen->nodeName !== 'generateur_chauffage') {
                 continue;
             }
-            $value = $accessor->getFloatOrNull("./donnee_intermediaire/{$field}", $gen);
+            $value = $field === 'rendement_generation'
+                ? RendementGenerateur::lire($accessor, $gen)
+                : $accessor->getFloatOrNull("./donnee_intermediaire/{$field}", $gen);
             if ($value === null) {
                 continue;
             }

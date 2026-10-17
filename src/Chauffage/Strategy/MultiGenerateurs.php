@@ -12,6 +12,7 @@ use CalculDpePHP\Chauffage\Rendement\DistributionCalculator;
 use CalculDpePHP\Chauffage\Rendement\EmissionCalculator;
 use CalculDpePHP\Chauffage\Rendement\GenerationNonCombustionCalculator;
 use CalculDpePHP\Chauffage\Rendement\RegulationCalculator;
+use CalculDpePHP\Chauffage\Rendement\RendementGenerateur;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -141,7 +142,7 @@ final class MultiGenerateurs implements CalculatorInterface
                 : (($normalise >= 55 && $normalise <= 68)
                     || ($normalise >= 75 && $normalise <= 97)
                     || $normalise === self::CHAUDIERE_ELECTRIQUE ? 'chaudiere' : null);
-            $rg = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen);
+            $rg = RendementGenerateur::lire($accessor, $gen);
             if ($role === null || isset($couple[$role]) || $rg === null || $rg <= 0.0) {
                 return false;
             }

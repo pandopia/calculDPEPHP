@@ -6,6 +6,7 @@ namespace CalculDpePHP\Chauffage\Strategy;
 
 use CalculDpePHP\Common\ClimaticSolicitations;
 use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Chauffage\Rendement\RendementGenerateur;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
@@ -221,7 +222,7 @@ final class CollectifBaseAppoint implements CalculatorInterface
         $intAppoint = $i0Appoint / (1.0 + 0.1 * ($g - 1.0));
 
         // ── 13. Rendements base ────────────────────────────────────────────────
-        $rgBase = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $genBase) ?? 1.0;
+        $rgBase = RendementGenerateur::lire($accessor, $genBase) ?? 1.0;
         $denomBase = max(1e-9, $rgBase * $reBase * $rdBase * $rrBase);
         $consoBase = $bchBase * $intBase / $denomBase;
 
@@ -229,7 +230,7 @@ final class CollectifBaseAppoint implements CalculatorInterface
         $rdApp = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_distribution', $emAppoint) ?? 1.0;
         $rrApp = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_regulation',   $emAppoint) ?? 1.0;
         $reApp = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_emission',     $emAppoint) ?? 1.0;
-        $rgApp = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $genAppoint) ?? 1.0;
+        $rgApp = RendementGenerateur::lire($accessor, $genAppoint) ?? 1.0;
         $denomApp = max(1e-9, $rgApp * $reApp * $rdApp * $rrApp);
         $consoApp = max(0.0, $bch1 - $bchBase) * $intAppoint / $denomApp;
 
