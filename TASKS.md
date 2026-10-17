@@ -19,7 +19,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-H03 — Apports internes : qualifier les références sérialisées en Wh
 
-- [ ] Owner: __  | Phase: H  | Estimation: 2h
+- [~CLA] Owner: __  | Phase: H  | Estimation: 2h
 - Certains exports anciens publient `apport_interne_ch`, `apport_solaire_ch` et
   leurs équivalents froid avec un facteur exactement ×1 000.
 - Vérifier la cohérence interne et le moteur éditeur avant toute modification :
