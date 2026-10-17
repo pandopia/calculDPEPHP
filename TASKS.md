@@ -85,6 +85,34 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Reste donc à départager, si un texte le permet un jour : les murs dont la
   référence publie la valeur tabulée nue **sous** 2,144.
 
+### TASK-K66 — §17.1.4.2 : « diviser par Nblgt » ou proratiser par la surface ?
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- §17.1.4.2 p.110 écrit, pour un DPE immeuble à chauffage individuel, que la
+  consommation se calcule « sur la base d'un appartement « moyen », à partir
+  du besoin de chauffage de l'appartement « moyen » (obtenu en multipliant le
+  besoin de chauffage de l'immeuble Bch par le rapport de la surface
+  habitable de l'appartement « moyen » à celle de l'immeuble, **ce qui revient
+  à diviser le besoin de chauffage Bch de l'immeuble par le nombre de
+  logements de l'immeuble Nblgt**) », puis à multiplier par `Nblgt_syst_i`.
+- Pour la **consommation**, les deux lectures coïncident : avec
+  `Nblgt_syst_i = Sh_i / Shmoy` de §17.1.2, on a
+  `(Bch / Nblgt) × Nblgt_syst_i = Bch × Sh_i / Sh_immeuble`. Vérifié sur
+  2400E0669882V, dont la référence donne exactement 166,3 kWh/m² sur ses six
+  installations.
+- Elles divergent en revanche pour le **profil de charge** du générateur, qui
+  voit un GV et non un besoin. `resolveGvBuilding` prend aujourd'hui
+  `ChauffageInstallationMultiplicity::directShareOrNull()`, soit
+  `Sh_i / Sh_immeuble`, et non `1 / Nblgt`.
+- **Variante mesurée et écartée** : forcer `1 / Nblgt` coûte **+122 écarts**
+  (13 654 → 13 776), sept cas dégradés et aucun amélioré — 2682E0040013I et
+  2682E0040066J à +27 chacun, 2612E0854137C à +25. La part surfacique est
+  celle que le corpus soutient. Ne pas y revenir sans un élément nouveau.
+- Reste ouvert : sur 2400E0669882V le rendement de génération vaut 0,8655
+  attendu contre 0,8010, et la direction de l'écart irait dans le sens d'un
+  GV plus grand. Chercher ailleurs que dans ce partage — le profil de charge
+  de §13.2.2.1 lui-même, ou `Cdimref`.
+
 ### TASK-K53 — Besoin d'ECS : deux références s'opposent à déclaration égale
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
