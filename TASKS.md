@@ -114,6 +114,27 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   que 65 bonnes réponses. Ne pas chercher de seuil, et traiter avec TASK-K38,
   qui porte sur le même bloc.
 
+### TASK-K59 — Échelle de `apport_et_besoin` : même éditeur minoritaire
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- Six références publient `sortie/apport_et_besoin/besoin_ch` **plus petit**
+  que le besoin de leur unique installation de chauffage, dans un rapport de
+  2,9 à 6,6 : `2691E0123392O`, `2691E0752812A`, `2691E0507798K`,
+  `2692E1146601U`, `2692E1146857Q`, `2693E0440000W`. Toutes sont en mode 10
+  avec `enum_calcul_echantillonnage_id` = 2.
+- **Le corpus tranche contre elles.** Sur les 83 références en modes 10 à 13,
+  **77 publient la somme des besoins de leurs installations**, ce que nous
+  faisons ; les 6 restantes sont ces fichiers-là. Parmi les seuls fichiers qui
+  déclarent un échantillonnage, 72 sur 78 nous suivent : l'hypothèse « avec
+  échantillonnage, la sortie porte l'appartement » est réfutée.
+- **C'est une convention d'éditeur, la même que TASK-K58.** Les six viennent
+  du logiciel « 4.1.1 », et les six fichiers de ce logiciel en modes 10 à 13
+  divergent ; les 122 fichiers LICIEL de ces modes nous suivent tous.
+- Sur `2691E0123392O` le GV (1 184,17) et le besoin de l'installation
+  (37 116,08 contre 37 116,66) concordent au chiffre près : seule l'échelle de
+  la sortie diffère. Ne rien changer sans un texte ; rouvrir si un second
+  éditeur adopte la même lecture.
+
 ### TASK-K58 — Doublage de mur : un éditeur minoritaire l'ignore dans umur0
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
