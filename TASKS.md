@@ -411,7 +411,8 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   - `q4pa_conv` : le fichier déclare `enum_methode_saisie_q4pa_conv_id = 2`
     (« mesure d'étanchéité à l'air de moins de deux ans ») et
     `q4pa_conv_saisi = 1,700`, mais publie 1,500, soit le forfait
-    `tv_q4pa_conv[3]`. La référence ignore sa propre mesure.
+    `tv_q4pa_conv[3]`. La référence ignore sa propre mesure — **imputée**
+    depuis par `ReferenceDefects`, qui couvre aussi la méthode 3.
   - `sortie/deperdition/hvent = 0` alors que sa propre
     `ventilation/donnee_intermediaire/hvent = 1573,568` égale la nôtre au
     chiffre près. Ce n'est pas une convention de méthode 33 : les trois autres

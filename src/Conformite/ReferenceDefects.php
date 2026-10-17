@@ -160,6 +160,7 @@ final class ReferenceDefects
             $suspects += self::apportsSerialisesEnWattheures($referenceDoc);
             $suspects += self::isolantDePlancherBasDeclareMaisIgnore($referenceDoc);
             $suspects += self::agregatIncompatibleAvecSaVentilation($referenceDoc);
+            $suspects += self::mesureDEtancheiteDeclareeMaisIgnoree($referenceDoc);
         }
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
@@ -575,6 +576,60 @@ final class ReferenceDefects
         }
 
         return $suspects;
+    }
+
+    /**
+     * Méthodes de saisie de Q4Pa_conv qui déclarent une valeur mesurée :
+     * 2 « mesure d'étanchéité à l'air de moins de deux ans » et 3 « mesure
+     * d'étanchéité à l'air de la maison mère ».
+     *
+     * @var list<int>
+     */
+    private const SAISIES_Q4PA_MESUREES = [2, 3];
+
+    /**
+     * Une perméabilité mesurée, saisie et justifiée, que la référence publie
+     * au forfait.
+     *
+     * §4 p.44 : la valeur forfaitaire de Q4Pa_conv ne s'emploie qu'à défaut de
+     * mesure. Un fichier qui déclare une mesure de moins de deux ans, en donne
+     * la valeur dans `q4pa_conv_saisi`, puis publie autre chose dans
+     * `q4pa_conv`, se contredit.
+     *
+     * @return array<string, string>
+     */
+    private static function mesureDEtancheiteDeclareeMaisIgnoree(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+
+        foreach ($xpath->query('//ventilation') as $ventilation) {
+            if (!$ventilation instanceof DOMElement) {
+                continue;
+            }
+
+            $methode = self::nombreEnfant($xpath, './donnee_entree/enum_methode_saisie_q4pa_conv_id', $ventilation);
+            $saisi = self::nombreEnfant($xpath, './donnee_entree/q4pa_conv_saisi', $ventilation);
+            $publie = self::nombreEnfant($xpath, './donnee_intermediaire/q4pa_conv', $ventilation);
+
+            if ($methode === null || !in_array((int)$methode, self::SAISIES_Q4PA_MESUREES, true)
+                || $saisi === null || $saisi <= 0.0 || $publie === null
+                || abs($publie - $saisi) <= 1e-9) {
+                continue;
+            }
+
+            return [
+                'q4pa_conv' => sprintf(
+                    'la référence déclare une perméabilité mesurée de %.3f m³/(h.m²) '
+                    . '(enum_methode_saisie_q4pa_conv_id = %d) mais publie %.3f, '
+                    . 'la valeur forfaitaire : §4 p.44 ne l\'emploie qu\'à défaut de mesure',
+                    $saisi,
+                    (int)$methode,
+                    $publie,
+                ),
+            ];
+        }
+
+        return [];
     }
 
     private static function nodeNum(DOMXPath $xpath, string $query, DOMElement $context): ?float
