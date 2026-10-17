@@ -22,8 +22,9 @@ declare(strict_types=1);
  *         ont une valeur non nulle en 2022, 2023 et 2025 : la cellule a été
  *         perdue à la digitalisation, et un contenu CO2 nul n'existe pas dans
  *         l'arrêté. 2675E0015989B le montre sur 0106C — la référence publie
- *         0,040, entre nos 0,037 de 2023 et 0,041 de 2025. Liste complète et
- *         suite : TASK-K59.
+ *         0,040, entre nos 0,037 de 2023 et 0,041 de 2025 ; cette seule valeur
+ *         a été rétablie depuis l'arrêté, les quarante autres restent à lire.
+ *         Liste complète et suite : TASK-K59.
  */
 
 return [
@@ -1893,7 +1894,7 @@ return [
         '0102C' => 0.109,
         '0103C' => 0.066,
         '0105C' => 0.049,
-        '0106C' => 0,
+        '0106C' => 0.040,
         '0107C' => 0.047,
         '0108C' => 0.081,
         '0109C' => 0.231,
