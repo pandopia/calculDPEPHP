@@ -474,7 +474,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K46 — Réseau 9514C : référence CO2 direct ou facteur ACV
 
-- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- [~CLA] Owner: __ | Phase: K | Priorité: moyenne
 - Campagne 50g, bâtiment 52041673575825 / **2595E1189146F**, appartement
   **2595E1189162V** (lettres B/B de référence contre C/C calculées).
   33 cibles diffèrent, principalement sur les GES ; EP bâtiment 88 dans les deux moteurs.
