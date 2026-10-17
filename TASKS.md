@@ -43,7 +43,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-H10 — DPE immeuble collectif, méthode 26
 
-- [ ] Owner: __  | Phase: H  | Estimation: 4h
+- [~CLA] Owner: __  | Phase: H  | Estimation: 4h
 - Reprendre les règles §17 pour `enum_methode_application_dpe_log_id=26` :
   échelle immeuble, chauffage/ECS, ventilation et valeurs nulles.
 - Ne pas appliquer mécaniquement un facteur `nombre_appartement` : séparer les
