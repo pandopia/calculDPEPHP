@@ -583,6 +583,7 @@ final class AuxDistributionCalculator implements CalculatorInterface
         $worstDeltaP    = 0.0; // maximum des seuls émetteurs présents
         $worstFcot      = 0.0; // un plancher seul doit conserver Fcot = 0,156 (§15.2.1)
         $dtDim          = 7.5;
+        $dtDimRetenu    = null;
         $hasHydraulic   = false;
 
         if ($emCollection === null) {
@@ -636,7 +637,14 @@ final class AuxDistributionCalculator implements CalculatorInterface
                 $worstDeltaP = $emDeltaP;
             }
 
-            $dtDim = $emDt;
+            // §15.2.1 p.99 dimensionne **le** circulateur de l'installation :
+            // comme pour ΔPem et Fcot au-dessus, c'est l'émetteur le plus
+            // exigeant qui le fixe. Le débit qvem valant Pnc / (1,163 × δθdim),
+            // le plus exigeant est celui au δθdim le plus faible. Retenir la
+            // valeur du dernier émetteur lu faisait dépendre le résultat de
+            // l'ordre d'écriture du fichier.
+            $dtDim = $dtDimRetenu === null ? $emDt : min($dtDimRetenu, $emDt);
+            $dtDimRetenu = $dtDim;
         }
 
         if (!$hasHydraulic) {

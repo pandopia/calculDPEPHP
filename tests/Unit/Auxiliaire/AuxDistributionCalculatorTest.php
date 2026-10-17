@@ -763,4 +763,61 @@ XML);
 
         self::assertEqualsWithDelta(0.0, $this->efValue($doc, 'conso_auxiliaire_distribution_ecs'), 1e-9);
     }
+
+    /**
+     * §15.2.1 p.99 dimensionne **le** circulateur de l'installation : comme
+     * pour ΔPem et Fcot, c'est l'émetteur le plus exigeant qui le fixe, et le
+     * débit qvem = Pnc / (1,163 × δθdim) croît quand δθdim décroît.
+     *
+     * Le résultat ne doit donc pas dépendre de l'ordre d'écriture des
+     * émetteurs dans le fichier.
+     */
+    public function testLOrdreDesEmetteursNeChangePasLeCirculateur(): void
+    {
+        $consos = [];
+        foreach ([['4', '2'], ['2', '4']] as [$premier, $second]) {
+            $doc = new DOMDocument();
+            $doc->loadXML(sprintf(<<<'XML'
+<logement>
+  <caracteristique_generale>
+    <enum_methode_application_dpe_log_id>1</enum_methode_application_dpe_log_id>
+    <surface_habitable_logement>100</surface_habitable_logement>
+    <nombre_niveau_logement>1</nombre_niveau_logement>
+  </caracteristique_generale>
+  <installation_chauffage_collection><installation_chauffage>
+    <donnee_entree>
+      <enum_type_installation_id>1</enum_type_installation_id>
+      <surface_chauffee>100</surface_chauffee><rdim>1</rdim>
+    </donnee_entree>
+    <emetteur_chauffage_collection>
+      <emetteur_chauffage><donnee_entree>
+        <enum_type_emission_distribution_id>37</enum_type_emission_distribution_id>
+        <enum_temp_distribution_ch_id>%s</enum_temp_distribution_ch_id>
+        <surface_chauffee>50</surface_chauffee>
+      </donnee_entree></emetteur_chauffage>
+      <emetteur_chauffage><donnee_entree>
+        <enum_type_emission_distribution_id>37</enum_type_emission_distribution_id>
+        <enum_temp_distribution_ch_id>%s</enum_temp_distribution_ch_id>
+        <surface_chauffee>50</surface_chauffee>
+      </donnee_entree></emetteur_chauffage>
+    </emetteur_chauffage_collection>
+  </installation_chauffage></installation_chauffage_collection>
+</logement>
+XML, $premier, $second));
+
+            (new AuxDistributionCalculator())->calculate(
+                $doc->getElementsByTagName('logement')->item(0),
+                $this->buildCtx($doc, [
+                    'enveloppe.dp_parois' => 200.0,
+                    'enveloppe.dp_pont_thermique' => 50.0,
+                    'ventilation.hvent' => 80.0,
+                    'ventilation.hperm' => 20.0,
+                ]),
+            );
+
+            $consos[] = $this->efValue($doc, 'conso_auxiliaire_distribution_ch');
+        }
+
+        self::assertEqualsWithDelta($consos[0], $consos[1], 1e-9);
+    }
 }

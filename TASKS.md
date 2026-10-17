@@ -375,8 +375,13 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
     1728,98 m².
   - `2600E0081026P` : 161,4 contre 132,9 (Pcircem 37,9 contre 31,2 W). Une
     installation, deux émetteurs (5 aéraulique + 21 poêle) et deux générateurs
-    (3 PAC air/air + 39 insert) ; `emetteurParams` retient le pire ΔPem et le
-    δθdim du dernier émetteur lu.
+    (3 PAC air/air + 39 insert).
+- **Fait** : `emetteurParams` retenait le δθdim du **dernier** émetteur lu, là
+  où ΔPem et Fcot prennent le pire cas. Il prend désormais le plus faible —
+  le plus exigeant, puisque qvem = Pnc / (1,163 × δθdim) — et le résultat ne
+  dépend plus de l'ordre d'écriture. Mesure nulle sur 509 cas : aucune
+  installation du corpus n'a deux émetteurs hydrauliques de régimes
+  différents. Les variantes min et max donnent toutes deux 13 263 écarts.
 - Piste écartée : `rat` calculé sur le besoin plutôt que sur la surface. §15.2.1
   dit « ratio du besoin couvert par l'équipement », mais les `besoin_ch`
   publiés par installation donnent exactement les mêmes ratios que les surfaces
