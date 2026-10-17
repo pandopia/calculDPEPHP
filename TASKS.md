@@ -388,33 +388,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   pour la RT2012, `rsee` pour la RE2020) : il n'y a rien à y recalculer, et
   implémenter Th-BCE serait un autre projet.
 
-### TASK-K62 — Quatre stubs renvoient à des TASK qui n'existent plus
-
-- [ ] Owner: __ | Phase: K | Priorité: basse
-- `InstallationsIndependantes`, `GenerateurBiEnergie`, `MultiEmissions` et
-  `DeperditionMurCalculator` lèvent `LogicException` en renvoyant
-  respectivement à TASK-E21, E22, E11 et B09, absentes de `TASKS.md` comme de
-  `TASKS_DONE.md`. Relevé en archivant les enquêtes closes.
-- Déterminer pour chacun si le cas est couvert ailleurs — `MultiGenerateurs`
-  et `InstallationClassique` traitent déjà plusieurs des configurations
-  visées — puis supprimer le stub ou lui rouvrir une tâche décrivant ce qui
-  manque réellement. Aucun cas du corpus ne les atteint aujourd'hui : un
-  `LogicException` levé en production serait une régression silencieuse.
-
-## Validation obligatoire
-
-- Toute correction doit être sourcée (spec/XSD/règlement), testée unitairement
-  et mesurée en A/B isolé avec `bin/official-test-report` sur le corpus complet.
-- Ne jamais élargir une tolérance ni ajouter de comportement propre à un numéro
-  ADEME pour faire baisser un compteur.
-
-## TASK-COMPARATIF — Répartitions collectives restant à implémenter
-
-- [ ] Compléter les répartitions réellement hétérogènes chauffage/ECS et valider la précision des projections approximatives sur les exports Pandopia (§17.2). Les associations absentes, les installations homogènes multiples, le froid homogène et la surface photovoltaïque collective sont maintenant calculables ; les écarts restent à résorber. La campagne de 150 bâtiments est documentée dans `docs/dpe-chain-alpha12` du dépôt applicatif : 1 449 cibles calculables, 1 257 mêmes lettres, 252 proches à 1 %. Priorités : 410578, 406024, 426983 et 378102 ; remonter aux premiers intermédiaires divergents sans recopier la référence.
-- [ ] Valider une collection réelle avec un coefficient IFC explicitement saisi : le moteur conserve 0,7 par défaut ; l’adaptateur Pandopia utilise une approximation surfacique tracée pour les anciens fichiers sans coefficient.
-- [ ] Auditer l’autoconsommation photovoltaïque des appartements générés (§16.2) : vérifier l’échelle des consommations lues dans les générateurs et la conversion primaire/finale, au-delà de la répartition des capteurs. Mesurer en A/B sur des cas collectifs et individuels.
-- [ ] Exécuter la couverture PHPUnit avec Xdebug (indisponible dans le runtime utilisé pour cette livraison) et vérifier l’objectif de 80 %.
-
 ### TASK-K48 — Entrées des appartements du bâtiment 52041673587983
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne

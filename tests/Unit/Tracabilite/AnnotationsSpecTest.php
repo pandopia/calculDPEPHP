@@ -22,6 +22,25 @@ final class AnnotationsSpecTest extends TestCase
     /** `resources/spec.pdf` — Annexe 1, méthode 3CL-DPE 2021. */
     private const PAGES_SPEC = 147;
 
+    /**
+     * Sections que le schéma ADEME rend inatteignables, et qu'aucun
+     * calculateur ne peut donc revendiquer sans être du code mort.
+     *
+     * §9.11 « Installation de chauffage avec un générateur bi-énergie »
+     * suppose un générateur « pouvant fonctionner avec deux énergies
+     * différentes ». Or `generateur_chauffage` ne porte qu'un seul
+     * `enum_type_energie_id` (maxOccurs = 1), et aucune modalité de
+     * `enum_cfg_installation_ch_id` — 1 à 11 — ne désigne ce cas. Aucun
+     * fichier valide ne peut l'exprimer.
+     *
+     * Retirer une entrée d'ici le jour où le schéma rend le cas exprimable.
+     *
+     * @var array<string, string>
+     */
+    private const SECTIONS_INATTEIGNABLES = [
+        '9.11' => 'générateur bi-énergie : un générateur ne porte qu\'une énergie au XSD',
+    ];
+
     /** @return list<array{string, string}> [fichier, valeur de l'annotation] */
     private function annotations(string $tag): array
     {
@@ -125,6 +144,9 @@ final class AnnotationsSpecTest extends TestCase
                     || str_starts_with($section, $citee . '.')) {
                     continue 2;
                 }
+            }
+            if (isset(self::SECTIONS_INATTEIGNABLES[$section])) {
+                continue;
             }
             $orphelines[] = $section;
         }
