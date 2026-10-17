@@ -107,34 +107,21 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   calculé à une autre échelle, et des clés d'auxiliaires au rapport exact de
   1,125.
 
-### TASK-K51 — Doublage d'un mur isolé et dépensier des auxiliaires : références partagées
+### TASK-K51 — Protection solaire extérieure : les moteurs ne s'accordent pas
 
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
-- Deux hypothèses mesurées sur `2662E2542580D` (maison individuelle, 74,19 %),
-  toutes deux écartées faute de majorité. Ne pas les reprendre sans cas neufs.
-- **Doublage sur un mur isolé.** Ce fichier publie `umur0` = 2,5 (valeur nue de
-  la table) sur des murs qui portent à la fois un doublage connu
-  (`enum_type_doublage_id` = 5, R = 0,21) et une isolation rapportée, puis
-  `umur` = 1/(1/2,5 + R_isolant) — le doublage n'entre pas. Son seul mur **non**
-  isolé publie en revanche 1,40845 = 1/(1/2 + 0,21), doublage compris.
-  §3.2.1.2 p.16 dit pourtant « pour l'ensemble des parois ». Le corpus donne
-  53 murs isolés à doublage appliqué contre 22 sans : notre lecture reste la
-  majoritaire, et c'est celle du texte.
-- **Dépensier des auxiliaires de génération.** §15.1.1 ne définit Qaux_g qu'avec
-  `Bch_g` ; nous prenons `besoin_ch + besoin_ch_depensier` au dépensier.
-  `2233E0258018C` implique `besoin_ch_depensier` seul (rapport 1,2395 contre
-  2,2395), mais remplacer la somme coûte **+181 écarts sur 153 cas**. Ce même
-  2662E2542580D implique au contraire un facteur 1,86, supérieur à la somme :
-  les références ne s'accordent pas entre elles. La somme est conservée.
+- [ ] Owner: __ | Phase: K | Priorité: basse
 - `protection_solaire_exterieure` : la règle « une seule baie non-nord sans
-  fermeture suffit » donne 86 bonnes réponses sur 105 ; la variante « au moins
-  une baie avec fermeture » n'en donnait que 65. Conservée telle quelle.
-  Aucun seuil de surface ne sépare les 19 désaccords : les références qui
+  fermeture suffit », qui est celle d'open3cl, donne 86 bonnes réponses sur
+  105 références remplissant le bloc.
+- Aucun seuil de surface ne sépare les 19 désaccords : les références qui
   répondent 1 malgré une baie sans fermeture vont de 0,23 m² (2659E2512272I)
   à 3,42 m² couvrant **100 %** du vitrage non-nord (2400E0038579Y), quand
   d'autres répondent 0 dès 0,35 m² (2400E0046693A) ou 3,9 % du vitrage
   (2400E0023332N). Cinq références répondent même 0 sans aucune baie non-nord
-  à protéger. Ne pas chercher de seuil : les moteurs ne s'accordent pas.
+  à protéger.
+- Variante mesurée et écartée : « au moins une baie avec fermeture » ne donne
+  que 65 bonnes réponses. Ne pas chercher de seuil, et traiter avec TASK-K38,
+  qui porte sur le même bloc.
 
 ### TASK-K53 — 2633E1486544G : besoin d'ECS d'une installation couvrant l'immeuble
 
