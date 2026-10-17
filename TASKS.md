@@ -41,14 +41,22 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Examiner séparément les pertes de distribution ECS parfois sérialisées en Wh.
 - Cibles : `src/Ecs/BesoinEcsCalculator.php`, `src/Collectif/`.
 
-### TASK-H10 — DPE immeuble collectif, méthode 26
+### TASK-H23 — Ponts thermiques des parois en adjacence 22 : convention d'éditeur
 
-- [~CLA] Owner: __  | Phase: H  | Estimation: 4h
-- Reprendre les règles §17 pour `enum_methode_application_dpe_log_id=26` :
-  échelle immeuble, chauffage/ECS, ventilation et valeurs nulles.
-- Ne pas appliquer mécaniquement un facteur `nombre_appartement` : séparer les
-  différents périmètres et utiliser les données publiées à la bonne échelle.
-- Cibles : `src/Collectif/` et calculators concernés.
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- §3.4 p.32 ne néglige que « les ponts thermiques des parois au niveau des
+  circulations communes » (adjacences 14 à 18). Nous y ajoutons l'adjacence
+  22, « local non déperditif (local à usage d'habitation chauffé) », au motif
+  qu'une paroi qui ne déperdit pas n'est pas une limite de l'enveloppe.
+- open3cl ne tranche pas non plus : il relit le k du DPE et note que les
+  moteurs certifiés divergent — « 3cl-2024.6.1.0 exporte k = 0, Tribu 1.4.25.1
+  et BBS 2024.6.1.0 conservent la valeur forfaitaire ».
+- Mesuré en A/B isolé sur 500 cas : retirer l'adjacence 22 du veto vaut
+  **+73 écarts** — 2501E0122493M y gagne 16, mais 2618E2138973C en perd 48 et
+  2517E0227225G 41. La convention actuelle est conservée.
+- Sur 2501E0122493M, cet écart explique à lui seul toute la chaîne :
+  `deperdition_pont_thermique` 211,7 contre 231,5, donc
+  `deperdition_enveloppe` −2,0 % et `besoin_ch` −2,4 %.
 
 ## Phase K — Conformité au corpus ADEME
 
