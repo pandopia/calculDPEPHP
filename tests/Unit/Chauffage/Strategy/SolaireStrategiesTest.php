@@ -87,12 +87,12 @@ XML;
         return $ctx;
     }
 
-    private function besoinCh(DOMElement $node): float
+    private function di(DOMElement $node, string $tag): float
     {
         foreach ($node->childNodes as $child) {
             if ($child instanceof \DOMElement && $child->nodeName === 'donnee_intermediaire') {
                 foreach ($child->childNodes as $c) {
-                    if ($c instanceof \DOMElement && $c->nodeName === 'besoin_ch') {
+                    if ($c instanceof \DOMElement && $c->nodeName === $tag) {
                         return (float)$c->textContent;
                     }
                 }
@@ -100,6 +100,21 @@ XML;
         }
         return 0.0;
     }
+
+    private function besoinCh(DOMElement $node): float
+    {
+        return $this->di($node, 'besoin_ch');
+    }
+
+    /**
+     * INT × Ich du gabarit : i0 = 1, tous les rendements à 1, et
+     * G = GV / (hsp × Sh) = 100 / (2,5 × 200) = 0,2, d'où
+     * INT = 1 / (1 + 0,1 × (0,2 − 1)).
+     */
+    private const INT_ICH = 1.0 / 0.92;
+
+    /** Le gabarit chauffe 100 m² d'un logement de 200 : §9.1 lui en donne la moitié. */
+    private const BESOIN_INSTALLATION = 500.0;
 
     // §9.2 — ChauffageSolaire (cfg_id=2)
 
@@ -117,56 +132,77 @@ XML;
         $this->assertFalse((new ChauffageSolaire())->appliesTo($node));
     }
 
-    /** fch_saisi=0.30, Bch=1000 → besoin = 1000 × (1 - 0.30) = 700 */
-    public function testChauffageSolaire_fchSaisi(): void
+    /**
+     * §9.2 p.62 retranche la couverture solaire de la consommation, en amont
+     * de l'émission : `besoin_ch` reste le besoin de l'installation.
+     */
+    public function testChauffageSolaire_besoinPublieEstBrutDuSolaire(): void
     {
         [$doc, $node] = $this->buildInstallation(2, 1, fchSaisi: 0.30);
         (new ChauffageSolaire())->calculate($node, $this->makeContext($doc, 1000.0, '1'));
-        $this->assertEqualsWithDelta(700.0, $this->besoinCh($node), self::TOL);
+
+        $this->assertEqualsWithDelta(self::BESOIN_INSTALLATION, $this->besoinCh($node), self::TOL);
+        $this->assertEqualsWithDelta(
+            self::BESOIN_INSTALLATION * 0.70 * self::INT_ICH,
+            $this->di($node, 'conso_ch'),
+            self::TOL,
+        );
     }
 
-    /** Zone H1a (id=1) → Fch=0.25, besoin = 1000 × (1 - 0.25) = 750 */
+    /** Zone H1a (id=1) → Fch = 0,25 : Cch = Bch × INT × (1 − Fch) × Ich. */
     public function testChauffageSolaire_zoneH1a(): void
     {
         [$doc, $node] = $this->buildInstallation(2, 1);
         (new ChauffageSolaire())->calculate($node, $this->makeContext($doc, 1000.0, '1'));
-        $this->assertEqualsWithDelta(750.0, $this->besoinCh($node), self::TOL);
+
+        $this->assertEqualsWithDelta(0.25, $this->di($node, 'fch'), self::TOL);
+        $this->assertEqualsWithDelta(
+            self::BESOIN_INSTALLATION * 0.75 * self::INT_ICH,
+            $this->di($node, 'conso_ch'),
+            self::TOL,
+        );
     }
 
-    /** Zone H3 (id=8) → Fch=0.52, besoin = 1000 × (1 - 0.52) = 480 */
+    /** Zone H3 (id=8) → Fch = 0,52. */
     public function testChauffageSolaire_zoneH3(): void
     {
         [$doc, $node] = $this->buildInstallation(2, 1);
         (new ChauffageSolaire())->calculate($node, $this->makeContext($doc, 1000.0, '8'));
-        $this->assertEqualsWithDelta(480.0, $this->besoinCh($node), self::TOL);
+
+        $this->assertEqualsWithDelta(0.52, $this->di($node, 'fch'), self::TOL);
+        $this->assertEqualsWithDelta(
+            self::BESOIN_INSTALLATION * 0.48 * self::INT_ICH,
+            $this->di($node, 'conso_ch'),
+            self::TOL,
+        );
     }
 
-    /** fch_saisi takes precedence over zone lookup */
+    /** `fch_saisi` prime sur la table de zone de §18.4. */
     public function testChauffageSolaire_fchSaisiOverridesZone(): void
     {
         [$doc, $node] = $this->buildInstallation(2, 1, fchSaisi: 0.10);
         (new ChauffageSolaire())->calculate($node, $this->makeContext($doc, 1000.0, '8'));
-        // fch=0.10 (saisi), not 0.52 (zone H3)
-        $this->assertEqualsWithDelta(900.0, $this->besoinCh($node), self::TOL);
+
+        $this->assertEqualsWithDelta(0.10, $this->di($node, 'fch'), self::TOL);
+    }
+
+    /**
+     * §9.6 p.65 : Prod = Bch × Fch × (0,75 INT1 Ich1 + 0,25 INT2 Ich2). Sur
+     * l'installation unique de §9.2 la parenthèse se réduit à INT × Ich.
+     */
+    public function testChauffageSolaire_productionSolaire(): void
+    {
+        [$doc, $node] = $this->buildInstallation(2, 1);
+        (new ChauffageSolaire())->calculate($node, $this->makeContext($doc, 1000.0, '1'));
+
+        $this->assertEqualsWithDelta(
+            self::BESOIN_INSTALLATION * 0.25 * self::INT_ICH,
+            $this->di($node, 'production_ch_solaire'),
+            self::TOL,
+        );
     }
 
     // §9.6 — SolaireInsertPoele (cfg_id=7)
-
-    /** cfg_id=7, position=1 → factor=0.75, fch=0.25 → besoin = 0.75 × 750 = 562.5 */
-    public function testSolaireInsertPoele_principal(): void
-    {
-        [$doc, $node] = $this->buildInstallation(7, 1);
-        (new SolaireInsertPoele())->calculate($node, $this->makeContext($doc, 1000.0, '1'));
-        $this->assertEqualsWithDelta(562.5, $this->besoinCh($node), self::TOL);
-    }
-
-    /** cfg_id=7, position=2 → factor=0.25, fch=0.25 → besoin = 0.25 × 750 = 187.5 */
-    public function testSolaireInsertPoele_insert(): void
-    {
-        [$doc, $node] = $this->buildInstallation(7, 2);
-        (new SolaireInsertPoele())->calculate($node, $this->makeContext($doc, 1000.0, '1'));
-        $this->assertEqualsWithDelta(187.5, $this->besoinCh($node), self::TOL);
-    }
 
     /** cfg_id=7 → appliesTo returns true */
     public function testSolaireInsertPoele_appliesTo(): void
@@ -182,11 +218,47 @@ XML;
         $this->assertFalse((new SolaireInsertPoele())->appliesTo($node));
     }
 
-    /** fch_saisi=0.40, position=1, Bch=1000 → besoin = 0.75 × 1000 × 0.60 = 450 */
-    public function testSolaireInsertPoele_fchSaisi(): void
+    /**
+     * §9.6 p.65 répartit 0,75 et 0,25 entre le système principal et l'appoint
+     * **d'une même installation**, pas entre deux installations : le besoin
+     * publié reste entier, seule la consommation porte le facteur.
+     */
+    public function testSolaireInsertPoele_leFacteurPorteSurLaConsoPasLeBesoin(): void
+    {
+        [$doc, $node] = $this->buildInstallation(7, 1);
+        (new SolaireInsertPoele())->calculate($node, $this->makeContext($doc, 1000.0, '1'));
+
+        $this->assertEqualsWithDelta(self::BESOIN_INSTALLATION, $this->besoinCh($node), self::TOL);
+        $this->assertEqualsWithDelta(
+            0.75 * self::BESOIN_INSTALLATION * 0.75 * self::INT_ICH,
+            $this->di($node, 'conso_ch'),
+            self::TOL,
+        );
+    }
+
+    /**
+     * La deuxième installation d'un même logement n'hérite plus du facteur
+     * d'appoint : elle porte son propre besoin, et son unique générateur est
+     * le système principal.
+     */
+    public function testSolaireInsertPoele_secondeInstallationGardeSonBesoin(): void
+    {
+        [$doc, $node] = $this->buildInstallation(7, 2);
+        (new SolaireInsertPoele())->calculate($node, $this->makeContext($doc, 1000.0, '1'));
+
+        $this->assertEqualsWithDelta(self::BESOIN_INSTALLATION, $this->besoinCh($node), self::TOL);
+    }
+
+    /** §9.6 p.65 : Prod = Bch × Fch × Σ facteur_i × INT_i × Ich_i. */
+    public function testSolaireInsertPoele_productionSolaire(): void
     {
         [$doc, $node] = $this->buildInstallation(7, 1, fchSaisi: 0.40);
         (new SolaireInsertPoele())->calculate($node, $this->makeContext($doc, 1000.0, '1'));
-        $this->assertEqualsWithDelta(450.0, $this->besoinCh($node), self::TOL);
+
+        $this->assertEqualsWithDelta(
+            self::BESOIN_INSTALLATION * 0.40 * 0.75 * self::INT_ICH,
+            $this->di($node, 'production_ch_solaire'),
+            self::TOL,
+        );
     }
 }

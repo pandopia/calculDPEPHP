@@ -29,7 +29,7 @@ use DOMElement;
  * @spec-pages   62
  * @spec-source  resources/specsplitted/09-conso-chauffage/02-solaire.md
  * @xml-input    installation_chauffage.donnee_entree.{enum_cfg_installation_ch_id, rdim, fch_saisi}
- * @xml-output   installation_chauffage.donnee_intermediaire.{besoin_ch, conso_ch}
+ * @xml-output   installation_chauffage.donnee_intermediaire.{besoin_ch, conso_ch, fch, production_ch_solaire}
  * @depends-on   \CalculDpePHP\Chauffage\BesoinChauffageCalculator
  * @tables       tv_facteur_couverture_solaire_id (§18.4 — fallback zone → Fch)
  */
@@ -86,10 +86,28 @@ final class ChauffageSolaire implements CalculatorInterface
         $rdim          = $accessor->getFloatOrNull('./donnee_entree/rdim', $node) ?? 1.0;
         $rdimEffective = max(1e-9, $rdim);
 
-        $besoin    = $bch    * (1.0 - $fch) / $rdimEffective;
-        $besoinDep = $bchDep * (1.0 - $fch) / $rdimEffective;
+        // §9.2 p.62 : « L'appoint apporté par le solaire se fait en amont de
+        // l'émission. » La couverture solaire retranche donc la consommation,
+        // pas le besoin : `besoin_ch` publié reste celui de l'installation.
+        $part            = $this->partSurfacique($accessor, $node);
+        $besoinPublie    = $part * $bch    / $rdimEffective;
+        $besoinPublieDep = $part * $bchDep / $rdimEffective;
 
-        $this->computeAndWrite($besoin, $besoinDep, $node, $context);
+        $intIch = $this->computeAndWrite(
+            $besoinPublie * (1.0 - $fch),
+            $besoinPublieDep * (1.0 - $fch),
+            $node,
+            $context,
+            $besoinPublie,
+            $besoinPublieDep,
+        );
+
+        $di = $accessor->ensureDonneeIntermediaire($node);
+        $accessor->setChildValue($di, 'fch', $fch);
+        // §9.6 p.65 donne la production solaire d'une installation à deux
+        // émetteurs : Prod = Bch × Fch × (0,75 INT1 Ich1 + 0,25 INT2 Ich2).
+        // Sur l'installation unique de §9.2 la parenthèse se réduit à INT × Ich.
+        $accessor->setChildValue($di, 'production_ch_solaire', $besoinPublie * $fch * $intIch);
     }
 
     public function resolveFch(NodeAccessor $accessor, DOMElement $node, CalculationContext $context): float
