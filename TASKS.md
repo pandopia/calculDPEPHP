@@ -180,12 +180,15 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
     supplémentaires seraient créées en le publiant. On ne l'écrit pas.
   - les 12 balises `rendement_generation` surnuméraires restantes portent sur
     des générateurs **à combustion**, pas thermodynamiques : question distincte.
-- Reste : 45 divergences de `rendement_generation` en ECS sur 509 cas, aux
-  rapports dispersés de 0,49 à 1,66. Le regroupement par type de générateur ne
-  dégage pas de famille — treize sur des chaudières gaz standard 2001-2015
-  (type 49), neuf sur des gaz à condensation 2001-2015 (56), six sur des gaz à
-  condensation après 2015 (57), puis une queue d'une ou deux occurrences sur
-  dix autres types, tous à combustion.
+- **La racine est en amont, pas dans la génération ECS.** Sur les 45
+  divergences de `rendement_generation` en ECS, **43 s'accompagnent d'un
+  `rpn`, `rpint`, `qp0` ou `pn` faux sur le même fichier** : le résidu de
+  cette tâche est celui des caractéristiques de chaudière, donc TASK-K31 et
+  TASK-K56, pas un problème de génération. Ne pas chercher de famille par
+  type de générateur, c'était la fausse piste.
+- Des deux écarts isolés, l'un est corrigé — §12.4.1 p.76 donne Rg = 0,97 aux
+  chaudières électriques et l'ECS leur donnait 1 — et l'autre appartient à la
+  référence lacunaire de TASK-K35.
 - Deux fichiers concentrent huit de ces divergences, 2400E0669495Y et
   2400E0669425G : ils déclarent `nombre_appartement = 1` pour un immeuble de
   822 m² desservi par sept installations d'ECS. L'échelle est le suspect, pas
@@ -326,12 +329,41 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   `xsd-compiler.ts` annonce un inventaire « DPEv1 à DPEv2.6 » à revérifier.
 - **Deux blocs de sortie deviennent obligatoires** et nous ne les produisons
   pas — ils compteraient en balises manquantes sur tout fichier 2.7 :
-  - `logement/sortie/production_enr` : `prod_enr_pv`,
-    `prod_enr_solaire_thermique`, `prod_enr_chaleur_ambiante_pac`,
-    `prod_enr_geothermie_pac`, `prod_enr_chaleur_ambiante_cet`,
-    `prod_enr_rcfu`, `prod_enr_bois`, `prod_enr_totale`,
-    `prod_enr_pourcentage` ;
-  - `logement/sortie/mention_a0`.
+  `logement/sortie/production_enr` (neuf balises) et
+  `logement/sortie/mention_a0`.
+- **Le texte est identifié** : arrêté du 11 juin 2026 « portant diverses
+  dispositions d'adaptation au droit de l'Union européenne sur le diagnostic
+  de performance énergétique », `JORFTEXT000054673312`.
+  - `mention_a0` — son annexe 1 point 3 : étiquette **A ou B**, énergies
+    « exclusivement des énergies renouvelables sur site ou à proximité, de
+    l'électricité, ou de l'énergie provenant d'un réseau de chaleur ou de
+    froid considéré comme efficace » (art. L. 711-4 du code de l'énergie), et
+    **aucune installation de chauffage ou d'ECS pouvant utiliser des énergies
+    fossiles** sur site ou à proximité. Le logigramme d'attribution n'est pas
+    dans le texte HTML.
+  - `production_enr` — son annexe 2 point 1.2, une sous-section par
+    composante : 1.2.1 `Prod_enr_PAC` (variables `Cch_pac_j`, `SCOPj` ; les
+    PAC hybrides ont une expression distincte par groupe de zones H1, H2,
+    H3), 1.2.2 `Prod_enr_thermodynamique` (`Cecsj`, `COPj`), 1.2.3 `Ppv`
+    (renvoi à l'annexe 1 de l'arrêté du 31 mars 2021), 1.2.4
+    `Prod_enr_sol_therm` (`Bchj`, `INTj`, `Fch`, `Ichj`, `Becsj`, `Fecs`,
+    `Iecsj` — le `Fch` du §18.4 que nous tabulons déjà), 1.2.5
+    `Prod_enr_bois` = « la consommation de bois pour le chauffage », 1.2.6
+    `Prod_enr_rcfu` depuis les taux d'ENR et de récupération de l'annexe 7 de
+    l'arrêté du 15 septembre 2006, 1.2.7 `Prod_PAC_géo` (mêmes variables que
+    la PAC).
+  - L'article 1 points 9.b et 9.c définissent les deux indicateurs : l'ENR
+    produite sur site en kWh et par source, puis son rapport à la
+    consommation d'énergie finale totale — « la consommation d'énergie à
+    considérer contient l'autoconsommation ». Aucun seuil n'est fixé.
+- **Bloquant pour coder** : les formules de 1.2.1, 1.2.2, 1.2.4 et 1.2.7 sont
+  des **images** dans la page Légifrance, remplacées par « Vous pouvez
+  consulter l'intégralité du texte avec ses images ». Elles ne sont que dans
+  l'extrait PDF du Journal officiel, que Légifrance refuse en téléchargement
+  direct (HTTP 403). Les récupérer avant d'écrire une ligne : les formes
+  attendues — `Cch_pac × (SCOP − 1)` pour la chaleur ambiante, par exemple —
+  sont plausibles mais **ne sont pas sourcées**, et la règle d'or n° 1
+  l'interdit.
 - **Nos tables deviennent incomplètes** — règle d'or n° 2. Le millésime ajoute
   13 `enum_type_generateur_ch_id` (172 à 184) et 12
   `enum_type_generateur_ecs_id` (135 à 146) : PAC et CET à partir de 2027,
