@@ -152,6 +152,9 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   14. Publier un zéro sous ce seul garde de format gagnerait environ 72 écarts
   nets, au prix d'un second garde de format inféré, pour une balise que la
   méthode ne définit pas. Non retenu en l'état.
+- Le partage se lit aussi par éditeur, et il est net : LICIEL omet la balise
+  sur 432 fichiers sur 433, les trois autres moteurs la publient à 0 sur
+  leurs 48. Ce n'est donc pas une règle de méthode.
 - Rouvrir si une référence publiant une valeur non nulle apparaît au corpus, ou
   avec un texte réglementaire donnant la formule.
 
@@ -792,15 +795,3 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   2400E1027746V et 2601E0263293X, mais le rapport tombe à 0,85 et 0,52 sur
   les deux installations de 2601E0370414Y.
 
-### TASK-K58 — `conso_auxiliaire_distribution_fr` : convention d'éditeur
-
-- [ ] Owner: __ | Phase: K | Priorité: basse
-- §15 p.97 ne définit pour le refroidissement qu'un auxiliaire de
-  distribution, la génération étant comprise dans le SEER ; faute de modèle
-  de distribution de froid, sa valeur est nulle.
-- Le XSD la rend facultative, et les références se partagent exactement par
-  éditeur : LICIEL l'omet (432 fichiers sur 433), tous les autres la
-  publient à 0 (48 fichiers). Nous l'omettons. Les quatre balises associées
-  (coût, GES, EP) suivent le même partage.
-- Ne trancher qu'avec un texte, pas avec le corpus : le choix inverse
-  produirait 432 balises supplémentaires pour en combler 48.
