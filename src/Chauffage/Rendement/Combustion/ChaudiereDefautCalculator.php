@@ -299,6 +299,20 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         return (1.2 * $gvEffectif * (19.0 - $tbase)) / (0.95 ** 3);
     }
 
+    /** Installation de chauffage portant ce générateur. */
+    private function installationParente(DOMElement $generateur): ?DOMElement
+    {
+        $courant = $generateur->parentNode;
+        while ($courant instanceof DOMElement) {
+            if ($courant->nodeName === 'installation_chauffage') {
+                return $courant;
+            }
+            $courant = $courant->parentNode;
+        }
+
+        return null;
+    }
+
     /**
      * Pecs (W) pour les chaudières mixtes (chauffage + ECS) selon §13.2.2.4 :
      *   Vs = 0                 → Pecs = 21 kW (instantanée)

@@ -6,6 +6,7 @@ namespace CalculDpePHP\Auxiliaire;
 
 use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
@@ -175,16 +176,20 @@ final class AuxGenerationCalculator implements CalculatorInterface
             $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation',       $install) ?? 1.0;
 
             // §15.1.1 : Bch_g est « le besoin annuel d'énergie assuré par le
-            // générateur », réduit à « la part du besoin qu'il couvre ». Cette
-            // part est approchée par surface_chauffee / surface desservie.
-            // La surface desservie doit être à la même échelle que le besoin
-            // porté par l'installation : celle de l'immeuble pour un DPE
-            // immeuble, celle du logement sinon. Un DPE d'appartement décrit
-            // une installation et un besoin d'appartement, même quand le
-            // fichier renseigne aussi la surface de l'immeuble.
+            // générateur », réduit à « la part du besoin qu'il couvre ». Le
+            // besoin publié sur l'installation est déjà cette part dès lors
+            // que la stratégie l'a proratisée : le reproratiser par
+            // surface_chauffee / surface desservie compterait deux fois.
+            // La part surfacique ne s'applique donc qu'à une installation qui
+            // porte encore le besoin entier du DPE tout en ne chauffant
+            // qu'une fraction de sa surface.
             $surfCh = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $install);
             $sh     = $this->surfaceDesservie($accessor, $logement);
-            $ratioSurface = ($surfCh !== null && $sh !== null && $sh > 0.0) ? min(1.0, $surfCh / $sh) : 1.0;
+            $besoinDpe = (float)$context->get('chauffage.besoin_ch', 0.0);
+            $portePlusQueSaPart = $besoinDpe > 0.0 && abs($besoin - $besoinDpe) <= 1e-6 * $besoinDpe;
+            $ratioSurface = ($portePlusQueSaPart && $surfCh !== null && $sh !== null && $sh > 0.0)
+                ? min(1.0, $surfCh / $sh)
+                : 1.0;
 
             $genCollection = $this->getChild($install, 'generateur_chauffage_collection');
             if ($genCollection === null) {
@@ -295,7 +300,7 @@ final class AuxGenerationCalculator implements CalculatorInterface
             $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation',        $install) ?? 1.0;
             // rdim : nombre d'unités (appartements) représentées par cette installation.
             // Comme pour conso_ecs, la conso d'aux est agrégée à l'échelle bâtiment au niveau sortie.
-            $rdim      = $this->ecsInstallationMultiplicity($accessor, $logement, $install);
+            $rdim      = $this->ecsInstallationMultiplicity($accessor, $install);
 
             foreach ($install->getElementsByTagName('generateur_ecs') as $gen) {
                 if (!$gen instanceof DOMElement) {
@@ -342,26 +347,21 @@ final class AuxGenerationCalculator implements CalculatorInterface
      *
      * @spec-formula F-17.2-rdim-effective
      */
-    private function ecsInstallationMultiplicity(
-        NodeAccessor $accessor,
-        DOMElement $logement,
-        DOMElement $install,
-    ): float {
-        $rdim = $accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0;
-        $methode = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $install) ?? 1;
-        $type = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $install) ?? 1;
-        if ($methode === 1 || $type !== 1) {
-            return max(1e-9, $rdim);
-        }
-
-        $nbApt = $accessor->getFloatOrNull('./caracteristique_generale/nombre_appartement', $logement) ?? 1.0;
-        $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation', $install) ?? 1.0;
-        $sumSample = 0.0;
-        foreach ($logement->getElementsByTagName('installation_ecs') as $candidate) {
-            $sumSample += $accessor->getFloatOrNull('./donnee_entree/nombre_logement', $candidate) ?? 0.0;
-        }
-
-        return max(1e-9, $nbApt * $ratioVirt / max(1.0, $sumSample));
+    /**
+     * Nblgt_syst de l'installation ECS, lu par la même règle que le besoin et
+     * la consommation qu'il multiplie (§17.1.3.2 p.109).
+     *
+     * Le reste du moteur passe par {@see EcsInstallationMultiplicity} : une
+     * seconde lecture divergerait du besoin publié sur l'installation, et
+     * compterait deux fois les logements d'un relevé exhaustif.
+     */
+    private function ecsInstallationMultiplicity(NodeAccessor $accessor, DOMElement $install): float
+    {
+        return max(
+            1e-9,
+            EcsInstallationMultiplicity::sampledOrNull($install, $accessor)
+                ?? ($accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0),
+        );
     }
 
     /**

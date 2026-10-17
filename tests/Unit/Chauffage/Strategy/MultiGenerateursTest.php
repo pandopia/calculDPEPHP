@@ -75,17 +75,30 @@ final class MultiGenerateursTest extends TestCase
         self::assertEqualsWithDelta(1.0, array_sum($parts), 1e-9);
     }
 
-    public function testNeDoublePasLeBesoinSiPlusieursInstallationsSontPresentes(): void
+    /**
+     * §9.1.4 coupe entre les **générateurs** d'une installation ; §9.1 p.57
+     * répartit le besoin entre les installations par leur surface. Deux
+     * installations identiques de 50 m² sur les 100 m² desservis portent donc
+     * la moitié du besoin chacune, et chacune partage la sienne entre sa PAC
+     * et sa chaudière (2400E0615430N, deux installations cfg 6).
+     */
+    public function testPlusieursInstallationsSePartagentLeBesoinParLeurSurface(): void
     {
         [$document, $installation, $context] = $this->installation(7, 97, '1', false, 1.0);
-        $installation->parentNode->appendChild($installation->cloneNode(true));
+        $clone = $installation->cloneNode(true);
+        $installation->parentNode->appendChild($clone);
+        foreach ([$installation, $clone] as $node) {
+            $node->getElementsByTagName('surface_chauffee')->item(0)->textContent = '50';
+        }
+
         (new MultiGenerateurs())->calculate($installation, $context);
         $xpath = new DOMXPath($document);
-        self::assertSame(800.0, (float)$xpath->evaluate('string(donnee_intermediaire/besoin_ch)', $installation));
+        self::assertSame(500.0, (float)$xpath->evaluate('string(donnee_intermediaire/besoin_ch)', $installation));
 
         // Les parts ne portent que sur les générateurs de l'installation
         // calculée, et leur somme reste 1.
         $parts = (array)$context->get(PartBesoinGenerateur::CLE_CONTEXTE, []);
+        self::assertCount(2, $parts);
         self::assertEqualsWithDelta(1.0, array_sum($parts), 1e-9);
     }
 

@@ -56,16 +56,7 @@ final class DpeEngine
         $context = $this->buildContext($document);
         $context->set('collectif.besoin_simplifie', $simplifiedApartmentNeeds);
 
-        $originalMethods = \CalculDpePHP\Xml\ExhaustiveInstallationNormalizer::apply($document);
-        try {
-            $this->pipeline->run($document, $context);
-        } finally {
-            // L'adaptation de format n'altère pas les données saisies, même
-            // lorsqu'un calculateur échoue ou que le document est rejoué.
-            foreach ($originalMethods as $method) {
-                $method->textContent = $originalMethods[$method];
-            }
-        }
+        $this->pipeline->run($document, $context);
 
         return $document;
     }

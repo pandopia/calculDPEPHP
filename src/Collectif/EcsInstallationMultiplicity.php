@@ -52,10 +52,12 @@ final class EcsInstallationMultiplicity
     }
 
     /**
-     * Le recalcul historique des bâtiments de deux logements conserve
-     * le dimensionnement explicite de leur installation unique. Vérifier les surfaces et le nombre de
-     * logements visités avant de distinguer ce cas d'un appartement moyen
-     * extrapolé (§17.1.2). Sans preuve d'exhaustivité, garder l'échantillonnage.
+     * §17.1.2 p.107 n'introduit l'appartement « moyen » que pour extrapoler
+     * un échantillon. Quand le fichier déclare `enum_calcul_echantillonnage_id`
+     * = 1, « absence de méthode d'échantillonnage », il n'y a rien à
+     * extrapoler : l'installation unique qui couvre l'immeuble garde le
+     * dimensionnement explicite qu'elle porte. Les surfaces visitées le
+     * corroborent ; sans cette preuve, garder l'échantillonnage.
      */
     public static function exhaustiveHomogeneousOrNull(DOMElement $installation, NodeAccessor $accessor): ?float
     {
@@ -67,12 +69,10 @@ final class EcsInstallationMultiplicity
         if ($logement === null || $logement->getElementsByTagName('installation_ecs')->length !== 1) { return null; }
         $surface = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement) ?? 0.0;
         $count = $accessor->getIntOrNull('./caracteristique_generale/nombre_appartement', $logement) ?? 0;
-        // Au-delà de deux logements, le modèle de l'appartement moyen reste
-        // applicable, même si toutes les visites ont été réalisées.
-        // L'adaptateur de nouvelles saisies impose l'éclatement des BAT à 2 lots.
         $group = $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $installation) ?? 0.0;
         $rdim = $accessor->getFloatOrNull('./donnee_entree/rdim', $installation) ?? 0.0;
-        if ($surface <= 0.0 || $count !== 2 || $rdim <= 0.0 || abs($surface - $group) > 0.01) { return null; }
+        if ($accessor->getIntOrNull('./caracteristique_generale/enum_calcul_echantillonnage_id', $logement) !== 1) { return null; }
+        if ($surface <= 0.0 || $count < 2 || $rdim <= 0.0 || abs($surface - $group) > 0.01) { return null; }
         $xp = new \DOMXPath($installation->ownerDocument);
         $visited = $xp->query('//dpe_immeuble/logement_visite_collection/logement_visite/surface_habitable_logement');
         if ($visited === false || $visited->length !== $count) { return null; }

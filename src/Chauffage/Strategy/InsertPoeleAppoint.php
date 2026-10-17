@@ -67,10 +67,14 @@ final class InsertPoeleAppoint implements CalculatorInterface
 
     public function calculate(DOMElement $node, CalculationContext $context): void
     {
-        $bch    = (float)$context->get('chauffage.besoin_ch',           0.0);
-        $bchDep = (float)$context->get('chauffage.besoin_ch_depensier', 0.0);
-
         $accessor = new NodeAccessor($context->document);
+
+        // §9.3 p.62 renvoie au §9.1 p.57 pour la part du besoin assurée par
+        // l'installation : une installation qui ne chauffe qu'une partie de la
+        // surface desservie n'en porte que la part correspondante.
+        $part   = $this->partSurfacique($accessor, $node);
+        $bch    = $part * (float)$context->get('chauffage.besoin_ch',           0.0);
+        $bchDep = $part * (float)$context->get('chauffage.besoin_ch_depensier', 0.0);
 
         $gv         = (float)$context->get('chauffage.gv', 1.0);
         $shImmeuble = $this->getShImmeuble($accessor, $node);

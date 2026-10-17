@@ -130,6 +130,10 @@ final class BesoinAnnuelCalculator implements CalculatorInterface
         $tvFr   = ($zoneId !== null && $altId !== null)
             ? ($context->tables->load('reference/tv_sollicitations_froid')[$zoneId][$altId] ?? null)
             : null;
+        // §10.2 p.68 : le dénominateur est GV × (Textmoy_clim_j − Tint) × Nref_j.
+        $tClim  = ($zoneId !== null && $altId !== null)
+            ? $context->tables->load('reference/tv_textmoy_clim')
+            : [];
 
         // Apport interne forfaitaire (§6.1) — identique chauffage et
         // refroidissement, donc repris tel quel de FCalculator plutôt que
@@ -150,10 +154,10 @@ final class BesoinAnnuelCalculator implements CalculatorInterface
             if ($row === null) {
                 continue;
             }
-            $dh28j   = (float)($row['DH28']   ?? 0.0);
-            $dh26j   = (float)($row['DH26']   ?? 0.0);
             $nref28j = (float)($row['Nref28'] ?? 0.0);
             $nref26j = (float)($row['Nref26'] ?? 0.0);
+            $dh28j   = $this->degresHeures($tClim, 28, $zoneId, $altId, $j, $nref28j, $row['DH28'] ?? null);
+            $dh26j   = $this->degresHeures($tClim, 26, $zoneId, $altId, $j, $nref26j, $row['DH26'] ?? null);
             $eFr28j  = (float)($row['E_fr_28'] ?? 0.0);
             $eFr26j  = (float)($row['E_fr_26'] ?? 0.0);
 
@@ -193,6 +197,64 @@ final class BesoinAnnuelCalculator implements CalculatorInterface
      * DH = Σ(Text_h - Tint) sur les heures de refroidissement (°Ch).
      * gains en Wh, gv en W/K, DH en °Ch → résultat en kWh.
      */
+    /**
+     * §10.2 p.68 : `GV × (Textmoy_clim_j − Tint) × Nref_j`. Les degrés-heures
+     * de refroidissement se déduisent donc de la température moyenne pendant
+     * les périodes de climatisation, et non de la colonne DH de §18.2 — dont
+     * la variante 26 °C vaut le nombre d'heures lui-même
+     * (cf. `resources/tables/reference/tv_textmoy_clim.php`).
+     *
+     * Repli sur la colonne DH quand l'annexe ne donne pas de température pour
+     * ce mois alors qu'elle y compte des heures de refroidissement.
+     *
+     * @param array<int, array<int, array<int, array<int, float|null>>>> $tClim
+     * @spec-formula F-10.2-a
+     */
+    private function degresHeures(
+        array $tClim,
+        int $consigne,
+        ?int $zoneId,
+        ?int $altId,
+        int $mois,
+        float $nref,
+        float|string|null $dhTabule,
+    ): float {
+        if ($nref <= 0.0) {
+            return 0.0;
+        }
+        $temperature = ($zoneId !== null && $altId !== null)
+                && !$this->consignesIndiscernables($tClim, $zoneId, $altId)
+            ? ($tClim[$consigne][$zoneId][$altId][$mois] ?? null)
+            : null;
+
+        // Une moyenne pendant les périodes de climatisation ne peut pas être
+        // sous la consigne : §18.2.1 imprime pourtant « 0,0 » pour H2d en mai
+        // à 28 °C. Ce zéro est traité comme une absence.
+        return $temperature !== null && (float)$temperature > $consigne
+            ? ((float)$temperature - $consigne) * $nref
+            : (float)($dhTabule ?? 0.0);
+    }
+
+    /**
+     * §18.2.2 p.131-140 publie, pour l'altitude 400-800 m, exactement le même
+     * tableau Textmoy_clim sous « Tcons = 26 °C » et sous « Tcons = 28 °C ».
+     * Deux consignes distinctes ne peuvent pas donner la même température
+     * moyenne sur les mêmes mois : la bande est inexploitable et le calcul y
+     * reprend la colonne DH tabulée.
+     *
+     * La détection porte sur la table, pas sur une classe d'altitude codée en
+     * dur : une correction de l'annexe la désactiverait d'elle-même.
+     *
+     * @param array<int, array<int, array<int, array<int, float|null>>>> $tClim
+     */
+    private function consignesIndiscernables(array $tClim, int $zoneId, int $altId): bool
+    {
+        $a = $tClim[26][$zoneId][$altId] ?? null;
+        $b = $tClim[28][$zoneId][$altId] ?? null;
+
+        return $a !== null && $a === $b;
+    }
+
     private function besoinMensuel(float $gains, float $gv, float $dh, float $a): float
     {
         if ($dh <= 0.0) {

@@ -62,8 +62,12 @@ final class ConvecteurBijonction implements CalculatorInterface
 
     public function calculate(DOMElement $node, CalculationContext $context): void
     {
-        $bch    = (float)$context->get('chauffage.besoin_ch',           0.0);
-        $bchDep = (float)$context->get('chauffage.besoin_ch_depensier', 0.0);
+        $partSurfacique = $this->partSurfacique(new NodeAccessor($context->document), $node);
+        // §9.1 p.57 répartit le besoin entre les installations du logement :
+        // une installation qui ne chauffe qu'une partie de la surface
+        // desservie n'en porte que la part correspondante.
+        $bch    = $partSurfacique * (float)$context->get('chauffage.besoin_ch',           0.0);
+        $bchDep = $partSurfacique * (float)$context->get('chauffage.besoin_ch_depensier', 0.0);
 
         $accessor      = new NodeAccessor($context->document);
         $rdim          = $accessor->getFloatOrNull('./donnee_entree/rdim', $node) ?? 1.0;

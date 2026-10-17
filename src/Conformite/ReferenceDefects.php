@@ -60,6 +60,14 @@ final class ReferenceDefects
         ['dpe/logement/sortie/emission_ges/', 'emission_ges'],
     ];
 
+    /**
+     * `enum_type_isolation_id` : 1 « inconnu », 2 « non isolé ». Les autres
+     * valeurs déclarent une isolation.
+     *
+     * @var list<int>
+     */
+    private const ISOLATION_ABSENTE_OU_INCONNUE = [1, 2];
+
     private const COUT_PREFIX = 'dpe/logement/sortie/cout/';
     private const EF_PREFIX = 'dpe/logement/sortie/ef_conso/';
     private const APPORT_PREFIX = 'dpe/logement/sortie/apport_et_besoin/';
@@ -151,6 +159,8 @@ final class ReferenceDefects
             $suspects += self::pontThermiqueKPorteDejaLaLongueur($referenceDoc);
             $suspects += self::apportsSerialisesEnWattheures($referenceDoc);
             $suspects += self::isolantDePlancherBasDeclareMaisIgnore($referenceDoc);
+            $suspects += self::agregatIncompatibleAvecSaVentilation($referenceDoc);
+            $suspects += self::mesureDEtancheiteDeclareeMaisIgnoree($referenceDoc);
         }
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
@@ -421,13 +431,17 @@ final class ReferenceDefects
     }
 
     /**
-     * §3.2.2 p.20 : lorsque la résistance de l'isolant d'un plancher bas est
-     * connue, « Upb = 1 / (1/Upb0 + R) » — la branche « Isolation ? Oui →
-     * Résistance isolant » de l'arbre de décision. Un fichier qui déclare à la
-     * fois un type d'isolation, une méthode de saisie par résistance
-     * (`enum_methode_saisie_u_id` 5 ou 6) et une `resistance_isolation`
-     * positive, puis publie `upb` égal à `upb0`, se contredit : il décrit un
-     * plancher isolé et en publie le coefficient non isolé.
+     * §3.2.2 p.20 : l'arbre de décision du plancher bas ne rend `Upb = Upb0`
+     * que sur la branche « Isolation ? Non ». Dès que la paroi est déclarée
+     * isolée, Upb vaut `1 / (1/Upb0 + R)` si la résistance est saisie, et
+     * `min(Upb0 ; Upb_tab)` sinon — donc strictement moins que Upb0, puisque
+     * aucune valeur tabulée d'un plancher isolé n'excède celle du même
+     * plancher nu.
+     *
+     * Un fichier qui déclare un type d'isolation et publie malgré tout
+     * `upb = upb0` se contredit : il décrit un plancher isolé et en publie le
+     * coefficient non isolé. Le corpus le confirme — sur 286 planchers bas
+     * déclarés isolés, 281 publient bien `upb < upb0`.
      *
      * Preuve sur la référence seule, sans aucun résultat de notre moteur.
      *
@@ -445,15 +459,8 @@ final class ReferenceDefects
                 continue;
             }
 
-            $methode = self::nombreEnfant($xpath, './donnee_entree/enum_methode_saisie_u_id', $plancher);
-            if ($methode === null || !in_array((int)$methode, [5, 6], true)) {
-                continue;
-            }
-
-            $resistance = self::nombreEnfant($xpath, './donnee_entree/resistance_isolation', $plancher);
             $isolation = self::nombreEnfant($xpath, './donnee_entree/enum_type_isolation_id', $plancher);
-            if ($resistance === null || $resistance <= 0.0
-                || $isolation === null || in_array((int)$isolation, [1, 2], true)) {
+            if ($isolation === null || in_array((int)$isolation, self::ISOLATION_ABSENTE_OU_INCONNUE, true)) {
                 continue;
             }
 
@@ -463,14 +470,161 @@ final class ReferenceDefects
                 continue;
             }
 
+            $resistance = self::nombreEnfant($xpath, './donnee_entree/resistance_isolation', $plancher);
+            if ($resistance !== null && $resistance > 0.0) {
+                return [
+                    'upb' => sprintf(
+                        'la référence déclare un plancher bas isolé (résistance %.2f m².K/W saisie et '
+                        . 'justifiée) mais publie upb = upb0 = %.3f, le coefficient non isolé : §3.2.2 '
+                        . 'p.20 impose upb = 1 / (1/upb0 + R) = %.3f',
+                        $resistance,
+                        $upb0,
+                        1.0 / (1.0 / $upb0 + $resistance),
+                    ),
+                ];
+            }
+
             return [
                 'upb' => sprintf(
-                    'la référence déclare un plancher bas isolé (résistance %.2f m².K/W saisie et justifiée) '
-                    . 'mais publie upb = upb0 = %.3f, le coefficient non isolé : §3.2.2 p.20 impose '
-                    . 'upb = 1 / (1/upb0 + R) = %.3f',
-                    $resistance,
+                    'la référence déclare un plancher bas isolé (enum_type_isolation_id = %d) mais '
+                    . 'publie upb = upb0 = %.3f, le coefficient non isolé : §3.2.2 p.20 ne rend '
+                    . 'upb = upb0 que sur la branche « Isolation ? Non »',
+                    (int)$isolation,
                     $upb0,
-                    1.0 / (1.0 / $upb0 + $resistance),
+                ),
+            ];
+        }
+
+        return [];
+    }
+
+    /**
+     * Grandeurs que `<sortie>` publie à la fois en agrégat et ventilées par
+     * énergie dans `<sortie_par_energie_collection>`.
+     *
+     * @var list<array{0: string, 1: string}> [bloc d'agrégat, nom de la balise]
+     */
+    private const AGREGATS_VENTILES = [
+        ['ef_conso', 'conso_ch'],
+        ['ef_conso', 'conso_ecs'],
+        ['ep_conso', 'ep_conso_ch'],
+        ['cout', 'cout_ch'],
+        ['emission_ges', 'emission_ges_ch'],
+        ['emission_ges', 'emission_ges_ecs'],
+    ];
+
+    /**
+     * Un agrégat de `<sortie>` que sa propre ventilation par énergie ne
+     * reproduit pas.
+     *
+     * Le XSD définit `sortie_par_energie_collection` comme la décomposition de
+     * `<sortie>` par type d'énergie : leur somme est l'agrégat, par
+     * construction. Quand les deux divergent, le fichier se contredit — sans
+     * qu'aucun résultat de notre moteur n'intervienne.
+     *
+     * Deux formes au corpus : une ventilation qui vaut exactement le double de
+     * son agrégat, sur toutes les balises à la fois (2133E0741159K, dont les
+     * lignes sont dupliquées), et une ventilation entièrement nulle sous un
+     * agrégat positif (2659E2596108U, 2659E2236157N).
+     *
+     * @return array<string, string>
+     */
+    private static function agregatIncompatibleAvecSaVentilation(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+        $lignes = $xpath->query('//sortie_par_energie');
+        if ($lignes === false || $lignes->length === 0) {
+            return [];
+        }
+
+        $suspects = [];
+        foreach (self::AGREGATS_VENTILES as [$bloc, $balise]) {
+            $agregatNoeud = $xpath->query('//sortie/' . $bloc . '/' . $balise)->item(0);
+            if (!$agregatNoeud instanceof DOMElement) {
+                continue;
+            }
+            $agregat = (float)str_replace(',', '.', trim($agregatNoeud->textContent));
+            if ($agregat <= 0.0) {
+                continue;
+            }
+
+            $somme = 0.0;
+            $publiees = 0;
+            foreach ($lignes as $ligne) {
+                if (!$ligne instanceof DOMElement) {
+                    continue;
+                }
+                $valeur = self::nombreEnfant($xpath, './' . $balise, $ligne);
+                if ($valeur !== null) {
+                    $somme += $valeur;
+                    $publiees++;
+                }
+            }
+            if ($publiees === 0 || abs($somme - $agregat) <= 0.005 * $agregat) {
+                continue;
+            }
+
+            $suspects[$balise] = sprintf(
+                'la référence publie %s = %.1f mais sa propre ventilation par énergie en somme %.1f '
+                . 'sur %d ligne(s) : le XSD définit sortie_par_energie comme la décomposition de '
+                . '<sortie>, leur somme est l\'agrégat par construction',
+                $balise,
+                $agregat,
+                $somme,
+                $publiees,
+            );
+        }
+
+        return $suspects;
+    }
+
+    /**
+     * Méthodes de saisie de Q4Pa_conv qui déclarent une valeur mesurée :
+     * 2 « mesure d'étanchéité à l'air de moins de deux ans » et 3 « mesure
+     * d'étanchéité à l'air de la maison mère ».
+     *
+     * @var list<int>
+     */
+    private const SAISIES_Q4PA_MESUREES = [2, 3];
+
+    /**
+     * Une perméabilité mesurée, saisie et justifiée, que la référence publie
+     * au forfait.
+     *
+     * §4 p.44 : la valeur forfaitaire de Q4Pa_conv ne s'emploie qu'à défaut de
+     * mesure. Un fichier qui déclare une mesure de moins de deux ans, en donne
+     * la valeur dans `q4pa_conv_saisi`, puis publie autre chose dans
+     * `q4pa_conv`, se contredit.
+     *
+     * @return array<string, string>
+     */
+    private static function mesureDEtancheiteDeclareeMaisIgnoree(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+
+        foreach ($xpath->query('//ventilation') as $ventilation) {
+            if (!$ventilation instanceof DOMElement) {
+                continue;
+            }
+
+            $methode = self::nombreEnfant($xpath, './donnee_entree/enum_methode_saisie_q4pa_conv_id', $ventilation);
+            $saisi = self::nombreEnfant($xpath, './donnee_entree/q4pa_conv_saisi', $ventilation);
+            $publie = self::nombreEnfant($xpath, './donnee_intermediaire/q4pa_conv', $ventilation);
+
+            if ($methode === null || !in_array((int)$methode, self::SAISIES_Q4PA_MESUREES, true)
+                || $saisi === null || $saisi <= 0.0 || $publie === null
+                || abs($publie - $saisi) <= 1e-9) {
+                continue;
+            }
+
+            return [
+                'q4pa_conv' => sprintf(
+                    'la référence déclare une perméabilité mesurée de %.3f m³/(h.m²) '
+                    . '(enum_methode_saisie_q4pa_conv_id = %d) mais publie %.3f, '
+                    . 'la valeur forfaitaire : §4 p.44 ne l\'emploie qu\'à défaut de mesure',
+                    $saisi,
+                    (int)$methode,
+                    $publie,
                 ),
             ];
         }

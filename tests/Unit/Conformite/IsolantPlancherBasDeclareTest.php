@@ -56,11 +56,45 @@ XML, $methode, $isolation, $resistance, $upb));
         self::assertArrayNotHasKey('upb', $suspects);
     }
 
-    /** Sans saisie de résistance, la règle ne s'applique pas. */
-    public function testMethodeDeSaisieForfaitaireNEstPasSuspecte(): void
+    /**
+     * §3.2.2 p.20 ne rend `upb = upb0` que sur la branche « Isolation ? Non ».
+     * La contradiction tient donc au seul type d'isolation déclaré, quelle que
+     * soit la méthode de saisie — 2459E4183923N la montre en saisie
+     * forfaitaire par année d'isolation (méthode 7).
+     */
+    public function testUnPlancherIsoleEnSaisieForfaitaireEstAussiSuspect(): void
     {
-        $suspects = ReferenceDefects::detect([], $this->document('2', '8', '4', '3.65'));
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement><enveloppe><plancher_bas_collection><plancher_bas>
+  <donnee_entree>
+    <enum_methode_saisie_u_id>7</enum_methode_saisie_u_id>
+    <enum_type_isolation_id>3</enum_type_isolation_id>
+  </donnee_entree>
+  <donnee_intermediaire><upb0>2</upb0><upb>2</upb></donnee_intermediaire>
+</plancher_bas></plancher_bas_collection></enveloppe></logement></dpe>
+XML);
 
-        self::assertArrayNotHasKey('upb', $suspects);
+        $suspects = ReferenceDefects::detect([], $doc);
+
+        self::assertArrayHasKey('upb', $suspects);
+        self::assertStringContainsString('Isolation ? Non', $suspects['upb']);
+    }
+
+    /** Un plancher déclaré isolé et publié sous son upb0 reste conforme. */
+    public function testUnPlancherIsoleSousSonUpb0NEstPasSuspect(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<dpe><logement><enveloppe><plancher_bas_collection><plancher_bas>
+  <donnee_entree>
+    <enum_methode_saisie_u_id>7</enum_methode_saisie_u_id>
+    <enum_type_isolation_id>3</enum_type_isolation_id>
+  </donnee_entree>
+  <donnee_intermediaire><upb0>2</upb0><upb>0.5</upb></donnee_intermediaire>
+</plancher_bas></plancher_bas_collection></enveloppe></logement></dpe>
+XML);
+
+        self::assertArrayNotHasKey('upb', ReferenceDefects::detect([], $doc));
     }
 }

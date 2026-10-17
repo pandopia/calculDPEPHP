@@ -85,8 +85,12 @@ final class MultiGenerateurs implements CalculatorInterface
 
     public function calculate(DOMElement $node, CalculationContext $context): void
     {
-        $bch    = (float)$context->get('chauffage.besoin_ch',           0.0);
-        $bchDep = (float)$context->get('chauffage.besoin_ch_depensier', 0.0);
+        $partSurfacique = $this->partSurfacique(new NodeAccessor($context->document), $node);
+        // §9.1 p.57 répartit le besoin entre les installations du logement :
+        // une installation qui ne chauffe qu'une partie de la surface
+        // desservie n'en porte que la part correspondante.
+        $bch    = $partSurfacique * (float)$context->get('chauffage.besoin_ch',           0.0);
+        $bchDep = $partSurfacique * (float)$context->get('chauffage.besoin_ch_depensier', 0.0);
 
         $cfgId   = $this->cfgId($node) ?? 6;
         $pos     = $this->positionInCollection($node);
@@ -106,17 +110,16 @@ final class MultiGenerateurs implements CalculatorInterface
 
     /**
      * §9.1.4.2-3 p.61-62 : Cch_i = part_i × Bch × INT / (Rg_i × Re × Rd × Rr).
-     * Les deux générateurs partagent les émetteurs de base ; la nature PAC/chaudière
-     * détermine les parts. Les autres sérialisations conservent le calcul existant.
+     * Les deux générateurs partagent les émetteurs de base ; la nature
+     * PAC/chaudière détermine les parts. §9.1.4 coupe entre les générateurs
+     * d'une installation, pas entre les installations : un logement qui en
+     * décrit plusieurs voit chacune porter sa part surfacique (§9.1 p.57) puis
+     * la répartir entre ses deux générateurs.
      */
     private function computeParGenerateur(
         int $cfgId, float $besoin, float $besoinDep, float $rdim,
         DOMElement $node, CalculationContext $context, NodeAccessor $accessor,
     ): bool {
-        if (!$node->parentNode instanceof DOMElement
-            || $node->parentNode->getElementsByTagName('installation_chauffage')->length !== 1) {
-            return false;
-        }
         $generateurs = $node->getElementsByTagName('generateur_chauffage');
         $emetteurs = $node->getElementsByTagName('emetteur_chauffage');
         if ($generateurs->length !== 2 || $emetteurs->length === 0) {

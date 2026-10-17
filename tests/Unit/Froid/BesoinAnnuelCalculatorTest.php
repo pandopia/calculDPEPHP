@@ -219,4 +219,80 @@ XML;
         $result = $ref->invoke($calc, 1_000_000.0, 100.0, 100.0, 1.5);
         $this->assertGreaterThan(0.0, $result);
     }
+
+    /**
+     * §10.2 p.68 : le dénominateur du ratio de bilan thermique est
+     * `GV × (Textmoy_clim_j − Tint) × Nref_j`. La colonne DH26 de §18.2.1 ne
+     * peut pas le fournir : elle vaut le nombre d'heures lui-même — H1a en
+     * juillet, Nref26 = 153 et DH26 = 152,8 — alors que la table
+     * Textmoy_clim donne 28,3 °C, soit (28,3 − 26) × 153 = 351,9 °Ch.
+     */
+    public function testLesDegresHeuresSuiventLaTemperatureMoyenneDeClimatisation(): void
+    {
+        $tables = new TableRepository(self::PROJECT_ROOT . '/resources/tables');
+        $clim = $tables->load('reference/tv_textmoy_clim');
+        $sollicitations = $tables->load('reference/tv_sollicitations_froid');
+
+        self::assertSame(28.3, $clim[26][1][1][7]);
+        self::assertSame(29.7, $clim[28][1][1][7]);
+
+        $nref26 = (float)$sollicitations[1][1][7]['Nref26'];
+        self::assertSame(153.0, $nref26);
+        self::assertEqualsWithDelta(351.9, (28.3 - 26.0) * $nref26, 1e-9);
+        // La colonne DH26 de l'annexe, elle, recopie le nombre d'heures.
+        self::assertEqualsWithDelta(152.8, (float)$sollicitations[1][1][7]['DH26'], 1e-9);
+
+        // La consigne 28 °C reste cohérente entre les deux lectures.
+        $nref28 = (float)$sollicitations[1][1][7]['Nref28'];
+        self::assertEqualsWithDelta(
+            (float)$sollicitations[1][1][7]['DH28'],
+            (29.7 - 28.0) * $nref28,
+            1.1,
+        );
+    }
+
+    /**
+     * §18.2.2 p.131-140 publie le même tableau Textmoy_clim sous les deux
+     * consignes pour l'altitude 400-800 m : la bande y est inexploitable et
+     * le calcul reprend la colonne DH tabulée.
+     */
+    public function testLaBandeDAltitudeAuxConsignesIndiscernablesEstDetectee(): void
+    {
+        $clim = (new TableRepository(self::PROJECT_ROOT . '/resources/tables'))
+            ->load('reference/tv_textmoy_clim');
+
+        foreach (range(1, 8) as $zone) {
+            self::assertSame(
+                $clim[26][$zone][2],
+                $clim[28][$zone][2],
+                "zone $zone : l'annexe duplique bien les deux consignes à 400-800 m",
+            );
+        }
+        // À moins de 400 m, les deux consignes diffèrent bien.
+        self::assertNotSame($clim[26][1][1], $clim[28][1][1]);
+    }
+
+    /**
+     * §18.2.1 imprime « 0,0 » comme température moyenne de climatisation de
+     * H2d en mai à 28 °C, alors qu'il y compte 9 heures de refroidissement.
+     * Une moyenne sous la consigne donnerait des degrés-heures négatifs : la
+     * valeur est traitée comme absente, et le calcul reprend la colonne DH.
+     */
+    public function testUneTemperatureSousLaConsigneEstTraiteeCommeAbsente(): void
+    {
+        $tables = new TableRepository(self::PROJECT_ROOT . '/resources/tables');
+        $clim = $tables->load('reference/tv_textmoy_clim');
+        $sollicitations = $tables->load('reference/tv_sollicitations_froid');
+
+        self::assertSame(0.0, $clim[28][7][1][5]);
+        self::assertSame(9.0, (float)$sollicitations[7][1][5]['Nref28']);
+
+        [$doc, $logement] = $this->buildLogement();
+        $ctx = $this->makeContext($doc, [], '7', '1');
+        (new BesoinAnnuelCalculator())->calculate($logement, $ctx);
+
+        // Sans climatisation le besoin est nul, mais surtout jamais négatif.
+        self::assertGreaterThanOrEqual(0.0, (float)$ctx->get('froid.besoin_fr', 0.0));
+        self::assertGreaterThanOrEqual(0.0, (float)$ctx->get('froid.besoin_fr_depensier', 0.0));
+    }
 }
