@@ -78,8 +78,9 @@ XML;
         $fecs = (float)$inst->getElementsByTagName('fecs')->item(0)->textContent;
         $this->assertEqualsWithDelta(0.35, $fecs, 0.001);
 
-        $prod = (float)$inst->getElementsByTagName('production_ecs_solaire')->item(0)->textContent;
-        $this->assertEqualsWithDelta(1135.87 * 0.35 * 1000.0, $prod, 1.0);
+        // La production solaire se déduit de la consommation, pas du besoin :
+        // ConsoEcsCalculator l'écrit une fois Cecs connue.
+        $this->assertSame(0, $inst->getElementsByTagName('production_ecs_solaire')->length);
     }
 
     /**

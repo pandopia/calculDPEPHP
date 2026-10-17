@@ -131,6 +131,53 @@ final class ConsoEcsCalculator implements CalculatorInterface
         $instDi = $this->ensureDi($context->document, $node);
         $accessor->setChildValue($instDi, 'conso_ecs',           $totalConso);
         $accessor->setChildValue($instDi, 'conso_ecs_depensier', $totalConsoDep);
+
+        $this->ecrireProductionSolaire($accessor, $node, $instDi, $totalConso, $xmlPerKwh);
+    }
+
+    /**
+     * Production annuelle d'ECS solaire.
+     *
+     * §11.3 p.71 retranche la couverture solaire de la consommation :
+     * `Cecs = Becs × (1 − Fecs) / (Rd Rs Rg)`. La part solaire se lit donc à
+     * la même échelle que la consommation publiée :
+     *
+     *     Prod = Cecs × Fecs / (1 − Fecs) × rdim
+     *
+     * `rdim` porte la multiplicité de l'installation, et c'est ce que le XSD
+     * demande : « Dans le cas d'un DPE immeuble ou d'un DPE appartement à
+     * partir de l'immeuble c'est la consommation de l'installation à
+     * l'immeuble qu'il faut saisir. » Une installation individuelle décrite
+     * une fois pour N logements a rdim = N ; partout ailleurs rdim vaut 1.
+     *
+     * La balise est sérialisée en Wh comme les autres grandeurs
+     * intermédiaires du document.
+     *
+     * Vérifié sur les dix-neuf occurrences du corpus : dix-sept au rapport
+     * exact de 1, et les deux DPE immeuble à chauffage individuel
+     * (2631E0794109B, rdim = 17 ; 2682E0040604B, rdim = 50) au rapport exact
+     * de leur rdim.
+     *
+     * @spec-section 11.3
+     * @spec-pages   71
+     * @xml-output   installation_ecs.donnee_intermediaire.production_ecs_solaire
+     */
+    private function ecrireProductionSolaire(
+        NodeAccessor $accessor,
+        DOMElement $node,
+        DOMElement $instDi,
+        float $consoEcs,
+        float $xmlPerKwh,
+    ): void {
+        $fecs = $accessor->getFloatOrNull('./donnee_intermediaire/fecs', $node);
+        if ($fecs === null || $fecs <= 0.0 || $fecs >= 1.0 || $consoEcs <= 0.0) {
+            return;
+        }
+
+        $rdim = $accessor->getFloatOrNull('./donnee_entree/rdim', $node) ?? 1.0;
+        $production = $consoEcs * $fecs / (1.0 - $fecs) * max(1.0, $rdim);
+
+        $accessor->setChildValue($instDi, 'production_ecs_solaire', $production * 1000.0 / $xmlPerKwh);
     }
 
     /**

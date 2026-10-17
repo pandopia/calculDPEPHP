@@ -37,7 +37,7 @@ use DOMElement;
  * @spec-pages   143
  * @spec-source  resources/specsplitted/18-annexes/04-facteur-couverture-solaire/00-texte.md
  * @xml-input    installation_ecs.donnee_entree.{enum_type_installation_solaire_id, fecs_saisi}
- * @xml-output   installation_ecs.donnee_intermediaire.{fecs, production_ecs_solaire}
+ * @xml-output   installation_ecs.donnee_intermediaire.fecs
  * @depends-on   \CalculDpePHP\Ecs\BesoinEcsCalculator
  * @tables       ecs/tv_facteur_couverture_solaire
  */
@@ -96,12 +96,9 @@ final class FacteurCouvertureSolaireEcsCalculator implements CalculatorInterface
         $di = $accessor->ensureDonneeIntermediaire($node);
         $accessor->setChildValue($di, 'fecs', $fecs);
 
-        // Production ECS solaire est toujours sérialisée en Wh.
-        $becs = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs', $node);
-        if ($becs !== null && $becs > 0.0) {
-            $becsWh = $becs * 1000.0 / IntermediateEnergyUnit::xmlPerKwh($context->document);
-            $accessor->setChildValue($di, 'production_ecs_solaire', $becsWh * $fecs);
-        }
+        // `production_ecs_solaire` se déduit de la consommation d'ECS, pas du
+        // besoin : §11.3 p.71 applique la couverture solaire à la
+        // consommation. ConsoEcsCalculator l'écrit donc, une fois Cecs connue.
     }
 
     /**

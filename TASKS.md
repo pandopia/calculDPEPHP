@@ -500,19 +500,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Preuves et corpus figé : `docs/corrections-campagne-50f.md` et rapport
   applicatif `docs/dpe-campaigns/dpe-campaign-50f/`.
 
-### TASK-K43 — Production ECS solaire : grandeur et échelle de sérialisation
-
-- [~CLA] Owner: __ | Phase: K | Priorité: moyenne
-- `2559E3812231S` (427992/427999), six logements : `production_ecs_solaire`
-  vaut 2 825 175,598 dans la référence contre 336 609,904 dans le moteur.
-  Référence = `Cecs_moy × 6 × Fecs/(1−Fecs) × 1000`, moteur =
-  `Becs_moy × Fecs × 1000`. Les consommations ECS concordent déjà.
-- Le XSD documente des kWh à l'immeuble pour les méthodes immeuble et
-  appartement généré. Le calcul actuel utilise le besoin d'un logement et une
-  sérialisation forcée en Wh. Qualifier simultanément énergie utile/consommée,
-  multiplicité et unité à partir de §14.4 et du XSD, puis mesurer en A/B.
-  Ne pas corriger la consommation pour faire coïncider cette seule balise.
-
 ### TASK-K46 — Réseau 9514C : référence CO2 direct ou facteur ACV
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
@@ -647,25 +634,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   texte qui vise explicitement le scénario dépensier.
 - Implémentation mesurée : `PrixEnergie::tarifer()` avec un second panier
   servant d'assiette aux tranches, appelé depuis `CoutCalculator`.
-
-### TASK-K55 — `production_ecs_solaire` : huit cas, aucun reproduit
-
-- [ ] Owner: __ | Phase: K | Priorité: basse
-- Le corpus ne publie la balise que huit fois, et nos huit valeurs diffèrent,
-  du simple au centuple : rapports obtenu/attendu de 0,010 ; 0,033 ; 0,272 ;
-  0,468 ; 0,497 ; 0,501 ; 0,537 ; 2,324. Aucune hypothèse testée ne les
-  réconcilie (`besoin × fecs`, `× 2 fecs`, `conso_ecs`).
-- `FacteurCouvertureSolaireEcsCalculator` écrit `besoin_ecs × fecs`. Deux
-  pistes à instruire avant toute correction : l'unité — le XSD annonce des
-  kWh alors que les références sérialisent des Wh, comme nous — et le
-  périmètre : « Dans le cas d'un DPE immeuble ou d'un DPE appartement à
-  partir de l'immeuble c'est la consommation de l'installation à l'immeuble
-  qu'il faut saisir » (XSD), que nous n'appliquons pas. Les plus gros écarts
-  (2682E0040604B ×96, 2631E0794109B ×30) sont des DPE de modes 7 et 6.
-- Sur 2655E2140736I la référence écrit exactement son propre `conso_ecs`
-  (1 253,18 kWh) sous la balise alors que `fecs` vaut 0,5 : le solaire y
-  couvrirait la totalité de la consommation restante. Contradiction interne,
-  à ne pas reproduire.
 
 ### TASK-K56 — Ligne E/F de QP0 : une référence contredit son propre moteur
 

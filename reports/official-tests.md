@@ -1,7 +1,7 @@
 # Conformité du moteur — jeux de tests DPE 3CL
 
-_Généré le 2026-10-17T07:54:58+00:00 — profil de tolérance : `strict`_
-_Révision mesurée : `d5073c9` — arbre de travail modifié : 1 fichier(s) src/ non commités_
+_Généré le 2026-10-17T07:58:21+00:00 — profil de tolérance : `strict`_
+_Révision mesurée : `cbed0aa` — arbre de travail modifié : 2 fichier(s) src/ non commités_
 
 Comparaison balise à balise de la totalité de `<donnee_intermediaire>` et
 `<sortie>` entre la sortie du moteur et la référence du cas. Aucune balise
@@ -17,9 +17,9 @@ Totalement conformes     : 0
 Partiellement conformes  : 496
 
 Valeurs comparées        : 154 030
-Exactes                  : 116 994
-Dans tolérance           : 21 875
-Hors tolérance           : 12 839
+Exactes                  : 116 995
+Dans tolérance           : 21 884
+Hors tolérance           : 12 829
 Balises manquantes       : 308
 Balises supplémentaires  : 1 958
 Écarts non numériques    : 56
@@ -39,7 +39,7 @@ Sur ces écarts, **3 774 sont imputables à la référence** et non au moteur : 
 | Besoin chauffage | 2388 | 14 | 2089 | 281 | 4 | 0 | 88,07 % |
 | Besoin ECS | 4428 | 4134 | 265 | 29 | 0 | 0 | 99,35 % |
 | Génération chauffage | 9834 | 4189 | 3864 | 1749 | 24 | 8 | 81,89 % |
-| Génération ECS | 9365 | 6147 | 1817 | 1347 | 38 | 16 | 85,04 % |
+| Génération ECS | 9365 | 6148 | 1826 | 1337 | 38 | 16 | 85,15 % |
 | Auxiliaires | 16864 | 10893 | 3130 | 2840 | 0 | 1 | 83,15 % |
 | Froid | 6284 | 5632 | 53 | 396 | 196 | 7 | 90,47 % |
 | PV | 3511 | 3428 | 7 | 70 | 6 | 0 | 97,84 % |
@@ -57,17 +57,17 @@ Périmètres du règlement d'évaluation CSTB §1.1, déduits de
 
 | Périmètre | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| immeuble_collectif | 240 | 80577 | 63102 | 12001 | 3999 | 26 | 92,93 % |
-| maison_individuelle | 113 | 33571 | 25452 | 3840 | 4075 | 152 | 86,96 % |
-| appartement_issu_immeuble | 67 | 22409 | 15573 | 3445 | 2891 | 71 | 84,61 % |
+| immeuble_collectif | 240 | 80577 | 63102 | 12004 | 3996 | 26 | 92,93 % |
+| maison_individuelle | 113 | 33571 | 25453 | 3845 | 4069 | 152 | 86,98 % |
+| appartement_issu_immeuble | 67 | 22409 | 15573 | 3446 | 2890 | 71 | 84,62 % |
 | appartement_individuel | 76 | 17473 | 12867 | 2589 | 1874 | 59 | 88,07 % |
 
 ## Écarts par régime du coefficient EP électricité
 
 | Régime | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| post_2026 | 349 | 106532 | 81870 | 15746 | 7158 | 187 | 91,33 % |
-| pre_2026 | 147 | 47498 | 35124 | 6129 | 5681 | 121 | 86,58 % |
+| post_2026 | 349 | 106532 | 81870 | 15753 | 7151 | 187 | 91,34 % |
+| pre_2026 | 147 | 47498 | 35125 | 6131 | 5678 | 121 | 86,59 % |
 
 ## Écarts par moteur de calcul de la référence
 
@@ -76,8 +76,8 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 
 | Moteur | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| BBS_Slama_2025.11.1.0 | 319 | 98270 | 76620 | 14499 | 5673 | 12 | 92,42 % |
-| 3cl_tribu_1.4.25.1 | 104 | 34698 | 25858 | 4616 | 3885 | 66 | 87,56 % |
+| BBS_Slama_2025.11.1.0 | 319 | 98270 | 76620 | 14506 | 5666 | 12 | 92,43 % |
+| 3cl_tribu_1.4.25.1 | 104 | 34698 | 25859 | 4618 | 3882 | 66 | 87,57 % |
 | 3cl_tribu_2024.6.1.0 | 22 | 7276 | 5608 | 960 | 633 | 1 | 90,00 % |
 | inconnu | 17 | 4977 | 3343 | 651 | 811 | 113 | 79,98 % |
 | 3cl_bbs_V2025.11.1.0 | 13 | 3334 | 1884 | 539 | 758 | 70 | 72,39 % |
