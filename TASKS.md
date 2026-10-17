@@ -662,35 +662,38 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K57 — Branches du moteur nouvellement couvertes : écarts restants
 
-- [~CLA] Owner: __ | Phase: K | Priorité: haute
+- [ ] Owner: __ | Phase: K | Priorité: haute
 - Le jeu `ademe-branches-2026-10` (76 cas, 19 branches, manifeste suivi)
   couvre les configurations §9.x, ventilations et générateurs que le corpus
-  stratifié n'atteignait pas. Classement par conformité après les quatre
-  corrections déjà livrées :
+  stratifié n'atteignait pas. Après huit corrections livrées, les branches
+  encore basses sont, par écarts par cas :
 
   | Branche | Conf. | Écarts/cas |
   |---|---:|---:|
-  | cfg-releve-chaudiere-bois (§9.5) | 78,3 % | 83,8 |
-  | ventilation-hybride | 76,1 % | 59,5 |
-  | cfg-chauffage-solaire (§9.2) | 79,6 % | 62,5 |
-  | cfg-solaire-insert-poele (§9.6) | 81,7 % | 60,5 |
-  | cfg-releve-pac-insert-poele (§9.7) | 82,1 % | 59,0 |
-  | chaudiere-bois-granules | 79,6 % | 53,8 |
+  | cfg-releve-chaudiere-bois | 80,2 % | 76,8 |
+  | cfg-chauffage-solaire (§9.2) | 79,7 % | 62,2 |
+  | cfg-solaire-insert-poele (§9.6) | 83,1 % | 56,5 |
   | puits-climatique-echangeur | 81,5 % | 53,5 |
   | froid-pac-eau-eau | 80,4 % | 53,0 |
-  | chaudiere-gpl-condensation | 84,1 % | 51,8 |
+  | chaudiere-bois-granules | 81,4 % | 49,2 |
+  | ventilation-hybride | 79,8 % | 48,0 |
 
-- Ancrage commun aux trois branches de chaudières : `rendement_generation`
-  reste 1 à 6 % sous la référence, avec un rapport variable d'un cas à
-  l'autre (0,943 à 0,999) — le taux de charge, donc Cdimref, est le suspect.
-  Remonter là avant de toucher les consommations.
-- `conso_auxiliaire_ventilation` : la VMC basse pression vaut chez nous 1,84
-  à 3,33 fois la référence (2400E0855774N, 2600E1220588X, 2601E0299209H), et
-  le puits climatique 700,8 kWh contre 0 attendu (2401E3500380E). §5 p.50 dit
-  que « les puissances d'auxiliaires des VMC basse pression sont les mêmes
-  que pour les VMC classiques » : l'écart vient d'ailleurs.
+- **Rpn des chaudières bois récentes : la référence contredit la table.**
+  §13.2.2.3 p.90 donne, pour une chaudière bûche ou plaquette >2019 de 20 à
+  70 kW, `Rpn = 90 + 2 logPn` et `Rpint = 85 + 2 logPn` — c'est notre lecture.
+  2601E0138446C publie 99,0309 et 94,0309, soit les mêmes constantes avec le
+  coefficient **6**, celui des lignes antérieures à 2013. Les granulés >2019
+  donnent un troisième jeu encore (2400E4039624H et 2400E0180612T suivent
+  « 89 + 6 logPn » quand la table dit « 91 + 2 logPn », et les deux cas à
+  Pn = 4,828 kW ne suivent ni l'un ni l'autre). Ne rien changer sans un texte.
 - `production_ch_solaire` reste faux sur les installations multiples :
   §9.6 p.65 donne Prod = Bch × Fch × Σ facteur_i INT_i Ich_i, exact sur
   2400E1027746V et 2601E0263293X, mais le rapport tombe à 0,85 et 0,52 sur
   les deux installations de 2601E0370414Y.
+- `sortie_par_energie` ne porte pas de ligne pour
+  `enum_type_energie_id = 12` (« électricité d'origine renouvelable utilisée
+  dans le bâtiment ») : 2601E0370414Y en attend une complète.
+- `rendement_stockage` = 1 : 27 références le publient, plus de 300 l'omettent
+  comme nous. Convention d'éditeur, rien à corriger (cf. TASK-K06).
+
 
