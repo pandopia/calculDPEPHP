@@ -480,26 +480,33 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Preuves et corpus figé : `docs/corrections-campagne-50f.md` et rapport
   applicatif `docs/dpe-campaigns/dpe-campaign-50f/`.
 
-### TASK-K46 — Contenu CO2 des réseaux : colonne et millésimes manquants
+### TASK-K46 — Contenu CO2 des réseaux : la colonne ACV est confirmée
 
-- [ ] Owner: __ | Phase: K | Priorité: moyenne
-- **Notre table et notre règle de millésime sont justes sur 9 réseaux sur
-  12** vérifiés contre le facteur que les références impliquent
-  (`emission_ges_ch / conso_ch` de la ligne énergie 8) : 6921C, 7501C sur deux
-  arrêtés, 0106C, 5905C, 8201C, 5901C, 5703C en 2026, 2406C, 8401C.
-- Trois désaccords, de trois natures différentes :
-  - **0106C** (2675E0015989B, arrêté 2025-04-11) : la référence publie 0,040,
-    nous 0,000 — c'est notre table qui a perdu la cellule, voir ci-dessous.
-  - **5703C** (2457E3582864U, arrêté 2024-07-05) : référence 0,068, aucune de
-    nos quatre années (0,153 / 0,092 / 0,187 / 0,174) n'en approche. C'est la
-    piste de la colonne **CO2 direct** contre **CO2 ACV**, à trancher avec le
-    texte : l'arrêté du 5 juillet 2024 publie 0,097 en direct et 0,118 en ACV
-    pour 9514C, et la référence de 2595E1189146F retient 0,097.
-  - **4211C** (2242E2979513I, sans `date_arrete_reseau_chaleur`) : référence
-    0,109, nos quatre millésimes vont de 0,048 à 0,075.
-- Ne pas remplacer un identifiant isolément ni inférer une colonne depuis les
-  résultats attendus : établir d'abord laquelle des deux colonnes l'arrêté DPE
-  désigne, puis mesurer sur tous les réseaux du corpus.
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- **Tranché sur dix-neuf réseaux.** Douze DPE d'appartements chauffés en
+  réseau urbain ont été tirés de l'open data en choisissant un facteur
+  implicite distinct par fichier, pour maximiser le nombre de réseaux. Neuf
+  sur dix reproduisent notre table ACV et notre règle de millésime **au
+  chiffre près** : 9502C, 9503C, 9507C, 9509C, 9511C, 9514C, 9515C, 9516C et
+  9522C, tous à l'arrêté du 25 avril 2026. Avec les neuf réseaux déjà
+  vérifiés, cela fait dix-huit accords.
+- **9514C, le réseau de l'énoncé, en fait partie** : 2695E2606311P publie
+  0,120, exactement notre millésime 2025. L'observation de 0,097 sur
+  2595E1189146F portait sur l'arrêté du 5 juillet 2024, et reste isolée. La
+  piste « colonne CO2 direct » n'est pas confirmée.
+- **Un seul écart neuf** : 9521C (2695E2521479V, arrêté du 25 mai 2026, un
+  mois après les autres) implique 0,00276 quand nos quatre millésimes vont de
+  0,239 à 0,261. Vérifier si un arrêté correctif de mai 2026 a révisé ce
+  réseau avant de conclure. Le cas est au corpus, à 66,5 %.
+- Reste de l'ancien décompte : 5703C à l'arrêté du 5 juillet 2024 (référence
+  0,068, nos millésimes de 0,092 à 0,187) et 4211C sans date d'arrêté
+  (référence 0,109, nos millésimes de 0,048 à 0,075).
+- **Les multi-bâtiment ne sont pas concernés** : §17.3 impose d'y calculer les
+  GES « à partir des énergies consommées réellement par les générateurs », ce
+  que `ReseauChaleurFactorResolver::combustibleMultiBatiment` fait déjà.
+  2695E2608627R le confirme avec 0,227, le facteur du gaz naturel ;
+  2695E2427686K, de configuration identique, y applique au contraire le
+  forfait « autre réseau » de 0,385.
 
 ### TASK-K45 — Ponts thermiques des exports 7.x, après correction Ue
 
