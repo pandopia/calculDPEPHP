@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Chauffage\Strategy;
 
+use CalculDpePHP\Chauffage\PartBesoinGenerateur;
 use CalculDpePHP\Chauffage\Strategy\MultiGenerateurs;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Tables\TableRepository;
@@ -57,13 +58,21 @@ final class MultiGenerateursTest extends TestCase
         yield 'relève par chaudière électrique' => [7, 106, '1', 0.8, false, 1.0];
     }
 
+    /**
+     * Deux générateurs indistincts retombent sur le calcul moyenné : le besoin
+     * de l'installation reste entier, et §15.1.1 p.97 le partage à parts
+     * égales entre eux pour leurs auxiliaires — pas une fois chacun.
+     */
     public function testConserveLeCalculHistoriqueSiLesGenerateursSontIndistincts(): void
     {
         [$document, $installation, $context] = $this->installation(7, 7, '1', false, 1.0);
         (new MultiGenerateurs())->calculate($installation, $context);
         $xpath = new DOMXPath($document);
         self::assertSame(800.0, (float)$xpath->evaluate('string(donnee_intermediaire/besoin_ch)', $installation));
-        self::assertSame([], $context->get('chauffage.part_besoin_generateur', []));
+
+        $parts = (array)$context->get(PartBesoinGenerateur::CLE_CONTEXTE, []);
+        self::assertCount(2, $parts);
+        self::assertEqualsWithDelta(1.0, array_sum($parts), 1e-9);
     }
 
     public function testNeDoublePasLeBesoinSiPlusieursInstallationsSontPresentes(): void
@@ -73,7 +82,11 @@ final class MultiGenerateursTest extends TestCase
         (new MultiGenerateurs())->calculate($installation, $context);
         $xpath = new DOMXPath($document);
         self::assertSame(800.0, (float)$xpath->evaluate('string(donnee_intermediaire/besoin_ch)', $installation));
-        self::assertSame([], $context->get('chauffage.part_besoin_generateur', []));
+
+        // Les parts ne portent que sur les générateurs de l'installation
+        // calculée, et leur somme reste 1.
+        $parts = (array)$context->get(PartBesoinGenerateur::CLE_CONTEXTE, []);
+        self::assertEqualsWithDelta(1.0, array_sum($parts), 1e-9);
     }
 
     /** @return array{DOMDocument, DOMElement, CalculationContext} */

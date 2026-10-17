@@ -244,15 +244,21 @@ final class CollectifBaseAppoint implements CalculatorInterface
         $accessor->setChildValue($di, 'conso_ch_depensier', $consoTotal);
 
         // ── 16. Écriture dans chaque générateur ───────────────────────────────
+        // §15.1.1 p.97 : chaque générateur n'appelle ses auxiliaires que sur
+        // la part du besoin qu'il couvre — ici celle de la base et celle de
+        // l'appoint, déjà séparées par §9.10.
+        $partBase = $bch1 > 0.0 ? $bchBase / $bch1 : 1.0;
         if ($genBase !== null) {
             $genDi = $accessor->ensureDonneeIntermediaire($genBase);
             $accessor->setChildValue($genDi, 'conso_ch',           $consoBase);
             $accessor->setChildValue($genDi, 'conso_ch_depensier', $consoBase);
+            \CalculDpePHP\Chauffage\PartBesoinGenerateur::publier($context, $genBase, $partBase);
         }
         if ($genAppoint !== null) {
             $genDi = $accessor->ensureDonneeIntermediaire($genAppoint);
             $accessor->setChildValue($genDi, 'conso_ch',           $consoApp);
             $accessor->setChildValue($genDi, 'conso_ch_depensier', $consoApp);
+            \CalculDpePHP\Chauffage\PartBesoinGenerateur::publier($context, $genAppoint, max(0.0, 1.0 - $partBase));
         }
     }
 

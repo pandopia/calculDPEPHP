@@ -67,13 +67,17 @@ trait StrategieComputeTrait
 
         $genCollection = $this->getChildByTag($node, 'generateur_chauffage_collection');
         if ($genCollection !== null) {
+            $generateurs = [];
             foreach ($genCollection->childNodes as $gen) {
-                if (!($gen instanceof DOMElement) || $gen->nodeName !== 'generateur_chauffage') {
-                    continue;
+                if ($gen instanceof DOMElement && $gen->nodeName === 'generateur_chauffage') {
+                    $generateurs[] = $gen;
                 }
+            }
+            foreach ($generateurs as $gen) {
                 $genDi = $accessor->ensureDonneeIntermediaire($gen);
                 $accessor->setChildValue($genDi, 'conso_ch',           $consoCh);
                 $accessor->setChildValue($genDi, 'conso_ch_depensier', $consoChDep);
+                $this->publierPartDuBesoin($context, $gen, 1.0 / max(1, count($generateurs)));
             }
         }
 
@@ -147,6 +151,7 @@ trait StrategieComputeTrait
                 $genDi = $accessor->ensureDonneeIntermediaire($generateur);
                 $accessor->setChildValue($genDi, 'conso_ch', $conso / $parGenerateur);
                 $accessor->setChildValue($genDi, 'conso_ch_depensier', $consoDep / $parGenerateur);
+                $this->publierPartDuBesoin($context, $generateur, $part / $parGenerateur);
             }
         }
 
@@ -286,6 +291,14 @@ trait StrategieComputeTrait
      * @var list<int>
      */
     private const MODES_LOGEMENT_SEUL = [1, 2, 3, 4, 5, 14, 18, 31, 32, 35, 36, 37];
+
+    /**
+     * @see \CalculDpePHP\Chauffage\PartBesoinGenerateur
+     */
+    private function publierPartDuBesoin(CalculationContext $context, DOMElement $generateur, float $part): void
+    {
+        \CalculDpePHP\Chauffage\PartBesoinGenerateur::publier($context, $generateur, $part);
+    }
 
     private function getShImmeuble(NodeAccessor $accessor, DOMElement $installNode): float
     {

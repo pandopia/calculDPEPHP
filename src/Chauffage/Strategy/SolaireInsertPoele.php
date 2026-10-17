@@ -132,6 +132,7 @@ final class SolaireInsertPoele implements CalculatorInterface
                 $genDi = $accessor->ensureDonneeIntermediaire($gen);
                 $accessor->setChildValue($genDi, 'conso_ch',           $genConso);
                 $accessor->setChildValue($genDi, 'conso_ch_depensier', $genConsoDep);
+                $this->publierPartDuBesoin($context, $gen, $factor);
             }
         }
 
