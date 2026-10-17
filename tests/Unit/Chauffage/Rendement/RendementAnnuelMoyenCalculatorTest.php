@@ -123,4 +123,73 @@ XML);
             ->getElementsByTagName('generateur_chauffage')->item(0)
             ->getElementsByTagName('rendement_generation')->item(0)->textContent;
     }
+
+    /**
+     * §13.2.2.1 p.89 : le point de fonctionnement d'un générateur d'air chaud
+     * est à 50 % de charge, et QP0 y vaut `Pn × (1,75 − 0,55 logPn) / 100`,
+     * un **pourcentage** de la puissance nominale comme pour les chaudières.
+     *
+     * Le cas reprend 2401E2888143P : Pn = 18 kW, Rpn = 77 %, Rpint = 74 %.
+     */
+    public function testGenerateurAirChaudSuitLeProfilA50PourCent(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<logement>
+  <caracteristique_generale>
+    <enum_methode_application_dpe_log_id>1</enum_methode_application_dpe_log_id>
+    <enum_zone_climatique_id>5</enum_zone_climatique_id>
+    <enum_classe_altitude_id>1</enum_classe_altitude_id>
+  </caracteristique_generale>
+  <installation_chauffage><generateur_chauffage_collection><generateur_chauffage>
+    <donnee_entree>
+      <enum_type_generateur_ch_id>50</enum_type_generateur_ch_id>
+      <reference>gen-air-chaud</reference>
+      <enum_type_energie_id>3</enum_type_energie_id>
+      <tv_generateur_combustion_id>69</tv_generateur_combustion_id>
+      <enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id>
+    </donnee_entree>
+    <donnee_intermediaire>
+      <pn>18000</pn><rpn>0.77</rpn><rpint>0.74</rpint>
+      <qp0>190.728021994773</qp0><pveil>0</pveil>
+    </donnee_intermediaire>
+  </generateur_chauffage></generateur_chauffage_collection></installation_chauffage>
+</logement>
+XML);
+        $context = new CalculationContext(
+            document: $document,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        );
+        $context->set('chauffage.gv', 150.0);
+
+        (new RendementAnnuelMoyenCalculator())->calculate(
+            $document->getElementsByTagName('generateur_chauffage')->item(0),
+            $context,
+        );
+
+        $di = $document->getElementsByTagName('donnee_intermediaire')->item(0);
+        $rg = (float)$di->getElementsByTagName('rendement_generation')->item(0)->textContent;
+
+        // Un générateur d'air chaud ancien tient son rendement près de ses
+        // 77 % nominaux ; le profil des chaudières standard, calé sur 30 % de
+        // charge et corrigé en température, l'effondrait sous 0,3.
+        self::assertGreaterThan(0.60, $rg);
+        self::assertLessThan(0.80, $rg);
+    }
+
+    /**
+     * §13.2.2.1 p.89 : « QP0 = Pn × (1,75 − 0,55 logPn) / 100 ». Pour
+     * Pn = 18 kW la table doit rendre 190,7 W, pas 19 073 W.
+     */
+    public function testQp0DUnGenerateurAirChaudEstUnPourcentage(): void
+    {
+        $table = (new TableRepository(self::PROJECT_ROOT . '/resources/tables'))
+            ->load('chauffage/tv_generateur_combustion');
+
+        $ligne = ($table[69])(18.0, 2.5, -0.8);
+
+        self::assertEqualsWithDelta(190.728021994773, $ligne['qp0'], 1e-6);
+        self::assertEqualsWithDelta(0.77, $ligne['rpn'], 1e-9);
+        self::assertEqualsWithDelta(0.74, $ligne['rpint'], 1e-9);
+    }
 }

@@ -282,6 +282,7 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         return match ($boilerCat) {
             'condensation' => $this->qpxCondensation($rpn_pcs, $rpint_pcs, $tfonc100, $tfonc30, $qp0_kw, $pn_kw, $tchDim, $regulation),
             'bt'           => $this->qpxBt($rpn_pcs, $rpint_pcs, $tfonc100, $tfonc30, $qp0_kw, $pn_kw, $tchDim, $regulation),
+            'air_chaud'    => $this->qpxAirChaud($rpn_pcs, $rpint_pcs, $qp0_kw, $pn_kw, $tchDim),
             default        => $this->qpxStandard($rpn_pcs, $rpint_pcs, $tfonc100, $tfonc30, $qp0_kw, $pn_kw, $tchDim, $regulation),
         };
     }
@@ -370,8 +371,40 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         return ($qp100 - $qp30) * ($x - 0.30) / 0.70 + $qp30;
     }
 
+    /**
+     * §13.2.2.1 p.89 : pour un générateur d'air chaud, le point de
+     * fonctionnement w est à 50 % de charge, et non 30 % comme une chaudière
+     * standard :
+     *
+     *   QP50  = 0,5 × Pn × (100 − RPint) / RPint
+     *   QP100 = Pn × (100 − RPn) / RPn
+     *   0 ≤ x ≤ 0,5  : QPx = [QP50 − 0,15 QP0] × x / 0,5 + 0,15 QP0
+     *   0,5 < x ≤ 1  : QPx = [QP100 − QP50] × x / 0,5 + 2 QP50 − QP100
+     *
+     * Aucune correction de température n'y figure : le paragraphe ne retient
+     * que les rendements, là où §13.2.1.5 et §13.2.1.6 corrigent QP30 par la
+     * température de fonctionnement du circuit d'eau, qu'un générateur d'air
+     * chaud n'a pas.
+     *
+     * @spec-formula F-13.2.2.1-QPx
+     */
+    private function qpxAirChaud(float $rp_n, float $rp_int, float $qp0, float $pn, float $x): float
+    {
+        $qp50  = $rp_int > 0.0 ? 0.5 * $pn * (100.0 - $rp_int * 100.0) / ($rp_int * 100.0) : 0.0;
+        $qp100 = $rp_n > 0.0 ? $pn * (100.0 - $rp_n * 100.0) / ($rp_n * 100.0) : 0.0;
+
+        if ($x <= 0.5) {
+            return ($qp50 - 0.15 * $qp0) * $x / 0.5 + 0.15 * $qp0;
+        }
+
+        return ($qp100 - $qp50) * $x / 0.5 + 2.0 * $qp50 - $qp100;
+    }
+
     private function boilerCategory(int $genId): string
     {
+        if (in_array($genId, self::AIR_CHAUD_IDS, true)) {
+            return 'air_chaud';
+        }
         if (in_array($genId, self::CONDENSATION_IDS, true)) {
             return 'condensation';
         }
