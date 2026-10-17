@@ -40,6 +40,14 @@ use DOMElement;
  */
 final class CombustionCalculator implements CalculatorInterface
 {
+    /**
+     * `enum_type_generateur_ecs_id` = 118, « chaudière électrique ».
+     *
+     * §12.4.1 p.76 lui donne Rg = 0,97, quand le « générateur à effet joule
+     * direct » — ballons à accumulation et chauffe-eau instantané — garde 1.
+     */
+    private const CHAUDIERE_ELECTRIQUE_ECS = 118;
+
     /** Heures annuelles ECS hors vacances — §14.1 p.93 */
     private const H_ECS = 1790.0;
 
@@ -112,9 +120,15 @@ final class CombustionCalculator implements CalculatorInterface
             if ($typeEcsId !== null && $typeEcsId >= 1 && $typeEcsId <= 12) {
                 return;
             }
+            // §12.4.1 p.76 distingue deux lignes électriques : « générateur à
+            // effet joule direct » à Rg = 1 — les ballons et le chauffe-eau
+            // instantané, « assimilé à un ballon électrique au niveau du
+            // modèle » — et « chaudières électriques » à Rg = 0,97. Le
+            // chauffage applique déjà cette seconde ligne au type 106.
+            $rg = $typeEcsId === self::CHAUDIERE_ELECTRIQUE_ECS ? 0.97 : 1.0;
             $di = $this->ensureDi($context->document, $node);
-            $accessor->setChildValue($di, 'rendement_generation', 1.0);
-            $this->storeContext($node, $accessor, $context, 1.0);
+            $accessor->setChildValue($di, 'rendement_generation', $rg);
+            $this->storeContext($node, $accessor, $context, $rg);
             return;
         }
 
