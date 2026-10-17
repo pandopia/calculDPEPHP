@@ -462,8 +462,9 @@ XML;
     }
 
     /**
-     * Un relevé exhaustif de deux logements garde la multiplicité explicite de
-     * son installation unique : §17.1.3.2 p.109 ne multiplie par Nblgt que
+     * Un fichier qui déclare « absence de méthode d'échantillonnage »
+     * (`enum_calcul_echantillonnage_id` = 1) garde la multiplicité explicite
+     * de son installation unique : §17.1.3.2 p.109 ne multiplie par Nblgt que
      * l'appartement « moyen » d'un échantillon.
      *
      * 2659E0496026K — 119,59 m² pour deux logements tous deux visités, une
@@ -475,7 +476,8 @@ XML;
     {
         $xml = <<<'XML'
 <logement><caracteristique_generale><surface_habitable_logement>50.57</surface_habitable_logement>
-<surface_habitable_immeuble>119.59</surface_habitable_immeuble><nombre_appartement>2</nombre_appartement></caracteristique_generale>
+<surface_habitable_immeuble>119.59</surface_habitable_immeuble><nombre_appartement>2</nombre_appartement>
+<enum_calcul_echantillonnage_id>1</enum_calcul_echantillonnage_id></caracteristique_generale>
 <installation_chauffage_collection/><installation_ecs_collection><installation_ecs><donnee_entree>
 <enum_type_installation_id>1</enum_type_installation_id><enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id>
 <nombre_logement>1</nombre_logement><ratio_virtualisation>1</ratio_virtualisation><rdim>1</rdim>

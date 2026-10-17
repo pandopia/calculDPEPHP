@@ -99,21 +99,24 @@ final class ConvergenceHistoriqueTest extends TestCase
 
     public static function visites(): iterable
     {
-        yield 'relevé exhaustif' => [50.0, 50.0, false, 1.0, 2];
-        yield 'surfaces incohérentes' => [50.0, 40.0, false, 2.0, 2];
-        yield 'visite partielle' => [50.0, null, false, 2.0, 2];
-        yield 'immeuble exhaustif de trois logements' => [25.0, 25.0, false, 3.0, 3];
-        yield 'plusieurs installations' => [50.0, 50.0, true, 2.0, 2];
+        yield 'relevé exhaustif' => [50.0, 50.0, false, 1.0, 2, 1];
+        yield 'surfaces incohérentes' => [50.0, 40.0, false, 2.0, 2, 1];
+        yield 'visite partielle' => [50.0, null, false, 2.0, 2, 1];
+        yield 'immeuble exhaustif de trois logements' => [25.0, 25.0, false, 1.0, 3, 1];
+        yield 'plusieurs installations' => [50.0, 50.0, true, 2.0, 2, 1];
+        // Toutes les visites réalisées, mais le fichier déclare un
+        // échantillonnage : §17.1.2 garde l'appartement « moyen ».
+        yield 'échantillonnage déclaré malgré les visites' => [50.0, 50.0, false, 2.0, 2, 2];
     }
 
     #[DataProvider('visites')]
-    public function testLaMultipliciteEcsRespecteLeReleveExhaustif(float $s1, ?float $s2, bool $duplicate, float $expected, int $count): void
+    public function testLaMultipliciteEcsRespecteLeReleveExhaustif(float $s1, ?float $s2, bool $duplicate, float $expected, int $count, int $echantillonnage): void
     {
         $install = '<installation_ecs><donnee_entree><enum_type_installation_id>1</enum_type_installation_id><enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id><surface_habitable>100</surface_habitable><rdim>1</rdim></donnee_entree></installation_ecs>';
         $visited = '<logement_visite><surface_habitable_logement>' . $s1 . '</surface_habitable_logement></logement_visite>';
         if ($s2 !== null) { $visited .= '<logement_visite><surface_habitable_logement>' . $s2 . '</surface_habitable_logement></logement_visite>'; }
         if ($count === 3) { $visited .= '<logement_visite><surface_habitable_logement>50</surface_habitable_logement></logement_visite>'; }
-        $ctx = $this->context('<dpe><logement><caracteristique_generale><enum_methode_application_dpe_log_id>10</enum_methode_application_dpe_log_id><surface_habitable_logement>50</surface_habitable_logement><surface_habitable_immeuble>100</surface_habitable_immeuble><nombre_appartement>' . $count . '</nombre_appartement></caracteristique_generale><installation_ecs_collection>' . $install . ($duplicate ? $install : '') . '</installation_ecs_collection></logement><dpe_immeuble><logement_visite_collection>' . $visited . '</logement_visite_collection></dpe_immeuble></dpe>');
+        $ctx = $this->context('<dpe><logement><caracteristique_generale><enum_methode_application_dpe_log_id>10</enum_methode_application_dpe_log_id><enum_calcul_echantillonnage_id>' . $echantillonnage . '</enum_calcul_echantillonnage_id><surface_habitable_logement>50</surface_habitable_logement><surface_habitable_immeuble>100</surface_habitable_immeuble><nombre_appartement>' . $count . '</nombre_appartement></caracteristique_generale><installation_ecs_collection>' . $install . ($duplicate ? $install : '') . '</installation_ecs_collection></logement><dpe_immeuble><logement_visite_collection>' . $visited . '</logement_visite_collection></dpe_immeuble></dpe>');
         $node = $ctx->document->getElementsByTagName('installation_ecs')->item(0);
         self::assertSame($expected, EcsInstallationMultiplicity::sampledOrNull($node, new NodeAccessor($ctx->document)));
         $ctx->set('apport.nadeq', 4.0);
