@@ -493,35 +493,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   résultats attendus : établir d'abord laquelle des deux colonnes l'arrêté DPE
   désigne, puis mesurer sur tous les réseaux du corpus.
 
-### TASK-K59 — 41 réseaux de chaleur à contenu CO2 nul au millésime 2024
-
-- [~CLA] Owner: __ | Phase: K | Priorité: haute
-- `resources/tables/reference/tv_reseau_chaleur.php` donne 0,000 à 41 réseaux
-  pour la seule année 2024, alors que les millésimes 2022, 2023 et 2025 n'en
-  comptent aucun et que ces mêmes réseaux y ont des valeurs non nulles. Un
-  contenu CO2 nul n'existe pas dans l'arrêté : la cellule a été perdue.
-- Conséquence directe : tout DPE dont l'arrêté réseau est de 2025 et dont le
-  réseau figure dans la liste voit ses émissions de chauffage ou d'ECS
-  tomber à zéro. 2675E0015989B en est l'exemple, référence 0,040 contre 0.
-- Réseaux concernés : 0106C 0402C 0509C 0703C 0705C 0811C 2301C 2515C 2518C
-  3823C 3905C 4245C 4310C 5205C 5609C 5720C 5806C 5811C 5818C 5826C 5922C
-  6318C 6604C 6704C 6930C 6935C 7009C 7314C 7608C 8006C 8705C 8816C 9421C
-  9509C 1322F 3102F 3412F 3802F 4213F 8601F 9231F.
-- **Source et méthode établies.** Le millésime 2024 de la table est la colonne
-  « Contenu CO2 ACV » de l'annexe de l'arrêté du 11 avril 2025
-  (JORFTEXT000051520810, années d'exploitation 2021-2022-2023). Lue dans un
-  tableau complet avec ses en-têtes, elle donne 0106C = 0,040, 0107C = 0,047,
-  0108C = 0,081 et 0110C = 0,089 — les trois dernières reproduisent notre
-  table au chiffre près, ce qui confirme la colonne. 0106C a été rétabli.
-- **Attention à la lecture par morceaux.** Extraite sans ses en-têtes, la même
-  annexe se lit de travers : un morceau a rendu quinze ACV tous multiples de
-  0,010 et un 6704C dont l'ACV (0,030) serait inférieur à son CO2 direct
-  (0,058), ce qui est impossible. Ne recopier que des lignes lues dans un
-  tableau portant ses en-têtes, et contrôler que l'ACV reste supérieur ou égal
-  au CO2 direct.
-- Reste donc quarante réseaux à lire, puis vérifier qu'aucune autre année ne
-  porte de trou du même genre.
-
 ### TASK-K45 — Ponts thermiques des exports 7.x, après correction Ue
 
 - [ ] Owner: __ | Phase: K | Priorité: haute
