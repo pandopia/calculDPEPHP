@@ -252,7 +252,9 @@ XML;
     {
         [$doc, $node] = $this->buildInstallation(4, 1, rg: 1.0, re: 1.0, rd: 1.0, rr: 1.0, i0: 1.0);
         (new InsertElecSdb())->calculate($node, $this->makeContext($doc, 1000.0));
-        $this->assertEqualsWithDelta(900.0, $this->besoinCh($node), self::TOL);
+        // §9.4 p.63 décrit deux branches **dans** une installation : seule
+        // dans sa collection, elle garde le besoin entier.
+        $this->assertEqualsWithDelta(1000.0, $this->besoinCh($node), self::TOL);
     }
 
     /** cfg_id=4, position=2 → factor=0.10 */
@@ -270,7 +272,9 @@ XML;
     {
         [$doc, $node] = $this->buildInstallation(5, 1, rg: 1.0, re: 1.0, rd: 1.0, rr: 1.0, i0: 1.0);
         (new AppointInsertElecSdb())->calculate($node, $this->makeContext($doc, 1000.0));
-        $this->assertEqualsWithDelta(675.0, $this->besoinCh($node), self::TOL);
+        // §9.5 p.63-64 décrit trois branches **dans** une installation : seule
+        // dans sa collection, elle garde le besoin entier.
+        $this->assertEqualsWithDelta(1000.0, $this->besoinCh($node), self::TOL);
     }
 
     /** cfg_id=5, position=2 → factor=0.225 */

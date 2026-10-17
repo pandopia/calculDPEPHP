@@ -97,21 +97,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   consommations par générateur que lorsqu'elles répartissent celle de
   l'installation.
 
-### TASK-K34 — Sérialisations multiples de la répartition §9.3 et §9.5
-
-- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
-- Acquis : §9.3 lit déjà les liens générateur/émetteur ; la campagne 50h
-  traite aussi §9.5 dans une installation unique portant les trois liens
-  1/2/3, avec les parts 67,5/22,5/10 et les rendements propres aux branches.
-  Les quatre DPE 2624E1215905S, 2624E1215816H, 2624E1215722R et
-  2624E1215661I retrouvent leur lettre B.
-- Reste à qualifier les sérialisations à plusieurs installations et les
-  branches comprenant plusieurs générateurs ou plusieurs émetteurs de salle
-  de bains : prorata de surface (§9.5 p.64), rendements dépensiers propres et
-  absence de double comptage. Les gardes et replis actuels restent en place.
-- Les coûts par énergie et les auxiliaires relèvent respectivement de K33
-  et K39 ; ne pas confondre consommation répartie et conformité complète.
-
 ### TASK-K40 — Auxiliaires de distribution de refroidissement : balise jamais produite
 
 - [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse

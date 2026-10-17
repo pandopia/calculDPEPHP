@@ -99,9 +99,13 @@ final class InsertElecSdb implements CalculatorInterface
         }
 
         // Sérialisation alternative : les deux branches sont décrites comme
-        // deux installations successives, et la part se lit sur leur rang.
+        // deux installations successives, et la part se lit sur leur rang. Une
+        // installation seule n'est pas une branche parmi d'autres : §9.4 p.63
+        // y décrit les deux branches à l'intérieur, et leurs parts somment à 1.
         $pos    = $this->positionInCollection($node);
-        $factor = self::FACTORS[$pos] ?? (1.0 / max(1, $pos));
+        $factor = $this->estSeuleInstallation($node)
+            ? 1.0
+            : (self::FACTORS[$pos] ?? (1.0 / max(1, $pos)));
 
         $this->computeAndWrite($factor * $bch / $rdimEffective, $factor * $bchDep / $rdimEffective, $node, $context);
     }
