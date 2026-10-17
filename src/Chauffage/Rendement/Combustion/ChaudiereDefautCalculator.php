@@ -182,8 +182,19 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
                 // models individual heating at the average-apartment scale. The
                 // installation's declared surface can cover a sampling group and
                 // must not size every individual boiler at that group scale.
-                $pchW *= \CalculDpePHP\Collectif\ChauffageInstallationMultiplicity::directShareOrNull($node, $accessor)
-                    ?? (1.0 / $nblgt);
+                // Une sérialisation exhaustive requalifiée décrit un système
+                // par logement : sa puissance se dimensionne sur le GV de
+                // l'appartement moyen, au même périmètre que son profil de
+                // charge (§17.1.4.2 p.110).
+                $normalisees = (array)$context->get(
+                    \CalculDpePHP\Collectif\ChauffageInstallationMultiplicity::CLE_NORMALISEES,
+                    [],
+                );
+                $installation = $this->installationParente($node);
+                $pchW *= $installation !== null && isset($normalisees[$installation->getNodePath()])
+                    ? 1.0 / $nblgt
+                    : \CalculDpePHP\Collectif\ChauffageInstallationMultiplicity::directShareOrNull($node, $accessor)
+                        ?? (1.0 / $nblgt);
             }
 
             // §17.2 / convention ADEME : une chaudière collective virtualisée
@@ -297,6 +308,20 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         $tbase      = self::TBASE[$zoneIdx][$altId] ?? -9.5;
 
         return (1.2 * $gvEffectif * (19.0 - $tbase)) / (0.95 ** 3);
+    }
+
+    /** Installation de chauffage portant ce générateur. */
+    private function installationParente(DOMElement $generateur): ?DOMElement
+    {
+        $courant = $generateur->parentNode;
+        while ($courant instanceof DOMElement) {
+            if ($courant->nodeName === 'installation_chauffage') {
+                return $courant;
+            }
+            $courant = $courant->parentNode;
+        }
+
+        return null;
     }
 
     /**

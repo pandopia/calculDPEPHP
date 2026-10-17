@@ -17,10 +17,20 @@ use RuntimeException;
 
 final class ExhaustiveInstallationNormalizerTest extends TestCase
 {
+    /**
+     * Ces deux cas n'ont pas de sortie de référence : les valeurs attendues
+     * sont celles que le moteur produit, figées pour détecter une dérive.
+     *
+     * §17.1.4.2 p.110 : une sérialisation exhaustive décrit un système par
+     * logement, et tout s'y calcule à l'échelle de l'appartement « moyen ».
+     * Les deux immeubles portent donc une chaudière domestique de 24 kW par
+     * logement, et non une chaufferie de 400 ou 55 kW dimensionnée sur le GV
+     * de l'immeuble entier. Leurs étiquettes restent C/C.
+     */
     public static function immeubles(): iterable
     {
-        yield '117 logements sans échantillonnage' => ['exhaustif-117', 400000.0, 123.0, 25.0, 140635.04198436];
-        yield '8 logements sans échantillonnage' => ['exhaustif-8', 55000.0, 143.0, 28.0, 9881.73107727414];
+        yield '117 logements sans échantillonnage' => ['exhaustif-117', 24000.0, 141.0, 29.0, 140635.04198436];
+        yield '8 logements sans échantillonnage' => ['exhaustif-8', 24000.0, 144.0, 29.0, 9881.73107727414];
     }
 
     #[DataProvider('immeubles')]

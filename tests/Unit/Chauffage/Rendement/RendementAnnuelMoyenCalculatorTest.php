@@ -240,4 +240,74 @@ XML);
         self::assertGreaterThan(0.78, $rg);
         self::assertLessThan(0.90, $rg);
     }
+
+    /**
+     * §17.1.4.2 p.110 : dans un DPE d'immeuble à chauffage individuel, tout
+     * se calcule à l'échelle de l'appartement « moyen ». Une sérialisation
+     * exhaustive — une description unique couvrant l'immeuble, que
+     * `ExhaustiveInstallationNormalizer` ramène de la méthode 4 à la 1 — en
+     * relève : son profil de charge voit GV / Nblgt.
+     *
+     * Valeurs de 2659E2595696Y : deux logements, GV 104 W/K, chaudière gaz à
+     * condensation de 24 kW. La référence publie 0,871677.
+     */
+    public function testUneSerialisationExhaustiveVoitLeGvDeLAppartementMoyen(): void
+    {
+        $rendements = [];
+        foreach ([false, true] as $exhaustive) {
+            $document = new DOMDocument();
+            $document->loadXML(<<<'XML'
+<logement>
+  <caracteristique_generale>
+    <enum_methode_application_dpe_log_id>10</enum_methode_application_dpe_log_id>
+    <nombre_appartement>2</nombre_appartement>
+    <surface_habitable_immeuble>104.53</surface_habitable_immeuble>
+    <enum_zone_climatique_id>5</enum_zone_climatique_id>
+    <enum_classe_altitude_id>1</enum_classe_altitude_id>
+  </caracteristique_generale>
+  <installation_chauffage_collection><installation_chauffage>
+    <donnee_entree>
+      <enum_type_installation_id>1</enum_type_installation_id>
+      <enum_methode_calcul_conso_id>1</enum_methode_calcul_conso_id>
+      <rdim>1</rdim><surface_chauffee>104.53</surface_chauffee>
+    </donnee_entree>
+    <generateur_chauffage_collection><generateur_chauffage>
+      <donnee_entree>
+        <enum_type_generateur_ch_id>96</enum_type_generateur_ch_id>
+        <reference>gen</reference><enum_type_energie_id>2</enum_type_energie_id>
+      </donnee_entree>
+      <donnee_intermediaire>
+        <pn>24000</pn><rpn>0.95</rpn><rpint>0.98</rpint><qp0>240</qp0><pveil>0</pveil>
+        <temp_fonc_30>35</temp_fonc_30><temp_fonc_100>55</temp_fonc_100>
+      </donnee_intermediaire>
+    </generateur_chauffage></generateur_chauffage_collection>
+  </installation_chauffage></installation_chauffage_collection>
+</logement>
+XML);
+            $context = new CalculationContext(
+                document: $document,
+                tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+            );
+            $context->set('chauffage.gv', 104.0);
+            if ($exhaustive) {
+                $installation = $document->getElementsByTagName('installation_chauffage')->item(0);
+                $context->set(
+                    \CalculDpePHP\Collectif\ChauffageInstallationMultiplicity::CLE_NORMALISEES,
+                    [$installation->getNodePath() => true],
+                );
+            }
+
+            (new RendementAnnuelMoyenCalculator())->calculate(
+                $document->getElementsByTagName('generateur_chauffage')->item(0),
+                $context,
+            );
+
+            $di = $document->getElementsByTagName('donnee_intermediaire')->item(0);
+            $rendements[] = (float)$di->getElementsByTagName('rendement_generation')->item(0)->textContent;
+        }
+
+        // Face au GV d'un seul logement, la chaudière est deux fois moins
+        // chargée : son rendement annuel baisse.
+        self::assertLessThan($rendements[0], $rendements[1]);
+    }
 }

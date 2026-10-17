@@ -37,6 +37,16 @@ use DOMElement;
 final class ChauffageInstallationMultiplicity
 {
     /**
+     * Clé de contexte portant le chemin des installations que
+     * `ExhaustiveInstallationNormalizer` a ramenées de la méthode 4 à la 1.
+     *
+     * Ces descriptions couvrent tout l'immeuble avec `rdim` = 1 : elles
+     * valent pour un système par logement, et §17.1.4.2 p.110 ramène alors
+     * chaque grandeur à l'appartement « moyen ».
+     */
+    public const CLE_NORMALISEES = 'chauffage.installations_exhaustives_normalisees';
+
+    /**
      * Nblgt_syst_i, ou null si l'installation ne relève pas de ce cas.
      */
     public static function sampledOrNull(DOMElement $installation, NodeAccessor $accessor): ?float

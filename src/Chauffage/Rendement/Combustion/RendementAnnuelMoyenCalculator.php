@@ -454,13 +454,38 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         if ($modeApp !== null && in_array($modeApp, [6, 8, 10, 12], true)) {
             $nblgt = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement');
             if ($nblgt !== null && $nblgt > 1) {
-                $share = \CalculDpePHP\Collectif\ChauffageInstallationMultiplicity::directShareOrNull($node, $accessor)
-                    ?? (1.0 / $nblgt);
+                // Une sérialisation exhaustive requalifiée décrit un système
+                // par logement : son profil de charge voit le GV de
+                // l'appartement moyen, pas celui de l'immeuble.
+                $share = $this->estInstallationExhaustive($node, $context)
+                    ? 1.0 / $nblgt
+                    : \CalculDpePHP\Collectif\ChauffageInstallationMultiplicity::directShareOrNull($node, $accessor)
+                        ?? (1.0 / $nblgt);
                 return [$gv * $share, true];
             }
         }
 
         return [$gv, false];
+    }
+
+    /**
+     * Vrai si le générateur appartient à une installation que
+     * `ExhaustiveInstallationNormalizer` a requalifiée : une description
+     * unique couvrant tout l'immeuble, pour un système par logement.
+     */
+    private function estInstallationExhaustive(DOMElement $node, CalculationContext $context): bool
+    {
+        $normalisees = (array)$context->get(
+            \CalculDpePHP\Collectif\ChauffageInstallationMultiplicity::CLE_NORMALISEES,
+            [],
+        );
+        if ($normalisees === []) {
+            return false;
+        }
+
+        $installation = $this->installationParente($node);
+
+        return $installation !== null && isset($normalisees[$installation->getNodePath()]);
     }
 
     /**

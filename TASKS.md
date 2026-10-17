@@ -153,59 +153,32 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   **leur** configuration, et rejoignent le corpus à ce titre.
 - Même famille que TASK-H04, dont il ne reste que ces deux fichiers.
 
-### TASK-K52 — Un générateur décrit pour N logements : trois références, deux verdicts
+### TASK-K52 — Sérialisation exhaustive : reste la consommation par système
 
-- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: basse
-- Instruit à fond sur `2659E2595696Y` (mode 10, 78,57 %). **Trois correctifs
-  écrits, mesurés, puis retirés** : ils gagnent 36 écarts sur le corpus sans en
-  dégrader un seul, mais contredisaient `exhaustif-117` et `exhaustif-8`.
-- **L'élément qui départage est acquis.** Ces deux fixtures ne sont pas des
-  références : le test qui les porte s'appelle
-  `testLeCalculRetrouvePuissanceBesoinEtEtiquettesSansSortiesDeReference`, et
-  leur XML ne contient aucun bloc `<sortie>`. Les valeurs attendues — pn
-  400 000, EP 123, GES 25 — sont **notre propre sortie**, figée comme test de
-  caractérisation. 2659E2595696Y est, lui, une référence ADEME publiée.
-  Une référence réelle l'emporte sur un instantané de notre comportement :
-  les trois correctifs sont à reprendre, et les deux fixtures à ré-étalonner.
-- **Ne pas reconstruire les correctifs à l'aveugle.** Une tentative fondée sur
-  le seul couple « une installation unique dont `surface_chauffee` couvre
-  l'immeuble, `rdim` = 1 » coûte **+236 écarts** : le garde doit reprendre
-  toutes les conditions de `ExhaustiveInstallationNormalizer` —
-  `enum_calcul_echantillonnage_id` = 1, tous les logements visités, surfaces
-  visitées sommant à celle de l'immeuble, version de moteur — et ne s'appliquer
-  qu'aux installations que ce normaliseur ramène de la méthode 4 à la 1.
-- Cinq cas neufs de la même sérialisation ont été tirés de l'open data
-  (2695E2370845F, 2695E2370333N, 2695E2369399P, 2695E2369252Y, 2695E2369069X,
-  de 9 à 33 logements) : tous sont à chauffage **électrique**, donc sans profil
-  de charge ni `pn`, et ne départagent pas la question. Chercher des cas à
-  générateur à combustion.
-- La configuration : mode 10, installation `enum_type_installation_id` = 1
-  (individuelle), `enum_methode_calcul_conso_id` = 4 ramené à 1 par
-  `ExhaustiveInstallationNormalizer`, `rdim` = 1, `nombre_logement_echantillon`
-  = 1, et `surface_chauffee` égale à `surface_habitable_immeuble`. Une seule
-  description pour N logements.
-- **Ce que demande 2659E2595696Y** (2 logements, tous deux visités) : N = 2
-  générateurs. Vérifié à six décimales sur trois grandeurs indépendantes —
-  `rendement_generation` passe de 0,92300 à **0,87167636743401** contre
-  0,871677 publié dès que le profil de charge voit GV/2 ;
-  `pertes_generateur_ch_recup` vaut exactement le double du nôtre ; et le
-  circulateur de §15.2.1 suit le même facteur. Le cas passe de 78,57 % à
-  **94,64 %**, 42 écarts à 6.
-- **Ce que demandent `exhaustif-117` et `exhaustif-8`** : N = 1, la description
-  agrégée vaut pour un seul système. Mêmes mode, type, méthode, `rdim` et
-  `nombre_logement_echantillon`, mais 117 et 8 logements. Avec les correctifs,
-  leur `ep_conso_5_usages_m2` passe de 123 à 128 et de 143 à 144.
-- Aucun discriminant trouvé : ni le mode, ni le type d'installation, ni la
-  méthode de calcul, ni `nombre_logement_echantillon`, ni la surface. Le seul
-  écart visible est le nombre de logements (2 contre 117 et 8) et la puissance
-  par logement (12 kW contre 3,4 et 6,9), mais Pn est **calculé** par le moteur
-  depuis GV : il ne peut pas servir de discriminant sans circularité.
-- Les 6 écarts résiduels de 2659E2595696Y après correctifs : 4 sur le
-  `conso_ch` publié à l'installation et au générateur, que la référence écrit
-  par système quand nous écrivons le total du groupe. Ce n'est pas un défaut :
-  **120 installations du corpus sur 281** à générateurs tous à combustion
-  publient un `conso_ch` inférieur à leur propre `besoin_ch`, soit un rendement
-  supérieur à 1. C'est une convention du format, pas une erreur isolée.
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- **Deux des trois correctifs sont livrés.** §17.1.4.2 p.110 calcule tout à
+  l'échelle de l'appartement « moyen » dans un DPE d'immeuble à chauffage
+  individuel : une sérialisation exhaustive — description unique couvrant
+  l'immeuble, que `ExhaustiveInstallationNormalizer` ramène de la méthode 4 à
+  la 1 — en relève. Son profil de charge voit désormais GV / Nblgt, et sa
+  puissance se dimensionne au même périmètre, comme le commentaire de
+  `RendementAnnuelMoyenCalculator` l'exigeait déjà.
+  `rendement_generation` de 2659E2595696Y tombe sur 0,87167636743401 contre
+  0,871677 publié.
+- **Reste le troisième** : la référence publie `conso_ch` **par système**,
+  nous le total du groupe — 6 514,126 contre 13 028,472 sur 2659E2595696Y,
+  exactement le double. Même constat sur les deux 2659E04960…
+- Population exacte : **trois fichiers** du corpus déclenchent le
+  normaliseur — 2659E2595696Y, 2659E0496026K et 2659E0496027L. Vérifié en le
+  passant sur les 541 entrées.
+- `exhaustif-117` et `exhaustif-8` ont été ré-étalonnés : leurs valeurs sont
+  notre propre sortie, pas une référence, et le test le dit désormais. Leurs
+  chaudières passent de 400 et 55 kW à 24 kW — une chaudière domestique par
+  logement, ce que décrit la sérialisation — et leurs étiquettes restent C/C.
+- La sérialisation exhaustive est **rare** : sur vingt-huit immeubles tirés de
+  l'open data dont l'installation couvre toute la surface, aucun n'a
+  `enum_calcul_echantillonnage_id` = 1. Quand un fichier veut N systèmes, il
+  le déclare d'ordinaire par `rdim` = N (2693E0440000W, 2692E1146857Q).
 
 ### TASK-K42 — 2659E2542205P : référence auto-contradictoire sur cinq balises
 
