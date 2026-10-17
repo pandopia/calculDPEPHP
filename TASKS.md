@@ -279,6 +279,20 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   départage pas, et aucune source ne tranche : non retenu.
 - Rouvrir avec le texte de l'arrêté (annexe « confort d'été »), qui seul peut
   donner la table d'agrégation des cinq critères.
+- **`aspect_traversant` n'est pas reproductible non plus.** Sur les 188
+  références qui remplissent le bloc, 29 le contredisent, toutes dans le même
+  sens : la référence dit 0 là où les baies couvrent deux orientations ou
+  plus. Aucune règle géométrique ne sépare les deux groupes — les six paires
+  d'orientations possibles apparaissent des deux côtés, et les orientations
+  opposées ne tranchent pas davantage. Deux variantes mesurées :
+  `plusieurs_facade_exposee` de la ventilation ne discrimine pas (23 cas
+  `facades=1` à 0 contre 54 à 1), et les orientations des **murs** extérieurs
+  font pire que celles des baies (40 erreurs contre 29). La règle d'open3cl,
+  qui est la nôtre, reste la meilleure disponible.
+- Décompte des désaccords réels, hors blocs vides ou absents :
+  `enum_indicateur_confort_ete_id` 67, `protection_solaire_exterieure` 32,
+  `aspect_traversant` 29, `isolation_toiture` 16, `brasseur_air` 3,
+  `inertie_lourde` 2 — sur 188 blocs remplis.
 
 ### TASK-K41 — Qualifier Pecs dans les exports sans clé mixte commune
 
