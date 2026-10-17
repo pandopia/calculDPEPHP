@@ -68,6 +68,12 @@ final class AuxDistributionCalculator implements CalculatorInterface
      */
     private const RESEAU_CHALEUR_URBAIN_IDS = [107, 108, 142];
 
+    /** XSD : enum_bouclage_reseau_ecs_id = 3, « réseau d'ecs avec présence d'un traceur chauffant ». */
+    private const BOUCLAGE_TRACEUR = 3;
+
+    /** §15.2.3 p.101 : Qtrac = 0,14 × Becs. */
+    private const PART_TRACEUR = 0.14;
+
     /** Puissance minimale circulateur bouclage ECS hors puisage (W) — §15.2.3 */
     private const PCIRB_MIN = 20.0;
 
@@ -349,10 +355,21 @@ final class AuxDistributionCalculator implements CalculatorInterface
                 continue;
             }
 
-            // §15.2.3 ne prévoit un circulateur que pour un réseau bouclé.
+            // §15.2 p.99 : « aux consommations d'auxiliaires du générateur, il
+            // faut ajouter celles éventuelles du bouclage ou du traçage ».
             // XSD : 1=non bouclé, 2=bouclé, 3=traceur chauffant.
             $bouclage = $accessor->getIntOrNull('./donnee_entree/enum_bouclage_reseau_ecs_id', $install);
-            if ($bouclage !== 2) {
+            if ($bouclage !== 2 && $bouclage !== self::BOUCLAGE_TRACEUR) {
+                continue;
+            }
+
+            if ($bouclage === self::BOUCLAGE_TRACEUR) {
+                $totalCaux += $this->consommationDuTraceur($accessor, $install);
+
+                $cleTrac = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
+                if ($cleTrac !== null && $cleTrac > 0.0) {
+                    $cle = $cleTrac;
+                }
                 continue;
             }
 
@@ -419,6 +436,32 @@ final class AuxDistributionCalculator implements CalculatorInterface
         }
 
         return max(1e-9, $nbApt * $ratioVirt / max(1.0, $sumSample));
+    }
+
+    /**
+     * §15.2.3 p.101 : « La consommation annuelle du traceur (Wh) est
+     * Qtrac = 0,14 × Becs », Becs étant le besoin annuel d'eau chaude
+     * sanitaire.
+     *
+     * Un traceur chauffant n'est pas un circulateur : la formule du bouclage,
+     * bâtie sur une longueur de boucle, une perte de charge et un rendement
+     * de pompe, ne s'y applique pas. Le besoin lu est celui que
+     * `BesoinEcsCalculator` publie sur l'installation, donc déjà à l'échelle
+     * du DPE : aucune virtualisation ne s'y ajoute.
+     *
+     * Vérifié au dernier chiffre sur 2659E2407381B : 0,14 × 1 079,94167864625
+     * = 151,19183501047505 kWh.
+     *
+     * @spec-section 15.2.3
+     * @spec-pages   101
+     * @spec-source  resources/specsplitted/15-auxiliaires/02-aux-distribution.md
+     * @spec-formula F-15.2.3-Qtrac
+     */
+    private function consommationDuTraceur(NodeAccessor $accessor, DOMElement $install): float
+    {
+        $becs = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs', $install);
+
+        return $becs !== null && $becs > 0.0 ? self::PART_TRACEUR * $becs : 0.0;
     }
 
     /**

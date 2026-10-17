@@ -692,4 +692,75 @@ XML;
             self::assertEqualsWithDelta($expected, $this->efValue($doc, 'conso_auxiliaire_distribution_ch'), 1e-8);
         }
     }
+
+    /**
+     * §15.2.3 p.101 : « La consommation annuelle du traceur (Wh) est
+     * Qtrac = 0,14 × Becs ». Un traceur chauffant n'est pas un circulateur :
+     * la formule du bouclage ne s'y applique pas.
+     *
+     * Valeurs de 2659E2407381B : Becs = 1 079,94167864625 kWh, auxiliaire
+     * publié 151,19183501047505 kWh.
+     */
+    public function testReseauAvecTraceurChauffant(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<logement>
+  <caracteristique_generale>
+    <enum_methode_application_dpe_log_id>5</enum_methode_application_dpe_log_id>
+    <surface_habitable_logement>44.65</surface_habitable_logement>
+  </caracteristique_generale>
+  <installation_ecs_collection><installation_ecs>
+    <donnee_entree>
+      <enum_type_installation_id>2</enum_type_installation_id>
+      <enum_bouclage_reseau_ecs_id>3</enum_bouclage_reseau_ecs_id>
+      <surface_habitable>44.65</surface_habitable>
+      <nombre_niveau_installation_ecs>1</nombre_niveau_installation_ecs>
+      <reseau_distribution_isole>1</reseau_distribution_isole>
+      <ratio_virtualisation>0.03803</ratio_virtualisation>
+    </donnee_entree>
+    <donnee_intermediaire><besoin_ecs>1079.94167864625</besoin_ecs></donnee_intermediaire>
+  </installation_ecs></installation_ecs_collection>
+</logement>
+XML);
+        (new AuxDistributionCalculator())->calculate(
+            $doc->getElementsByTagName('logement')->item(0),
+            $this->buildCtx($doc),
+        );
+
+        self::assertEqualsWithDelta(
+            151.19183501047505,
+            $this->efValue($doc, 'conso_auxiliaire_distribution_ecs'),
+            1e-6,
+        );
+    }
+
+    /** Un réseau non bouclé et sans traceur n'appelle aucun auxiliaire. */
+    public function testReseauNonBoucleNAppellePasDAuxiliaire(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<logement>
+  <caracteristique_generale>
+    <enum_methode_application_dpe_log_id>5</enum_methode_application_dpe_log_id>
+    <surface_habitable_logement>44.65</surface_habitable_logement>
+  </caracteristique_generale>
+  <installation_ecs_collection><installation_ecs>
+    <donnee_entree>
+      <enum_type_installation_id>2</enum_type_installation_id>
+      <enum_bouclage_reseau_ecs_id>1</enum_bouclage_reseau_ecs_id>
+      <surface_habitable>44.65</surface_habitable>
+      <nombre_niveau_installation_ecs>1</nombre_niveau_installation_ecs>
+    </donnee_entree>
+    <donnee_intermediaire><besoin_ecs>1079.94167864625</besoin_ecs></donnee_intermediaire>
+  </installation_ecs></installation_ecs_collection>
+</logement>
+XML);
+        (new AuxDistributionCalculator())->calculate(
+            $doc->getElementsByTagName('logement')->item(0),
+            $this->buildCtx($doc),
+        );
+
+        self::assertEqualsWithDelta(0.0, $this->efValue($doc, 'conso_auxiliaire_distribution_ecs'), 1e-9);
+    }
 }
