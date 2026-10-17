@@ -502,7 +502,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K43 — Production ECS solaire : grandeur et échelle de sérialisation
 
-- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- [~CLA] Owner: __ | Phase: K | Priorité: moyenne
 - `2559E3812231S` (427992/427999), six logements : `production_ecs_solaire`
   vaut 2 825 175,598 dans la référence contre 336 609,904 dans le moteur.
   Référence = `Cecs_moy × 6 × Fecs/(1−Fecs) × 1000`, moteur =
