@@ -662,7 +662,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K57 — Branches du moteur nouvellement couvertes : écarts restants
 
-- [ ] Owner: __ | Phase: K | Priorité: haute
+- [~CLA] Owner: __ | Phase: K | Priorité: haute
 - Le jeu `ademe-branches-2026-10` (76 cas, 19 branches, manifeste suivi)
   couvre les configurations §9.x, ventilations et générateurs que le corpus
   stratifié n'atteignait pas. Classement par conformité après les quatre
