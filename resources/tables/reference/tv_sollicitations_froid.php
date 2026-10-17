@@ -18,8 +18,16 @@ declare(strict_types=1);
  * @spec-section 18.2-18.3
  * @spec-pages 121-143
  * @spec-source resources/specsplitted/18-annexes/02-sollicitations-exterieures/
+ * `Text` reprend la convention de `chauffage/text_mensuel_base_appoint` : un
+ * zéro y signale un mois hors saison de **chauffe**, pas une valeur manquante.
+ * La colonne n'est lue par aucun calculateur — §10 n'emploie que Nref, DH et
+ * E_fr — et ses zéros de juin à septembre n'ont donc aucun effet.
+ *
  * @generated-on 2026-05-17
- * @status verified-open3cl — extrait depuis open3cl tv.js (commit récent)
+ * @status verified — Nref26 et DH28 des huit zones à l'altitude ≤ 400 m
+ *         recoupés un à un avec les tableaux de §18.2-18.3 p.121-143
+ *         (80 valeurs sur 80). La table avait été extraite d'open3cl ; elle
+ *         est désormais tracée à la spec.
  */
 
 return [
