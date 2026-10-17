@@ -252,7 +252,9 @@ XML;
     {
         [$doc, $node] = $this->buildInstallation(4, 1, rg: 1.0, re: 1.0, rd: 1.0, rr: 1.0, i0: 1.0);
         (new InsertElecSdb())->calculate($node, $this->makeContext($doc, 1000.0));
-        $this->assertEqualsWithDelta(900.0, $this->besoinCh($node), self::TOL);
+        // §9.4 p.63 décrit deux branches **dans** une installation : seule
+        // dans sa collection, elle garde le besoin entier.
+        $this->assertEqualsWithDelta(1000.0, $this->besoinCh($node), self::TOL);
     }
 
     /** cfg_id=4, position=2 → factor=0.10 */
@@ -270,7 +272,9 @@ XML;
     {
         [$doc, $node] = $this->buildInstallation(5, 1, rg: 1.0, re: 1.0, rd: 1.0, rr: 1.0, i0: 1.0);
         (new AppointInsertElecSdb())->calculate($node, $this->makeContext($doc, 1000.0));
-        $this->assertEqualsWithDelta(675.0, $this->besoinCh($node), self::TOL);
+        // §9.5 p.63-64 décrit trois branches **dans** une installation : seule
+        // dans sa collection, elle garde le besoin entier.
+        $this->assertEqualsWithDelta(1000.0, $this->besoinCh($node), self::TOL);
     }
 
     /** cfg_id=5, position=2 → factor=0.225 */
@@ -325,37 +329,55 @@ XML;
     // §9.7 — ChaudiereReleve
 
     /** cfg_id=9, position=1 → factor=0.60 (PAC) */
-    public function testChaudiereReleve_pac(): void
+    /**
+     * §9.7 p.65-66 répartit entre les **générateurs** d'une installation :
+     * 0,8 × 0,75 à la PAC, 0,2 × 0,75 à la chaudière qui la relève et 0,25 à
+     * l'insert d'appoint. Le besoin publié par l'installation reste entier.
+     */
+    public function testChaudiereReleve_besoinEntierEtConsoRepartie(): void
     {
         [$doc, $node] = $this->buildInstallation(9, 1, rg: 1.0, re: 1.0, rd: 1.0, rr: 1.0, i0: 1.0);
         (new ChaudiereReleve())->calculate($node, $this->makeContext($doc, 1000.0));
-        $this->assertEqualsWithDelta(600.0, $this->besoinCh($node), self::TOL);
+
+        $this->assertEqualsWithDelta(1000.0, $this->besoinCh($node), self::TOL);
     }
 
-    /** cfg_id=9, position=3 → factor=0.25 (insert appoint) */
-    public function testChaudiereReleve_insert(): void
+    /**
+     * Le rang de §9.7 se lit sur la nature du générateur, pas sur celui de
+     * l'installation : une installation unique ne perd plus les 40 % que le
+     * classement par position lui retirait.
+     */
+    public function testChaudiereReleve_laSecondeInstallationGardeSonBesoin(): void
     {
         [$doc, $node] = $this->buildInstallation(9, 3, rg: 1.0, re: 1.0, rd: 1.0, rr: 1.0, i0: 1.0);
         (new ChaudiereReleve())->calculate($node, $this->makeContext($doc, 1000.0));
-        $this->assertEqualsWithDelta(250.0, $this->besoinCh($node), self::TOL);
+
+        $this->assertEqualsWithDelta(1000.0, $this->besoinCh($node), self::TOL);
     }
 
     // §9.9 — ConvecteurBijonction
 
-    /** cfg_id=11, position=1 → factor=0.60 (circuit collectif base) */
-    public function testConvecteurBijonction_base(): void
+    /**
+     * §9.9 p.67 : « La base et l'appoint sont assurés par un même convecteur
+     * disposant d'un circuit collectif … et un circuit individuel ». Les
+     * parts 0,6 et 0,4 se rapportent à deux circuits d'un seul appareil et
+     * somment à 1 : l'installation garde le besoin entier.
+     */
+    public function testConvecteurBijonction_besoinEntier(): void
     {
         [$doc, $node] = $this->buildInstallation(11, 1, rg: 1.0, re: 1.0, rd: 1.0, rr: 1.0, i0: 1.0);
         (new ConvecteurBijonction())->calculate($node, $this->makeContext($doc, 1000.0));
-        $this->assertEqualsWithDelta(600.0, $this->besoinCh($node), self::TOL);
+
+        $this->assertEqualsWithDelta(1000.0, $this->besoinCh($node), self::TOL);
     }
 
-    /** cfg_id=11, position=2 → factor=0.40 (circuit individuel appoint) */
-    public function testConvecteurBijonction_appoint(): void
+    /** Et la seconde installation d'un logement aussi. */
+    public function testConvecteurBijonction_secondeInstallation(): void
     {
         [$doc, $node] = $this->buildInstallation(11, 2, rg: 1.0, re: 1.0, rd: 1.0, rr: 1.0, i0: 1.0);
         (new ConvecteurBijonction())->calculate($node, $this->makeContext($doc, 1000.0));
-        $this->assertEqualsWithDelta(400.0, $this->besoinCh($node), self::TOL);
+
+        $this->assertEqualsWithDelta(1000.0, $this->besoinCh($node), self::TOL);
     }
 
     /**

@@ -17,21 +17,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase H — Corrections issues des diagnostics ADEME
 
-### TASK-H03 — Apports internes : qualifier les références sérialisées en Wh
-
-- [ ] Owner: __  | Phase: H  | Estimation: 2h
-- Certains exports anciens publient `apport_interne_ch`, `apport_solaire_ch` et
-  leurs équivalents froid avec un facteur exactement ×1 000.
-- Vérifier la cohérence interne et le moteur éditeur avant toute modification :
-  le moteur reste en kWh ; une référence en Wh doit être classée comme défaut de
-  référence, jamais reproduite dans les calculs.
-- Précédent tranché : `2676E2269868T` publiait `besoin_ecs` deux fois, en kWh
-  et en Wh, sur un logement à une seule installation ECS. Référence démontrée
-  fausse, retirée du corpus (`CorpusLocator::REFERENCES_INVALIDES`) plutôt que
-  reproduite. `IntermediateEnergyUnit` reproduit encore le ×1 000 pour les
-  versions `0.1.0` et `9.x` : c'est ce sens-là qui reste à trancher, en
-  vérifiant d'abord si ces fichiers se contredisent de la même façon.
-
 ### TASK-H04 — Besoin et consommation ECS des fichiers collectifs
 
 - [ ] Owner: __  | Phase: H  | Estimation: 4h  | Dépend : TASK-H10
@@ -41,23 +26,22 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Examiner séparément les pertes de distribution ECS parfois sérialisées en Wh.
 - Cibles : `src/Ecs/BesoinEcsCalculator.php`, `src/Collectif/`.
 
-### TASK-H08 — Upb des planchers bas en dalle béton
+### TASK-H23 — Ponts thermiques des parois en adjacence 22 : convention d'éditeur
 
-- [ ] Owner: __  | Phase: H  | Estimation: 2h
-- Cas historiques : `2242E2979513I` attend 2,0 contre 0,241 ;
-  `2392E1620721B` attend 2,0 contre 0,8.
-- Vérifier le sens de `enum_type_isolation_id` et la lecture de
-  `resistance_isolation` dans `UpbCalculator` à partir de la spec, sans calage
-  sur ces seules références.
-
-### TASK-H10 — DPE immeuble collectif, méthode 26
-
-- [ ] Owner: __  | Phase: H  | Estimation: 4h
-- Reprendre les règles §17 pour `enum_methode_application_dpe_log_id=26` :
-  échelle immeuble, chauffage/ECS, ventilation et valeurs nulles.
-- Ne pas appliquer mécaniquement un facteur `nombre_appartement` : séparer les
-  différents périmètres et utiliser les données publiées à la bonne échelle.
-- Cibles : `src/Collectif/` et calculators concernés.
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- §3.4 p.32 ne néglige que « les ponts thermiques des parois au niveau des
+  circulations communes » (adjacences 14 à 18). Nous y ajoutons l'adjacence
+  22, « local non déperditif (local à usage d'habitation chauffé) », au motif
+  qu'une paroi qui ne déperdit pas n'est pas une limite de l'enveloppe.
+- open3cl ne tranche pas non plus : il relit le k du DPE et note que les
+  moteurs certifiés divergent — « 3cl-2024.6.1.0 exporte k = 0, Tribu 1.4.25.1
+  et BBS 2024.6.1.0 conservent la valeur forfaitaire ».
+- Mesuré en A/B isolé sur 500 cas : retirer l'adjacence 22 du veto vaut
+  **+73 écarts** — 2501E0122493M y gagne 16, mais 2618E2138973C en perd 48 et
+  2517E0227225G 41. La convention actuelle est conservée.
+- Sur 2501E0122493M, cet écart explique à lui seul toute la chaîne :
+  `deperdition_pont_thermique` 211,7 contre 231,5, donc
+  `deperdition_enveloppe` −2,0 % et `besoin_ch` −2,4 %.
 
 ## Phase K — Conformité au corpus ADEME
 
@@ -86,63 +70,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - `upb = 2,0` contre 0,5 : même motif que TASK-H08.
 - Apports et pertes récupérées sérialisés ×1 000 : cf. TASK-H03.
 
-### TASK-K33 — Coût d'une installation de chauffage bi-énergie
-
-- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
-- `CoutCalculator::primaryEnergieId` retient l'énergie du **premier** générateur
-  pour tarifer toute l'installation, comme le faisaient `EpConsoCalculator` et
-  `EmissionGesCalculator` avant d'être corrigés. Sur les configurations §9.3
-  à §9.5 — poêle bois plus convecteur électrique — la part électrique est donc
-  tarifée au prix du bois.
-- La correction n'est pas le simple portage de la pondération : le barème a des
-  **tranches d'abonnement** indexées sur la consommation annuelle par énergie
-  (cf. K10). Il faut tarifer chaque énergie séparément, à partir des
-  consommations par générateur, puis sommer — pas moyenner un prix.
-- Mesure de l'écart restant sur 2662E2454031K : `cout_ch` 1 439 contre 1 723
-  attendu, `cout_ch_depensier` 1 739 contre 2 067. Les consommations par énergie
-  (`sortie_par_energie_collection`) sont désormais exactes, l'entrée est donc
-  disponible.
-- Le garde posé sur la pondération EP/GES vaut ici aussi : n'utiliser les
-  consommations par générateur que lorsqu'elles répartissent celle de
-  l'installation.
-
-### TASK-K34 — Sérialisations multiples de la répartition §9.3 et §9.5
-
-- [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: moyenne
-- Acquis : §9.3 lit déjà les liens générateur/émetteur ; la campagne 50h
-  traite aussi §9.5 dans une installation unique portant les trois liens
-  1/2/3, avec les parts 67,5/22,5/10 et les rendements propres aux branches.
-  Les quatre DPE 2624E1215905S, 2624E1215816H, 2624E1215722R et
-  2624E1215661I retrouvent leur lettre B.
-- Reste à qualifier les sérialisations à plusieurs installations et les
-  branches comprenant plusieurs générateurs ou plusieurs émetteurs de salle
-  de bains : prorata de surface (§9.5 p.64), rendements dépensiers propres et
-  absence de double comptage. Les gardes et replis actuels restent en place.
-- Les coûts par énergie et les auxiliaires relèvent respectivement de K33
-  et K39 ; ne pas confondre consommation répartie et conformité complète.
-
-### TASK-K39 — Auxiliaires de génération : répartir le besoin entre générateurs
-
-- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
-- §15.1.1 p.97 : « Bch_g : besoin annuel d'énergie **assuré par le générateur** »,
-  et « dans les cas où le générateur n'assure pas 100 % du besoin, seule la part
-  du besoin qu'il couvre est prise en compte ».
-- `AuxGenerationCalculator` passe le `besoin_ch` **entier** de l'installation à
-  **chaque** générateur, puis somme : une installation à deux générateurs compte
-  donc le besoin deux fois.
-- Démontré sur `2457E3640397P` (hors corpus, tiré de l'open data) : chaudière
-  fioul 78 et chaudière charbon 120, toutes deux Pn = 60 kW, besoin_ch =
-  51 685,61. La référence publie 99,9255 kWh, soit exactement
-  116 W x 51 685,61 / 60 000 — la valeur d'**un seul** générateur, ou de deux se
-  partageant le besoin, ce qui revient au même à Pn égal. Nous publions le
-  double.
-- Le partage n'est pas toujours 50/50 : sur `2457E3724590U` (gaz 97 à 32 kW +
-  charbon 120 à 40 kW) un partage égal donne 57,428 contre 57,2428 publiés.
-  Chercher la clé réelle — probablement la part déjà calculée par les stratégies
-  de §9, que les générateurs publient en `conso_ch`.
-- Faible rendement sur le corpus actuel : 8 cas seulement, dont 2 au rapport
-  exact de 2. Mesurer avant de livrer.
-
 ### TASK-K40 — Auxiliaires de distribution de refroidissement : balise jamais produite
 
 - [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
@@ -161,6 +88,9 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   14. Publier un zéro sous ce seul garde de format gagnerait environ 72 écarts
   nets, au prix d'un second garde de format inféré, pour une balise que la
   méthode ne définit pas. Non retenu en l'état.
+- Le partage se lit aussi par éditeur, et il est net : LICIEL omet la balise
+  sur 432 fichiers sur 433, les trois autres moteurs la publient à 0 sur
+  leurs 48. Ce n'est donc pas une règle de méthode.
 - Rouvrir si une référence publiant une valeur non nulle apparaît au corpus, ou
   avec un texte réglementaire donnant la formule.
 
@@ -222,8 +152,14 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   2662E2542580D implique au contraire un facteur 1,86, supérieur à la somme :
   les références ne s'accordent pas entre elles. La somme est conservée.
 - `protection_solaire_exterieure` : la règle « une seule baie non-nord sans
-  fermeture suffit » donne 78 bonnes réponses sur 96 ; la variante « au moins
-  une baie avec fermeture » n'en donne que 65. Conservée telle quelle.
+  fermeture suffit » donne 86 bonnes réponses sur 105 ; la variante « au moins
+  une baie avec fermeture » n'en donnait que 65. Conservée telle quelle.
+  Aucun seuil de surface ne sépare les 19 désaccords : les références qui
+  répondent 1 malgré une baie sans fermeture vont de 0,23 m² (2659E2512272I)
+  à 3,42 m² couvrant **100 %** du vitrage non-nord (2400E0038579Y), quand
+  d'autres répondent 0 dès 0,35 m² (2400E0046693A) ou 3,9 % du vitrage
+  (2400E0023332N). Cinq références répondent même 0 sans aucune baie non-nord
+  à protéger. Ne pas chercher de seuil : les moteurs ne s'accordent pas.
 
 ### TASK-K53 — 2633E1486544G : besoin d'ECS d'une installation couvrant l'immeuble
 
@@ -326,28 +262,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - `umur0 = 2,9` attendu contre 2,5 sur trois murs, et `k = 0,365` contre 0,73
   sur trois ponts : non instruits.
 
-### TASK-K37 — Auxiliaires de distribution d'ECS d'un réseau à traceur chauffant
-
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
-- §15.2 p.99 : « aux consommations d'auxiliaires du générateur, il faut ajouter
-  celles éventuelles du bouclage **ou du traçage** de l'ECS ». Le XSD distingue
-  1 « réseau d'ecs non bouclé », 2 « réseau d'ecs bouclé » et 3 « réseau d'ecs
-  avec présence d'un traceur chauffant ».
-- `AuxDistributionCalculator::…` ne calcule rien hors de la valeur 2. Sur
-  2659E2407381B — installation collective, `enum_bouclage_reseau_ecs_id = 3`,
-  réseau isolé — la référence publie `conso_auxiliaire_distribution_ecs` =
-  151,19 kWh et nous 0. En découlent `conso_totale_auxiliaire` (721,69 contre
-  570,49), son coût, ses émissions et son énergie primaire, soit une dizaine
-  d'écarts.
-- **Élargir le garde à la valeur 3 ne suffit pas** : mesuré, l'effet est
-  strictement nul, le calcul rendant toujours 0 une fois le garde passé.
-  Chercher le second bloqueur avant de toucher au garde — vérifier d'abord
-  `ecs.besoin_ecs_mensuel`, que la méthode consomme et qui pourrait être vide
-  pour cette configuration.
-- Un traceur chauffant n'est pas un circulateur : vérifier aussi que la formule
-  de §15.2.3, écrite pour une boucle, s'applique telle quelle — la spec les cite
-  ensemble sans donner deux formules.
-
 ### TASK-K38 — L'isolation de la toiture conditionne-t-elle l'indicateur de confort d'été ?
 
 - [ ] Owner: __  | Phase: K  | Estimation: 3h  | Priorité: basse
@@ -365,6 +279,20 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   départage pas, et aucune source ne tranche : non retenu.
 - Rouvrir avec le texte de l'arrêté (annexe « confort d'été »), qui seul peut
   donner la table d'agrégation des cinq critères.
+- **`aspect_traversant` n'est pas reproductible non plus.** Sur les 188
+  références qui remplissent le bloc, 29 le contredisent, toutes dans le même
+  sens : la référence dit 0 là où les baies couvrent deux orientations ou
+  plus. Aucune règle géométrique ne sépare les deux groupes — les six paires
+  d'orientations possibles apparaissent des deux côtés, et les orientations
+  opposées ne tranchent pas davantage. Deux variantes mesurées :
+  `plusieurs_facade_exposee` de la ventilation ne discrimine pas (23 cas
+  `facades=1` à 0 contre 54 à 1), et les orientations des **murs** extérieurs
+  font pire que celles des baies (40 erreurs contre 29). La règle d'open3cl,
+  qui est la nôtre, reste la meilleure disponible.
+- Décompte des désaccords réels, hors blocs vides ou absents :
+  `enum_indicateur_confort_ete_id` 67, `protection_solaire_exterieure` 32,
+  `aspect_traversant` 29, `isolation_toiture` 16, `brasseur_air` 3,
+  `inertie_lourde` 2 — sur 188 blocs remplis.
 
 ### TASK-K41 — Qualifier Pecs dans les exports sans clé mixte commune
 
@@ -528,31 +456,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   - `upb = 2,0` contre 0,25 : même motif que TASK-H08.
 - Ne rouvrir qu'avec de nouveaux cas de méthode 33 au corpus.
 
-### TASK-K30 — Réseau de chaleur ECS multi-bâtiment : 0,9 ou 0,75 ?
-
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
-- §14.3 p.95 remplace Rs × Rg par le rendement d'échange de la sous-station :
-  0,9 si l'installation est isolée, 0,75 sinon. Le XSD ne porte ce qualificatif
-  que sur les réseaux urbains 72/73 ; les types 74-77 et 134, « chaudière(s) …
-  multi bâtiment modélisée comme un réseau de chaleur », n'en ont pas.
-- **La référence se contredit sur des entrées identiques.** Trois cas de type 76
-  au corpus, tous `enum_type_installation_id = 2` :
-
-  | Cas | `reseau_distribution_isole` | bouclage | stockage | volume | Rs×Rg publié |
-  |---|---|---|---|---|---|
-  | `2513E0566835A` | 0 | 1 | 1 | 0 | 0,90 |
-  | `2673E0034873H` | 1 | 2 | 3 | 1500 | 0,90 |
-  | `2513E0192986F` | 1 | 2 | 3 | 1000 | **0,75** |
-
-  Les deux derniers ne diffèrent que par le volume du ballon, que §14.3 ne fait
-  pas intervenir. Aucune discriminante n'est dérivable des données publiées.
-- 0,90 est retenu : il reproduit deux cas sur trois et mesure mieux sur le
-  corpus complet (exactes 88 846 contre 88 834, hors tolérance 10 696 contre
-  10 710 avec 0,75). `reseau_distribution_isole` a été écarté comme
-  discriminante — il décrit le réseau de distribution interne, et vaut 0 sur un
-  cas à 0,90.
-- Ne rouvrir qu'avec de nouveaux cas de types 74-77 ou 134 au corpus.
-
 ### TASK-K42 — Échelles des exports exhaustifs chauffage et ECS
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
@@ -569,32 +472,55 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Preuves et corpus figé : `docs/corrections-campagne-50f.md` et rapport
   applicatif `docs/dpe-campaigns/dpe-campaign-50f/`.
 
-### TASK-K43 — Production ECS solaire : grandeur et échelle de sérialisation
+### TASK-K46 — Contenu CO2 des réseaux : colonne et millésimes manquants
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
-- `2559E3812231S` (427992/427999), six logements : `production_ecs_solaire`
-  vaut 2 825 175,598 dans la référence contre 336 609,904 dans le moteur.
-  Référence = `Cecs_moy × 6 × Fecs/(1−Fecs) × 1000`, moteur =
-  `Becs_moy × Fecs × 1000`. Les consommations ECS concordent déjà.
-- Le XSD documente des kWh à l'immeuble pour les méthodes immeuble et
-  appartement généré. Le calcul actuel utilise le besoin d'un logement et une
-  sérialisation forcée en Wh. Qualifier simultanément énergie utile/consommée,
-  multiplicité et unité à partir de §14.4 et du XSD, puis mesurer en A/B.
-  Ne pas corriger la consommation pour faire coïncider cette seule balise.
+- **Notre table et notre règle de millésime sont justes sur 9 réseaux sur
+  12** vérifiés contre le facteur que les références impliquent
+  (`emission_ges_ch / conso_ch` de la ligne énergie 8) : 6921C, 7501C sur deux
+  arrêtés, 0106C, 5905C, 8201C, 5901C, 5703C en 2026, 2406C, 8401C.
+- Trois désaccords, de trois natures différentes :
+  - **0106C** (2675E0015989B, arrêté 2025-04-11) : la référence publie 0,040,
+    nous 0,000 — c'est notre table qui a perdu la cellule, voir ci-dessous.
+  - **5703C** (2457E3582864U, arrêté 2024-07-05) : référence 0,068, aucune de
+    nos quatre années (0,153 / 0,092 / 0,187 / 0,174) n'en approche. C'est la
+    piste de la colonne **CO2 direct** contre **CO2 ACV**, à trancher avec le
+    texte : l'arrêté du 5 juillet 2024 publie 0,097 en direct et 0,118 en ACV
+    pour 9514C, et la référence de 2595E1189146F retient 0,097.
+  - **4211C** (2242E2979513I, sans `date_arrete_reseau_chaleur`) : référence
+    0,109, nos quatre millésimes vont de 0,048 à 0,075.
+- Ne pas remplacer un identifiant isolément ni inférer une colonne depuis les
+  résultats attendus : établir d'abord laquelle des deux colonnes l'arrêté DPE
+  désigne, puis mesurer sur tous les réseaux du corpus.
 
-### TASK-K46 — Réseau 9514C : référence CO2 direct ou facteur ACV
+### TASK-K59 — 41 réseaux de chaleur à contenu CO2 nul au millésime 2024
 
-- [ ] Owner: __ | Phase: K | Priorité: moyenne
-- Campagne 50g, bâtiment 52041673575825 / **2595E1189146F**, appartement
-  **2595E1189162V** (lettres B/B de référence contre C/C calculées).
-  33 cibles diffèrent, principalement sur les GES ; EP bâtiment 88 dans les deux moteurs.
-- Réseau déclaré 9514C, arrêté 2024-07-05 : émissions CH et ECS de référence
-  = consommation EF × 0,097 ; moteur = EF × 0,118.
-- L'arrêté du 5 juillet 2024 publie respectivement 0,097 en CO2 direct et 0,118
-  en CO2 ACV. Source : https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000049925781
-- Vérifier la colonne applicable au DPE habitation et la règle du logiciel
-  de référence, puis mesurer sur tous les réseaux du corpus. Ne pas remplacer
-  isolément 9514C ni inférer une table depuis les résultats attendus.
+- [ ] Owner: __ | Phase: K | Priorité: haute
+- `resources/tables/reference/tv_reseau_chaleur.php` donne 0,000 à 41 réseaux
+  pour la seule année 2024, alors que les millésimes 2022, 2023 et 2025 n'en
+  comptent aucun et que ces mêmes réseaux y ont des valeurs non nulles. Un
+  contenu CO2 nul n'existe pas dans l'arrêté : la cellule a été perdue.
+- Conséquence directe : tout DPE dont l'arrêté réseau est de 2025 et dont le
+  réseau figure dans la liste voit ses émissions de chauffage ou d'ECS
+  tomber à zéro. 2675E0015989B en est l'exemple, référence 0,040 contre 0.
+- Réseaux concernés : 0106C 0402C 0509C 0703C 0705C 0811C 2301C 2515C 2518C
+  3823C 3905C 4245C 4310C 5205C 5609C 5720C 5806C 5811C 5818C 5826C 5922C
+  6318C 6604C 6704C 6930C 6935C 7009C 7314C 7608C 8006C 8705C 8816C 9421C
+  9509C 1322F 3102F 3412F 3802F 4213F 8601F 9231F.
+- **Source et méthode établies.** Le millésime 2024 de la table est la colonne
+  « Contenu CO2 ACV » de l'annexe de l'arrêté du 11 avril 2025
+  (JORFTEXT000051520810, années d'exploitation 2021-2022-2023). Lue dans un
+  tableau complet avec ses en-têtes, elle donne 0106C = 0,040, 0107C = 0,047,
+  0108C = 0,081 et 0110C = 0,089 — les trois dernières reproduisent notre
+  table au chiffre près, ce qui confirme la colonne. 0106C a été rétabli.
+- **Attention à la lecture par morceaux.** Extraite sans ses en-têtes, la même
+  annexe se lit de travers : un morceau a rendu quinze ACV tous multiples de
+  0,010 et un 6704C dont l'ACV (0,030) serait inférieur à son CO2 direct
+  (0,058), ce qui est impossible. Ne recopier que des lignes lues dans un
+  tableau portant ses en-têtes, et contrôler que l'ACV reste supérieur ou égal
+  au CO2 direct.
+- Reste donc quarante réseaux à lire, puis vérifier qu'aucune autre année ne
+  porte de trou du même genre.
 
 ### TASK-K45 — Ponts thermiques des exports 7.x, après correction Ue
 
@@ -640,19 +566,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - [ ] Auditer l’autoconsommation photovoltaïque des appartements générés (§16.2) : vérifier l’échelle des consommations lues dans les générateurs et la conversion primaire/finale, au-delà de la répartition des capteurs. Mesurer en A/B sur des cas collectifs et individuels.
 - [ ] Exécuter la couverture PHPUnit avec Xdebug (indisponible dans le runtime utilisé pour cette livraison) et vérifier l’objectif de 80 %.
 
-### TASK-K47 — Date d'arrêté et millésime du réseau 3802C
-
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
-- Campagne 50h : bâtiment 1563791, dont 2638E1939755Q (cible 4012840),
-  DPE du 21/07/2026. XML : `date_arrete_reseau_chaleur=2025-04-11` ;
-  référence EF×0,093, moteur EF×0,091, trois GES arrondis 15 contre 14.
-- Le facteur ACV 3802C de l'arrêté du 11/04/2025 est 0,091 ; 0,093
-  correspond au millésime suivant dans les tables du moteur. Qualifier la
-  date d'arrêté publiée et la priorité attendue avec la date du DPE avant
-  de modifier le résolveur. Ne pas remplacer une valeur de table pour ces cas.
-- Source : https://www.legifrance.gouv.fr/jorf/article_jo/JORFARTI000051520830
-
-
 ### TASK-K48 — Entrées des appartements du bâtiment 52041673587983
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
@@ -696,3 +609,86 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   Ne pas imposer de facteur gaz à tout générateur électrique dans le moteur.
   Mesurer les branches chauffage/ECS sur des entrées valides et comparer les
   retours archivés. Preuves : même rapport et corpus privé que TASK-K49.
+
+### TASK-K54 — Tranche tarifaire du scénario dépensier : deux lectures d'éditeurs
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- Les coûts dépensiers sont tarifés chez nous sur leur propre panier : la
+  tranche de l'annexe tarifaire est choisie sur la consommation dépensière.
+  LICIEL applique au dépensier le prix unitaire établi sur le conventionnel,
+  à la sixième décimale près (vérifié sur 2659E2632857F, 2659E2632938I,
+  2659E2625548C, 2655E2140736I : `cout_ch_depensier` et `cout_ecs_depensier`
+  y sont tous deux courts du même rapport, 0,987 à 0,957).
+- Mesuré en A/B isolé sur 408 cas : partager la tranche vaut −69 écarts, mais
+  le gain est **entièrement** porté par les 47 fichiers LICIEL du corpus, et
+  les 10 fichiers des trois autres éditeurs (4.1.1, DPEWIN, EXPERTEC) y
+  régressent tous. Égalité entre moteurs, pas majorité.
+- L'annexe tarifaire tranche plutôt dans l'autre sens — « les frais annuels
+  sont établis à partir de la formule de la plage de consommation
+  correspondante » — et c'est la lecture en place. Ne rien changer sans un
+  texte qui vise explicitement le scénario dépensier.
+- Implémentation mesurée : `PrixEnergie::tarifer()` avec un second panier
+  servant d'assiette aux tranches, appelé depuis `CoutCalculator`.
+
+### TASK-K56 — Ligne E/F de QP0 : une référence contredit son propre moteur
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- 2662E2642251Q (maison, mode 1) : `qp0` 334,999 attendu contre 237,812.
+  C'est l'unique racine du fichier — forcer la ligne « absence de
+  ventilateur » le fait passer de 83,21 % à 99,27 %, 46 écarts à 2.
+- Le générateur déclare `presence_ventouse = 1` et
+  `presence_regulation_combustion = 1`, et la référence applique pourtant
+  E = 2,5 / F = −0,8. Le XSD décrit `presence_ventouse` comme « présence d'un
+  système de ventouse **ou avec un ventilateur** pour l'évacuation des
+  fumées » : la ligne « présence de ventilateur » de §13.2.2 p.88 est la
+  lecture littérale, et c'est la nôtre.
+- Le même moteur (BBS_Slama_2025.11.1.0, LICIEL) applique E = 1,75 à trois
+  générateurs de description strictement identique — type 90 ou 93, ventouse
+  et régulation à 1, Pn 24 kW (2659E0944890K, 2669E0334575D, 2682E0333661M).
+  Rien dans le fichier ne les distingue, sinon le périmètre du DPE : les
+  trois sont des DPE immeuble (mode 6), le nôtre une maison.
+- Variante mesurée en A/B isolé sur 409 cas : exiger en plus un périmètre
+  collectif vaut −44 écarts, portés **en totalité** par ce seul fichier,
+  sans aucune dégradation. Écartée : le périmètre du DPE ne dit rien de la
+  présence d'un ventilateur dans le circuit de combustion, et les quatre
+  observations qui la soutiennent viennent d'un seul moteur.
+- À reprendre si le corpus livre un DPE de maison dont la référence applique
+  E = 1,75 avec ventouse et régulation, ou l'inverse en immeuble.
+
+### TASK-K57 — Branches du moteur nouvellement couvertes : écarts restants
+
+- [ ] Owner: __ | Phase: K | Priorité: haute
+- Le jeu `ademe-branches-2026-10` (76 cas, 19 branches, manifeste suivi)
+  couvre les configurations §9.x, ventilations et générateurs que le corpus
+  stratifié n'atteignait pas. Après huit corrections livrées, les branches
+  encore basses sont, par écarts par cas :
+
+  | Branche | Conf. | Écarts/cas |
+  |---|---:|---:|
+  | cfg-releve-chaudiere-bois | 80,2 % | 76,8 |
+  | cfg-chauffage-solaire (§9.2) | 79,7 % | 62,2 |
+  | cfg-solaire-insert-poele (§9.6) | 83,1 % | 56,5 |
+  | puits-climatique-echangeur | 81,5 % | 53,5 |
+  | froid-pac-eau-eau | 80,4 % | 53,0 |
+  | chaudiere-bois-granules | 81,4 % | 49,2 |
+  | ventilation-hybride | 79,8 % | 48,0 |
+
+- **Rpn des chaudières bois récentes : la référence contredit la table.**
+  §13.2.2.3 p.90 donne, pour une chaudière bûche ou plaquette >2019 de 20 à
+  70 kW, `Rpn = 90 + 2 logPn` et `Rpint = 85 + 2 logPn` — c'est notre lecture.
+  2601E0138446C publie 99,0309 et 94,0309, soit les mêmes constantes avec le
+  coefficient **6**, celui des lignes antérieures à 2013. Les granulés >2019
+  donnent un troisième jeu encore (2400E4039624H et 2400E0180612T suivent
+  « 89 + 6 logPn » quand la table dit « 91 + 2 logPn », et les deux cas à
+  Pn = 4,828 kW ne suivent ni l'un ni l'autre). Ne rien changer sans un texte.
+- `production_ch_solaire` reste faux sur les installations multiples :
+  §9.6 p.65 donne Prod = Bch × Fch × Σ facteur_i INT_i Ich_i, exact sur
+  2400E1027746V et 2601E0263293X, mais le rapport tombe à 0,85 et 0,52 sur
+  les deux installations de 2601E0370414Y.
+- `sortie_par_energie` ne porte pas de ligne pour
+  `enum_type_energie_id = 12` (« électricité d'origine renouvelable utilisée
+  dans le bâtiment ») : 2601E0370414Y en attend une complète.
+- `rendement_stockage` = 1 : 27 références le publient, plus de 300 l'omettent
+  comme nous. Convention d'éditeur, rien à corriger (cf. TASK-K06).
+
+

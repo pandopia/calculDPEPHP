@@ -11,6 +11,8 @@ use CalculDpePHP\Chauffage\Rendement\DistributionCalculator;
 use CalculDpePHP\Chauffage\Rendement\EmissionCalculator;
 use CalculDpePHP\Chauffage\Rendement\GenerationNonCombustionCalculator;
 use CalculDpePHP\Chauffage\Rendement\RegulationCalculator;
+use CalculDpePHP\Chauffage\GenerateurChAlias;
+use CalculDpePHP\Chauffage\Rendement\RendementGenerateur;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -68,14 +70,84 @@ final class ChaudiereReleve implements CalculatorInterface
         $bch    = (float)$context->get('chauffage.besoin_ch',           0.0);
         $bchDep = (float)$context->get('chauffage.besoin_ch_depensier', 0.0);
 
-        $pos    = $this->positionInCollection($node);
-        $factor = self::FACTORS[$pos] ?? (1.0 / max(1, $pos));
-
         $accessor      = new NodeAccessor($context->document);
         $rdim          = $accessor->getFloatOrNull('./donnee_entree/rdim', $node) ?? 1.0;
         $rdimEffective = max(1e-9, $rdim);
+        $besoin        = $bch / $rdimEffective;
+        $besoinDep     = $bchDep / $rdimEffective;
 
-        $this->computeAndWrite($factor * $bch / $rdimEffective, $factor * $bchDep / $rdimEffective, $node, $context);
+        $gv         = (float)$context->get('chauffage.gv', 1.0);
+        $shImmeuble = $this->getShImmeuble($accessor, $node);
+        $hsp        = $this->getHsp($accessor, $node);
+        $g          = ($hsp * $shImmeuble) > 0.0 ? $gv / ($hsp * $shImmeuble) : 1.0;
+
+        $genCollection = $this->getChildByTag($node, 'generateur_chauffage_collection');
+        $genPos        = 0;
+        $totalConso    = 0.0;
+        $totalConsoDep = 0.0;
+
+        if ($genCollection !== null) {
+            foreach ($genCollection->childNodes as $gen) {
+                if (!($gen instanceof DOMElement) || $gen->nodeName !== 'generateur_chauffage') {
+                    continue;
+                }
+                $genPos++;
+
+                // §9.7 p.65-66 affecte 0,8 × 0,75 à la PAC, 0,2 × 0,75 à la
+                // chaudière qui la relève et 0,25 à l'insert ou au poêle
+                // d'appoint. La nature du générateur désigne la part ; l'ordre
+                // d'écriture ne sert que de repli.
+                $typeId = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $gen);
+                $factor = self::FACTORS[$this->rang(GenerateurChAlias::normalizeNode($typeId, $gen)) ?? $genPos]
+                    ?? (1.0 / max(1, $genPos));
+
+                $rg = RendementGenerateur::lire($accessor, $gen) ?? 1.0;
+                $i0 = $this->weightedEmetteurFloat($accessor, $node, 'i0') ?? 1.0;
+                $re = $this->weightedEmetteurFloat($accessor, $node, 'rendement_emission') ?? 1.0;
+                $rd = $this->weightedEmetteurFloat($accessor, $node, 'rendement_distribution') ?? 1.0;
+                $rr = $this->weightedEmetteurFloat($accessor, $node, 'rendement_regulation') ?? 1.0;
+
+                $int   = $i0 / (1.0 + 0.1 * ($g - 1.0));
+                $denom = max(1e-9, $rg * $re * $rd * $rr);
+
+                $genConso    = $factor * $besoin    * $int / $denom;
+                $genConsoDep = $factor * $besoinDep * $int / $denom;
+
+                $totalConso    += $genConso;
+                $totalConsoDep += $genConsoDep;
+
+                $genDi = $accessor->ensureDonneeIntermediaire($gen);
+                $accessor->setChildValue($genDi, 'conso_ch',           $genConso);
+                $accessor->setChildValue($genDi, 'conso_ch_depensier', $genConsoDep);
+                $this->publierPartDuBesoin($context, $gen, $factor);
+            }
+        }
+
+        $di = $accessor->ensureDonneeIntermediaire($node);
+        $accessor->setChildValue($di, 'besoin_ch',           $besoin);
+        $accessor->setChildValue($di, 'besoin_ch_depensier', $besoinDep);
+        $accessor->setChildValue($di, 'conso_ch',            $totalConso);
+        $accessor->setChildValue($di, 'conso_ch_depensier',  $totalConsoDep);
+    }
+
+    /**
+     * Rang de §9.7 : 1 la PAC, 2 la chaudière qui la relève, 3 l'insert ou le
+     * poêle bois d'appoint. Les plages suivent le XSD : 1-19 pompes à chaleur,
+     * 20-54 inserts, poêles et cuisinières, 55-97 et 106 chaudières.
+     */
+    private function rang(?int $normalise): ?int
+    {
+        if ($normalise === null) {
+            return null;
+        }
+        if ($normalise >= 1 && $normalise <= 19) {
+            return 1;
+        }
+        if (($normalise >= 55 && $normalise <= 97) || $normalise === 106) {
+            return 2;
+        }
+
+        return $normalise >= 20 && $normalise <= 54 ? 3 : null;
     }
 
     private function cfgId(DOMElement $node): ?int

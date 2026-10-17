@@ -202,7 +202,7 @@ final class AuxGenerationCalculator implements CalculatorInterface
 
                 // §15.1.1 : le besoin assuré par ce générateur, et non celui
                 // de toute la cascade, dimensionne ses auxiliaires.
-                $parts = (array) $context->get('chauffage.part_besoin_generateur', []);
+                $parts = (array) $context->get(\CalculDpePHP\Chauffage\PartBesoinGenerateur::CLE_CONTEXTE, []);
                 $partBesoin = $parts[$gen->getNodePath()] ?? 1.0;
                 $besoinGen = $besoin * $partBesoin;
                 $besoinGenDep = $besoinDep * $partBesoin;

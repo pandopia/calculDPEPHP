@@ -54,6 +54,17 @@ final class ReseauChaleurCalculator implements CalculatorInterface
         134 => 0.90,  // chaudière(s) charbon multi bâtiment en réseau de chaleur
     ];
 
+    /**
+     * « Chaudière(s) … multi bâtiment modélisée comme un réseau de chaleur » :
+     * le XSD ne leur donne aucun qualificatif « isolé / non isolé ».
+     *
+     * @var list<int>
+     */
+    private const MULTI_BATIMENT_IDS = [74, 75, 76, 77, 134];
+
+    /** XSD : enum_type_stockage_ecs_id = 1, « sans stockage ». */
+    private const STOCKAGE_SANS_BALLON = 1;
+
     public function id(): string
     {
         return self::class;
@@ -79,7 +90,45 @@ final class ReseauChaleurCalculator implements CalculatorInterface
         }
 
         $rg = self::RG_BY_TYPE[$typeId];
+        if (in_array($typeId, self::MULTI_BATIMENT_IDS, true) && $this->sousStationHorsVolumeChauffe($node, $accessor)) {
+            $rg = 0.75;
+        }
+
         $di = $accessor->ensureDonneeIntermediaire($node);
         $accessor->setChildValue($di, 'rendement_generation_stockage', $rg);
+    }
+
+    /**
+     * §14.3 p.95 : « si l'installation est isolée : Rs × Rg = 0,9 ; sinon 0,75 ».
+     *
+     * Le XSD ne porte le qualificatif « isolé / non isolé » que sur les
+     * réseaux urbains 72 et 73, dont le libellé l'énonce. Pour les
+     * « chaudière(s) … multi bâtiment modélisée(s) comme un réseau de
+     * chaleur », il faut le lire dans les positions déclarées : une
+     * sous-station dont le générateur **et** le ballon sont hors volume
+     * chauffé n'est pas isolée du dehors, et ses pertes ne sont pas
+     * récupérées.
+     *
+     * Un générateur sans ballon n'a pas de stockage à placer : sa position
+     * seule ne suffit pas à le déclarer non isolé.
+     *
+     * Les trente occurrences du corpus s'y rangent sans exception : les deux
+     * seules à 0,75 (2501E1812848D, 2513E0192986F) ont générateur et ballon
+     * hors volume chauffé, et les vingt-huit à 0,90 ont soit l'un des deux à
+     * l'intérieur, soit aucun ballon.
+     *
+     * @spec-section 14.3
+     * @spec-pages   95
+     */
+    private function sousStationHorsVolumeChauffe(DOMElement $node, NodeAccessor $accessor): bool
+    {
+        $stockage = $accessor->getIntOrNull('./donnee_entree/enum_type_stockage_ecs_id', $node);
+        $volume = $accessor->getFloatOrNull('./donnee_entree/volume_stockage', $node) ?? 0.0;
+        if ($stockage === null || $stockage === self::STOCKAGE_SANS_BALLON || $volume <= 0.0) {
+            return false;
+        }
+
+        return $accessor->getIntOrNull('./donnee_entree/position_volume_chauffe', $node) === 0
+            && $accessor->getIntOrNull('./donnee_entree/position_volume_chauffe_stockage', $node) === 0;
     }
 }

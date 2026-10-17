@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Chauffage\Strategy;
 
+use CalculDpePHP\Chauffage\Rendement\RendementGenerateur;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
@@ -22,8 +23,23 @@ trait StrategieComputeTrait
      *
      * @param float $besoin Besoin alloué à cette installation (kWh).
      */
-    private function computeAndWrite(float $besoin, float $besoinDep, DOMElement $node, CalculationContext $context): void
-    {
+    /**
+     * `$besoinPublie` sépare le besoin **publié** du besoin **consommé** :
+     * §9.2 p.62 retranche la couverture solaire en amont de l'émission, mais
+     * `besoin_ch` reste le besoin de chauffage de l'installation. Les deux se
+     * confondent partout ailleurs, d'où la valeur par défaut.
+     *
+     * @return float le rapport `INT × Ich` appliqué au besoin, dont §9.6 p.65
+     *               a besoin pour la production de chauffage solaire.
+     */
+    private function computeAndWrite(
+        float $besoin,
+        float $besoinDep,
+        DOMElement $node,
+        CalculationContext $context,
+        ?float $besoinPublie = null,
+        ?float $besoinPublieDep = null,
+    ): float {
         $accessor = new NodeAccessor($context->document);
 
         $gv         = (float)$context->get('chauffage.gv', 1.0);
@@ -44,22 +60,28 @@ trait StrategieComputeTrait
         $consoChDep = $besoinDep * $int / $denom;
 
         $di = $accessor->ensureDonneeIntermediaire($node);
-        $accessor->setChildValue($di, 'besoin_ch',           $besoin);
-        $accessor->setChildValue($di, 'besoin_ch_depensier', $besoinDep);
+        $accessor->setChildValue($di, 'besoin_ch',           $besoinPublie    ?? $besoin);
+        $accessor->setChildValue($di, 'besoin_ch_depensier', $besoinPublieDep ?? $besoinDep);
         $accessor->setChildValue($di, 'conso_ch',            $consoCh);
         $accessor->setChildValue($di, 'conso_ch_depensier',  $consoChDep);
 
         $genCollection = $this->getChildByTag($node, 'generateur_chauffage_collection');
         if ($genCollection !== null) {
+            $generateurs = [];
             foreach ($genCollection->childNodes as $gen) {
-                if (!($gen instanceof DOMElement) || $gen->nodeName !== 'generateur_chauffage') {
-                    continue;
+                if ($gen instanceof DOMElement && $gen->nodeName === 'generateur_chauffage') {
+                    $generateurs[] = $gen;
                 }
+            }
+            foreach ($generateurs as $gen) {
                 $genDi = $accessor->ensureDonneeIntermediaire($gen);
                 $accessor->setChildValue($genDi, 'conso_ch',           $consoCh);
                 $accessor->setChildValue($genDi, 'conso_ch_depensier', $consoChDep);
+                $this->publierPartDuBesoin($context, $gen, 1.0 / max(1, count($generateurs)));
             }
         }
+
+        return $int / $denom;
     }
 
     /**
@@ -129,6 +151,7 @@ trait StrategieComputeTrait
                 $genDi = $accessor->ensureDonneeIntermediaire($generateur);
                 $accessor->setChildValue($genDi, 'conso_ch', $conso / $parGenerateur);
                 $accessor->setChildValue($genDi, 'conso_ch_depensier', $consoDep / $parGenerateur);
+                $this->publierPartDuBesoin($context, $generateur, $part / $parGenerateur);
             }
         }
 
@@ -197,7 +220,9 @@ trait StrategieComputeTrait
         $somme = 0.0;
         $n = 0;
         foreach ($generateurs as $generateur) {
-            $valeur = $accessor->getFloatOrNull("./donnee_intermediaire/{$field}", $generateur);
+            $valeur = $field === 'rendement_generation'
+                ? RendementGenerateur::lire($accessor, $generateur)
+                : $accessor->getFloatOrNull("./donnee_intermediaire/{$field}", $generateur);
             if ($valeur === null) {
                 continue;
             }
@@ -222,6 +247,57 @@ trait StrategieComputeTrait
             $prev = $prev->previousElementSibling;
         }
         return $pos;
+    }
+
+    /**
+     * Part du besoin de chauffage revenant à l'installation, au prorata de la
+     * surface qu'elle dessert.
+     *
+     * §9.1 p.57 répartit le besoin entre les installations d'un même logement ;
+     * §9.2 p.62 y renvoie explicitement — « la part de la consommation de
+     * chauffage assurée par l'installation est calculée en appliquant les
+     * règles du paragraphe 9.1 ». Une installation qui couvre tout le logement
+     * garde donc 1, et deux installations de surfaces égales se partagent le
+     * besoin par moitié.
+     *
+     * La surface de référence est celle du logement pour un DPE de maison ou
+     * d'appartement, celle de l'immeuble sinon : le besoin porté par le
+     * contexte est à la même échelle.
+     */
+    private function partSurfacique(NodeAccessor $accessor, DOMElement $installNode): float
+    {
+        $surface = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $installNode);
+        if ($surface === null || $surface <= 0.0) {
+            return 1.0;
+        }
+
+        $logement = $installNode->parentNode?->parentNode;
+        $mode = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $logement);
+        $reference = in_array($mode, self::MODES_LOGEMENT_SEUL, true)
+            ? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement)
+            : $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement);
+
+        if ($reference === null || $reference <= 0.0) {
+            return 1.0;
+        }
+
+        return $surface / $reference;
+    }
+
+    /**
+     * Modes dont le besoin de chauffage est porté à l'échelle du logement seul
+     * (maison individuelle et appartement décrit directement).
+     *
+     * @var list<int>
+     */
+    private const MODES_LOGEMENT_SEUL = [1, 2, 3, 4, 5, 14, 18, 31, 32, 35, 36, 37];
+
+    /**
+     * @see \CalculDpePHP\Chauffage\PartBesoinGenerateur
+     */
+    private function publierPartDuBesoin(CalculationContext $context, DOMElement $generateur, float $part): void
+    {
+        \CalculDpePHP\Chauffage\PartBesoinGenerateur::publier($context, $generateur, $part);
     }
 
     private function getShImmeuble(NodeAccessor $accessor, DOMElement $installNode): float
@@ -274,7 +350,9 @@ trait StrategieComputeTrait
             if (!($gen instanceof DOMElement) || $gen->nodeName !== 'generateur_chauffage') {
                 continue;
             }
-            $value = $accessor->getFloatOrNull("./donnee_intermediaire/{$field}", $gen);
+            $value = $field === 'rendement_generation'
+                ? RendementGenerateur::lire($accessor, $gen)
+                : $accessor->getFloatOrNull("./donnee_intermediaire/{$field}", $gen);
             if ($value === null) {
                 continue;
             }

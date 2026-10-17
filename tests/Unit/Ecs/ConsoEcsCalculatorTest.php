@@ -197,4 +197,57 @@ XML;
         $c2 = (float)$doc2->getElementsByTagName('conso_ecs')->item(0)->textContent;
         $this->assertGreaterThan($c1, $c2);
     }
+
+    /**
+     * §11.3 p.71 retranche la couverture solaire de la consommation :
+     * la production solaire se lit à la même échelle,
+     * `Prod = Cecs × Fecs / (1 − Fecs) × rdim`, et `rdim` porte la
+     * multiplicité que le XSD demande — « c'est la consommation de
+     * l'installation à l'immeuble qu'il faut saisir ».
+     */
+    public function testProductionSolaireSeDeduitDeLaConsommation(): void
+    {
+        [$doc, $inst] = $this->buildInstallation(1000.0, 1200.0, 1.0);
+        $ctx = $this->makeContext($doc);
+        $di = $inst->getElementsByTagName('donnee_intermediaire')->item(0);
+        $fecs = $doc->createElement('fecs', '0.4');
+        $di->appendChild($fecs);
+
+        (new ConsoEcsCalculator())->calculate($inst, $ctx);
+
+        $conso = (float)$di->getElementsByTagName('conso_ecs')->item(0)->textContent;
+        $prod = (float)$doc->getElementsByTagName('production_ecs_solaire')->item(0)->textContent;
+
+        self::assertEqualsWithDelta($conso * 0.4 / 0.6 * 1000.0, $prod, 1e-6);
+    }
+
+    /** `rdim` ramène la production à l'échelle de l'immeuble — 2631E0794109B. */
+    public function testProductionSolaireSuitRdim(): void
+    {
+        [$doc, $inst] = $this->buildInstallation(1000.0, 1200.0, 1.0);
+        $ctx = $this->makeContext($doc);
+        $di = $inst->getElementsByTagName('donnee_intermediaire')->item(0);
+        $di->appendChild($doc->createElement('fecs', '0.35'));
+        $de = $doc->createElement('donnee_entree');
+        $de->appendChild($doc->createElement('rdim', '17'));
+        $inst->insertBefore($de, $inst->firstChild);
+
+        (new ConsoEcsCalculator())->calculate($inst, $ctx);
+
+        $conso = (float)$di->getElementsByTagName('conso_ecs')->item(0)->textContent;
+        $prod = (float)$doc->getElementsByTagName('production_ecs_solaire')->item(0)->textContent;
+
+        self::assertEqualsWithDelta($conso * 0.35 / 0.65 * 17.0 * 1000.0, $prod, 1e-6);
+    }
+
+    /** Sans solaire, la balise n'est pas publiée. */
+    public function testPasDeProductionSolaireSansFecs(): void
+    {
+        [$doc, $inst] = $this->buildInstallation(1000.0, 1200.0, 1.0);
+        $ctx = $this->makeContext($doc);
+
+        (new ConsoEcsCalculator())->calculate($inst, $ctx);
+
+        self::assertSame(0, $doc->getElementsByTagName('production_ecs_solaire')->length);
+    }
 }

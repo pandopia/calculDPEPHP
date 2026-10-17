@@ -11,6 +11,7 @@ use CalculDpePHP\Chauffage\Rendement\DistributionCalculator;
 use CalculDpePHP\Chauffage\Rendement\EmissionCalculator;
 use CalculDpePHP\Chauffage\Rendement\GenerationNonCombustionCalculator;
 use CalculDpePHP\Chauffage\Rendement\RegulationCalculator;
+use CalculDpePHP\Chauffage\Rendement\RendementGenerateur;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -98,7 +99,7 @@ final class InsertPoeleAppoint implements CalculatorInterface
                 $factor = ($lien !== null ? (self::FACTORS[$lien] ?? null) : null)
                     ?? self::FACTORS[$genPos]
                     ?? (1.0 / max(1, $genPos));
-                $rg     = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen) ?? 1.0;
+                $rg     = RendementGenerateur::lire($accessor, $gen) ?? 1.0;
                 $i0     = $this->linkedEmetteurFloat($accessor, $node, $gen, 'i0')
                     ?? $this->weightedEmetteurFloat($accessor, $node, 'i0')
                     ?? 1.0;
@@ -123,6 +124,7 @@ final class InsertPoeleAppoint implements CalculatorInterface
                 $genDi = $accessor->ensureDonneeIntermediaire($gen);
                 $accessor->setChildValue($genDi, 'conso_ch',           $genConso);
                 $accessor->setChildValue($genDi, 'conso_ch_depensier', $genConsoDep);
+                $this->publierPartDuBesoin($context, $gen, $factor);
             }
         }
 

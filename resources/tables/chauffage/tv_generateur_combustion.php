@@ -25,7 +25,7 @@ declare(strict_types=1);
  *   Condensation gaz ≥2016, Pn≤70 (ID 13) :
  *     rpn=(91+3×log10(Pn))/100, rpint=(103+2.5×log10(Pn))/100, qp0=0.5%×Pn
  *   Générateur air chaud avant 2006, Pn≤300 (ID 69) :
- *     rpn=77/100, rpint=74/100, qp0=Pn×(1.75−0.55×log10(Pn))×1000
+ *     rpn=77/100, rpint=74/100, qp0=Pn×(1.75−0.55×log10(Pn))/100
  *
  * @spec-section 13.2.2
  * @spec-pages   86-92
@@ -388,14 +388,18 @@ return [
     },
 
     // ── Générateur à air chaud à combustion ──────────────────────────────────
-    // ID 69 : avant 2006, Pn≤300 — rpn=77%, rpint=74%, qp0=Pn×(1.75−0.55×log10(Pn))×1000
+    // ID 69 : avant 2006 — rpn=77%, rpint=74%, qp0=Pn×(1,75−0,55×log10(Pn))/100
+    // §13.2.2.1 p.89 écrit QP0 en **pourcentage** de la puissance nominale,
+    // comme les chaudières gaz et fioul : « QP0 = Pn × (1,75 − 0,55 logPn) / 100 ».
+    // L'expression vaut jusqu'à 300 kW ; au-delà on conserve la valeur à 300 kW.
     69 => static function (float $pnKw, float $e, float $f): array {
         $pnW = $pnKw * 1000.0;
+        $pnQp0 = min($pnKw, 300.0);
         return [
             'pn'    => $pnW,
             'rpn'   => 0.77,
             'rpint' => 0.74,
-            'qp0'   => $pnKw * (1.75 - 0.55 * log10($pnKw)) * 1000.0,
+            'qp0'   => $pnQp0 * (1.75 - 0.55 * log10($pnQp0)) * 1000.0 / 100.0,
             'pveil' => 0.0,
         ];
     },

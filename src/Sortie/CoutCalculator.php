@@ -97,8 +97,15 @@ final class CoutCalculator implements CalculatorInterface
         // Les postes auxiliaires et l'éclairage sont toujours électriques.
         // La ventilation reste individuelle : la rattacher à l'abonnement
         // d'immeuble dégrade nettement l'accord avec la référence.
+        // §Annexe 7 : « Les frais annuels par type d'énergie et par usage sont
+        // obtenus en multipliant la consommation d'énergie finale pour ce type
+        // d'énergie et cet usage par le prix moyen du kWh. » Une installation
+        // bi-énergie — poêle bois et convecteur électrique de §9.3 à §9.5 — a
+        // donc autant de postes que d'énergies, chacune avec sa propre tranche.
+        $partsCh  = $this->partsParEnergie($accessor, $node, 'installation_chauffage', 'generateur_chauffage', $energieCh);
+        $partsEcs = $this->partsParEnergie($accessor, $node, 'installation_ecs', 'generateur_ecs', $energieEcs);
+
         $conventionnel = [
-            'cout_ch'                                  => [$energieCh,  $ef['conso_ch'], $chCollectif],
             'cout_ecs'                                 => [$energieEcs, $ef['conso_ecs'], $ecsCollectif],
             'cout_fr'                                  => [$energieFr,  $ef['conso_fr'], false],
             'cout_eclairage'                           => [1, $ef['conso_eclairage'], false],
@@ -112,7 +119,6 @@ final class CoutCalculator implements CalculatorInterface
         // Le scénario dépensier est une autre consommation annuelle : il a donc
         // ses propres tranches, calculées sur son propre panier.
         $depensier = [
-            'cout_ch_depensier'                        => [$energieCh,  $ef['conso_ch_depensier'], $chCollectif],
             'cout_ecs_depensier'                       => [$energieEcs, $ef['conso_ecs_depensier'], $ecsCollectif],
             'cout_fr_depensier'                        => [$energieFr,  $ef['conso_fr_depensier'], false],
             'cout_eclairage'                           => [1, $ef['conso_eclairage'], false],
@@ -123,7 +129,18 @@ final class CoutCalculator implements CalculatorInterface
             'cout_auxiliaire_ventilation'              => [1, $ef['conso_auxiliaire_ventilation'], false],
         ];
 
+        foreach ($partsCh as $energieId => $part) {
+            $conventionnel['cout_ch#' . $energieId] = [$energieId, $ef['conso_ch'] * $part, $chCollectif];
+            $depensier['cout_ch_depensier#' . $energieId] = [$energieId, $ef['conso_ch_depensier'] * $part, $chCollectif];
+        }
+        foreach ($partsEcs as $energieId => $part) {
+            $conventionnel['cout_ecs#' . $energieId] = [$energieId, $ef['conso_ecs'] * $part, $ecsCollectif];
+            $depensier['cout_ecs_depensier#' . $energieId] = [$energieId, $ef['conso_ecs_depensier'] * $part, $ecsCollectif];
+        }
+        unset($conventionnel['cout_ecs'], $depensier['cout_ecs_depensier']);
+
         $couts = $prix->tarifer($conventionnel) + $prix->tarifer($depensier);
+        $couts = $this->recomposerPostesParEnergie($couts);
 
         $totalAux = $couts['cout_auxiliaire_generation_ch']
             + $couts['cout_auxiliaire_distribution_ch']
@@ -173,6 +190,81 @@ final class CoutCalculator implements CalculatorInterface
         }
 
         return $ef;
+    }
+
+    /**
+     * Somme les postes éclatés par énergie (`cout_ch#4`) dans leur poste
+     * d'origine (`cout_ch`), que le bloc `<sortie><cout>` déclare seul.
+     *
+     * @param array<string, float> $couts
+     * @return array<string, float>
+     */
+    private function recomposerPostesParEnergie(array $couts): array
+    {
+        foreach ($couts as $tag => $valeur) {
+            $separateur = strpos($tag, '#');
+            if ($separateur === false) {
+                continue;
+            }
+            $base = substr($tag, 0, $separateur);
+            $couts[$base] = ($couts[$base] ?? 0.0) + $valeur;
+            unset($couts[$tag]);
+        }
+
+        return $couts;
+    }
+
+    /**
+     * Répartition de la consommation d'un usage entre les énergies de ses
+     * générateurs, lue sur leurs `conso_ch` / `conso_ecs`.
+     *
+     * Le garde est celui déjà posé sur la pondération EP et GES : ces
+     * consommations ne sont utilisées que lorsqu'elles **répartissent** celle
+     * des installations, c'est-à-dire que leur somme la reproduit. Sinon une
+     * seule énergie porte tout l'usage, comme auparavant.
+     *
+     * @return array<int, float> enum_type_energie_id ⇒ part, de somme 1
+     */
+    private function partsParEnergie(
+        NodeAccessor $accessor,
+        DOMElement $logement,
+        string $installTag,
+        string $generateurTag,
+        int $energieParDefaut,
+    ): array {
+        $champ = $installTag === 'installation_chauffage' ? 'conso_ch' : 'conso_ecs';
+        $parEnergie = [];
+        $totalGenerateurs = 0.0;
+        $totalInstallations = 0.0;
+
+        foreach ($logement->getElementsByTagName($installTag) as $install) {
+            if (!$install instanceof DOMElement) {
+                continue;
+            }
+            $totalInstallations += $accessor->getFloatOrNull('./donnee_intermediaire/' . $champ, $install) ?? 0.0;
+
+            foreach ($install->getElementsByTagName($generateurTag) as $generateur) {
+                if (!$generateur instanceof DOMElement) {
+                    continue;
+                }
+                $conso = $accessor->getFloatOrNull('./donnee_intermediaire/' . $champ, $generateur);
+                $energie = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $generateur);
+                if ($conso === null || $energie === null) {
+                    return [$energieParDefaut => 1.0];
+                }
+                $parEnergie[$energie] = ($parEnergie[$energie] ?? 0.0) + $conso;
+                $totalGenerateurs += $conso;
+            }
+        }
+
+        if (count($parEnergie) < 2 || $totalGenerateurs <= 0.0 || $totalInstallations <= 0.0) {
+            return [$energieParDefaut => 1.0];
+        }
+        if (abs($totalGenerateurs - $totalInstallations) > 1e-6 * $totalInstallations) {
+            return [$energieParDefaut => 1.0];
+        }
+
+        return array_map(static fn(float $conso): float => $conso / $totalGenerateurs, $parEnergie);
     }
 
     /**

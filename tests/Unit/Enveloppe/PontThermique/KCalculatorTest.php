@@ -216,10 +216,10 @@ XML, $plancherLourd, $murLourd));
     }
 
     /**
-     * §7.3 p.54 range les blocs de béton creux d'au moins 11 cm parmi les
-     * parois lourdes. `paroi_lourde` décrivant l'inertie, il vaut 0 sur une
-     * telle maçonnerie isolée par l'intérieur : c'est le matériau qui tranche,
-     * et le pont thermique est conservé.
+     * Un bloc de béton creux est une maçonnerie : §3.4.1 p.35 le range parmi
+     * les « matériau lourd (béton, brique, …) ». `paroi_lourde` décrivant
+     * l'inertie de §7.3, il vaut 0 sur une telle maçonnerie isolée par
+     * l'intérieur : c'est le matériau qui tranche, et le pont est conservé.
      */
     public function testHeavyWallMaterialOverridesTheInertiaFlag(): void
     {
@@ -227,16 +227,41 @@ XML, $plancherLourd, $murLourd));
             . '<epaisseur_structure>20</epaisseur_structure>'));
     }
 
-    /** Sous le seuil de §7.3, le bloc creux n'est plus une paroi lourde. */
-    public function testHeavyMaterialBelowItsThicknessThresholdIsLightweight(): void
+    /**
+     * §3.4 ne pose aucun seuil d'épaisseur, contrairement à §7.3 qui répond à
+     * la question de l'inertie : une maçonnerie mince reste une paroi lourde
+     * et son pont thermique est conservé.
+     */
+    public function testMasonryBelowTheInertiaThresholdStaysHeavy(): void
     {
-        self::assertSame('0', $this->kAvecMur('<enum_materiaux_structure_mur_id>12</enum_materiaux_structure_mur_id>'
+        self::assertSame('0.31', $this->kAvecMur('<enum_materiaux_structure_mur_id>12</enum_materiaux_structure_mur_id>'
             . '<epaisseur_structure>8</epaisseur_structure>'));
     }
 
     /**
-     * Un matériau « inconnu » (enum 1) ne figure dans aucune des catégories
-     * lourdes de §7.3 : le drapeau d'inertie reprend la main, et il vaut 0.
+     * §3.4.1 p.35 : une brique creuse est une brique. §7.3 ne la compte pas
+     * parmi les parois lourdes parce qu'elle y répond à la question de
+     * l'inertie ; le pont thermique, lui, est conservé.
+     */
+    public function testHollowBrickIsHeavyForThermalBridges(): void
+    {
+        self::assertSame('0.31', $this->kAvecMur('<enum_materiaux_structure_mur_id>10</enum_materiaux_structure_mur_id>'
+            . '<epaisseur_structure>28</epaisseur_structure>'));
+    }
+
+    /**
+     * §3.4.5 p.38 : « les ponts thermiques avec les parois en structure bois
+     * (ossature bois, rondin de bois, pans de bois) sont négligés ».
+     */
+    public function testWoodFrameWallIsLightweight(): void
+    {
+        self::assertSame('0', $this->kAvecMur('<enum_materiaux_structure_mur_id>25</enum_materiaux_structure_mur_id>'
+            . '<epaisseur_structure>28</epaisseur_structure>'));
+    }
+
+    /**
+     * Un matériau « inconnu » (enum 1) ne décrit aucune structure : §3.4 ne
+     * tranche pas, le drapeau d'inertie reprend la main, et il vaut 0.
      */
     public function testUnknownWallMaterialFallsBackToTheInertiaFlag(): void
     {

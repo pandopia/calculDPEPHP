@@ -91,7 +91,15 @@ final class AppointInsertElecSdb implements CalculatorInterface
             return;
         }
 
-        // Sérialisation alternative : chaque installation représente une branche.
+        // Sérialisation alternative : chaque installation représente une
+        // branche, et la part se lit sur son rang. Une installation seule dans
+        // sa collection n'est pas une branche parmi d'autres : §9.5 p.63-64 y
+        // décrit les trois branches à l'intérieur, et leurs parts somment à 1.
+        if ($collection instanceof DOMElement
+            && $collection->getElementsByTagName('installation_chauffage')->length === 1) {
+            $factor = 1.0;
+        }
+
         $this->computeAndWrite($factor * $bch / $rdimEffective, $factor * $bchDep / $rdimEffective, $node, $context);
     }
 

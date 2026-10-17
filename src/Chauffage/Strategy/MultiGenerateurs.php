@@ -12,6 +12,7 @@ use CalculDpePHP\Chauffage\Rendement\DistributionCalculator;
 use CalculDpePHP\Chauffage\Rendement\EmissionCalculator;
 use CalculDpePHP\Chauffage\Rendement\GenerationNonCombustionCalculator;
 use CalculDpePHP\Chauffage\Rendement\RegulationCalculator;
+use CalculDpePHP\Chauffage\Rendement\RendementGenerateur;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -96,7 +97,7 @@ final class MultiGenerateurs implements CalculatorInterface
         $rdim          = $accessor->getFloatOrNull('./donnee_entree/rdim', $node) ?? 1.0;
         $rdimEffective = max(1e-9, $rdim);
 
-        if ($cfgId === 8 && $this->computePacEtReleve($bch, $bchDep, $rdimEffective, $node, $context, $accessor)) {
+        if ($this->computeParGenerateur($cfgId, $bch, $bchDep, $rdimEffective, $node, $context, $accessor)) {
             return;
         }
 
@@ -108,8 +109,8 @@ final class MultiGenerateurs implements CalculatorInterface
      * Les deux générateurs partagent les émetteurs de base ; la nature PAC/chaudière
      * détermine les parts. Les autres sérialisations conservent le calcul existant.
      */
-    private function computePacEtReleve(
-        float $besoin, float $besoinDep, float $rdim,
+    private function computeParGenerateur(
+        int $cfgId, float $besoin, float $besoinDep, float $rdim,
         DOMElement $node, CalculationContext $context, NodeAccessor $accessor,
     ): bool {
         if (!$node->parentNode instanceof DOMElement
@@ -134,28 +135,28 @@ final class MultiGenerateurs implements CalculatorInterface
             }
             $type = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $gen);
             $normalise = GenerateurChAlias::normalizeNode($type, $gen);
-            // §9.1.4.2 parle d'une « chaudière en relève de PAC » sans
-            // restreindre son énergie : la chaudière électrique (enum 106) en
-            // est une au même titre que les chaudières à combustion.
-            $role = $normalise >= 1 && $normalise <= 19 ? 'pac'
-                : (($normalise >= 55 && $normalise <= 68)
-                    || ($normalise >= 75 && $normalise <= 97)
-                    || $normalise === self::CHAUDIERE_ELECTRIQUE ? 'chaudiere' : null);
-            $rg = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_generation', $gen);
+            $role = $cfgId === 6 ? $this->roleBoisOuReleve($normalise) : $this->rolePacOuChaudiere($normalise);
+            $rg = RendementGenerateur::lire($accessor, $gen);
             if ($role === null || isset($couple[$role]) || $rg === null || $rg <= 0.0) {
                 return false;
             }
             $couple[$role] = [$gen, $rg];
             $hybride = $hybride || GenerateurChAlias::isHybride($type);
         }
-        if (!isset($couple['pac'], $couple['chaudiere'])) {
-            return false;
+        $attendus = $cfgId === 6 ? ['bois', 'releve'] : ['pac', 'chaudiere'];
+        foreach ($attendus as $attendu) {
+            if (!isset($couple[$attendu])) {
+                return false;
+            }
         }
         $zoneId = $context->zoneClimatique
             ?? $accessor->getStringOrNull('//meteo/enum_zone_climatique_id')
             ?? $accessor->getStringOrNull('//caracteristique_generale/enum_zone_climatique_id');
         $zone = $context->zoneGroupe ?? CalculationContext::zoneGroupeFromId($zoneId) ?? 'H1';
-        $parts = $hybride ? GenerateurChAlias::prorataHybride($zone) : ['pac' => 0.8, 'chaudiere' => 0.2];
+        // §9.1.4.1 p.61 : Cch1 = 0,75 × Bch (chaudière bois), Cch2 = 0,25 × Bch.
+        $parts = $cfgId === 6
+            ? ['bois' => 0.75, 'releve' => 0.25]
+            : ($hybride ? GenerateurChAlias::prorataHybride($zone) : ['pac' => 0.8, 'chaudiere' => 0.2]);
         $surface = $this->getShImmeuble($accessor, $node);
         $hauteur = $this->getHsp($accessor, $node);
         $g = $surface * $hauteur > 0.0 ? (float)$context->get('chauffage.gv', 1.0) / ($surface * $hauteur) : 1.0;
@@ -186,6 +187,47 @@ final class MultiGenerateurs implements CalculatorInterface
         $accessor->setChildValue($di, 'conso_ch', $conso);
         $accessor->setChildValue($di, 'conso_ch_depensier', $consoDep);
         return true;
+    }
+
+    /**
+     * §9.1.4.2 p.61 parle d'une « chaudière en relève de PAC » sans
+     * restreindre son énergie : la chaudière électrique (enum 106) en est une
+     * au même titre que les chaudières à combustion.
+     */
+    private function rolePacOuChaudiere(?int $normalise): ?string
+    {
+        if ($normalise === null) {
+            return null;
+        }
+        if ($normalise >= 1 && $normalise <= 19) {
+            return 'pac';
+        }
+
+        return ($normalise >= 55 && $normalise <= 68)
+            || ($normalise >= 75 && $normalise <= 97)
+            || $normalise === self::CHAUDIERE_ELECTRIQUE ? 'chaudiere' : null;
+    }
+
+    /**
+     * §9.1.4.1 p.61 : « une chaudière bois assurant principalement le
+     * chauffage sauf par temps doux ou en mi-saison où une PAC ou chaudière
+     * prend le relais ». La chaudière bois porte 0,75 du besoin, celle qui la
+     * relève 0,25 — quelle que soit son énergie.
+     *
+     * Les chaudières bois sont les types 55 à 74 du XSD, bûche, plaquette et
+     * granulés confondus ; les poêles bouilleur 48 et 49 chauffent le même
+     * réseau d'eau.
+     */
+    private function roleBoisOuReleve(?int $normalise): ?string
+    {
+        if ($normalise === null) {
+            return null;
+        }
+        if (($normalise >= 55 && $normalise <= 74) || $normalise === 48 || $normalise === 49) {
+            return 'bois';
+        }
+
+        return $this->rolePacOuChaudiere($normalise) !== null ? 'releve' : null;
     }
 
     private function cfgId(DOMElement $node): ?int

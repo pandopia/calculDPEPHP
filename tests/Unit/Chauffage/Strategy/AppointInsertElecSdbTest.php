@@ -53,7 +53,13 @@ final class AppointInsertElecSdbTest extends TestCase
         self::assertSame(675.0, (float)(new DOMXPath($doc))->evaluate('string(donnee_intermediaire/besoin_ch)', $installation));
     }
 
-    public function testConserveLeRepliQuandLesLiensNeSontPasRenseignes(): void
+    /**
+     * Sans les liens, le repli par rang ne peut plus désigner de branche. Une
+     * installation seule dans sa collection reçoit alors le besoin entier :
+     * lui en retirer 32,5 % laisserait cette part du besoin de chauffage sans
+     * aucun générateur pour la couvrir.
+     */
+    public function testUneInstallationSeuleSansLiensGardeLeBesoinEntier(): void
     {
         [$doc, $installation, $context] = $this->installation(false, 1.0);
         $xpath = new DOMXPath($doc);
@@ -61,7 +67,7 @@ final class AppointInsertElecSdbTest extends TestCase
             $lien->parentNode->removeChild($lien);
         }
         (new AppointInsertElecSdb())->calculate($installation, $context);
-        self::assertSame(675.0, (float)$xpath->evaluate('string(donnee_intermediaire/besoin_ch)', $installation));
+        self::assertSame(1000.0, (float)$xpath->evaluate('string(donnee_intermediaire/besoin_ch)', $installation));
     }
 
     /** @return array{DOMDocument, DOMElement, CalculationContext} */

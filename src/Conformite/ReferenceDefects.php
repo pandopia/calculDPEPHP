@@ -48,6 +48,18 @@ final class ReferenceDefects
         ],
     ];
 
+    /**
+     * Agrégats qui, comme les coûts, sont à énergie donnée des multiples
+     * fixes de la consommation finale : l'énergie primaire et les émissions
+     * de gaz à effet de serre.
+     *
+     * @var list<array{0: string, 1: string}> [préfixe de bloc, racine de la grandeur]
+     */
+    private const AGREGATS_DEPENSIER = [
+        ['dpe/logement/sortie/ep_conso/', 'ep_conso'],
+        ['dpe/logement/sortie/emission_ges/', 'emission_ges'],
+    ];
+
     private const COUT_PREFIX = 'dpe/logement/sortie/cout/';
     private const EF_PREFIX = 'dpe/logement/sortie/ef_conso/';
     private const APPORT_PREFIX = 'dpe/logement/sortie/apport_et_besoin/';
@@ -138,6 +150,7 @@ final class ReferenceDefects
             $suspects += self::bouclageEcsSansAuxiliaire($expected, $referenceDoc);
             $suspects += self::pontThermiqueKPorteDejaLaLongueur($referenceDoc);
             $suspects += self::apportsSerialisesEnWattheures($referenceDoc);
+            $suspects += self::isolantDePlancherBasDeclareMaisIgnore($referenceDoc);
         }
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
@@ -153,31 +166,27 @@ final class ReferenceDefects
         }
 
         foreach (self::COUTS_DEPENSIER as [$cout, $coutDep, $conso, $consoDep]) {
-            $vCout = self::num($expected, self::COUT_PREFIX . $cout);
-            $vCoutDep = self::num($expected, self::COUT_PREFIX . $coutDep);
-            $vConso = self::num($expected, self::EF_PREFIX . $conso);
-            $vConsoDep = self::num($expected, self::EF_PREFIX . $consoDep);
-
-            if ($vCout === null || $vCoutDep === null || $vConso === null || $vConsoDep === null) {
-                continue;
-            }
-            if ($vCout == 0.0 || $vConso == 0.0) {
-                continue;
-            }
-            if (abs($vCout - $vCoutDep) / abs($vCout) > 1e-9) {
-                continue;
-            }
-            if (abs($vConso - $vConsoDep) / abs($vConso) <= 1e-6) {
-                continue;
-            }
-
-            $suspects[$coutDep] = sprintf(
-                'la référence recopie %s dans %s alors que les consommations diffèrent (%.0f vs %.0f kWh)',
+            $suspects += self::valeurDepensiereRecopiee(
+                $expected,
+                self::COUT_PREFIX,
                 $cout,
                 $coutDep,
-                $vConso,
-                $vConsoDep,
+                $conso,
+                $consoDep,
             );
+        }
+
+        foreach (self::AGREGATS_DEPENSIER as [$prefixe, $grandeur]) {
+            foreach (['ch', 'ecs', 'fr'] as $usage) {
+                $suspects += self::valeurDepensiereRecopiee(
+                    $expected,
+                    $prefixe,
+                    $grandeur . '_' . $usage,
+                    $grandeur . '_' . $usage . '_depensier',
+                    'conso_' . $usage,
+                    'conso_' . $usage . '_depensier',
+                );
+            }
         }
 
         return $suspects;
@@ -192,6 +201,55 @@ final class ReferenceDefects
      * @param array<string, string> $expected
      * @return array<string, string>
      */
+    /**
+     * Une grandeur du scénario dépensier recopiée du conventionnel alors que
+     * les deux consommations diffèrent.
+     *
+     * Le coût, l'énergie primaire et les émissions sont, à énergie donnée, des
+     * multiples fixes de la consommation finale : publier la même valeur pour
+     * deux consommations différentes est une contradiction du fichier seul,
+     * sans qu'aucun résultat de notre moteur n'intervienne.
+     *
+     * @param array<string, string> $expected
+     * @return array<string, string>
+     */
+    private static function valeurDepensiereRecopiee(
+        array $expected,
+        string $prefixe,
+        string $grandeur,
+        string $grandeurDep,
+        string $conso,
+        string $consoDep,
+    ): array {
+        $valeur = self::num($expected, $prefixe . $grandeur);
+        $valeurDep = self::num($expected, $prefixe . $grandeurDep);
+        $vConso = self::num($expected, self::EF_PREFIX . $conso);
+        $vConsoDep = self::num($expected, self::EF_PREFIX . $consoDep);
+
+        if ($valeur === null || $valeurDep === null || $vConso === null || $vConsoDep === null) {
+            return [];
+        }
+        if ($valeur == 0.0 || $vConso == 0.0) {
+            return [];
+        }
+        if (abs($valeur - $valeurDep) / abs($valeur) > 1e-9) {
+            return [];
+        }
+        if (abs($vConso - $vConsoDep) / abs($vConso) <= 1e-6) {
+            return [];
+        }
+
+        return [
+            $grandeurDep => sprintf(
+                'la référence recopie %s dans %s alors que les consommations diffèrent (%.0f vs %.0f kWh)',
+                $grandeur,
+                $grandeurDep,
+                $vConso,
+                $vConsoDep,
+            ),
+        ];
+    }
+
     private static function bouclageEcsSansAuxiliaire(array $expected, DOMDocument $doc): array
     {
         $xp = new DOMXPath($doc);
@@ -360,6 +418,64 @@ final class ReferenceDefects
         }
 
         return $suspects;
+    }
+
+    /**
+     * §3.2.2 p.20 : lorsque la résistance de l'isolant d'un plancher bas est
+     * connue, « Upb = 1 / (1/Upb0 + R) » — la branche « Isolation ? Oui →
+     * Résistance isolant » de l'arbre de décision. Un fichier qui déclare à la
+     * fois un type d'isolation, une méthode de saisie par résistance
+     * (`enum_methode_saisie_u_id` 5 ou 6) et une `resistance_isolation`
+     * positive, puis publie `upb` égal à `upb0`, se contredit : il décrit un
+     * plancher isolé et en publie le coefficient non isolé.
+     *
+     * Preuve sur la référence seule, sans aucun résultat de notre moteur.
+     *
+     * @spec-section 3.2.2
+     * @spec-pages   20
+     * @spec-source  resources/specsplitted/03-enveloppe-deperditions/02-parois-opaques/02-upb/00-calcul.md
+     * @return array<string, string>
+     */
+    private static function isolantDePlancherBasDeclareMaisIgnore(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+
+        foreach ($xpath->query('//plancher_bas') as $plancher) {
+            if (!$plancher instanceof DOMElement) {
+                continue;
+            }
+
+            $methode = self::nombreEnfant($xpath, './donnee_entree/enum_methode_saisie_u_id', $plancher);
+            if ($methode === null || !in_array((int)$methode, [5, 6], true)) {
+                continue;
+            }
+
+            $resistance = self::nombreEnfant($xpath, './donnee_entree/resistance_isolation', $plancher);
+            $isolation = self::nombreEnfant($xpath, './donnee_entree/enum_type_isolation_id', $plancher);
+            if ($resistance === null || $resistance <= 0.0
+                || $isolation === null || in_array((int)$isolation, [1, 2], true)) {
+                continue;
+            }
+
+            $upb = self::nombreEnfant($xpath, './donnee_intermediaire/upb', $plancher);
+            $upb0 = self::nombreEnfant($xpath, './donnee_intermediaire/upb0', $plancher);
+            if ($upb === null || $upb0 === null || $upb0 <= 0.0 || abs($upb - $upb0) > 1e-9) {
+                continue;
+            }
+
+            return [
+                'upb' => sprintf(
+                    'la référence déclare un plancher bas isolé (résistance %.2f m².K/W saisie et justifiée) '
+                    . 'mais publie upb = upb0 = %.3f, le coefficient non isolé : §3.2.2 p.20 impose '
+                    . 'upb = 1 / (1/upb0 + R) = %.3f',
+                    $resistance,
+                    $upb0,
+                    1.0 / (1.0 / $upb0 + $resistance),
+                ),
+            ];
+        }
+
+        return [];
     }
 
     private static function nodeNum(DOMXPath $xpath, string $query, DOMElement $context): ?float
