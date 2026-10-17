@@ -566,19 +566,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - [ ] Auditer l’autoconsommation photovoltaïque des appartements générés (§16.2) : vérifier l’échelle des consommations lues dans les générateurs et la conversion primaire/finale, au-delà de la répartition des capteurs. Mesurer en A/B sur des cas collectifs et individuels.
 - [ ] Exécuter la couverture PHPUnit avec Xdebug (indisponible dans le runtime utilisé pour cette livraison) et vérifier l’objectif de 80 %.
 
-### TASK-K47 — Date d'arrêté et millésime du réseau 3802C
-
-- [~CLA] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
-- Campagne 50h : bâtiment 1563791, dont 2638E1939755Q (cible 4012840),
-  DPE du 21/07/2026. XML : `date_arrete_reseau_chaleur=2025-04-11` ;
-  référence EF×0,093, moteur EF×0,091, trois GES arrondis 15 contre 14.
-- Le facteur ACV 3802C de l'arrêté du 11/04/2025 est 0,091 ; 0,093
-  correspond au millésime suivant dans les tables du moteur. Qualifier la
-  date d'arrêté publiée et la priorité attendue avec la date du DPE avant
-  de modifier le résolveur. Ne pas remplacer une valeur de table pour ces cas.
-- Source : https://www.legifrance.gouv.fr/jorf/article_jo/JORFARTI000051520830
-
-
 ### TASK-K48 — Entrées des appartements du bâtiment 52041673587983
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
