@@ -568,7 +568,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K47 — Date d'arrêté et millésime du réseau 3802C
 
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- [~CLA] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
 - Campagne 50h : bâtiment 1563791, dont 2638E1939755Q (cible 4012840),
   DPE du 21/07/2026. XML : `date_arrete_reseau_chaleur=2025-04-11` ;
   référence EF×0,093, moteur EF×0,091, trois GES arrondis 15 contre 14.
