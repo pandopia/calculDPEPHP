@@ -204,12 +204,12 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   d'émission est pourtant le bon — 3 292,65 / 10 162,50 = 0,324, exactement
   celui du `sortie_par_energie` de la référence pour le fioul. C'est la
   consommation elle-même qu'il faut reprendre, pas l'aval.
-- La référence se contredit sur les émissions : son agrégat
-  `sortie/emission_ges/emission_ges_ch` vaut 589,53 quand son propre
-  `sortie_par_energie[enum_type_energie_id=3]/emission_ges_ch` vaut 2 417,82.
-  Idem côté ECS, 309,54 contre 1 080,99. Candidat à une règle `ReferenceDefects`
-  générique : *un agrégat d'émissions incompatible avec la somme de sa
-  ventilation par énergie*.
+- **Fait** : la règle générique « un agrégat incompatible avec la somme de sa
+  ventilation par énergie » est implémentée et couvre six balises. Elle
+  attribue 81 balises de plus à la référence et porte le plafond de 92,92 % à
+  92,97 %. Deux formes au corpus : une ventilation valant exactement le double
+  de son agrégat (2133E0741159K, lignes dupliquées) et une ventilation
+  entièrement nulle sous un agrégat positif (2659E2596108U, 2659E2236157N).
 - Son `version_moteur_calcul` est « inconnu » et elle omet beaucoup
   d'intermédiaires que le schéma prévoit — `pn`, `qp0`, `rpn`, `temp_fonc_*`,
   `b` des planchers, `surface_sud_equivalente`, `deperdition_plancher_*` — d'où

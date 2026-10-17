@@ -159,6 +159,7 @@ final class ReferenceDefects
             $suspects += self::pontThermiqueKPorteDejaLaLongueur($referenceDoc);
             $suspects += self::apportsSerialisesEnWattheures($referenceDoc);
             $suspects += self::isolantDePlancherBasDeclareMaisIgnore($referenceDoc);
+            $suspects += self::agregatIncompatibleAvecSaVentilation($referenceDoc);
         }
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
@@ -494,6 +495,86 @@ final class ReferenceDefects
         }
 
         return [];
+    }
+
+    /**
+     * Grandeurs que `<sortie>` publie à la fois en agrégat et ventilées par
+     * énergie dans `<sortie_par_energie_collection>`.
+     *
+     * @var list<array{0: string, 1: string}> [bloc d'agrégat, nom de la balise]
+     */
+    private const AGREGATS_VENTILES = [
+        ['ef_conso', 'conso_ch'],
+        ['ef_conso', 'conso_ecs'],
+        ['ep_conso', 'ep_conso_ch'],
+        ['cout', 'cout_ch'],
+        ['emission_ges', 'emission_ges_ch'],
+        ['emission_ges', 'emission_ges_ecs'],
+    ];
+
+    /**
+     * Un agrégat de `<sortie>` que sa propre ventilation par énergie ne
+     * reproduit pas.
+     *
+     * Le XSD définit `sortie_par_energie_collection` comme la décomposition de
+     * `<sortie>` par type d'énergie : leur somme est l'agrégat, par
+     * construction. Quand les deux divergent, le fichier se contredit — sans
+     * qu'aucun résultat de notre moteur n'intervienne.
+     *
+     * Deux formes au corpus : une ventilation qui vaut exactement le double de
+     * son agrégat, sur toutes les balises à la fois (2133E0741159K, dont les
+     * lignes sont dupliquées), et une ventilation entièrement nulle sous un
+     * agrégat positif (2659E2596108U, 2659E2236157N).
+     *
+     * @return array<string, string>
+     */
+    private static function agregatIncompatibleAvecSaVentilation(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+        $lignes = $xpath->query('//sortie_par_energie');
+        if ($lignes === false || $lignes->length === 0) {
+            return [];
+        }
+
+        $suspects = [];
+        foreach (self::AGREGATS_VENTILES as [$bloc, $balise]) {
+            $agregatNoeud = $xpath->query('//sortie/' . $bloc . '/' . $balise)->item(0);
+            if (!$agregatNoeud instanceof DOMElement) {
+                continue;
+            }
+            $agregat = (float)str_replace(',', '.', trim($agregatNoeud->textContent));
+            if ($agregat <= 0.0) {
+                continue;
+            }
+
+            $somme = 0.0;
+            $publiees = 0;
+            foreach ($lignes as $ligne) {
+                if (!$ligne instanceof DOMElement) {
+                    continue;
+                }
+                $valeur = self::nombreEnfant($xpath, './' . $balise, $ligne);
+                if ($valeur !== null) {
+                    $somme += $valeur;
+                    $publiees++;
+                }
+            }
+            if ($publiees === 0 || abs($somme - $agregat) <= 0.005 * $agregat) {
+                continue;
+            }
+
+            $suspects[$balise] = sprintf(
+                'la référence publie %s = %.1f mais sa propre ventilation par énergie en somme %.1f '
+                . 'sur %d ligne(s) : le XSD définit sortie_par_energie comme la décomposition de '
+                . '<sortie>, leur somme est l\'agrégat par construction',
+                $balise,
+                $agregat,
+                $somme,
+                $publiees,
+            );
+        }
+
+        return $suspects;
     }
 
     private static function nodeNum(DOMXPath $xpath, string $query, DOMElement $context): ?float
