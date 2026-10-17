@@ -435,19 +435,11 @@ final class ReferenceDefects
         DOMDocument $doc,
     ): array {
         $consoSortie = self::num($expected, self::EF_PREFIX . 'conso_auxiliaire_ventilation');
-        if ($consoSortie === null || $consoSortie <= 0.0) {
-            return [];
-        }
-
         $xpath = new DOMXPath($doc);
         $ventilations = $xpath->query('//logement/ventilation_collection/ventilation');
         if ($ventilations === false || $ventilations->length === 0) {
             return [];
         }
-
-        $motif = 'la référence publie pvent_moy = 0 alors que le même fichier déclare une '
-            . 'consommation d\'auxiliaires de ventilation non nulle dans sortie/ef_conso, '
-            . 'ce que §5 p.41 (Caux_vent = 8760 × Pventmoy / 1000) interdit';
 
         $suspects = [];
         foreach ($ventilations as $index => $ventilation) {
@@ -458,6 +450,28 @@ final class ReferenceDefects
             if ($pvent === null || $pvent != 0.0) {
                 continue;
             }
+
+            // La contradiction se lit à deux endroits, indépendamment : dans
+            // l'agrégat de `sortie`, ou dans la `donnee_intermediaire` de la
+            // ventilation elle-même. Le corpus porte les deux formes, et la
+            // seconde parfois **sous** une sortie nulle — le fichier se
+            // contredit alors entre ses deux niveaux en plus de contredire §5.
+            $consoLocale = self::nodeNum(
+                $xpath,
+                './donnee_intermediaire/conso_auxiliaire_ventilation',
+                $ventilation,
+            );
+            $parLaSortie = $consoSortie !== null && $consoSortie > 0.0;
+            $parLIntermediaire = $consoLocale !== null && $consoLocale > 0.0;
+            if (!$parLaSortie && !$parLIntermediaire) {
+                continue;
+            }
+
+            $motif = 'la référence publie pvent_moy = 0 alors que le même fichier déclare une '
+                . 'consommation d\'auxiliaires de ventilation non nulle dans '
+                . ($parLaSortie ? 'sortie/ef_conso' : 'la donnee_intermediaire de la ventilation')
+                . ', ce que §5 p.41 (Caux_vent = 8760 × Pventmoy / 1000) interdit';
+
             $suffixe = $ventilations->length === 1 ? '' : '@' . ($index + 1);
             $suspects['pvent_moy' . $suffixe] = $motif;
             $suspects['conso_auxiliaire_ventilation' . $suffixe] = $motif;
