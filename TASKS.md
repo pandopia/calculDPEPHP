@@ -304,9 +304,16 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
     supplémentaires seraient créées en le publiant. On ne l'écrit pas.
   - les 12 balises `rendement_generation` surnuméraires restantes portent sur
     des générateurs **à combustion**, pas thermodynamiques : question distincte.
-- Reste : 54 divergences de `rendement_generation` en ECS réparties sur 46 cas,
-  aux rapports ref/nous dispersés (0,60 à 2,05) sans famille dominante. Isoler
-  les causes par configuration, sans règle globale déduite d'un seul fichier.
+- Reste : 45 divergences de `rendement_generation` en ECS sur 509 cas, aux
+  rapports dispersés de 0,49 à 1,66. Le regroupement par type de générateur ne
+  dégage pas de famille — treize sur des chaudières gaz standard 2001-2015
+  (type 49), neuf sur des gaz à condensation 2001-2015 (56), six sur des gaz à
+  condensation après 2015 (57), puis une queue d'une ou deux occurrences sur
+  dix autres types, tous à combustion.
+- Deux fichiers concentrent huit de ces divergences, 2400E0669495Y et
+  2400E0669425G : ils déclarent `nombre_appartement = 1` pour un immeuble de
+  822 m² desservi par sept installations d'ECS. L'échelle est le suspect, pas
+  le rendement — les instruire avant le reste (cf. TASK-K31).
 - Objectif : famille « Génération ECS » au-dessus de 92 % en profil strict
   (84,62 % actuellement).
 
