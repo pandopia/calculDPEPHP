@@ -192,4 +192,52 @@ XML);
         self::assertEqualsWithDelta(0.77, $ligne['rpn'], 1e-9);
         self::assertEqualsWithDelta(0.74, $ligne['rpint'], 1e-9);
     }
+
+    /**
+     * §13.2.2.3 p.90 donne aux chaudières bois les formules de §13.2.2.1 :
+     * même point de fonctionnement à 50 % de charge, mêmes QP50 et QP100 sans
+     * correction de température. Le cas reprend 2400E0180612T.
+     */
+    public function testChaudiereBoisSuitLeMemeProfilQueLAirChaud(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<logement>
+  <caracteristique_generale>
+    <enum_methode_application_dpe_log_id>1</enum_methode_application_dpe_log_id>
+    <enum_zone_climatique_id>5</enum_zone_climatique_id>
+    <enum_classe_altitude_id>1</enum_classe_altitude_id>
+  </caracteristique_generale>
+  <installation_chauffage><generateur_chauffage_collection><generateur_chauffage>
+    <donnee_entree>
+      <enum_type_generateur_ch_id>74</enum_type_generateur_ch_id>
+      <reference>gen-bois</reference>
+      <enum_type_energie_id>5</enum_type_energie_id>
+      <enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id>
+    </donnee_entree>
+    <donnee_intermediaire>
+      <pn>24000</pn><rpn>0.87</rpn><rpint>0.9</rpint>
+      <qp0>120</qp0><pveil>0</pveil>
+    </donnee_intermediaire>
+  </generateur_chauffage></generateur_chauffage_collection></installation_chauffage>
+</logement>
+XML);
+        $context = new CalculationContext(
+            document: $document,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        );
+        $context->set('chauffage.gv', 150.0);
+
+        (new RendementAnnuelMoyenCalculator())->calculate(
+            $document->getElementsByTagName('generateur_chauffage')->item(0),
+            $context,
+        );
+
+        $di = $document->getElementsByTagName('donnee_intermediaire')->item(0);
+        $rg = (float)$di->getElementsByTagName('rendement_generation')->item(0)->textContent;
+
+        // Une chaudière granulés récente reste proche de ses 87 % nominaux.
+        self::assertGreaterThan(0.78, $rg);
+        self::assertLessThan(0.90, $rg);
+    }
 }
