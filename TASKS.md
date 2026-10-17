@@ -401,31 +401,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   - `upb = 2,0` contre 0,25 : même motif que TASK-H08.
 - Ne rouvrir qu'avec de nouveaux cas de méthode 33 au corpus.
 
-### TASK-K42 — Échelles des exports exhaustifs chauffage et ECS
-
-- [ ] Owner: __ | Phase: K | Priorité: moyenne
-- **Chiffres périmés, à ne pas reprendre tels quels.** Les trois cas nommés
-  sont désormais au corpus. Sur `2659E0496026K` la référence publie
-  `conso_ch` = 4 414,285 et nous 4 259,309, soit **3,5 %** d'écart et non le
-  facteur 2 annoncé : la consommation est déjà publiée par système. Le résidu
-  tient au rendement de génération, 0,996572 contre 1,032846.
-- **Piste mesurée et retirée.** Faire consulter
-  `ChauffageInstallationMultiplicity` pour les installations que
-  `ExhaustiveInstallationNormalizer` ramène de la méthode 4 à la 1 — plomberie
-  par le contexte, garde sur le chemin du nœud — est **sans effet** : le
-  comportement attendu est déjà obtenu par une autre voie.
-- **Avertissement de mesure.** Une première version de cette plomberie laissait
-  `$context` hors portée dans EfConso et EpConso : 37 cas plantaient, et un cas
-  planté ne compte aucun écart. Le rapport affichait alors −1 350 écarts, pur
-  artefact. Toujours vérifier `cases_crashed` avant de lire un gain.
-- Requalifier le garde de `ExhaustiveInstallationNormalizer` depuis les seules
-  entrées et §17 ; pas de branche fondée sur un résultat attendu ou un numéro.
-- Cas lié ECS : `2559E3128801Y` (419079/419083), format 2.5, quatre logements.
-  Référence besoin ECS = 4 926,122 kWh, moteur = 1 231,530, rendement 0,854926
-  contre 0,698657. Distinguer groupe entier et appartement moyen avec TASK-K06.
-- Preuves et corpus figé : `docs/corrections-campagne-50f.md` et rapport
-  applicatif `docs/dpe-campaigns/dpe-campaign-50f/`.
-
 ### TASK-K46 — Contenu CO2 des réseaux : la colonne ACV est confirmée
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
