@@ -190,6 +190,19 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   2400E0669425G : ils déclarent `nombre_appartement = 1` pour un immeuble de
   822 m² desservi par sept installations d'ECS. L'échelle est le suspect, pas
   le rendement — les instruire avant le reste (cf. TASK-K31).
+- **COP des chauffe-eau thermodynamiques : tranché, c'est la référence.**
+  Sur les neuf cas en écart, notre valeur est **à chaque fois** celle de la
+  table §14.2 p.95 lue sur la bonne ligne, et la référence est au-dessus :
+  2400E0020849A (type 3 « CET air ambiant 2015-2026 », H1a → 2,5) publie 2,8 ;
+  2401E0359228Q (type 2, 2010-2014, H1c → 2,2) publie 2,5 ; 2601E0981468A
+  (type 12 « PAC double service », H1c → 2,3) publie 2,6, la valeur H3.
+  **Deux fichiers aux entrées identiques se contredisent** : 2600E0099076V et
+  2400E4097217K déclarent tous deux zone H2c, type 6, période 3 et saisie
+  forfaitaire, pour des COP de 3,8 et 3,2.
+- `copForfaitaireHorsTable()` impute les trois dont la valeur n'existe nulle
+  part dans §14.2 — 3,8, 3,2 et 3,07 sous `enum_methode_saisie_carac_sys_id`
+  = 1. Les six autres sont des valeurs du tableau lues sur la mauvaise ligne :
+  les départager demanderait de refaire le calcul, pas de lire le fichier.
 - Objectif : famille « Génération ECS » au-dessus de 92 % en profil strict
   (84,62 % actuellement).
 

@@ -60,6 +60,17 @@ final class ReferenceDefects
         ['dpe/logement/sortie/emission_ges/', 'emission_ges'],
     ];
 
+    /** `enum_methode_saisie_carac_sys_id` = 1 : « valeurs forfaitaires ». */
+    private const SAISIE_FORFAITAIRE = 1;
+
+    /**
+     * Les seules valeurs de COP que §14.2 p.95 tabule, deux zones et trois
+     * millésimes confondus.
+     *
+     * @var list<float>
+     */
+    private const COP_TABULES_14_2 = [2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.8, 2.9];
+
     /**
      * `enum_type_doublage_id` dont §3.2.1.2 p.16 fixe la résistance à
      * 0,21 m².K/W : 4 « lame d'air de plus de 15 mm », 5 « matériau de
@@ -185,6 +196,7 @@ final class ReferenceDefects
             $suspects += self::mesureDEtancheiteDeclareeMaisIgnoree($referenceDoc);
             $suspects += self::productionSolaireIncompatibleAvecSaConso($referenceDoc);
             $suspects += self::doublageDeMurDeclareMaisIgnore($referenceDoc);
+            $suspects += self::copForfaitaireHorsTable($referenceDoc);
         }
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
@@ -727,6 +739,70 @@ final class ReferenceDefects
                     (int) $doublage,
                     $umur0,
                     self::UMUR0_MAX_AVEC_DOUBLAGE,
+                ),
+            ];
+        }
+
+        return [];
+    }
+
+    /**
+     * COP forfaitaire d'un chauffe-eau thermodynamique absent de §14.2.
+     *
+     * §14.2 p.95 : « Le tableau suivant donne les caractéristiques par défaut
+     * des chauffe-eau thermodynamiques **si les caractéristiques exactes des
+     * équipements ne peuvent pas être saisies** ». Ce tableau est fini : trois
+     * familles — CET sur air extérieur ou ambiant, CET sur air extrait, PAC
+     * double service — par trois millésimes et deux groupes de zones, soit
+     * les seules valeurs 2 ; 2,1 ; 2,2 ; 2,3 ; 2,4 ; 2,5 ; 2,6 ; 2,8 ; 2,9.
+     *
+     * Quand le générateur déclare `enum_methode_saisie_carac_sys_id` = 1,
+     * « valeurs forfaitaires », son COP ne peut donc être qu'une de ces neuf
+     * valeurs. Un COP publié hors de cet ensemble ne vient d'aucune ligne de
+     * la méthode, et la déclaration exclut la saisie justifiée qui
+     * l'autoriserait. La preuve tient sur le seul fichier de référence.
+     *
+     * Les COP présents dans l'ensemble mais lus sur la mauvaise ligne — zone
+     * H3 au lieu de H1/H2, ou famille voisine — ne sont pas couverts : les
+     * départager demanderait de refaire le calcul, pas de lire le fichier.
+     *
+     * @return array<string, string>
+     */
+    private static function copForfaitaireHorsTable(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+
+        foreach ($xpath->query('//generateur_ecs') as $generateur) {
+            if (!$generateur instanceof DOMElement) {
+                continue;
+            }
+
+            $saisie = self::nombreEnfant($xpath, './donnee_entree/enum_methode_saisie_carac_sys_id', $generateur);
+            if ($saisie === null || (int) $saisie !== self::SAISIE_FORFAITAIRE) {
+                continue;
+            }
+
+            $cop = self::nombreEnfant($xpath, './donnee_intermediaire/cop', $generateur);
+            if ($cop === null || $cop <= 0.0) {
+                continue;
+            }
+
+            foreach (self::COP_TABULES_14_2 as $tabule) {
+                if (abs($cop - $tabule) < 1e-9) {
+                    continue 2;
+                }
+            }
+
+            return [
+                'cop' => sprintf(
+                    'la référence déclare une saisie forfaitaire '
+                    . '(enum_methode_saisie_carac_sys_id = 1) mais publie cop = %s : §14.2 p.95 '
+                    . 'ne tabule que %s pour les chauffe-eau thermodynamiques',
+                    rtrim(rtrim(sprintf('%.4f', $cop), '0'), '.'),
+                    implode(' ; ', array_map(
+                        static fn (float $v): string => rtrim(rtrim(sprintf('%.1f', $v), '0'), '.'),
+                        self::COP_TABULES_14_2,
+                    )),
                 ),
             ];
         }
