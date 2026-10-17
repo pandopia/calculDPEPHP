@@ -56,9 +56,17 @@ return [
     15 => ['qvarep' => 1.09, 'qvasouf' => 0.00, 'smea' => 1.5,  'pvent_immeuble' => 0.25,    'pvent_maison' => 15.0  ], // SF Hygro B après 2012
 
     // VMC Basse Pression (mêmes puissances que VMC classiques, §5 p.41)
-    16 => ['qvarep' => 1.97, 'qvasouf' => 0.00, 'smea' => 2.0,  'pvent_immeuble' => 0.46,    'pvent_maison' => 65.0  ], // BP Auto
-    17 => ['qvarep' => 1.30, 'qvasouf' => 0.00, 'smea' => 2.0,  'pvent_immeuble' => 0.46,    'pvent_maison' => 50.0  ], // BP Hygro A
-    18 => ['qvarep' => 1.24, 'qvasouf' => 0.00, 'smea' => 1.5,  'pvent_immeuble' => 0.46,    'pvent_maison' => 50.0  ], // BP Hygro B
+    // §5 p.50 : « Les puissances d'auxiliaires des VMC basse pression sont
+    // les mêmes que pour les VMC classiques. » Le libellé XSD de ces trois
+    // types ne porte aucune date, contrairement à toutes les autres VMC :
+    // c'est `ventilation_post_2012` qui désigne la colonne du tableau, d'où
+    // les deux jeux de puissances.
+    16 => ['qvarep' => 1.97, 'qvasouf' => 0.00, 'smea' => 2.0,  'pvent_immeuble' => 0.46,    'pvent_maison' => 65.0,
+           'pvent_immeuble_post_2012' => 0.25, 'pvent_maison_post_2012' => 35.0 ], // BP Auto
+    17 => ['qvarep' => 1.30, 'qvasouf' => 0.00, 'smea' => 2.0,  'pvent_immeuble' => 0.46,    'pvent_maison' => 50.0,
+           'pvent_immeuble_post_2012' => 0.25, 'pvent_maison_post_2012' => 15.0 ], // BP Hygro A
+    18 => ['qvarep' => 1.24, 'qvasouf' => 0.00, 'smea' => 1.5,  'pvent_immeuble' => 0.46,    'pvent_maison' => 50.0,
+           'pvent_immeuble_post_2012' => 0.25, 'pvent_maison_post_2012' => 15.0 ], // BP Hygro B
 
     // VMC Double Flux individuelle
     19 => ['qvarep' => 0.60, 'qvasouf' => 0.60, 'smea' => 0.0,  'pvent_immeuble' => 1.10,    'pvent_maison' => 80.0  ], // DF indiv avec échangeur ≤ 2012
@@ -95,8 +103,15 @@ return [
     34 => ['qvarep' => 2.23, 'qvasouf' => 0.00, 'smea' => 3.0,  'pvent_immeuble' => 0.0,     'pvent_maison' => 0.0   ],
 
     // Puits climatique (assimilé DF, §4 p.40 — correction température intégrée dans les débits)
-    35 => ['qvarep' => 0.99, 'qvasouf' => 0.99, 'smea' => 0.0,  'pvent_immeuble' => 1.10,    'pvent_maison' => 80.0  ], // Puits climatique sans échangeur ≤ 2012
-    36 => ['qvarep' => 0.79, 'qvasouf' => 0.79, 'smea' => 0.0,  'pvent_immeuble' => 0.60,    'pvent_maison' => 35.0  ], // Puits climatique sans échangeur après 2012
+    //
+    // §5 p.50 tabule la puissance des auxiliaires par nombre de flux : un
+    // puits climatique **sans** échangeur n'extrait que l'air vicié, c'est un
+    // simple flux (65 W et 0,46 W/(m³/h) jusqu'à 2012 ; 35 W et 0,25 après).
+    // Seul celui **avec** échangeur souffle et extrait, et relève du double
+    // flux. Les deux lignes sans échangeur portaient les valeurs du double
+    // flux ; 2401E1474278E publie bien 65 W pour un type 35.
+    35 => ['qvarep' => 0.99, 'qvasouf' => 0.99, 'smea' => 0.0,  'pvent_immeuble' => 0.46,    'pvent_maison' => 65.0  ], // Puits climatique sans échangeur ≤ 2012
+    36 => ['qvarep' => 0.79, 'qvasouf' => 0.79, 'smea' => 0.0,  'pvent_immeuble' => 0.25,    'pvent_maison' => 35.0  ], // Puits climatique sans échangeur après 2012
     37 => ['qvarep' => 0.36, 'qvasouf' => 0.36, 'smea' => 0.0,  'pvent_immeuble' => 1.10,    'pvent_maison' => 80.0  ], // Puits climatique avec échangeur ≤ 2012
     38 => ['qvarep' => 0.16, 'qvasouf' => 0.16, 'smea' => 0.0,  'pvent_immeuble' => 0.60,    'pvent_maison' => 35.0  ], // Puits climatique avec échangeur après 2012
 ];

@@ -74,9 +74,19 @@ final class PventMoyCalculator implements CalculatorInterface
             return;
         }
 
+        // §5 p.50 tabule deux colonnes, « jusqu'à 2012 » et « après 2012 ».
+        // Le libellé XSD porte l'époque pour toutes les VMC sauf les trois
+        // basse pression (16, 17, 18) : pour elles seules, `ventilation_post_2012`
+        // la désigne. Ailleurs le drapeau contredit parfois le type — il vaut
+        // 0 et 1 sur un même type 9 ou 15 du corpus — et n'est donc pas lu.
+        $suffixe = isset($row['pvent_maison_post_2012'])
+            && $accessor->getIntOrNull('./ventilation_post_2012', $entree) === 1
+            ? '_post_2012'
+            : '';
+
         $pventMoy = $this->isMaison($node, $accessor)
-            ? (float)$row['pvent_maison']
-            : (float)$row['pvent_immeuble'] * (float)$row['qvarep'] * $sh;
+            ? (float)$row['pvent_maison' . $suffixe]
+            : (float)$row['pvent_immeuble' . $suffixe] * (float)$row['qvarep'] * $sh;
 
         // Ventilation naturelle : aucun moteur, donc aucune puissance. Le XSD
         // rend `pvent_moy` facultative et nillable, et les deux formats du
