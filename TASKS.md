@@ -508,7 +508,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K30 — Réseau de chaleur ECS multi-bâtiment : 0,9 ou 0,75 ?
 
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
+- [~CLA] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
 - §14.3 p.95 remplace Rs × Rg par le rendement d'échange de la sous-station :
   0,9 si l'installation est isolée, 0,75 sinon. Le XSD ne porte ce qualificatif
   que sur les réseaux urbains 72/73 ; les types 74-77 et 134, « chaudière(s) …
