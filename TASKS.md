@@ -79,7 +79,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K33 — Coût d'une installation de chauffage bi-énergie
 
-- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
+- [~CLA] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
 - `CoutCalculator::primaryEnergieId` retient l'énergie du **premier** générateur
   pour tarifer toute l'installation, comme le faisaient `EpConsoCalculator` et
   `EmissionGesCalculator` avant d'être corrigés. Sur les configurations §9.3
