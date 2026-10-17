@@ -153,15 +153,15 @@ XML;
     }
 
     /**
-     * §15.1.1 : Bch_g est le besoin couvert par le générateur, approché par
-     * surface_chauffee / surface desservie. Dans un DPE d'appartement, le
-     * besoin porté par l'installation est celui de l'appartement : la surface
-     * desservie est celle du logement, même quand le fichier renseigne aussi
-     * celle de l'immeuble.
+     * §15.1.1 : Bch_g est le besoin couvert par le générateur. Quand la
+     * stratégie a déjà proratisé le besoin publié sur l'installation — ici
+     * celui de l'appartement, qui chauffe toute sa surface — l'auxiliaire le
+     * reprend tel quel, sans seconde part surfacique.
      */
-    public function testDpeAppartementRapporteLeBesoinALaSurfaceDuLogement(): void
+    public function testLAuxiliaireReprendLeBesoinDejaProratise(): void
     {
         [$doc, $logement, $ctx] = $this->buildDoc($this->fioulAvecSurfaces(2));
+        $ctx->set('chauffage.besoin_ch', 4549.0289651514);
         (new AuxGenerationCalculator())->calculate($logement, $ctx);
 
         // Paux = 20 + 1,6 x 18 = 48,8 W ; Q = 48,8 x 4549,03 / 18000.
@@ -169,12 +169,14 @@ XML;
     }
 
     /**
-     * Un DPE immeuble collectif porte en revanche un besoin à l'échelle de
-     * l'immeuble : la surface desservie est celle de l'immeuble.
+     * Une installation qui porte encore le besoin entier du DPE tout en ne
+     * chauffant qu'une fraction de la surface desservie n'en couvre que cette
+     * fraction : §15.1.1 ramène alors Bch_g à `surface_chauffee / Sh`.
      */
-    public function testDpeImmeubleRapporteLeBesoinALaSurfaceDeLImmeuble(): void
+    public function testUneInstallationPortantToutLeBesoinNenCouvreQueSaSurface(): void
     {
         [$doc, $logement, $ctx] = $this->buildDoc($this->fioulAvecSurfaces(9));
+        $ctx->set('chauffage.besoin_ch', 4549.0289651514);
         (new AuxGenerationCalculator())->calculate($logement, $ctx);
 
         $this->assertEqualsWithDelta(
@@ -182,6 +184,20 @@ XML;
             $this->efValue($doc, 'conso_auxiliaire_generation_ch'),
             0.0001
         );
+    }
+
+    /**
+     * Le même immeuble, mais dont les stratégies ont réparti le besoin entre
+     * plusieurs installations : chacune ne porte plus que sa part, et la
+     * reproratiser la compterait deux fois (2400E0669882V, mode 6).
+     */
+    public function testUnBesoinDejaRepartiNestPasReproratise(): void
+    {
+        [$doc, $logement, $ctx] = $this->buildDoc($this->fioulAvecSurfaces(9));
+        $ctx->set('chauffage.besoin_ch', 44877.590295596);
+        (new AuxGenerationCalculator())->calculate($logement, $ctx);
+
+        $this->assertEqualsWithDelta(12.3329, $this->efValue($doc, 'conso_auxiliaire_generation_ch'), 0.001);
     }
 
     /**

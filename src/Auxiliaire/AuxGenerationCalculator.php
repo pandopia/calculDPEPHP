@@ -176,16 +176,20 @@ final class AuxGenerationCalculator implements CalculatorInterface
             $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation',       $install) ?? 1.0;
 
             // §15.1.1 : Bch_g est « le besoin annuel d'énergie assuré par le
-            // générateur », réduit à « la part du besoin qu'il couvre ». Cette
-            // part est approchée par surface_chauffee / surface desservie.
-            // La surface desservie doit être à la même échelle que le besoin
-            // porté par l'installation : celle de l'immeuble pour un DPE
-            // immeuble, celle du logement sinon. Un DPE d'appartement décrit
-            // une installation et un besoin d'appartement, même quand le
-            // fichier renseigne aussi la surface de l'immeuble.
+            // générateur », réduit à « la part du besoin qu'il couvre ». Le
+            // besoin publié sur l'installation est déjà cette part dès lors
+            // que la stratégie l'a proratisée : le reproratiser par
+            // surface_chauffee / surface desservie compterait deux fois.
+            // La part surfacique ne s'applique donc qu'à une installation qui
+            // porte encore le besoin entier du DPE tout en ne chauffant
+            // qu'une fraction de sa surface.
             $surfCh = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $install);
             $sh     = $this->surfaceDesservie($accessor, $logement);
-            $ratioSurface = ($surfCh !== null && $sh !== null && $sh > 0.0) ? min(1.0, $surfCh / $sh) : 1.0;
+            $besoinDpe = (float)$context->get('chauffage.besoin_ch', 0.0);
+            $portePlusQueSaPart = $besoinDpe > 0.0 && abs($besoin - $besoinDpe) <= 1e-6 * $besoinDpe;
+            $ratioSurface = ($portePlusQueSaPart && $surfCh !== null && $sh !== null && $sh > 0.0)
+                ? min(1.0, $surfCh / $sh)
+                : 1.0;
 
             $genCollection = $this->getChild($install, 'generateur_chauffage_collection');
             if ($genCollection === null) {
