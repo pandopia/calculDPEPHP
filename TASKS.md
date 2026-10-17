@@ -495,7 +495,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K59 — 41 réseaux de chaleur à contenu CO2 nul au millésime 2024
 
-- [ ] Owner: __ | Phase: K | Priorité: haute
+- [~CLA] Owner: __ | Phase: K | Priorité: haute
 - `resources/tables/reference/tv_reseau_chaleur.php` donne 0,000 à 41 réseaux
   pour la seule année 2024, alors que les millésimes 2022, 2023 et 2025 n'en
   comptent aucun et que ces mêmes réseaux y ont des valeurs non nulles. Un
