@@ -128,8 +128,27 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: basse
 - Instruit à fond sur `2659E2595696Y` (mode 10, 78,57 %). **Trois correctifs
   écrits, mesurés, puis retirés** : ils gagnent 36 écarts sur le corpus sans en
-  dégrader un seul, mais contredisent deux références de `tests/Unit/Xml/Fixtures`.
-  Ne pas les reprendre sans un élément qui départage.
+  dégrader un seul, mais contredisaient `exhaustif-117` et `exhaustif-8`.
+- **L'élément qui départage est acquis.** Ces deux fixtures ne sont pas des
+  références : le test qui les porte s'appelle
+  `testLeCalculRetrouvePuissanceBesoinEtEtiquettesSansSortiesDeReference`, et
+  leur XML ne contient aucun bloc `<sortie>`. Les valeurs attendues — pn
+  400 000, EP 123, GES 25 — sont **notre propre sortie**, figée comme test de
+  caractérisation. 2659E2595696Y est, lui, une référence ADEME publiée.
+  Une référence réelle l'emporte sur un instantané de notre comportement :
+  les trois correctifs sont à reprendre, et les deux fixtures à ré-étalonner.
+- **Ne pas reconstruire les correctifs à l'aveugle.** Une tentative fondée sur
+  le seul couple « une installation unique dont `surface_chauffee` couvre
+  l'immeuble, `rdim` = 1 » coûte **+236 écarts** : le garde doit reprendre
+  toutes les conditions de `ExhaustiveInstallationNormalizer` —
+  `enum_calcul_echantillonnage_id` = 1, tous les logements visités, surfaces
+  visitées sommant à celle de l'immeuble, version de moteur — et ne s'appliquer
+  qu'aux installations que ce normaliseur ramène de la méthode 4 à la 1.
+- Cinq cas neufs de la même sérialisation ont été tirés de l'open data
+  (2695E2370845F, 2695E2370333N, 2695E2369399P, 2695E2369252Y, 2695E2369069X,
+  de 9 à 33 logements) : tous sont à chauffage **électrique**, donc sans profil
+  de charge ni `pn`, et ne départagent pas la question. Chercher des cas à
+  générateur à combustion.
 - La configuration : mode 10, installation `enum_type_installation_id` = 1
   (individuelle), `enum_methode_calcul_conso_id` = 4 ramené à 1 par
   `ExhaustiveInstallationNormalizer`, `rdim` = 1, `nombre_logement_echantillon`
