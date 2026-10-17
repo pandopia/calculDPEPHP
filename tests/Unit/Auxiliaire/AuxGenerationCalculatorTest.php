@@ -433,6 +433,12 @@ XML;
         $this->assertEqualsWithDelta(0.0, $this->efValue($doc, 'conso_auxiliaire_generation_ecs'), 1e-9);
     }
 
+    /**
+     * §17.1.3.2 p.109 : l'installation individuelle échantillonnée couvre ici
+     * tout l'immeuble — 1 545 m² pour vingt et un logements — et sa
+     * multiplicité vaut donc 21 appartements moyens. La surface du groupe est
+     * ce qui la porte : sans elle, l'installation ne vaut que pour elle-même.
+     */
     public function testSampledIndividualEcsAuxiliaryUsesEffectiveMultiplicity(): void
     {
         $xml = <<<'XML'
@@ -441,6 +447,7 @@ XML;
 <installation_chauffage_collection/><installation_ecs_collection><installation_ecs><donnee_entree>
 <enum_type_installation_id>1</enum_type_installation_id><enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id>
 <nombre_logement>1</nombre_logement><ratio_virtualisation>1</ratio_virtualisation><rdim>1</rdim>
+<surface_habitable>1545</surface_habitable>
 <cle_repartition_ecs>0.042753700986532119</cle_repartition_ecs></donnee_entree>
 <donnee_intermediaire><besoin_ecs>1307.63159877</besoin_ecs><besoin_ecs_depensier>1844.69457683625</besoin_ecs_depensier></donnee_intermediaire>
 <generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>56</enum_type_generateur_ecs_id></donnee_entree>
@@ -452,5 +459,46 @@ XML;
         (new AuxGenerationCalculator())->calculate($logement, $ctx);
 
         $this->assertEqualsWithDelta(2.8568012, $this->efValue($doc, 'conso_auxiliaire_generation_ecs'), 1e-6);
+    }
+
+    /**
+     * Un relevé exhaustif de deux logements garde la multiplicité explicite de
+     * son installation unique : §17.1.3.2 p.109 ne multiplie par Nblgt que
+     * l'appartement « moyen » d'un échantillon.
+     *
+     * 2659E0496026K — 119,59 m² pour deux logements tous deux visités, une
+     * chaudière gaz à condensation de 24 kW, besoin ECS 2 425,874 kWh. La
+     * référence publie 2,797184 : 58,4 W × 2 425,874 / 24 000 × 0,473861,
+     * sans facteur 2.
+     */
+    public function testUnReleveExhaustifNeMultipliePasLAuxiliaireEcs(): void
+    {
+        $xml = <<<'XML'
+<logement><caracteristique_generale><surface_habitable_logement>50.57</surface_habitable_logement>
+<surface_habitable_immeuble>119.59</surface_habitable_immeuble><nombre_appartement>2</nombre_appartement></caracteristique_generale>
+<installation_chauffage_collection/><installation_ecs_collection><installation_ecs><donnee_entree>
+<enum_type_installation_id>1</enum_type_installation_id><enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id>
+<nombre_logement>1</nombre_logement><ratio_virtualisation>1</ratio_virtualisation><rdim>1</rdim>
+<surface_habitable>119.59</surface_habitable>
+<cle_repartition_ecs>0.47386117853735943</cle_repartition_ecs></donnee_entree>
+<donnee_intermediaire><besoin_ecs>2425.87428155394</besoin_ecs><besoin_ecs_depensier>3422.2155043350203</besoin_ecs_depensier></donnee_intermediaire>
+<generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>57</enum_type_generateur_ecs_id></donnee_entree>
+<donnee_intermediaire><pn>24000</pn></donnee_intermediaire></generateur_ecs>
+</installation_ecs></installation_ecs_collection><sortie/></logement>
+XML;
+        [$doc, $logement, $ctx] = $this->buildDoc($xml);
+        $visite = $doc->createElement('dpe_immeuble');
+        $collection = $doc->createElement('logement_visite_collection');
+        foreach ([50.57, 69.02] as $surface) {
+            $node = $doc->createElement('logement_visite');
+            $node->appendChild($doc->createElement('surface_habitable_logement', (string)$surface));
+            $collection->appendChild($node);
+        }
+        $visite->appendChild($collection);
+        $doc->documentElement->appendChild($visite);
+
+        (new AuxGenerationCalculator())->calculate($logement, $ctx);
+
+        $this->assertEqualsWithDelta(2.7971839, $this->efValue($doc, 'conso_auxiliaire_generation_ecs'), 1e-6);
     }
 }
