@@ -227,7 +227,10 @@ final class BesoinAnnuelCalculator implements CalculatorInterface
             ? ($tClim[$consigne][$zoneId][$altId][$mois] ?? null)
             : null;
 
-        return $temperature !== null
+        // Une moyenne pendant les périodes de climatisation ne peut pas être
+        // sous la consigne : §18.2.1 imprime pourtant « 0,0 » pour H2d en mai
+        // à 28 °C. Ce zéro est traité comme une absence.
+        return $temperature !== null && (float)$temperature > $consigne
             ? ((float)$temperature - $consigne) * $nref
             : (float)($dhTabule ?? 0.0);
     }

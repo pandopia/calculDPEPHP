@@ -271,4 +271,28 @@ XML;
         // À moins de 400 m, les deux consignes diffèrent bien.
         self::assertNotSame($clim[26][1][1], $clim[28][1][1]);
     }
+
+    /**
+     * §18.2.1 imprime « 0,0 » comme température moyenne de climatisation de
+     * H2d en mai à 28 °C, alors qu'il y compte 9 heures de refroidissement.
+     * Une moyenne sous la consigne donnerait des degrés-heures négatifs : la
+     * valeur est traitée comme absente, et le calcul reprend la colonne DH.
+     */
+    public function testUneTemperatureSousLaConsigneEstTraiteeCommeAbsente(): void
+    {
+        $tables = new TableRepository(self::PROJECT_ROOT . '/resources/tables');
+        $clim = $tables->load('reference/tv_textmoy_clim');
+        $sollicitations = $tables->load('reference/tv_sollicitations_froid');
+
+        self::assertSame(0.0, $clim[28][7][1][5]);
+        self::assertSame(9.0, (float)$sollicitations[7][1][5]['Nref28']);
+
+        [$doc, $logement] = $this->buildLogement();
+        $ctx = $this->makeContext($doc, [], '7', '1');
+        (new BesoinAnnuelCalculator())->calculate($logement, $ctx);
+
+        // Sans climatisation le besoin est nul, mais surtout jamais négatif.
+        self::assertGreaterThanOrEqual(0.0, (float)$ctx->get('froid.besoin_fr', 0.0));
+        self::assertGreaterThanOrEqual(0.0, (float)$ctx->get('froid.besoin_fr_depensier', 0.0));
+    }
 }
