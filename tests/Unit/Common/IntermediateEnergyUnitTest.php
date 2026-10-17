@@ -9,36 +9,47 @@ use DOMDocument;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * Convention d'unité des apports et pertes récupérés selon le format source.
+ */
 final class IntermediateEnergyUnitTest extends TestCase
 {
-    /** @return iterable<string, array{string, float}> */
+    private function document(?string $version): DOMDocument
+    {
+        $attribut = $version === null ? '' : sprintf(' version="%s"', $version);
+        $doc = new DOMDocument();
+        $doc->loadXML('<dpe' . $attribut . '><logement/></dpe>');
+
+        return $doc;
+    }
+
+    /** @return iterable<string, array{?string, float}> */
     public static function formats(): iterable
     {
-        yield 'ADEME natif' => ['0.1.0', 1000.0];
-        yield 'LICIEL historique' => ['2', 1.0];
-        yield 'format sans version' => ['', 1.0];
+        // Le format LICIEL 2 est le seul à publier les apports en kWh : ses
+        // 444 fichiers du corpus le font, contre aucun des autres formats.
+        yield 'format LICIEL 2' => ['2', 1.0];
+        yield 'format natif ADEME' => ['0.1.0', 1000.0];
+        yield 'export 6.4.1' => ['6.4.1', 1000.0];
+        yield 'export 8.0.2' => ['8.0.2', 1000.0];
+        yield 'export 8.2.1' => ['8.2.1', 1000.0];
+        yield 'export DPEWIN 9.2.2' => ['9.2.2', 1000.0];
+        // Un document sans version ne déclare aucune convention : on reste en
+        // kWh plutôt que de multiplier par mille à l'aveugle.
+        yield 'version absente' => [null, 1.0];
     }
 
     #[DataProvider('formats')]
-    public function testXmlUnitsPerKwh(string $version, float $expected): void
+    public function testFacteurDeSerialisationDesApports(?string $version, float $attendu): void
     {
-        $document = new DOMDocument();
-        $document->loadXML('<dpe/>');
-        if ($version !== '') {
-            $document->documentElement->setAttribute('version', $version);
-        }
-
-        self::assertSame($expected, IntermediateEnergyUnit::xmlPerKwh($document));
+        self::assertSame($attendu, IntermediateEnergyUnit::apportXmlPerKwh($this->document($version)));
     }
 
-    public function testDpewinUsesWhOnlyForApportsAndAscendingEnergyOrder(): void
+    /** Les besoins et consommations, eux, ne suivent que le format natif. */
+    public function testSeulLeFormatNatifSerialiseLesBesoinsEnWattheures(): void
     {
-        $document = new DOMDocument();
-        $document->loadXML('<dpe version="9.2.2"/>');
-
-        self::assertSame(1.0, IntermediateEnergyUnit::xmlPerKwh($document));
-        self::assertSame(1000.0, IntermediateEnergyUnit::apportXmlPerKwh($document));
-        self::assertTrue(IntermediateEnergyUnit::usesAscendingEnergyOrder($document));
-        self::assertTrue(IntermediateEnergyUnit::usesRoundedGesTotal($document));
+        self::assertSame(1000.0, IntermediateEnergyUnit::xmlPerKwh($this->document('0.1.0')));
+        self::assertSame(1.0, IntermediateEnergyUnit::xmlPerKwh($this->document('9.2.2')));
+        self::assertSame(1.0, IntermediateEnergyUnit::xmlPerKwh($this->document('2')));
     }
 }

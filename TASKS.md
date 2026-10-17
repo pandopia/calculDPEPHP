@@ -17,21 +17,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase H — Corrections issues des diagnostics ADEME
 
-### TASK-H03 — Apports internes : qualifier les références sérialisées en Wh
-
-- [~CLA] Owner: __  | Phase: H  | Estimation: 2h
-- Certains exports anciens publient `apport_interne_ch`, `apport_solaire_ch` et
-  leurs équivalents froid avec un facteur exactement ×1 000.
-- Vérifier la cohérence interne et le moteur éditeur avant toute modification :
-  le moteur reste en kWh ; une référence en Wh doit être classée comme défaut de
-  référence, jamais reproduite dans les calculs.
-- Précédent tranché : `2676E2269868T` publiait `besoin_ecs` deux fois, en kWh
-  et en Wh, sur un logement à une seule installation ECS. Référence démontrée
-  fausse, retirée du corpus (`CorpusLocator::REFERENCES_INVALIDES`) plutôt que
-  reproduite. `IntermediateEnergyUnit` reproduit encore le ×1 000 pour les
-  versions `0.1.0` et `9.x` : c'est ce sens-là qui reste à trancher, en
-  vérifiant d'abord si ces fichiers se contredisent de la même façon.
-
 ### TASK-H04 — Besoin et consommation ECS des fichiers collectifs
 
 - [ ] Owner: __  | Phase: H  | Estimation: 4h  | Dépend : TASK-H10
