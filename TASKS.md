@@ -433,26 +433,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Sources figées et mesures : `docs/corrections-campagne-50g.md`, corpus privé
   `tmp/dpe-campaign-50g-frozen` du dépôt applicatif.
 
-### TASK-K44 — Besoin de froid du DPE 2682E0504521A
-
-- [ ] Owner: __ | Phase: K | Priorité: basse
-- `2682E0504521A` est désormais au corpus (83,67 %). Besoin de froid
-  conventionnel 1 117,727 contre 1 106,248 kWh (−1,0 %) ; dépensier
-  3 324,268 contre 2 628,132 (−21 %). Le rapport dépensier/conventionnel vaut
-  2,974 chez la référence et 2,376 chez nous.
-- **Les sollicitations ne sont pas en cause.** Nref26 et DH28 des huit zones à
-  l'altitude ≤ 400 m ont été recoupés un à un avec §18.2-18.3 p.121-143 :
-  80 valeurs sur 80 conformes. La table porte désormais ce `@status verified`.
-  La divergence est donc dans la formule de §10 — Rbthj, futj — pas dans les
-  données climatiques.
-- Fausse piste écartée : les 91 `Text` à zéro de `tv_sollicitations_froid`
-  reprennent la convention de `text_mensuel_base_appoint`, où un zéro signale
-  un mois hors saison de **chauffe**. La colonne n'est lue par aucun
-  calculateur.
-- Ne pas confondre avec le COP ECS du même fichier : le XML déclare un CET
-  extérieur/ambiant de 2015, H2c et saisie forfaitaire ; §14.2 p.95 impose 2,5,
-  la référence publie 2,8. Le moteur conserve ici la valeur réglementaire.
-
 ## Validation obligatoire
 
 - Toute correction doit être sourcée (spec/XSD/règlement), testée unitairement
