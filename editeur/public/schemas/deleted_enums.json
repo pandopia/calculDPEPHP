@@ -1,5 +1,6 @@
 {
 	"type_generateur_ch":[143,144],
 	"usage_fonctionnel_batiment": [23,24,25,26,27,28,29,30],
-	"methode_saisie_carac_sys": [3,5]
+	"methode_saisie_carac_sys": [3,5],
+	"type_installation_solaire": [2,3]
 }

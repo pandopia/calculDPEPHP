@@ -8,7 +8,8 @@
         "2.3": "version corrective de janvier 2023",
         "2.4": "version correspondant à l'arrêté des seuils pour les petites surfaces",
         "2.5": "version correspondant à l'obligation de saisie du numéro fiscal de local",
-        "2.6": "version correspondant au changement du facteur de conversion en ep de l'électricité"
+        "2.6": "version correspondant au changement du facteur de conversion en ep de l'électricité",
+        "2.7": "version correspondant au changement de pef elec, à l'epbd et aux nouvelles techno"
     },
     "modele_dpe": {
         "1": "dpe 3cl 2021 méthode logement",
@@ -170,14 +171,14 @@
     },
     "methode_saisie_u": {
         "1": "non isolé",
-        "2": "isolation inconnue  (table forfaitaire)",
+        "2": "isolation inconnue (table forfaitaire)",
         "3": "epaisseur isolation saisie justifiée par mesure ou observation",
         "4": "epaisseur isolation saisie justifiée à partir des documents justificatifs autorisés",
         "5": "resistance isolation saisie justifiée observation de l'isolant installé et mesure de son épaisseur",
-        "6": "resistance isolation saisie justifiée  à partir des documents justificatifs autorisés",
+        "6": "resistance isolation saisie justifiée à partir des documents justificatifs autorisés",
         "7": "année d'isolation différente de l'année de construction saisie justifiée (table forfaitaire)",
         "8": "année de construction saisie (table forfaitaire)",
-        "9": "saisie direct u justifiée  (à partir des documents justificatifs autorisés)",
+        "9": "saisie direct u justifiée (à partir des documents justificatifs autorisés)",
         "10": "saisie direct u depuis rset/rsee( etude rt2012/re2020)"
     },
     "methode_saisie_u0": {
@@ -228,6 +229,11 @@
         "1": "valeur forfaitaire",
         "2": "déterminé à partir d'une mesure d'étanchéité à l'air de moins de deux ans",
         "3": "déterminé à partir du rset/rsee( etude rt2012/re2020)"
+    },
+    "methode_saisie_pvent_moy": {
+        "1": "valeur forfaitaire",
+        "2": "déterminé à partir de la plaque signalétique ou d'une documentation technique du système",
+        "3": "déterminé à partir du rset/rsee (étude rt2012/re2020)"
     },
     "methode_saisie_fact_couv_sol": {
         "1": "valeur forfaitaire",
@@ -443,7 +449,7 @@
         "5": "menuiserie / mur"
     },
     "type_ventilation": {
-        "1": "ventilation par ouverture des fenêtres",
+        "1": "aération par ouverture des fenêtres",
         "2": "ventilation par entrées d'air hautes et basses",
         "3": "vmc sf auto réglable avant 1982",
         "4": "vmc sf auto réglable de 1982 à 2000",
@@ -452,10 +458,10 @@
         "7": "vmc sf hygro a avant 2001",
         "8": "vmc sf hygro a de 2001 à 2012",
         "9": "vmc sf hygro a après 2012",
-        "10": "vmc sf gaz avant  2001",
+        "10": "vmc sf gaz avant 2001",
         "11": "vmc sf gaz de 2001 à 2012",
         "12": "vmc sf gaz après 2012",
-        "13": "vmc sf hygro b avant  2001",
+        "13": "vmc sf hygro b avant 2001",
         "14": "vmc sf hygro b de 2001 à 2012",
         "15": "vmc sf hygro b après 2012",
         "16": "vmc basse pression auto-réglable",
@@ -468,10 +474,10 @@
         "23": "vmc df sans échangeur avant 2013",
         "24": "vmc df sans échangeur après 2012",
         "25": "ventilation naturelle par conduit",
-        "26": "ventilation hybride avant  2001",
+        "26": "ventilation hybride avant 2001",
         "27": "ventilation hybride de 2001 à 2012",
         "28": "ventilation hybride après 2012",
-        "29": "ventilation hybride avec entrées d'air hygro avant  2001",
+        "29": "ventilation hybride avec entrées d'air hygro avant 2001",
         "30": "ventilation hybride avec entrées d'air hygro de 2001 à 2012",
         "31": "ventilation hybride avec entrées d'air hygro après 2012",
         "32": "ventilation mécanique sur conduit existant avant 2013",
@@ -516,7 +522,8 @@
         "1": "chauffage solaire (seul ou combiné)",
         "2": "ecs solaire seule sup 5 ans",
         "3": "ecs solaire seule inf 5 ans",
-        "4": "chauffage + ecs solaire"
+        "4": "chauffage + ecs solaire",
+        "5": "ecs solaire seule"
     },
     "type_installation": {
         "1": "installation individuelle",
@@ -563,23 +570,23 @@
     "type_generateur_ch": {
         "1": "pac air/air installée avant 2008",
         "2": "pac air/air installée entre 2008 et 2014",
-        "3": "pac air/air installée à partir de 2015",
+        "3": "pac air/air installée entre 2015 et 2026",
         "4": "pac air/eau installée avant 2008",
         "5": "pac air/eau installée entre 2008 et 2014",
         "6": "pac air/eau installée entre 2015 et 2016",
-        "7": "pac air/eau installée après 2017",
+        "7": "pac air/eau installée entre 2017 et 2026",
         "8": "pac eau/eau installée avant 2008",
         "9": "pac eau/eau installée entre 2008 et 2014",
         "10": "pac eau/eau installée entre 2015 et 2016",
-        "11": "pac eau/eau installée après 2017",
+        "11": "pac eau/eau installée entre 2017 et 2026",
         "12": "pac eau glycolée/eau installée avant 2008",
         "13": "pac eau glycolée/eau installée entre 2008 et 2014",
         "14": "pac eau glycolée/eau installée entre 2015 et 2016",
-        "15": "pac eau glycolée/eau installée après 2017",
+        "15": "pac eau glycolée/eau installée entre 2017 et 2026",
         "16": "pac géothermique installée avant 2008",
         "17": "pac géothermique installée entre 2008 et 2014",
         "18": "pac géothermique installée entre 2015 et 2016",
-        "19": "pac géothermique installée après 2017",
+        "19": "pac géothermique installée entre 2017 et 2026",
         "20": "cuisinière installé avant 1990",
         "21": "foyer fermé installé avant 1990",
         "22": "poêle bûche installé avant 1990",
@@ -634,7 +641,7 @@
         "71": "chaudière bois granulés 1995-2003",
         "72": "chaudière bois granulés 2004-2012",
         "73": "chaudière bois granulés 2013-2019",
-        "74": "chaudière bois granulés après 2019",
+        "74": "chaudière bois granulés 2020-2024",
         "75": "chaudière fioul classique avant 1970",
         "76": "chaudière fioul classique 1970-1975",
         "77": "chaudière fioul classique 1976-1980",
@@ -707,13 +714,13 @@
         "144": "pompe à chaleur hybride : partie chaudière (supprime)",
         "145": "pompe à chaleur hybride : partie pompe à chaleur pac air/eau installée entre 2008 et 2014",
         "146": "pompe à chaleur hybride : partie pompe à chaleur pac air/eau installée entre 2015 et 2016",
-        "147": "pompe à chaleur hybride : partie pompe à chaleur pac air/eau installée après 2017",
+        "147": "pompe à chaleur hybride : partie pompe à chaleur pac air/eau installée entre 2017 et 2026",
         "148": "pompe à chaleur hybride : partie chaudière chaudière gaz à condensation 2001-2015",
         "149": "pompe à chaleur hybride : partie chaudière chaudière gaz à condensation après 2015",
         "150": "pompe à chaleur hybride : partie chaudière chaudière fioul à condensation 1996-2015",
         "151": "pompe à chaleur hybride : partie chaudière chaudière fioul à condensation après 2015",
         "152": "pompe à chaleur hybride : partie chaudière chaudière bois granulés 2013-2019",
-        "153": "pompe à chaleur hybride : partie chaudière chaudière bois granulés après 2019",
+        "153": "pompe à chaleur hybride : partie chaudière chaudière bois granulés 2020-2024",
         "154": "pompe à chaleur hybride : partie chaudière chaudière bois bûche 2013-2017",
         "155": "pompe à chaleur hybride : partie chaudière chaudière bois bûche 2018-2019",
         "156": "pompe à chaleur hybride : partie chaudière chaudière bois bûche après 2019",
@@ -724,14 +731,27 @@
         "161": "pompe à chaleur hybride : partie chaudière chaudière gpl/propane/butane à condensation après 2015",
         "162": "pompe à chaleur hybride : partie pompe à chaleur pac eau/eau installée entre 2008 et 2014",
         "163": "pompe à chaleur hybride : partie pompe à chaleur pac eau/eau installée entre 2015 et 2016",
-        "164": "pompe à chaleur hybride : partie pompe à chaleur pac eau/eau installée après 2017",
+        "164": "pompe à chaleur hybride : partie pompe à chaleur pac eau/eau installée entre 2017 et 2026",
         "165": "pompe à chaleur hybride : partie pompe à chaleur pac eau glycolée/eau installée entre 2008 et 2014",
         "166": "pompe à chaleur hybride : partie pompe à chaleur pac eau glycolée/eau installée entre 2015 et 2016",
-        "167": "pompe à chaleur hybride : partie pompe à chaleur pac eau glycolée/eau installée après 2017",
+        "167": "pompe à chaleur hybride : partie pompe à chaleur pac eau glycolée/eau installée entre 2017 et 2026",
         "168": "pompe à chaleur hybride : partie pompe à chaleur pac géothermique installée entre 2008 et 2014",
         "169": "pompe à chaleur hybride : partie pompe à chaleur pac géothermique installée entre 2015 et 2016",
-        "170": "pompe à chaleur hybride : partie pompe à chaleur pac géothermique installée après 2017",
-        "171": "chaudière(s) charbon multi bâtiment modélisée comme un réseau de chaleur"
+        "170": "pompe à chaleur hybride : partie pompe à chaleur pac géothermique installée entre 2017 et 2026",
+        "171": "chaudière(s) charbon multi bâtiment modélisée comme un réseau de chaleur",
+        "172": "pac air/air installée à partir de 2027",
+        "173": "pac air/eau installée à partir de 2027",
+        "174": "pac eau/eau installée à partir de 2027",
+        "175": "pac eau glycolée/eau installée à partir de 2027",
+        "176": "pac géothermique installée à partir de 2027",
+        "177": "chaudière bois granulés à condensation après 2024",
+        "178": "pompe à chaleur hybride : partie pompe à chaleur pac air/eau installée à partir de 2027",
+        "179": "pompe à chaleur hybride : partie pompe à chaleur pac eau/eau installée à partir de 2027",
+        "180": "pompe à chaleur hybride : partie pompe à chaleur pac eau glycolée/eau installée à partir de 2027",
+        "181": "pompe à chaleur hybride : partie pompe à chaleur pac géothermique installée à partir de 2027",
+        "182": "pompe à chaleur hybride : partie chaudière chaudière bois granulés à condensation après 2024",
+        "183": "chaudière bois granulés sans condensation après 2024",
+        "184": "pompe à chaleur hybride : partie chaudière chaudière bois granulés sans condensation après 2024"
     },
     "type_emission_distribution": {
         "1": "convecteur électrique nfc, nf** et nf***",
@@ -798,7 +818,8 @@
         "4": "par pièce avec minimum de température",
         "5": "par pièce avec minimum de température et détection de présence",
         "6": "central collectif",
-        "7": "central collectif avec détection de présence"
+        "7": "central collectif avec détection de présence",
+        "8": "algorithme de régulation prédictif du chauffage"
     },
     "type_regulation": {
         "1": "sans régulation pièce par pièce",
@@ -816,16 +837,16 @@
     "type_generateur_ecs": {
         "1": "cet sur air ambiant (sur local non chauffé) avant 2010",
         "2": "cet sur air ambiant (sur local non chauffé) 2010-2014",
-        "3": "cet sur air ambiant (sur local non chauffé) après 2014",
+        "3": "cet sur air ambiant (sur local non chauffé) 2015-2026",
         "4": "cet sur air extérieur avant 2010",
         "5": "cet sur air extérieur 2010-2014",
-        "6": "cet sur air extérieur après 2014",
+        "6": "cet sur air extérieur 2015-2026",
         "7": "cet sur air extrait avant 2010",
         "8": "cet sur air extrait 2010-2014",
-        "9": "cet sur air extrait après 2014",
+        "9": "cet sur air extrait 2015-2026",
         "10": "pac double service avant 2010",
         "11": "pac double service 2010-2014",
-        "12": "pac double service après 2014",
+        "12": "pac double service 2015-2026",
         "13": "poêle à bois bouilleur bûche installé avant 2012",
         "14": "poêle à bois bouilleur bûche installé à partir de 2012",
         "15": "chaudière bois bûche avant 1978",
@@ -847,7 +868,7 @@
         "31": "chaudière bois granulés 1995-2003",
         "32": "chaudière bois granulés 2004-2012",
         "33": "chaudière bois granulés 2013-2019",
-        "34": "chaudière bois granulés après 2019",
+        "34": "chaudière bois granulés 2020-2024",
         "35": "chaudière fioul classique avant 1970",
         "36": "chaudière fioul classique 1970-1975",
         "37": "chaudière fioul classique 1976-1980",
@@ -881,10 +902,10 @@
         "65": "chauffe-eau gaz à production instantanée 1990-2000",
         "66": "chauffe-eau gaz à production instantanée 2001-2015",
         "67": "chauffe-eau gaz à production instantanée après 2015",
-        "68": "ballon électrique à accumulation horizontal",
-        "69": "ballon électrique à accumulation vertical autres ou inconnue",
-        "70": "ballon électrique à accumulation vertical catégorie b ou 2 étoiles",
-        "71": "ballon électrique à accumulation vertical catégorie c ou 3 étoiles",
+        "68": "ballon électrique à accumulation horizontal sans commande intelligente",
+        "69": "ballon électrique à accumulation vertical autres ou inconnue sans commande intelligente",
+        "70": "ballon électrique à accumulation vertical catégorie b ou 2 étoiles sans commande intelligente",
+        "71": "ballon électrique à accumulation vertical catégorie c ou 3 étoiles sans commande intelligente",
         "72": "réseau de chaleur non isolé",
         "73": "réseau de chaleur isolé",
         "74": "chaudière(s) bois multi bâtiment modélisée comme un réseau de chaleur",
@@ -938,7 +959,7 @@
         "122": "pompe à chaleur hybride : partie chaudière chaudière fioul à condensation 1996-2015",
         "123": "pompe à chaleur hybride : partie chaudière chaudière fioul à condensation après 2015",
         "124": "pompe à chaleur hybride : partie chaudière chaudière bois granulés 2013-2019",
-        "125": "pompe à chaleur hybride : partie chaudière chaudière bois granulés après 2019",
+        "125": "pompe à chaleur hybride : partie chaudière chaudière bois granulés 2020-2024",
         "126": "pompe à chaleur hybride : partie chaudière chaudière bois bûche 2013-2017",
         "127": "pompe à chaleur hybride : partie chaudière chaudière bois bûche 2018-2019",
         "128": "pompe à chaleur hybride : partie chaudière chaudière bois bûche après 2019",
@@ -947,12 +968,25 @@
         "131": "pompe à chaleur hybride : partie chaudière chaudière bois plaquette après 2019",
         "132": "pompe à chaleur hybride : partie chaudière chaudière gpl/propane/butane à condensation 2001-2015",
         "133": "pompe à chaleur hybride : partie chaudière chaudière gpl/propane/butane à condensation après 2015",
-        "134": "chaudière(s) charbon multi bâtiment modélisée comme un réseau de chaleur"
+        "134": "chaudière(s) charbon multi bâtiment modélisée comme un réseau de chaleur",
+        "135": "cet sur air ambiant (sur local non chauffé) à partir de 2027",
+        "136": "cet sur air extérieur à partir de 2027",
+        "137": "cet sur air extrait à partir de 2027",
+        "138": "pac double service à partir de 2027",
+        "139": "chaudière bois granulés à condensation après 2024",
+        "140": "ballon électrique à accumulation horizontal avec commande intelligente",
+        "141": "ballon électrique à accumulation vertical autres ou inconnue avec commande intelligente",
+        "142": "ballon électrique à accumulation vertical catégorie b ou 2 étoiles avec commande intelligente",
+        "143": "ballon électrique à accumulation vertical catégorie c ou 3 étoiles avec commande intelligente",
+        "144": "pompe à chaleur hybride : partie chaudière chaudière bois granulés à condensation après 2024",
+        "145": "chaudière bois granulés sans condensation après 2024",
+        "146": "pompe à chaleur hybride : partie chaudière chaudière bois granulés sans condensation après 2024"
     },
     "bouclage_reseau_ecs": {
         "1": "réseau d'ecs non bouclé",
         "2": "réseau d'ecs bouclé",
-        "3": "réseau d'ecs avec présence d'un traceur chauffant"
+        "3": "réseau d'ecs avec présence d'un traceur chauffant",
+        "4": "réseau d'ecs avec module thermique d'appartement (mta)"
     },
     "type_stockage_ecs": {
         "1": "abscence de stockage d'ecs (production instantanée)",
@@ -962,7 +996,8 @@
     "periode_installation_ecs_thermo": {
         "1": "avant 2010",
         "2": "2010-2014",
-        "3": "a partir de 2015"
+        "3": "2015-2026",
+        "4": "a partir de 2027"
     },
     "type_enr": {
         "1": "solaire photovoltaïque",
@@ -982,8 +1017,8 @@
     },
     "inclinaison_pv": {
         "1": "≤ 15°",
-        "2": "15° <   ≤ 45°",
-        "3": "45° <   ≤ 75°",
+        "2": "15° < ≤ 45°",
+        "3": "45° < ≤ 75°",
         "4": "> 75°"
     },
     "type_energie": {
@@ -1160,5 +1195,17 @@
         "1": "insuffisant",
         "2": "moyen",
         "3": "bon"
+    },
+    "methode_saisie_rceg": {
+        "1": "valeur forfaitaire",
+        "2": "déterminé à partir d'un document justificatif autorisé"
+    },
+    "methode_saisie_couv_pac_hyb": {
+        "1": "valeur forfaitaire",
+        "2": "déterminé à partir d'un document justificatif autorisé"
+    },
+    "methode_saisie_scf": {
+        "1": "valeur forfaitaire",
+        "2": "déterminé à partir d'un document justificatif autorisé"
     }
 }

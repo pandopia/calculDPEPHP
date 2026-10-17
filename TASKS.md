@@ -258,6 +258,104 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Sources figées et mesures : `docs/corrections-campagne-50g.md`, corpus privé
   `tmp/dpe-campaign-50g-frozen` du dépôt applicatif.
 
+### TASK-K63 — Modèle DPE 2.7 : EPBD, nouvelles technologies, pef élec
+
+- [ ] Owner: __ | Phase: K | Priorité: haute
+- L'ADEME a publié le **2026-10-16** `DPEv2.7.xsd` (V10.0.0), copié dans
+  `editeur/public/schemas/` avec `enums.json`, `CHANGELOG.md` et consorts
+  (`SOURCE.md` porte la date de synchronisation). `enum_version_id` = 2.7 vaut
+  « changement de pef elec, epbd et nouvelles techno ». Le moteur ne connaît
+  que 2.6 ; `schema-registry.ts` de l'éditeur s'arrête aussi à 2.6, et
+  `xsd-compiler.ts` annonce un inventaire « DPEv1 à DPEv2.6 » à revérifier.
+- **Deux blocs de sortie deviennent obligatoires** et nous ne les produisons
+  pas — ils compteraient en balises manquantes sur tout fichier 2.7 :
+  - `logement/sortie/production_enr` : `prod_enr_pv`,
+    `prod_enr_solaire_thermique`, `prod_enr_chaleur_ambiante_pac`,
+    `prod_enr_geothermie_pac`, `prod_enr_chaleur_ambiante_cet`,
+    `prod_enr_rcfu`, `prod_enr_bois`, `prod_enr_totale`,
+    `prod_enr_pourcentage` ;
+  - `logement/sortie/mention_a0`.
+- **Nos tables deviennent incomplètes** — règle d'or n° 2. Le millésime ajoute
+  13 `enum_type_generateur_ch_id` (172 à 184) et 12
+  `enum_type_generateur_ecs_id` (135 à 146) : PAC et CET à partir de 2027,
+  chaudières bois granulés à condensation et sans condensation après 2024,
+  ballons électriques selon la présence de commande intelligente. S'y
+  ajoutent `enum_bouclage_reseau_ecs_id` = 4 (module thermique d'appartement),
+  `enum_equipement_intermittence_id` = 8 (régulation prédictive),
+  `enum_periode_installation_ecs_thermo_id` = 4, et
+  `enum_type_installation_solaire_id` = 5 « ECS solaire seule », les
+  modalités 2 et 3 n'étant **plus permises**.
+- **Nouvelles grandeurs à calculer** : récupération de chaleur sur eaux grises
+  (`presence_rceg`, `fech_saisi`, `ftrans_saisi` → `fecs_rceg`,
+  `besoin_ecs_rceg`), commande intelligente des ballons (`scf_saisi` → `scf`),
+  part du besoin couverte par une PAC hybride
+  (`couverture_pac_hybride_saisi`). Toutes relèvent des « évolutions 2026 de
+  la méthode 3CL-DPE » : **chercher l'arrêté avant de coder**, le XSD ne donne
+  que les emplacements.
+- Entrées EPBD bloquantes à lire et à conserver : `flexibilite_reseau`
+  (`caracteristique_generale`), `chauffage_duree_vie_restante`,
+  `clim_duree_vie_restante`. `identifiant_reseau_chaleur` est désormais
+  restreint à `[0-9]{4}C` pour chauffage/ECS et `[0-9]{4}F` pour un réseau de
+  **froid** urbain, nouvellement déclarable en climatisation —
+  `ReseauChaleurFactorResolver` n'en tient pas compte.
+- Le changement de pef électricité est la même mécanique que `Common\Period`
+  (PRE_2026 / POST_2026) : vérifier s'il faut un troisième régime, daté.
+- Méthode : aucun fichier 2.7 n'étant encore au corpus, commencer par le
+  schéma et le `CHANGELOG.md` amont, puis guetter l'open data. Mesurer en A/B
+  isolé comme d'habitude — un millésime ne doit pas dégrader les 2.6.
+
+### TASK-K64 — Audit énergétique réglementaire : explorer, puis câbler le moteur
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- **L'audit réutilise notre moteur tel quel, c'est son intérêt.** Le `README.md`
+  amont désigne `modele_commun_DPE_audit_reg.xsd` comme la source de vérité
+  dont les schémas DPE **et** audit sont générés. `audit_v2.6.xsd` (V6.0.0 —
+  2026-10-16) est copié dans `editeur/public/schemas/`.
+- Structure : `<audit><logement_collection>` de blocs `<logement>` au modèle
+  3CL, chacun étiqueté dans sa `caracteristique_generale` par
+  `enum_scenario_id` (0 état initial, 1 multi-étapes principal, 2 une étape
+  principal, 3 à 5 complémentaires, 6 et 7 copro), `enum_etape_id` (0 état
+  initial, 1 première, 2 finale, 3 à 5 intermédiaires) et `nom_scenario`.
+  Autrement dit : **N états du même logement, chacun un calcul 3CL**.
+- Mesure de l'écart au modèle DPE : 644 éléments distincts contre 562, soit
+  **153 propres à l'audit** — et ce ne sont presque pas des grandeurs
+  physiques. Ce sont les travaux (`etape_travaux`,
+  `enum_lot_travaux_audit_id` : murs, planchers bas, toiture, menuiseries,
+  chauffage, ECS, froid, ventilation, ENR, autre ; `enum_type_travaux_id`),
+  les coûts (`cout_min`, `cout_max`, `cout_cumule`), les aides
+  (`aide_financiere_nationale`, `aide_financiere_locale`), les dérogations
+  (technique, économique, ventilation), l'auditeur, et la famille des gains
+  (`ef_conso_5_usages_m2_gain`, `_gain_cumule`, `_gain_relatif`, idem EP et
+  GES).
+- **À explorer avant toute ligne de code** :
+  1. Dresser l'inventaire des 153 éléments en trois tas — dérivés
+     arithmétiques de nos sorties, données saisies par l'auditeur, règles
+     réglementaires. Seul le troisième tas est du travail de méthode.
+  2. Lire l'arrêté du 4 mai 2022 (audit énergétique réglementaire) et ses
+     modificatifs : lots obligatoires par scénario, classes à atteindre,
+     conditions de dérogation. Le XSD ne donne que les emplacements, jamais
+     les règles — même discipline que pour le 3CL.
+  3. Vérifier ce que l'état initial partage avec un DPE : `enum_version_dpe_id`
+     dit quelle version de calcul l'audit emploie, et les champs EPBD de
+     TASK-K63 y sont bloquants **pour l'état initial seulement**.
+  4. Chercher un corpus : l'observatoire publie les audits comme les DPE
+     (numéro ADEME en `[2-3][0-9]{2}[0-9A-B][ETN][0-9]{7}[A-Z]`), à confirmer.
+     Sans référence, pas de mesure de conformité possible.
+- **Câblage pressenti dans le moteur**, à valider par l'exploration :
+  `DpeEngine::calculateDocument()` s'applique à un `<logement>` et est déjà
+  **idempotent** — exactement ce qu'il faut pour l'enchaîner sur chaque état.
+  Le travail porte sur l'enveloppe : un `AuditEngine` qui itère la collection,
+  un garde `assertCalculable` étendu au modèle audit, et les gains calculés
+  **après** coup à partir des sorties, jamais pendant. Ne pas dupliquer un
+  Calculator : si un état a besoin d'une règle particulière, c'est que la
+  règle est mal placée.
+- Hors périmètre, à ne pas confondre : le « DPE projeté » commercial n'est pas
+  un modèle du XSD (`enum_modele_dpe_id` ne connaît que 3CL existant, neuf
+  RT2012, neuf RE2020, tertiaire 2006) et ne porte pas de numéro ADEME. Le
+  DPE neuf, lui, **embarque** le résultat de l'étude réglementaire (`rset`
+  pour la RT2012, `rsee` pour la RE2020) : il n'y a rien à y recalculer, et
+  implémenter Th-BCE serait un autre projet.
+
 ### TASK-K62 — Quatre stubs renvoient à des TASK qui n'existent plus
 
 - [ ] Owner: __ | Phase: K | Priorité: basse

@@ -2232,3 +2232,160 @@ la valeur à renseigner est date_arrete_reseau_chaleur = 2026-04-25. La valeur c
 
 * Passage de `besoin_fr` et `conso_fr` en minInclusive 0 dans les XSD DPE (logement, neuf) et Audit:
   * Dans certaines configurations (avec très peu d'apports solaires) il se peut que le besoin de clim soit nul. La validation XSD permet désormais cette déclaration.
+
+## AAAA-MM-JJ XSD DPE X.Y.Z - XSD Audit X.Y.Z : passage en DPE 2.7 et Audit 2.6
+
+### Résumé
+
+Cette version introduit les versions **DPE 2.7** et **Audit 2.6**.
+
+À compter du 1er janvier 2027, le PEF de l'électricité passe de `1,9` à `1,7`. Les versions DPE 2.6 et Audit 2.5 restent valides jusqu'au 31 décembre 2026 inclus ; DPE 2.7 et Audit 2.6 prennent effet à cette date.
+
+Elle comprend notamment :
+
+- l'intégration de nouvelles données EPBD ;
+- l'ajout de nouveaux systèmes et options de la méthode 3CL ;
+- la mise à jour des énumérateurs et de leurs correspondances ;
+- la mise à jour des tables de valeurs ;
+- diverses corrections.
+
+### Modèle de données commun DPE et Audit
+
+#### Evolution du XSD pour l'EPBD
+
+- **BLOQUANT** : ajout de la balise obligatoire `nom_balise_epbd` dans `chemin.de.la.structure`.
+- **AJOUT OPTIONNEL** : ajout de `nom_balise_optionnelle` dans `nom_structure`.
+- ...
+
+#### Evolution du XSD pour les nouvelles technologies
+
+- **BLOQUANT** : déplacement de `nom_balise` de `ancien.chemin` vers `nouveau.chemin`.
+- **MODIFICATION** : la valeur minimale de `nom_balise` passe de `1` à `0`.
+- **SUPPRESSION** : suppression de `ancienne_balise`.
+- ...
+
+### Énumérateurs et correspondances
+
+Modifications apportées dans `enum_tables.xlsx`.
+
+- **BLOQUANT** : ajout de la version `2.7` dans `enum_version_id`.
+- `type_generateur_ch` : ajout de l'identifiant `XXX`, correspondant à `libellé`.
+- `type_generateur_ecs` : mise à jour des variables requises pour les identifiants `XXX` à `YYY`.
+- Ajout de la compatibilité entre `enum_type_generateur_ch_id = XXX` et `enum_type_energie_id = YY`.
+- ...
+
+### Tables de valeurs
+
+Modifications apportées dans `valeur_tables.xlsx`.
+
+- Ajout de la feuille `nom_nouvelle_table`.
+- `rendement_generation` : ajout des valeurs correspondant aux nouveaux systèmes.
+- `rendement_distribution_ch` : mise à jour de la valeur `rd` pour l'identifiant `XX`.
+- `rendement_emission` : ajout des correspondances avec les nouveaux types d'émission.
+- ...
+- **CORRECTION** : remplacement de `diStribution` par `distribution`.
+  L'identifiant et le comportement associé ne sont pas modifiés.
+- ...
+
+
+# 2026-10-16 XSD DPE 10.0.0 - XSD Audit 6.0.0 : passage en DPE 2.7 et Audit 2.6
+
+## Résumé
+
+Cette version introduit les versions **DPE 2.7** et **Audit 2.6**.
+
+Elle comprend notamment :
+
+- l'intégration de nouvelles balises requises pour l'EPBD ;
+- l'intégration des évolutions 2026 de la méthode 3CL-DPE (en lien notamment avec les nouvelles technologies);
+
+avec :
+- l'ajout de nouveaux systèmes, périodes et modes de saisie ;
+- la mise à jour des énumérateurs et tables de valeurs, ainsi que les correspondances respectives;
+- diverses corrections de libellés et de correspondances.
+
+## Modèle de données commun DPE et Audit
+
+### Évolution du XSD pour les objets existants
+
+**AJOUT OPTIONNEL** : ajout de 'identifiant_reseau_chaleur' et 'date_arrete_reseau_chaleur' dans 'logement/climatisation_collection/climatisation/donnee_entree', afin de permettre la déclaration d’un réseau de froid urbain comme le système de climatisation.
+**BLOQUANT** RESTRICTION XSD : restriction de identifiant_reseau_chaleur au format [0-9]{4}C pour les usages chauffage/ECS et [0-9]{4}F pour la climatisation, afin de distinguer explicitement les identifiants de réseau de chaleur (C) et de réseau de froid (F).
+- **AJOUT OPTIONNEL** pour le DPE et l'Audit : ajout de `enum_methode_saisie_pvent_moy_id` dans `logement/ventilation_collection/ventilation/donnee_entree`.
+
+### Évolution du XSD pour l'EPBD
+
+- **AJOUT OPTIONNEL** : ajout de `basse_temperature` dans `logement/installation_chauffage_collection/installation_chauffage/emetteur_chauffage_collection/emetteur_chauffage/donnee_entree`, pour caractériser le fonctionnement à basse température.
+- **BLOQUANT** pour le DPE et l'état initial Audit uniquement : ajout de `flexibilite_reseau` dans `logement/caracteristique_generale`, réservé au DPE (logement et logement_neuf) et à l'état initial de l'Audit.
+- **BLOQUANT** pour le DPE et l'état initial Audit uniquement : ajout de `chauffage_duree_vie_restante` dans `logement/installation_chauffage_collection/installation_chauffage/generateur_chauffage_collection/generateur_chauffage/donnee_entree`, réservé au DPE (logement et logement_neuf) et à l'état initial de l'Audit.
+- **BLOQUANT** pour le DPE et l'état initial Audit uniquement : ajout de `clim_duree_vie_restante` dans `logement/climatisation_collection/climatisation/donnee_entree`, réservé au DPE (logement et logement_neuf) et à l'état initial de l'Audit lorsqu'un système de climatisation existe.
+- **BLOQUANT** : ajout de `production_enr` dans `logement/sortie`, obligatoire pour le DPE (logement et logement_neuf) et pour chaque état ou étape de l'Audit. Le bloc contient `prod_enr_pv`, `prod_enr_solaire_thermique`, `prod_enr_chaleur_ambiante_pac`,`prod_enr_geothermie_pac`, `prod_enr_chaleur_ambiante_cet`, `prod_enr_rcfu`, `prod_enr_bois`, `prod_enr_totale` et `prod_enr_pourcentage`.
+- **BLOQUANT** : ajout de `mention_a0` dans `logement/sortie`, obligatoire pour le DPE (logement et logement_neuf) et pour chaque état ou étape de l'Audit.
+
+- Pour le DPE `logement_neuf`, `flexibilite_reseau` est obligatoire ; les autres champs EPBD d'entrée sont facultatifs. Les champs de sortie restent obligatoires.
+
+### Évolution du XSD pour les nouvelles technologies
+
+- **AJOUT OPTIONNEL** : Nouvelle technologie - RCEG. Ajout de `presence_rceg`, `enum_methode_saisie_rceg_id`, `fech_saisi` et `ftrans_saisi` dans `logement/installation_ecs_collection/installation_ecs/donnee_entree`, ainsi que de `fecs_rceg` dans `installation_ecs/donnee_intermediaire`. Ajout de `besoin_ecs_rceg` dans les données intermédiaires ECS du DPE, de l'Audit et sous `logement_neuf` ; cette valeur est strictement supérieure à `0`.
+- **AJOUT OPTIONNEL** : Nouveau mode de saisi - PAC hybride. L'ajout de `enum_methode_saisie_couv_pac_hyb_id` et `couverture_pac_hybride_saisi` dans `installation_chauffage/donnee_entree` pour permettre la saisie justifiée de la part du besoin couverte par la PAC d'une PAC hybride.
+- **AJOUT OPTIONNEL** : Nouvelle technologie - commande intelligente (SCF) des ballons électriques à accumulation. Ajout de `enum_methode_saisie_scf_id` et `scf_saisi` dans `logement/installation_ecs_collection/installation_ecs/generateur_ecs_collection/generateur_ecs/donnee_entree`, ainsi que de `scf` dans `logement/installation_ecs_collection/installation_ecs/generateur_ecs_collection/generateur_ecs/donnee_intermediaire`. Les mêmes balises sont ajoutées sous `logement_neuf` et dans le modèle Audit ; leur saisie reste facultative pour le logement neuf.
+- **MODIFICATION** : mise à jour des restrictions pour le solaire thermique `tv_facteur_couverture_solaire_id` et le SEER `tv_seer_id` ; les valeurs historiques restent conservées dans les tables pour compatibilité avec les anciens DPE.
+    - `type_installation_solaire` : ajout de la modalité **ECS solaire seule**. **ECS solaire seule sup 5 ans** et **ECS solaire seule inf 5 ans** ne sont plus permis.
+
+### Autres Évolution du XSD
+
+- **BLOQUANT** limitation du `nombre_niveau_logement` (appartement ou maison) à 9 pour les DPE et Audit (logement et logement_neuf) afin d'éviter la confusion avec `nombre_niveau_immeuble`
+
+## Énumérateurs et correspondances
+
+Modifications apportées dans `enum_tables.xlsx` et les correspondances entre la feuille modifiée et le XSD / énumérateurs / tables de valeurs.
+Remarque : les **SUPPRESSION BLOQUANTE** correspondent à des valeurs qui ne sont plus permises dans le XSD, ces lignes sont colorés en rouge dans le fichier Excel.
+
+- **BLOQUANT** : Pour le DPE, ajout de la version `2.7` dans `enum_version_id`.
+- **BLOQUANT** : Pour l'Audit, ajout de la version `2.7` dans `enum_version_dpe_id` et de la version `2.6` dans `enum_version_audit_id`.
+- Ajout des feuilles : `methode_saisie_rceg` (`enum_methode_saisie_rceg_id`), `methode_saisie_repart_pac_hyb` (`enum_methode_saisie_repart_pac_hyb_id`) et `methode_saisie_pvent_moy` (`enum_methode_saisie_pvent_moy_id`), avec distinction entre valeur forfaitaire et valeur déterminée à partir d'un document justificatif autorisé. 
+    - **CORRESPONDANCE** : Lié aux nouvelles balises de RCEG et PAC hybride dans le XSD.
+- `equipement_intermittence` (`enum_equipement_intermittence_id`) : ajout de l'identifiant `8`, **Algorithme de régulation prédictif du chauffage**.
+    - **CORRESPONDANCE** : modification de restriction de 'enum_equipement_intermittence_id' et 'tv_intermittence_id' dans le XSD ; 'tv_intermittence_id' dans valeur_tables.xlsx.
+- `bouclage_reseau_ecs` (`enum_bouclage_reseau_ecs_id`) : ajout de l'identifiant `4` pour les réseaux ECS avec **module thermique d'appartement (MTA)**.
+    - **CORRESPONDANCE** : modification de restriction de 'enum_bouclage_reseau_ecs_id' dans le XSD.
+- `periode_installation_ecs_thermo`  (`enum_periode_installation_ecs_thermo_id`) : fermeture de la période précédente à 2026 et ajout d'une période **à partir de 2027**.
+    - **CORRESPONDANCE** : modification de restriction de 'enum_periode_installation_ecs_thermo_id' dans le XSD.
+- `type_installation_solaire` (`enum_type_installation_solaire_id`) : ajout de la modalité **ECS solaire seule**.
+    - **CORRESPONDANCE** - **SUPPRESSION BLOQUANTE** : modification de restriction de 'type_installation_solaire' dans le XSD : id 2 et 3 ne sont plus permis.
+- `type_generateur_ch` (`enum_type_generateur_ch_id`) : fermeture à 2026 des périodes précédentes des PAC et parties PAC de PAC hybrides ; les identifiants `172` à `176` et `178` à `181` couvrent les catégories installées à partir de 2027. Les identifiants `74` et `153` désignent maintenant les chaudières bois granulés installées de 2020 à 2024. Les identifiants `177` et `182` désignent les chaudières bois granulés à condensation après 2024 ; ajout des identifiants `183` et `184` pour les chaudières sans condensation après 2024.
+    - **CORRESPONDANCE** : mise à jour de `enum_type_generateur_ch_id` dans `enums.json`, `enum_tables.xlsx` et les XSD `DPE_complet.xsd`, `DPEv2.7.xsd`, `modele_commun_DPE_audit.xsd`, `audit.xsd` et `audit_v2.6.xsd`.
+- `type_generateur_ecs` (`enum_type_generateur_ecs_id`) : 
+    - fermeture à 2026 des périodes précédentes des CET et PAC double service ; les identifiants `135` à `138` couvrent les catégories installées à partir de 2027. Les identifiants `34` et `125` désignent maintenant les chaudières bois granulés installées de 2020 à 2024. Les identifiants `139` et `144` désignent les chaudières à condensation après 2024 ; ajout des identifiants `145` et `146` pour les chaudières sans condensation après 2024.
+    - nouvelle configuration : modifications des lib et ajout des identifiants `140` à `143` pour les ballons électriques à accumulation selon la présence de commande intelligente.
+    - `variables_interdites` : pour les identifiants `68` à `71` (sans commande intelligente), interdiction de `enum_methode_saisie_scf_id`, `scf_saisi` et `scf`.
+    - `variables_requises` : pour les identifiants `140` à `143` (avec commande intelligente), présence obligatoire de `enum_methode_saisie_scf_id` et `scf`.
+    - **CORRESPONDANCE** : mise à jour de `enum_type_generateur_ecs_id` dans `enums.json`, `enum_tables.xlsx` et les XSD DPE/Audit listés ci-dessus.
+- `methode_saisie_scf` (`enum_methode_saisie_scf_id`) : ajout des modalités `1` (valeur forfaitaire) et `2` (déterminé à partir d'un document justificatif autorisé).
+    - `variables_interdites` : la méthode `1` interdit `scf_saisi`.
+    - `variables_requises` : la méthode `2` exige `scf_saisi`.
+    - **CORRESPONDANCE** : 'enum_methode_saisie_scf_id' dans le XSD, enum_tables.xlsx
+- `type_ventilation` (`enum_type_ventilation_id`) : modification **non bloquante** du libéllé de l'id='1' : de `Ventilation par ouverture des fenêtres` à `Aération par ouverture des fenêtres`.
+
+
+## Tables de valeurs
+
+Modifications apportées dans `valeur_tables.xlsx` et les correspondances entre la feuille modifiée et le XSD. 
+Remarque : les **SUPPRESSION BLOQUANTE** correspondent à des valeurs qui ne sont plus permises dans le XSD, ces lignes sont colorés en rouge dans le fichier Excel.
+
+- `debits_ventilation` (`tv_debits_ventilation_id`) : ajout de colonne 'qvaerat_conv' pour l'aération ; modification de 'qvaerat_conv' et 'qvarep_conv' pour 'Aération par ouverture des fenêtres'.
+- `facteur_couverture_solaire` (`tv_facteur_couverture_solaire_id`) : ajout des nouvelles correspondances pour l'**ECS solaire seule** ; conservation des lignes historiques pour compatibilité.
+    - **CORRESPONDANCE** - **SUPPRESSION BLOQUANTE** : modification de restriction de 'tv_facteur_couverture_solaire_id' dans le XSD : les anciennes valeurs tv_facteur_couverture_solaire_id suivantes ne sont plus permises : 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48
+
+- `generateur_combustion` (`tv_generateur_combustion_id`) : mise à jour des correspondances des lignes `65` à `68`. Elles associent les catégories chauffage `74|153|183|184` et ECS `34|125|145|146` aux mêmes valeurs de générateur ; les chaudières bois granulés sans condensation après 2024 utilisent ainsi les mêmes valeurs que celles de 2020-2024.
+- `generateur_combustion` : les lignes `94` à `97` associent les catégories chauffage `177|182` et ECS `139|144` aux chaudières bois granulés à condensation après 2024. Les tables `rendement_emission` et `rendement_regulation` incluent également le type chauffage `182` dans les lignes concernées.
+- `intermittence` (`tv_intermittence_id`) : ajout des 40 nouveaux coefficients `I0` associés à l'algorithme de régulation prédictif du chauffage ; la borne supérieure dans le XSD passe de `220` à `228`.
+    - **CORRESPONDANCE** : modification de restriction de 'tv_intermittence_id' dans le XSD.
+- `rendement_distribution_ecs` (`tv_rendement_distribution_ecs_id`) : ajout de la ligne correspondant aux installations collectives avec MTA (`rd = 0,74`).
+    - **CORRESPONDANCE** : modification de restriction de 'tv_rendement_distribution_ecs_id' dans le XSD.
+- `scop` (`tv_scop_id`) : 
+    - ajout des 24 valeurs 2027 pour les PAC et CET et modifications des lib, valeurs et 'type_emetteur' ; les murs chauffants sont rattachés à `Autres équipements` (`enum_type_emission_distribution_id = 41`) et les ventilo-convecteurs à eau utilisent les identifiants existants `46` à `49`.
+    - **CORRECTION** : remplacement de `ditribution` par `distribution` pour le nom de colonne 'enum_type_emission_ditribution_id'. L'identifiant et le comportement associé ne sont pas modifiés.
+    - **CORRESPONDANCE** : modification de restriction de 'tv_scop_id' dans le XSD.
+- `seer` (`tv_seer_id`) : ajout des 2 valeurs de SEER en remplacement de celles actuelles pour une période d'installation `A partir de 2015`; conservation des lignes historiques pour compatibilité.
+    - **CORRESPONDANCE** - **SUPPRESSION BLOQUANTE** : modification de restriction de 'tv_seer_id' dans le XSD pour interdire la saisie des anciennes valeurs (tv_seer_id = 3 et 6).
+- `pertes_stockage`, `rendement_emission` et `rendement_regulation` : mise à jour des correspondances avec les nouveaux énumérateurs.
