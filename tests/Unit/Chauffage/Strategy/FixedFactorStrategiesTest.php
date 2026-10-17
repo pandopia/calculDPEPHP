@@ -34,7 +34,9 @@ final class FixedFactorStrategiesTest extends TestCase
             <installation_chauffage>
                 <donnee_entree>
                     <enum_cfg_installation_ch_id>$cfgId</enum_cfg_installation_ch_id>
-                    <surface_chauffee>100</surface_chauffee>
+                    <!-- L'installation couvre toute la surface desservie :
+                         sa part §9.1 vaut 1 et seuls les facteurs §9.x jouent. -->
+                    <surface_chauffee>200</surface_chauffee>
                     <rdim>1</rdim>
                 </donnee_entree>
                 <emetteur_chauffage_collection>
@@ -161,7 +163,7 @@ XML;
         <installation_chauffage>
             <donnee_entree>
                 <enum_cfg_installation_ch_id>3</enum_cfg_installation_ch_id>
-                <surface_chauffee>100</surface_chauffee>
+                <surface_chauffee>200</surface_chauffee>
                 <rdim>1</rdim>
             </donnee_entree>
             <emetteur_chauffage_collection>
@@ -534,5 +536,25 @@ XML);
         // Tous les rendements valent 1 et INT est commun : le rapport vaut 0,25 / 0,75.
         self::assertGreaterThan(0.0, $appoint);
         self::assertEqualsWithDelta(1.0 / 3.0, $appoint / $principal, 1e-9);
+    }
+
+    /**
+     * §9.3 p.62 renvoie au §9.1 p.57 pour « la part de la consommation de
+     * chauffage assurée par l'installation ». Une installation d'appoint qui
+     * ne chauffe que 42,8 m² sur les 360,6 m² desservis ne porte donc pas le
+     * besoin entier — 2501E0014261S, où le rapport observé contre la
+     * référence valait exactement 360,6 / 42,8.
+     */
+    public function testLAppointNePorteQueSaPartSurfacique(): void
+    {
+        [$doc, $node] = $this->buildInstallation(3, 1, rg: 1.0, re: 1.0, rd: 1.0, rr: 1.0, i0: 1.0);
+        $surface = $doc->getElementsByTagName('installation_chauffage')->item(0)
+            ->getElementsByTagName('surface_chauffee')->item(0);
+        $surface->textContent = '50';
+
+        (new InsertPoeleAppoint())->calculate($node, $this->makeContext($doc, 1000.0));
+
+        // 50 m² sur les 200 m² desservis : un quart du besoin.
+        $this->assertEqualsWithDelta(250.0, $this->besoinCh($node), self::TOL);
     }
 }
