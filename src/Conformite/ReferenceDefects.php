@@ -61,6 +61,28 @@ final class ReferenceDefects
     ];
 
     /**
+     * `enum_type_doublage_id` dont §3.2.1.2 p.16 fixe la résistance à
+     * 0,21 m².K/W : 4 « lame d'air de plus de 15 mm », 5 « matériau de
+     * doublage connu (plâtre, brique, bois) ».
+     *
+     * @var list<int>
+     */
+    private const DOUBLAGES_A_021 = [4, 5];
+
+    /**
+     * `enum_methode_saisie_u0_id` qui passent par la table ou le forfait :
+     * 1 « type de paroi inconnu (valeur par défaut) » et 2 « déterminé selon
+     * le matériau et épaisseur à partir de la table de valeur forfaitaire ».
+     * Les méthodes 3 et 4 saisissent U0 directement.
+     *
+     * @var list<int>
+     */
+    private const METHODES_U0_TABULE = [1, 2];
+
+    /** 1 / (1/3,90 + 0,21), la plus grande valeur tabulée étant 3,90. */
+    private const UMUR0_MAX_AVEC_DOUBLAGE = 2.144;
+
+    /**
      * `enum_type_isolation_id` : 1 « inconnu », 2 « non isolé ». Les autres
      * valeurs déclarent une isolation.
      *
@@ -162,6 +184,7 @@ final class ReferenceDefects
             $suspects += self::agregatIncompatibleAvecSaVentilation($referenceDoc);
             $suspects += self::mesureDEtancheiteDeclareeMaisIgnoree($referenceDoc);
             $suspects += self::productionSolaireIncompatibleAvecSaConso($referenceDoc);
+            $suspects += self::doublageDeMurDeclareMaisIgnore($referenceDoc);
         }
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
@@ -641,6 +664,69 @@ final class ReferenceDefects
                     $fch,
                     $impose,
                     $publie,
+                ),
+            ];
+        }
+
+        return [];
+    }
+
+    /**
+     * Résistance de doublage déclarée, puis absente du `umur0` publié.
+     *
+     * §3.2.1.2 p.16 : « pour l'ensemble des parois, la présence d'un doublage
+     * apporte une résistance thermique supplémentaire », avec
+     * `Rdoublage` = 0,21 m².K/W pour une lame d'air de plus de 15 mm ou un
+     * matériau connu — `enum_type_doublage_id` 4 et 5.
+     *
+     * La borne qui en découle est arithmétique : la plus grande valeur tabulée
+     * de §3.2.1.2 est 3,90 W/(m².K) (briques pleines simples ≤ 9 cm, p.15), et
+     * `1 / (1/3,90 + 0,21) = 2,144`. Un `umur0` publié au-dessus de cette
+     * borne sur un mur qui déclare un tel doublage ne peut donc venir ni de la
+     * table ni du forfait 2,5 des parois inconnues : la résistance déclarée
+     * n'a pas été appliquée.
+     *
+     * La preuve n'exige que le fichier de référence : son
+     * `enum_type_doublage_id`, sa méthode de saisie et son `umur0`. Elle ne
+     * vaut que pour `Rdoublage` = 0,21 — avec 0,10 le plafond de 2,5 reste
+     * atteignable (`1 / (1/3,90 + 0,10) = 2,806`), et il n'y a rien à prouver.
+     *
+     * @return array<string, string>
+     */
+    private static function doublageDeMurDeclareMaisIgnore(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+
+        foreach ($xpath->query('//mur') as $mur) {
+            if (!$mur instanceof DOMElement) {
+                continue;
+            }
+
+            $doublage = self::nombreEnfant($xpath, './donnee_entree/enum_type_doublage_id', $mur);
+            if ($doublage === null || !in_array((int) $doublage, self::DOUBLAGES_A_021, true)) {
+                continue;
+            }
+
+            // Un U0 saisi et justifié échappe à la table : rien à démontrer.
+            $methode = self::nombreEnfant($xpath, './donnee_entree/enum_methode_saisie_u0_id', $mur);
+            if ($methode === null || !in_array((int) $methode, self::METHODES_U0_TABULE, true)) {
+                continue;
+            }
+
+            $umur0 = self::nombreEnfant($xpath, './donnee_intermediaire/umur0', $mur);
+            if ($umur0 === null || $umur0 <= self::UMUR0_MAX_AVEC_DOUBLAGE + 1e-9) {
+                continue;
+            }
+
+            return [
+                'umur0' => sprintf(
+                    'la référence déclare un doublage (enum_type_doublage_id = %d, '
+                    . 'Rdoublage = 0,21 m².K/W) mais publie umur0 = %.3f : §3.2.1.2 p.16 '
+                    . 'plafonne alors Umur0 à 1 / (1/3,90 + 0,21) = %.3f, la plus grande '
+                    . 'valeur tabulée étant 3,90 W/(m².K)',
+                    (int) $doublage,
+                    $umur0,
+                    self::UMUR0_MAX_AVEC_DOUBLAGE,
                 ),
             ];
         }

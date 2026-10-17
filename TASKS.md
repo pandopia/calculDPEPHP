@@ -74,12 +74,16 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   `umur0` comme nous ; seuls 9 des 18 fichiers du logiciel « 4.1.1 » ne le
   font pas, plus DPEWIN et deux isolés. §3.2.1.2 p.16 écrit « pour l'ensemble
   des parois », ce qui tranche en faveur de l'intégration.
-- Piste d'imputation, non implémentée : un `umur0` publié **exactement à 2,5**
-  sur un mur déclarant `enum_type_doublage_id` ∈ {4, 5} est impossible sous
-  §3.2.1.2 — la plus grande valeur tabulée est 3,9 (briques pleines simples
-  ≤ 9 cm, p.15) et 1 / (1/3,9 + 0,21) = 2,14 < 2,5. La preuve tient sur le
-  seul fichier de référence ; elle ne couvre en revanche pas les murs non
-  plafonnés, comme le pisé à 1,55.
+- **Imputation livrée.** `doublageDeMurDeclareMaisIgnore()` signale tout
+  `umur0` publié au-dessus de `1 / (1/3,90 + 0,21) = 2,144` sur un mur qui
+  déclare `enum_type_doublage_id` ∈ {4, 5} et une saisie tabulée : la plus
+  grande valeur de §3.2.1.2 étant 3,90 (briques pleines simples ≤ 9 cm, p.15),
+  aucune autre origine n'est possible. **52 écarts imputés**, 2 663 → 2 715.
+  La règle ne vaut pas pour `Rdoublage` = 0,10, où le plafond de 2,5 reste
+  atteignable (2,806), ni pour les murs sous la borne — le pisé à 1,55 du
+  même fichier reste non démontrable.
+- Reste donc à départager, si un texte le permet un jour : les murs dont la
+  référence publie la valeur tabulée nue **sous** 2,144.
 
 ### TASK-K53 — Besoin d'ECS : deux références s'opposent à déclaration égale
 
