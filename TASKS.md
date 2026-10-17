@@ -305,54 +305,28 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Objectif : famille « Génération ECS » au-dessus de 92 % en profil strict
   (84,62 % actuellement).
 
-### TASK-K26 — §17.1.2 : Shmoy_système est une moyenne, pas une somme
+### TASK-K26 — §17.1.2 : répartition des visites entre sous-ensembles ECS
 
-- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
-- `StockageCalculator::sampledIndividualAdjustment` divise la surface de
-  l'appartement « moyen » par la **somme** des surfaces des logements visités du
-  groupe. Le §17.1.2 p.107 définit
-  `Shmoy_système_i = Σ_j Sh_système_i,appartement_j / Nblgt_système_i`, soit la
-  **moyenne** : avec la somme, le facteur décroît avec la taille de
-  l'échantillon (20 visites → ÷19), ce qui est dimensionnellement faux.
-- La référence est pourtant contradictoire d'un cas à l'autre, à moteur
-  identique (`BBS_Slama_2025.11.1.0`). Facteur d'échelle déduit de son
-  `rendement_stockage` (script de sondage : reconstruire `scale` depuis
-  `Rs = k / (1 + Qgw·scale·Rd/Becs)`) :
-  - `2688E0016745Q` (méthode 10, 1 installation) : `scale_ref = 1,0000`
-    exactement, ce que la **moyenne** reproduit au chiffre près ;
-  - `2659E2297555Z` (méthode 10, 1 installation) : `scale_ref = 1,0000`
-    exactement, que ni la somme (0,0526) ni la moyenne (1,0526) ne donnent ;
-  - `2657E1981571R` / `2657E1989142W` (méthode 11, 2 installations) : la
-    **somme** reproduit la référence à 0,004–0,09 %, la moyenne s'en écarte de
-    20 à 31 %.
-- A/B mesuré sur le corpus complet (360 cas, révision `eaeb72e`) : passer à la
-  moyenne donne +15 exactes et +7 dans-tolérance, mais fait basculer 98 valeurs
-  de dans-tolérance à hors-tolérance sur les deux cas méthode 11 — conformité
-  88,36 % → 88,30 %. **Correction non retenue en l'état**, la variable cachée
-  restant l'affectation des logements visités aux sous-ensembles ECS quand une
-  installation ne couvre pas tout l'immeuble (le découpage `$offset`/`$count`
-  actuel est une hypothèse).
-- Enjeu : sur `2659E2297555Z`, ce seul facteur explique la totalité des écarts
-  du fichier — `rendement_stockage` (0,979 contre 0,710), donc `conso_ecs`
-  (−27,5 %), donc `pertes_stockage_ecs_recup` et `besoin_ch` (+10,3 %, l'écart
-  de besoin vaut exactement celui des pertes récupérées), puis les coûts
-  électriques (−2,0 %, simple effet du terme fixe d'abonnement réparti sur un
-  Cef plus faible), les GES, l'EP et les étiquettes.
-- Quatrième sens observé, `2483E3258186E` (méthode 10, ballon de 175 L, 25
-  logements) : la référence y reproduit **exactement** le Qg,w non ajusté de
-  §11.6.2 (Rs = 0,629875 au chiffre près), donc un facteur 1 — l'inverse de
-  `2513E1578589Q`, de même méthode et de même configuration.
-- Variante mesurée et écartée : supprimer complètement l'ajustement
-  d'échantillonnage donne +264 exactes mais **+1 452 hors tolérance**
-  (89,33 % → 88,13 %). L'ajustement reste nécessaire sur le corpus.
-- Troisième sens observé, `2513E1578589Q` (méthode 10, ballon électrique de
-  100 L cat. B, 18 logements) : la référence implique un Qg,w de 24 kWh/an là
-  où §11.6.2 en donne 435 pour ce ballon, et nous 217 via l'ajustement
-  d'échantillonnage. Ses pertes récupérées à l'immeuble valent exactement celles
-  d'**un seul** ballon alors que l'immeuble en compte 18. Aucune des trois
-  lectures ne se recoupe ; la valeur publiée y est de surcroît physiquement
-  impossible.
-- Traiter avec TASK-K06 et TASK-H04, qui portent sur les mêmes grandeurs.
+- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
+- **Le constat d'origine est périmé.** `StockageCalculator` rend désormais le
+  facteur 1 dès qu'un seul sous-ensemble ECS couvre l'immeuble : §17.1.2 p.107
+  n'introduit `Shmoy_système_i` que pour répartir entre sous-ensembles, et
+  « la surface de cet appartement ne dépend pas de la taille des appartements
+  visités ». Les cas qui portaient la question sont retombés — `2659E2297555Z`
+  à 96,9 % (2 écarts), `2657E1989142W` à 96,3 % (3), `2483E3258186E` à 94,8 %.
+- **Ce qui reste.** Le découpage `$offset`/`$count` des logements visités entre
+  plusieurs sous-ensembles ECS est une heuristique, non une lecture de §17.1.2 :
+  elle attribue les visites dans l'ordre du fichier, au prorata des surfaces.
+  Le repli par typologie (`enum_typologie_logement_id`) la précède quand les
+  groupes concordent. Seul `2657E1981571R` (100 logements, 20 visites, deux
+  installations) en dépend encore — 87,6 %, 25 écarts.
+- **Cas à part, à ne pas traiter ici** : `2513E1578589Q` (18 logements,
+  2 visites) publie des pertes de stockage récupérées valant exactement
+  **1/18** des nôtres, soit celles d'un seul ballon sous un besoin de chauffage
+  d'immeuble ; l'écart de `besoin_ch` vaut au chiffre près celui des pertes
+  (1 725,38 contre 1 725,25). Son `rendement_stockage` est déjà imputé à la
+  référence par `ReferenceDefects`.
+- Traiter avec TASK-K06, qui porte sur les mêmes grandeurs.
 
 ### TASK-K27 — Circulateur d'une installation qui ne couvre qu'une partie du bâti
 
