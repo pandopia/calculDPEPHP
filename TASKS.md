@@ -153,33 +153,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   **leur** configuration, et rejoignent le corpus à ce titre.
 - Même famille que TASK-H04, dont il ne reste que ces deux fichiers.
 
-### TASK-K52 — Sérialisation exhaustive : reste la consommation par système
-
-- [ ] Owner: __ | Phase: K | Priorité: moyenne
-- **Deux des trois correctifs sont livrés.** §17.1.4.2 p.110 calcule tout à
-  l'échelle de l'appartement « moyen » dans un DPE d'immeuble à chauffage
-  individuel : une sérialisation exhaustive — description unique couvrant
-  l'immeuble, que `ExhaustiveInstallationNormalizer` ramène de la méthode 4 à
-  la 1 — en relève. Son profil de charge voit désormais GV / Nblgt, et sa
-  puissance se dimensionne au même périmètre, comme le commentaire de
-  `RendementAnnuelMoyenCalculator` l'exigeait déjà.
-  `rendement_generation` de 2659E2595696Y tombe sur 0,87167636743401 contre
-  0,871677 publié.
-- **Reste le troisième** : la référence publie `conso_ch` **par système**,
-  nous le total du groupe — 6 514,126 contre 13 028,472 sur 2659E2595696Y,
-  exactement le double. Même constat sur les deux 2659E04960…
-- Population exacte : **trois fichiers** du corpus déclenchent le
-  normaliseur — 2659E2595696Y, 2659E0496026K et 2659E0496027L. Vérifié en le
-  passant sur les 541 entrées.
-- `exhaustif-117` et `exhaustif-8` ont été ré-étalonnés : leurs valeurs sont
-  notre propre sortie, pas une référence, et le test le dit désormais. Leurs
-  chaudières passent de 400 et 55 kW à 24 kW — une chaudière domestique par
-  logement, ce que décrit la sérialisation — et leurs étiquettes restent C/C.
-- La sérialisation exhaustive est **rare** : sur vingt-huit immeubles tirés de
-  l'open data dont l'installation couvre toute la surface, aucun n'a
-  `enum_calcul_echantillonnage_id` = 1. Quand un fichier veut N systèmes, il
-  le déclare d'ordinaire par `rdim` = N (2693E0440000W, 2692E1146857Q).
-
 ### TASK-K42 — 2659E2542205P : référence auto-contradictoire sur cinq balises
 
 - [ ] Owner: __  | Phase: K  | Estimation: 1h  | Priorité: basse

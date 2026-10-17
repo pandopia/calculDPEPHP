@@ -56,31 +56,7 @@ final class DpeEngine
         $context = $this->buildContext($document);
         $context->set('collectif.besoin_simplifie', $simplifiedApartmentNeeds);
 
-        $originalMethods = \CalculDpePHP\Xml\ExhaustiveInstallationNormalizer::apply($document);
-        // Une sérialisation exhaustive décrit un système par logement : §17.1.4.2
-        // p.110 ramène alors le calcul à l'appartement « moyen ». La méthode lue
-        // valant désormais 1, le signal passe par le contexte.
-        $normalisees = [];
-        foreach ($originalMethods as $method) {
-            $installation = $method->parentNode?->parentNode;
-            if ($installation instanceof \DOMElement && $installation->nodeName === 'installation_chauffage') {
-                $normalisees[$installation->getNodePath()] = true;
-            }
-        }
-        $context->set(
-            \CalculDpePHP\Collectif\ChauffageInstallationMultiplicity::CLE_NORMALISEES,
-            $normalisees,
-        );
-
-        try {
-            $this->pipeline->run($document, $context);
-        } finally {
-            // L'adaptation de format n'altère pas les données saisies, même
-            // lorsqu'un calculateur échoue ou que le document est rejoué.
-            foreach ($originalMethods as $method) {
-                $method->textContent = $originalMethods[$method];
-            }
-        }
+        $this->pipeline->run($document, $context);
 
         return $document;
     }
