@@ -161,6 +161,7 @@ final class ReferenceDefects
             $suspects += self::isolantDePlancherBasDeclareMaisIgnore($referenceDoc);
             $suspects += self::agregatIncompatibleAvecSaVentilation($referenceDoc);
             $suspects += self::mesureDEtancheiteDeclareeMaisIgnoree($referenceDoc);
+            $suspects += self::productionSolaireIncompatibleAvecSaConso($referenceDoc);
         }
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
@@ -586,6 +587,66 @@ final class ReferenceDefects
      * @var list<int>
      */
     private const SAISIES_Q4PA_MESUREES = [2, 3];
+
+    /**
+     * `production_ch_solaire` que la consommation du même bloc contredit.
+     *
+     * §9.2 p.62 et §9.6 p.65 écrivent les deux grandeurs sur le même produit :
+     *
+     *   Cch  = Bch × (1 − Fch) × Σ_i (part_i × INT_i × Ich_i)
+     *   Prod = Bch ×      Fch  × Σ_i (part_i × INT_i × Ich_i)
+     *
+     * La somme, les rendements et le besoin s'éliminent entre les deux : il
+     * reste `Prod / Cch = Fch / (1 − Fch)`, quelle que soit l'installation.
+     * Les trois valeurs étant publiées côte à côte dans la même
+     * `donnee_intermediaire`, la contradiction se démontre sur le seul fichier
+     * de référence, sans aucun calcul de notre moteur.
+     *
+     * Huit installations du corpus sur les dix qui publient les trois balises
+     * la violent, dans les deux sens — de 0,52 à 3,32 fois le rapport imposé.
+     *
+     * @return array<string, string>
+     */
+    private static function productionSolaireIncompatibleAvecSaConso(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+
+        foreach ($xpath->query('//installation_chauffage') as $installation) {
+            if (!$installation instanceof DOMElement) {
+                continue;
+            }
+
+            $production = self::nombreEnfant($xpath, './donnee_intermediaire/production_ch_solaire', $installation);
+            $conso = self::nombreEnfant($xpath, './donnee_intermediaire/conso_ch', $installation);
+            $fch = self::nombreEnfant($xpath, './donnee_intermediaire/fch', $installation);
+            if ($production === null || $conso === null || $fch === null
+                || $conso <= 0.0 || $fch <= 0.0 || $fch >= 1.0) {
+                continue;
+            }
+
+            $impose = $fch / (1.0 - $fch);
+            $publie = $production / $conso;
+            if (abs($publie - $impose) <= 0.01 * $impose) {
+                continue;
+            }
+
+            return [
+                'production_ch_solaire' => sprintf(
+                    'la référence publie production_ch_solaire = %.3f et conso_ch = %.3f pour '
+                    . 'fch = %.2f : §9.2 p.62 et §9.6 p.65 posent les deux sur le même produit '
+                    . 'Bch × Σ(part × INT × Ich), d\'où Prod / Cch = Fch / (1 − Fch) = %.4f, '
+                    . 'quand le fichier publie %.4f',
+                    $production,
+                    $conso,
+                    $fch,
+                    $impose,
+                    $publie,
+                ),
+            ];
+        }
+
+        return [];
+    }
 
     /**
      * Une perméabilité mesurée, saisie et justifiée, que la référence publie

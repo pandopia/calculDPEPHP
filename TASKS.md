@@ -457,10 +457,14 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   donnent un troisième jeu encore (2400E4039624H et 2400E0180612T suivent
   « 89 + 6 logPn » quand la table dit « 91 + 2 logPn », et les deux cas à
   Pn = 4,828 kW ne suivent ni l'un ni l'autre). Ne rien changer sans un texte.
-- `production_ch_solaire` reste faux sur les installations multiples :
-  §9.6 p.65 donne Prod = Bch × Fch × Σ facteur_i INT_i Ich_i, exact sur
-  2400E1027746V et 2601E0263293X, mais le rapport tombe à 0,85 et 0,52 sur
-  les deux installations de 2601E0370414Y.
+- **`production_ch_solaire` : tranché, c'est la référence.** §9.2 p.62 et
+  §9.6 p.65 écrivent la production et la consommation sur le même produit
+  `Bch × Σ(part_i × INT_i × Ich_i)` : tout s'élimine sauf
+  `Prod / Cch = Fch / (1 − Fch)`. Sur les dix installations du corpus qui
+  publient les trois balises, **huit violent ce rapport**, de 0,52 à 3,32 fois
+  — et les deux qui le respectent sont exactement celles que nous
+  reproduisons. `ReferenceDefects` les impute désormais sur cette preuve,
+  interne au fichier.
 - `sortie_par_energie` ne porte pas de ligne pour
   `enum_type_energie_id = 12` (« électricité d'origine renouvelable utilisée
   dans le bâtiment ») : 2601E0370414Y en attend une complète.
