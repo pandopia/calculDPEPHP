@@ -19,12 +19,18 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-H04 — Besoin et consommation ECS des fichiers collectifs
 
-- [ ] Owner: __  | Phase: H  | Estimation: 4h  | Dépend : TASK-H10
-- Sur plusieurs immeubles, les valeurs divergent d'un facteur proche du nombre
-  d'appartements. Distinguer calcul immeuble, appartement échantillonné et
-  appartement généré depuis l'immeuble selon le §17.
-- Examiner séparément les pertes de distribution ECS parfois sérialisées en Wh.
-- Cibles : `src/Ecs/BesoinEcsCalculator.php`, `src/Collectif/`.
+- [ ] Owner: __  | Phase: H  | Priorité: basse
+- **Mesuré sur 513 cas** : sur les 783 divergences de `besoin_ecs` et
+  `conso_ecs`, **deux seulement** suivent un facteur égal au nombre
+  d'appartements — `2559E3128801Y` (×4) et `2633E1486544G` (×14). Les 781
+  autres sont des écarts ordinaires, de rapport proche de 1.
+- Ces deux fichiers sont exactement la configuration de TASK-K53, à traiter
+  avec elle : installation ECS individuelle, `nombre_logement` = 1,
+  `rdim` = 1, surface couvrant l'immeuble, tous les logements visités.
+- La distinction immeuble / appartement échantillonné / appartement généré
+  demandée par l'énoncé est donc en place partout ailleurs.
+- Les pertes de distribution ECS sérialisées en Wh relèvent de TASK-H03,
+  close : la convention est propre au format du fichier.
 
 ### TASK-H23 — Ponts thermiques des parois en adjacence 22 : convention d'éditeur
 
@@ -122,6 +128,30 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Variante mesurée et écartée : « au moins une baie avec fermeture » ne donne
   que 65 bonnes réponses. Ne pas chercher de seuil, et traiter avec TASK-K38,
   qui porte sur le même bloc.
+
+### TASK-K53 — Besoin d'ECS d'une installation individuelle couvrant l'immeuble
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- **Correction d'un constat trop rapide.** Les cinq cas tirés de l'open data
+  pour départager cette question (2695E2478847D, 2695E2587385R, 2695E2369069X,
+  2695E2107621F, 2695E1554794Q) sont tous **échantillonnés** — 5 visites pour
+  12 logements, 15 pour 98, 4 pour 40… — et ne disent donc rien de la
+  configuration contestée, qui est celle d'un immeuble **entièrement visité**.
+- Parmi les immeubles dont tous les logements sont visités, la référence se
+  partage **2 contre 1** :
+  - besoin de l'immeuble : `2633E1486544G` (14 visites, 14 logements, mode 11)
+    et `2559E3128801Y` (4 visites, 4 logements, mode 10) ;
+  - besoin d'un logement : `2688E0016745Q` (7 visites, 7 logements, mode 10).
+  Les trois ont la même configuration : installation ECS individuelle,
+  `nombre_logement` = 1, `rdim` = 1, `surface_habitable` couvrant l'immeuble.
+- Le garde « tous les logements visités → besoin de l'immeuble » reste écarté,
+  et pour une raison plus forte qu'avant : mesuré sur 513 cas il coûte **+28
+  écarts**, et il **dégrade 2559E3128801Y de 7** alors que c'est l'un des deux
+  cas qu'il vise. Le facteur 4 de ce fichier n'est donc pas une simple
+  question de division par le nombre de logements.
+- Les cinq cas échantillonnés confirment en revanche notre traitement pour
+  **leur** configuration, et rejoignent le corpus à ce titre.
+- Même famille que TASK-H04, dont il ne reste que ces deux fichiers.
 
 ### TASK-K52 — Un générateur décrit pour N logements : trois références, deux verdicts
 
