@@ -306,7 +306,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K37 — Auxiliaires de distribution d'ECS d'un réseau à traceur chauffant
 
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
+- [~CLA] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: moyenne
 - §15.2 p.99 : « aux consommations d'auxiliaires du générateur, il faut ajouter
   celles éventuelles du bouclage **ou du traçage** de l'ECS ». Le XSD distingue
   1 « réseau d'ecs non bouclé », 2 « réseau d'ecs bouclé » et 3 « réseau d'ecs
