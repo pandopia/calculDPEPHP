@@ -60,6 +60,14 @@ final class ReferenceDefects
         ['dpe/logement/sortie/emission_ges/', 'emission_ges'],
     ];
 
+    /**
+     * `enum_type_isolation_id` : 1 « inconnu », 2 « non isolé ». Les autres
+     * valeurs déclarent une isolation.
+     *
+     * @var list<int>
+     */
+    private const ISOLATION_ABSENTE_OU_INCONNUE = [1, 2];
+
     private const COUT_PREFIX = 'dpe/logement/sortie/cout/';
     private const EF_PREFIX = 'dpe/logement/sortie/ef_conso/';
     private const APPORT_PREFIX = 'dpe/logement/sortie/apport_et_besoin/';
@@ -421,13 +429,17 @@ final class ReferenceDefects
     }
 
     /**
-     * §3.2.2 p.20 : lorsque la résistance de l'isolant d'un plancher bas est
-     * connue, « Upb = 1 / (1/Upb0 + R) » — la branche « Isolation ? Oui →
-     * Résistance isolant » de l'arbre de décision. Un fichier qui déclare à la
-     * fois un type d'isolation, une méthode de saisie par résistance
-     * (`enum_methode_saisie_u_id` 5 ou 6) et une `resistance_isolation`
-     * positive, puis publie `upb` égal à `upb0`, se contredit : il décrit un
-     * plancher isolé et en publie le coefficient non isolé.
+     * §3.2.2 p.20 : l'arbre de décision du plancher bas ne rend `Upb = Upb0`
+     * que sur la branche « Isolation ? Non ». Dès que la paroi est déclarée
+     * isolée, Upb vaut `1 / (1/Upb0 + R)` si la résistance est saisie, et
+     * `min(Upb0 ; Upb_tab)` sinon — donc strictement moins que Upb0, puisque
+     * aucune valeur tabulée d'un plancher isolé n'excède celle du même
+     * plancher nu.
+     *
+     * Un fichier qui déclare un type d'isolation et publie malgré tout
+     * `upb = upb0` se contredit : il décrit un plancher isolé et en publie le
+     * coefficient non isolé. Le corpus le confirme — sur 286 planchers bas
+     * déclarés isolés, 281 publient bien `upb < upb0`.
      *
      * Preuve sur la référence seule, sans aucun résultat de notre moteur.
      *
@@ -445,15 +457,8 @@ final class ReferenceDefects
                 continue;
             }
 
-            $methode = self::nombreEnfant($xpath, './donnee_entree/enum_methode_saisie_u_id', $plancher);
-            if ($methode === null || !in_array((int)$methode, [5, 6], true)) {
-                continue;
-            }
-
-            $resistance = self::nombreEnfant($xpath, './donnee_entree/resistance_isolation', $plancher);
             $isolation = self::nombreEnfant($xpath, './donnee_entree/enum_type_isolation_id', $plancher);
-            if ($resistance === null || $resistance <= 0.0
-                || $isolation === null || in_array((int)$isolation, [1, 2], true)) {
+            if ($isolation === null || in_array((int)$isolation, self::ISOLATION_ABSENTE_OU_INCONNUE, true)) {
                 continue;
             }
 
@@ -463,14 +468,27 @@ final class ReferenceDefects
                 continue;
             }
 
+            $resistance = self::nombreEnfant($xpath, './donnee_entree/resistance_isolation', $plancher);
+            if ($resistance !== null && $resistance > 0.0) {
+                return [
+                    'upb' => sprintf(
+                        'la référence déclare un plancher bas isolé (résistance %.2f m².K/W saisie et '
+                        . 'justifiée) mais publie upb = upb0 = %.3f, le coefficient non isolé : §3.2.2 '
+                        . 'p.20 impose upb = 1 / (1/upb0 + R) = %.3f',
+                        $resistance,
+                        $upb0,
+                        1.0 / (1.0 / $upb0 + $resistance),
+                    ),
+                ];
+            }
+
             return [
                 'upb' => sprintf(
-                    'la référence déclare un plancher bas isolé (résistance %.2f m².K/W saisie et justifiée) '
-                    . 'mais publie upb = upb0 = %.3f, le coefficient non isolé : §3.2.2 p.20 impose '
-                    . 'upb = 1 / (1/upb0 + R) = %.3f',
-                    $resistance,
+                    'la référence déclare un plancher bas isolé (enum_type_isolation_id = %d) mais '
+                    . 'publie upb = upb0 = %.3f, le coefficient non isolé : §3.2.2 p.20 ne rend '
+                    . 'upb = upb0 que sur la branche « Isolation ? Non »',
+                    (int)$isolation,
                     $upb0,
-                    1.0 / (1.0 / $upb0 + $resistance),
                 ),
             ];
         }
