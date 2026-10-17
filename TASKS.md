@@ -472,19 +472,43 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Preuves et corpus figé : `docs/corrections-campagne-50f.md` et rapport
   applicatif `docs/dpe-campaigns/dpe-campaign-50f/`.
 
-### TASK-K46 — Réseau 9514C : référence CO2 direct ou facteur ACV
+### TASK-K46 — Contenu CO2 des réseaux : colonne et millésimes manquants
 
-- [~CLA] Owner: __ | Phase: K | Priorité: moyenne
-- Campagne 50g, bâtiment 52041673575825 / **2595E1189146F**, appartement
-  **2595E1189162V** (lettres B/B de référence contre C/C calculées).
-  33 cibles diffèrent, principalement sur les GES ; EP bâtiment 88 dans les deux moteurs.
-- Réseau déclaré 9514C, arrêté 2024-07-05 : émissions CH et ECS de référence
-  = consommation EF × 0,097 ; moteur = EF × 0,118.
-- L'arrêté du 5 juillet 2024 publie respectivement 0,097 en CO2 direct et 0,118
-  en CO2 ACV. Source : https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000049925781
-- Vérifier la colonne applicable au DPE habitation et la règle du logiciel
-  de référence, puis mesurer sur tous les réseaux du corpus. Ne pas remplacer
-  isolément 9514C ni inférer une table depuis les résultats attendus.
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- **Notre table et notre règle de millésime sont justes sur 9 réseaux sur
+  12** vérifiés contre le facteur que les références impliquent
+  (`emission_ges_ch / conso_ch` de la ligne énergie 8) : 6921C, 7501C sur deux
+  arrêtés, 0106C, 5905C, 8201C, 5901C, 5703C en 2026, 2406C, 8401C.
+- Trois désaccords, de trois natures différentes :
+  - **0106C** (2675E0015989B, arrêté 2025-04-11) : la référence publie 0,040,
+    nous 0,000 — c'est notre table qui a perdu la cellule, voir ci-dessous.
+  - **5703C** (2457E3582864U, arrêté 2024-07-05) : référence 0,068, aucune de
+    nos quatre années (0,153 / 0,092 / 0,187 / 0,174) n'en approche. C'est la
+    piste de la colonne **CO2 direct** contre **CO2 ACV**, à trancher avec le
+    texte : l'arrêté du 5 juillet 2024 publie 0,097 en direct et 0,118 en ACV
+    pour 9514C, et la référence de 2595E1189146F retient 0,097.
+  - **4211C** (2242E2979513I, sans `date_arrete_reseau_chaleur`) : référence
+    0,109, nos quatre millésimes vont de 0,048 à 0,075.
+- Ne pas remplacer un identifiant isolément ni inférer une colonne depuis les
+  résultats attendus : établir d'abord laquelle des deux colonnes l'arrêté DPE
+  désigne, puis mesurer sur tous les réseaux du corpus.
+
+### TASK-K59 — 41 réseaux de chaleur à contenu CO2 nul au millésime 2024
+
+- [ ] Owner: __ | Phase: K | Priorité: haute
+- `resources/tables/reference/tv_reseau_chaleur.php` donne 0,000 à 41 réseaux
+  pour la seule année 2024, alors que les millésimes 2022, 2023 et 2025 n'en
+  comptent aucun et que ces mêmes réseaux y ont des valeurs non nulles. Un
+  contenu CO2 nul n'existe pas dans l'arrêté : la cellule a été perdue.
+- Conséquence directe : tout DPE dont l'arrêté réseau est de 2025 et dont le
+  réseau figure dans la liste voit ses émissions de chauffage ou d'ECS
+  tomber à zéro. 2675E0015989B en est l'exemple, référence 0,040 contre 0.
+- Réseaux concernés : 0106C 0402C 0509C 0703C 0705C 0811C 2301C 2515C 2518C
+  3823C 3905C 4245C 4310C 5205C 5609C 5720C 5806C 5811C 5818C 5826C 5922C
+  6318C 6604C 6704C 6930C 6935C 7009C 7314C 7608C 8006C 8705C 8816C 9421C
+  9509C 1322F 3102F 3412F 3802F 4213F 8601F 9231F.
+- Redigitaliser la colonne depuis l'annexe de l'arrêté du millésime 2024, et
+  vérifier qu'aucune autre année ne porte de trou du même genre.
 
 ### TASK-K45 — Ponts thermiques des exports 7.x, après correction Ue
 

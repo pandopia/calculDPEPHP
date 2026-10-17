@@ -18,6 +18,12 @@ declare(strict_types=1);
  *
  * @spec-source https://www.legifrance.gouv.fr/jorf/article_jo/JORFARTI000053957390
  * @generated-on 2026-09-01
+ * @status partial — 41 réseaux du millésime 2024 portent 0,000 alors qu'ils
+ *         ont une valeur non nulle en 2022, 2023 et 2025 : la cellule a été
+ *         perdue à la digitalisation, et un contenu CO2 nul n'existe pas dans
+ *         l'arrêté. 2675E0015989B le montre sur 0106C — la référence publie
+ *         0,040, entre nos 0,037 de 2023 et 0,041 de 2025. Liste complète et
+ *         suite : TASK-K59.
  */
 
 return [
