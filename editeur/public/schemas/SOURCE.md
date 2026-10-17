@@ -37,3 +37,9 @@ TASK-K64 ; l'éditeur ne le sert pas encore.
 
 `enums.json`, `deleted_enums.json`, `CHANGELOG.md` et `README.md` viennent du
 même dossier amont et sont synchronisés à la même date.
+
+`arrete_reseau_chaleur.json` y donne la correspondance **officielle** entre
+millésime de table, date d'arrêté et plage d'application — six arrêtés de
+2020 à 2025, avec le lien Légifrance de chacun. C'est la source à opposer à
+la règle de `ReseauChaleurFactorResolver`, qui l'approche aujourd'hui par
+`année(date) − 1` plafonnée à 2022 (cf. TASK-K65).

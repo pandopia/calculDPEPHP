@@ -248,33 +248,41 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   surface habitable du bâtiment », ce que le code applique déjà : chercher la
   source avant de s'en écarter, et mesurer en A/B.
 
-### TASK-K46 — Contenu CO2 des réseaux : la colonne ACV est confirmée
+### TASK-K65 — Réseaux de chaleur : deux millésimes manquent, et le choix est approché
 
-- [ ] Owner: __ | Phase: K | Priorité: basse
-- **Tranché sur dix-neuf réseaux.** Douze DPE d'appartements chauffés en
-  réseau urbain ont été tirés de l'open data en choisissant un facteur
-  implicite distinct par fichier, pour maximiser le nombre de réseaux. Neuf
-  sur dix reproduisent notre table ACV et notre règle de millésime **au
-  chiffre près** : 9502C, 9503C, 9507C, 9509C, 9511C, 9514C, 9515C, 9516C et
-  9522C, tous à l'arrêté du 25 avril 2026. Avec les neuf réseaux déjà
-  vérifiés, cela fait dix-huit accords.
-- **9514C, le réseau de l'énoncé, en fait partie** : 2695E2606311P publie
-  0,120, exactement notre millésime 2025. L'observation de 0,097 sur
-  2595E1189146F portait sur l'arrêté du 5 juillet 2024, et reste isolée. La
-  piste « colonne CO2 direct » n'est pas confirmée.
-- **Un seul écart neuf** : 9521C (2695E2521479V, arrêté du 25 mai 2026, un
-  mois après les autres) implique 0,00276 quand nos quatre millésimes vont de
-  0,239 à 0,261. Vérifier si un arrêté correctif de mai 2026 a révisé ce
-  réseau avant de conclure. Le cas est au corpus, à 66,5 %.
-- Reste de l'ancien décompte : 5703C à l'arrêté du 5 juillet 2024 (référence
-  0,068, nos millésimes de 0,092 à 0,187) et 4211C sans date d'arrêté
-  (référence 0,109, nos millésimes de 0,048 à 0,075).
-- **Les multi-bâtiment ne sont pas concernés** : §17.3 impose d'y calculer les
-  GES « à partir des énergies consommées réellement par les générateurs », ce
-  que `ReseauChaleurFactorResolver::combustibleMultiBatiment` fait déjà.
-  2695E2608627R le confirme avec 0,227, le facteur du gaz naturel ;
-  2695E2427686K, de configuration identique, y applique au contraire le
-  forfait « autre réseau » de 0,385.
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- `arrete_reseau_chaleur.json`, copié de l'amont ADEME dans
+  `editeur/public/schemas/`, donne la correspondance **officielle** : six
+  arrêtés, chacun avec sa plage d'application et son lien Légifrance.
+
+  | Millésime | Arrêté | En vigueur |
+  |---|---|---|
+  | 2020 | 2020-10-12 | 2020-10-17 → 2022-01-18 |
+  | 2021 | 2021-10-21 | 2022-01-18 → 2023-04-23 |
+  | 2022 | 2023-03-16 | 2023-03-16 → 2024-09-20 |
+  | 2023 | 2024-07-05 | 2024-07-05 → 2025-07-01 |
+  | 2024 | 2025-04-11 | 2025-04-11 → 2026-09-01 |
+  | 2025 | 2026-04-25 | 2026-05-10 → … |
+
+- **`tv_reseau_chaleur` ne porte que 2022 à 2025.** Les millésimes 2020 et
+  2021 manquent, alors que la méthode 3CL s'applique depuis le 1er juillet
+  2021 : tout DPE antérieur au 16 mars 2023 relève de l'un des deux.
+- **Le choix du millésime est anachronique pour ces DPE.**
+  `ReseauChaleurFactorResolver` prend `max(2022, année(date) − 1)` : un DPE du
+  6 avril 2022 se voit appliquer l'arrêté du **16 mars 2023**, publié après
+  lui. C'est la faute que TASK-K02 a corrigée pour les tarifs d'énergie.
+  `2242E2979513I` en est le cas : sa référence implique 0,109 pour `4211C`
+  quand nos millésimes 2022 et 2023 donnent 0,075.
+- La règle `année − 1` ne vaut d'ailleurs pas pour les deux plus anciens :
+  l'arrêté 2021-10-21 porte le millésime **2021**, pas 2020. Remplacer
+  l'approximation par les plages du JSON, qui sont la donnée officielle.
+- Ordre de travail : digitaliser d'abord les deux millésimes depuis leurs
+  liens Légifrance (colonne « Contenu CO2 ACV »), **puis** basculer sur les
+  plages — faire l'inverse ferait tomber les DPE anciens sur le forfait
+  « autre réseau » de 0,385, pire que le plafonnement actuel.
+- Reste indépendant de ce chantier : `5703C` au millésime 2023 (arrêté du
+  5 juillet 2024), où `2457E3582864U` implique 0,068 quand nous lisons 0,092.
+  Vérifier la ligne dans l'arrêté avant de conclure.
 
 ### TASK-K45 — Ponts thermiques des exports 7.x, après correction Ue
 
