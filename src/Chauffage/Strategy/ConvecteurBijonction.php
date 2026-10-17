@@ -65,14 +65,27 @@ final class ConvecteurBijonction implements CalculatorInterface
         $bch    = (float)$context->get('chauffage.besoin_ch',           0.0);
         $bchDep = (float)$context->get('chauffage.besoin_ch_depensier', 0.0);
 
-        $pos    = $this->positionInCollection($node);
-        $factor = self::FACTORS[$pos] ?? (1.0 / max(1, $pos));
-
         $accessor      = new NodeAccessor($context->document);
         $rdim          = $accessor->getFloatOrNull('./donnee_entree/rdim', $node) ?? 1.0;
         $rdimEffective = max(1e-9, $rdim);
+        $besoin        = $bch / $rdimEffective;
+        $besoinDep     = $bchDep / $rdimEffective;
 
-        $this->computeAndWrite($factor * $bch / $rdimEffective, $factor * $bchDep / $rdimEffective, $node, $context);
+        // §9.9 p.67 : « La base et l'appoint sont assurés par un **même**
+        // convecteur disposant d'un circuit collectif alimentant la base et un
+        // circuit individuel pour l'appoint » — Cch1 = 0,6 Bch, Cch2 = 0,4 Bch.
+        // La coupure est entre deux circuits d'un seul appareil, pas entre
+        // deux installations : leurs parts somment à 1.
+        //
+        // Quand le fichier distingue les deux circuits par
+        // `enum_lien_generateur_emetteur_id`, chacun garde son propre
+        // rendement ; les quatre cas du corpus n'en décrivent qu'un, et
+        // l'installation reçoit alors le besoin entier.
+        if ($this->computeAndWriteParLien(self::FACTORS, $besoin, $besoinDep, $node, $context)) {
+            return;
+        }
+
+        $this->computeAndWrite($besoin, $besoinDep, $node, $context);
     }
 
     private function cfgId(DOMElement $node): ?int
