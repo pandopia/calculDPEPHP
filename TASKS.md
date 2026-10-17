@@ -13,12 +13,44 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase A — Documentation de la spécification
 
-### TASK-A01 — Digitalisation MD verbatim → markdown structuré
+### TASK-A01 — Digitalisation des `specsplitted` : ce qui reste vraiment
 
 - [ ] Owner: __  | Phase: A  | Estimation: variable  | Itératif
-- Pour chaque `resources/specsplitted/**/*.md` encore au statut `verbatim` :
-  reformater formules et tables, vérifier les indices perdus par `pdftotext`,
-  passer à `digitalized`, puis faire relire par un second agent (`reviewed`).
+- **Le retard est apparent, pas réel.** 100 des 103 fichiers de
+  `resources/specsplitted/` portent encore `status: "verbatim"`, mais la
+  couverture du moteur, elle, est complète : les **119 sections du sommaire**
+  sont toutes revendiquées par au moins un `@spec-section`, et **142 des 147
+  pages** de l'annexe sont citées par un `@spec-pages` — les cinq restantes
+  sont le sommaire lui-même (p.2-3 et 5). Mesuré, pas supposé.
+- **Les listes « tables à transcrire » sont périmées.** Sur les 30 `tv_*_id`
+  encore cochés `[ ]` dans les markdown, **25 ont un fichier dans
+  `resources/tables/`** depuis longtemps, deux de plus existent sous un autre
+  nom (`tv_upb_tab`, `tv_uph_tab`), et les trois derniers sont implémentés en
+  dur : `tv_deltar_id` dans la clé `fermeture_to_dr` de `tv_ujn.php`
+  (exhaustive, ids 2 à 8 du XSD), `tv_scop_id` et
+  `tv_rendement_generation_id` en constantes de
+  `GenerationNonCombustionCalculator`. **Zéro table réellement en attente.**
+  Cocher les cases, ou retirer les listes.
+- Sous-tâche repérable : `tv_scop_id` et `tv_rendement_generation_id` sont les
+  deux seules tables de la méthode qui vivent en `private const` plutôt que
+  dans `resources/tables/`. Les y déplacer alignerait la convention, à coût
+  nul pour le calcul — mais c'est un déplacement, pas une correction : mesurer
+  en A/B pour le prouver.
+- **Ce qui reste donc** est le travail de forme annoncé par les en-têtes :
+  formules en LaTeX, tables en pipe-markdown, indices et exposants perdus par
+  `pdftotext` à rétablir, puis `status` → `digitalized` et relecture par un
+  second agent → `reviewed`. Le moteur n'en dépend pas : il est tracé au PDF
+  directement. C'est de la relisibilité, à traiter section par section.
+- Priorité de relecture suggérée, là où une coquille d'extraction coûterait le
+  plus cher : §18.2-18.3 (sollicitations, déjà deux défauts d'annexe trouvés),
+  §13.2.2 (valeurs par défaut des chaudières, trois régimes d'arrondi en
+  litige dans TASK-K31) et §3.2.1.2 (tables Umur0, 14 colonnes serrées).
+- **Garde en place** : `tests/Unit/Tracabilite/AnnotationsSpecTest.php`
+  vérifie désormais que toute page citée tient dans les 147 de l'annexe, que
+  tout `@spec-source` en `resources/` désigne un fichier existant, et que
+  toute section découpée est revendiquée par le moteur. Il a attrapé §18.5,
+  dont la table C1 annonçait `@spec-pages 144` pour quatre pages et pointait
+  un `00-calcul.md` jamais créé.
 
 ## Phase K — Conformité au corpus ADEME
 

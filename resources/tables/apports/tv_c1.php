@@ -20,10 +20,13 @@ declare(strict_types=1);
  *                       Nord[sup75, pente, inf25], Est[sup75, pente, inf25], Horizontal.
  *
  * @spec-section 18.5
- * @spec-pages 144
- * @spec-source resources/specsplitted/18-annexes/05-c1-orientation-inclinaison/00-calcul.md
+ * @spec-pages 144-147
+ * @spec-source resources/specsplitted/18-annexes/05-c1-orientation-inclinaison/00-texte.md
  * @generated-on 2026-04-29
- * @status verified-spec — valeurs lues depuis la table p.144 ; vérifiées sur bat_post2026 (Sse=474.517248 exact)
+ * @status verified — les 1 248 valeurs des huit zones recoupées une à une avec
+ *          §18.5 p.144-147 : 1 248 sur 1 248. La table court sur quatre pages,
+ *          H2c, H2d et H3 occupant p.146-147 ; l'annotation n'en citait qu'une.
+ *          Vérifiée aussi sur bat_post2026 (Sse = 474,517248 exact).
  */
 return [
     // Zone 1 — H1a

@@ -13,7 +13,7 @@ Chaque fichier renvoie un `array` indexé par l'identifiant de la table (`tv_*_i
  *
  * @spec-section 3.2.1
  * @spec-pages 13-16
- * @spec-source resources/specsplitted/03-enveloppe-deperditions/02-parois-opaques/01-umur/01-table-umur-connu.md
+ * @spec-source resources/specsplitted/03-enveloppe-deperditions/02-parois-opaques/01-umur/02-calcul-umur0.md
  * @generated-on 2026-04-29
  */
 return [
