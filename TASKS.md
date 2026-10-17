@@ -114,6 +114,33 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   que 65 bonnes réponses. Ne pas chercher de seuil, et traiter avec TASK-K38,
   qui porte sur le même bloc.
 
+### TASK-K58 — Doublage de mur : un éditeur minoritaire l'ignore dans umur0
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- `umur0` reste hors tolérance sur **15 cas / 78 balises**, toutes de la même
+  forme : la référence publie la valeur tabulée nue plafonnée à 2,5, sans la
+  résistance de doublage que le fichier déclare pourtant.
+  2601E0076852C, mur en pisé de 50 cm, `enum_type_doublage_id` = 5 : la table
+  §3.2.1.2 p.14 donne 1,55 et la référence publie 1,55 ; nous publions
+  1 / (1/1,55 + 0,21) = 1,169. Idem pour ses blocs de béton creux de 20 cm,
+  2,8 tabulés → référence 2,5 (le seul plafond), nous 1,763.
+- **Variante mesurée et rejetée.** Sortir le doublage de `umur0` pour ne
+  l'appliquer qu'à la branche sans isolation rapportée — lecture littérale du
+  schéma §3.2.1.1 p.13, où `Umur_nu = Min(Umur0 ; 2,5)` et où
+  `Umur_doublage` de §3.2.1.2 n'apparaît pas — coûte **+2 611 écarts** :
+  13 816 → 16 427, 105 cas dégradés contre 11 améliorés. Ne pas y revenir.
+- **C'est une convention d'éditeur.** Sur les fichiers qui déclarent un
+  doublage, les **161 fichiers LICIEL** du corpus intègrent la résistance dans
+  `umur0` comme nous ; seuls 9 des 18 fichiers du logiciel « 4.1.1 » ne le
+  font pas, plus DPEWIN et deux isolés. §3.2.1.2 p.16 écrit « pour l'ensemble
+  des parois », ce qui tranche en faveur de l'intégration.
+- Piste d'imputation, non implémentée : un `umur0` publié **exactement à 2,5**
+  sur un mur déclarant `enum_type_doublage_id` ∈ {4, 5} est impossible sous
+  §3.2.1.2 — la plus grande valeur tabulée est 3,9 (briques pleines simples
+  ≤ 9 cm, p.15) et 1 / (1/3,9 + 0,21) = 2,14 < 2,5. La preuve tient sur le
+  seul fichier de référence ; elle ne couvre en revanche pas les murs non
+  plafonnés, comme le pisé à 1,55.
+
 ### TASK-K53 — Besoin d'ECS : deux références s'opposent à déclaration égale
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
