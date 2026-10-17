@@ -424,4 +424,76 @@ XML);
         }
     }
 
+
+    /**
+     * §3.4.3 p.36 : « Les ponts thermiques des planchers haut en structure
+     * légère sont négligés », et sa table s'intitule « Terrasse ou plancher
+     * haut **lourd** ». C'est la structure qui décide, et
+     * `enum_type_plancher_haut_id` la nomme.
+     *
+     * `paroi_lourde` ne peut pas en tenir lieu : le XSD le documente comme
+     * « la paroi est elle considérée comme lourde **pour le calcul de
+     * l'inertie** ». 2691E0507798K déclare `paroi_lourde` = 0 sur une
+     * « dalle béton » et sa référence calcule bien le pont, à 0,75.
+     *
+     * Les modalités que le garde §3.4.3 ne reconnaît pas comme légères
+     * conservent leur pont : il vaut mieux le compter que l'omettre quand le
+     * libellé ne décrit pas la structure porteuse.
+     *
+     * @param int $type `enum_type_plancher_haut_id`
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('planchersHauts')]
+    public function testLaStructureDuPlancherHautPrimeSurLeDrapeauDInertie(int $type, bool $pontCalcule): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(sprintf(<<<'XML'
+<dpe version="2"><logement><enveloppe>
+  <mur_collection><mur><donnee_entree>
+    <description>Mur 1</description><reference>M1</reference>
+    <enum_type_adjacence_id>1</enum_type_adjacence_id>
+    <enum_materiaux_structure_mur_id>11</enum_materiaux_structure_mur_id>
+    <enum_type_isolation_id>3</enum_type_isolation_id>
+  </donnee_entree></mur></mur_collection>
+  <plancher_haut_collection><plancher_haut><donnee_entree>
+    <description>Plafond</description><reference>PH1</reference>
+    <enum_type_adjacence_id>11</enum_type_adjacence_id>
+    <enum_type_plancher_haut_id>%d</enum_type_plancher_haut_id>
+    <enum_type_isolation_id>4</enum_type_isolation_id>
+    <paroi_lourde>0</paroi_lourde>
+  </donnee_entree></plancher_haut></plancher_haut_collection>
+  <pont_thermique_collection><pont_thermique><donnee_entree>
+    <enum_type_liaison_id>3</enum_type_liaison_id>
+    <tv_pont_thermique_id>42</tv_pont_thermique_id>
+    <enum_methode_saisie_pont_thermique_id>1</enum_methode_saisie_pont_thermique_id>
+    <reference_1>PH1</reference_1><reference_2>M1</reference_2>
+    <l>10</l><pourcentage_valeur_pont_thermique>1</pourcentage_valeur_pont_thermique>
+  </donnee_entree></pont_thermique></pont_thermique_collection>
+</enveloppe></logement></dpe>
+XML, $type));
+
+        $contexte = new CalculationContext(
+            document: $document,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        );
+        (new KCalculator())->calculate($document->getElementsByTagName('pont_thermique')->item(0), $contexte);
+
+        $k = (float) ($document->getElementsByTagName('k')->item(0)?->textContent ?? '0');
+        if ($pontCalcule) {
+            self::assertGreaterThan(0.0, $k, "type $type : le pont devrait être calculé");
+        } else {
+            self::assertSame(0.0, $k, "type $type : structure légère, pont négligé");
+        }
+    }
+
+    /** @return iterable<string, array{int, bool}> */
+    public static function planchersHauts(): iterable
+    {
+        yield 'dalle béton' => [8, true];
+        yield 'plafond lourd entrevous terre-cuite' => [11, true];
+        yield 'plafond entre solives bois' => [4, false];
+        yield 'toitures en bac acier' => [16, false];
+        // Le garde §3.4.3 conserve délibérément la plaque de plâtre : elle ne
+        // décrit pas la structure porteuse et peut masquer une dalle béton.
+        yield 'plafond en plaque de plâtre' => [14, true];
+    }
 }
