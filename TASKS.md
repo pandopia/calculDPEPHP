@@ -114,7 +114,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   que 65 bonnes réponses. Ne pas chercher de seuil, et traiter avec TASK-K38,
   qui porte sur le même bloc.
 
-### TASK-K59 — Échelle de `apport_et_besoin` : même éditeur minoritaire
+### TASK-K60 — Échelle de `apport_et_besoin` : même éditeur minoritaire
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
 - Six références publient `sortie/apport_et_besoin/besoin_ch` **plus petit**
