@@ -138,6 +138,7 @@ final class ReferenceDefects
             $suspects += self::bouclageEcsSansAuxiliaire($expected, $referenceDoc);
             $suspects += self::pontThermiqueKPorteDejaLaLongueur($referenceDoc);
             $suspects += self::apportsSerialisesEnWattheures($referenceDoc);
+            $suspects += self::isolantDePlancherBasDeclareMaisIgnore($referenceDoc);
         }
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
@@ -360,6 +361,64 @@ final class ReferenceDefects
         }
 
         return $suspects;
+    }
+
+    /**
+     * §3.2.2 p.20 : lorsque la résistance de l'isolant d'un plancher bas est
+     * connue, « Upb = 1 / (1/Upb0 + R) » — la branche « Isolation ? Oui →
+     * Résistance isolant » de l'arbre de décision. Un fichier qui déclare à la
+     * fois un type d'isolation, une méthode de saisie par résistance
+     * (`enum_methode_saisie_u_id` 5 ou 6) et une `resistance_isolation`
+     * positive, puis publie `upb` égal à `upb0`, se contredit : il décrit un
+     * plancher isolé et en publie le coefficient non isolé.
+     *
+     * Preuve sur la référence seule, sans aucun résultat de notre moteur.
+     *
+     * @spec-section 3.2.2
+     * @spec-pages   20
+     * @spec-source  resources/specsplitted/03-enveloppe-deperditions/02-parois-opaques/02-upb/00-calcul.md
+     * @return array<string, string>
+     */
+    private static function isolantDePlancherBasDeclareMaisIgnore(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+
+        foreach ($xpath->query('//plancher_bas') as $plancher) {
+            if (!$plancher instanceof DOMElement) {
+                continue;
+            }
+
+            $methode = self::nombreEnfant($xpath, './donnee_entree/enum_methode_saisie_u_id', $plancher);
+            if ($methode === null || !in_array((int)$methode, [5, 6], true)) {
+                continue;
+            }
+
+            $resistance = self::nombreEnfant($xpath, './donnee_entree/resistance_isolation', $plancher);
+            $isolation = self::nombreEnfant($xpath, './donnee_entree/enum_type_isolation_id', $plancher);
+            if ($resistance === null || $resistance <= 0.0
+                || $isolation === null || in_array((int)$isolation, [1, 2], true)) {
+                continue;
+            }
+
+            $upb = self::nombreEnfant($xpath, './donnee_intermediaire/upb', $plancher);
+            $upb0 = self::nombreEnfant($xpath, './donnee_intermediaire/upb0', $plancher);
+            if ($upb === null || $upb0 === null || $upb0 <= 0.0 || abs($upb - $upb0) > 1e-9) {
+                continue;
+            }
+
+            return [
+                'upb' => sprintf(
+                    'la référence déclare un plancher bas isolé (résistance %.2f m².K/W saisie et justifiée) '
+                    . 'mais publie upb = upb0 = %.3f, le coefficient non isolé : §3.2.2 p.20 impose '
+                    . 'upb = 1 / (1/upb0 + R) = %.3f',
+                    $resistance,
+                    $upb0,
+                    1.0 / (1.0 / $upb0 + $resistance),
+                ),
+            ];
+        }
+
+        return [];
     }
 
     private static function nodeNum(DOMXPath $xpath, string $query, DOMElement $context): ?float

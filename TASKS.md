@@ -41,15 +41,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Examiner séparément les pertes de distribution ECS parfois sérialisées en Wh.
 - Cibles : `src/Ecs/BesoinEcsCalculator.php`, `src/Collectif/`.
 
-### TASK-H08 — Upb des planchers bas en dalle béton
-
-- [~CLA] Owner: __  | Phase: H  | Estimation: 2h
-- Cas historiques : `2242E2979513I` attend 2,0 contre 0,241 ;
-  `2392E1620721B` attend 2,0 contre 0,8.
-- Vérifier le sens de `enum_type_isolation_id` et la lecture de
-  `resistance_isolation` dans `UpbCalculator` à partir de la spec, sans calage
-  sur ces seules références.
-
 ### TASK-H10 — DPE immeuble collectif, méthode 26
 
 - [ ] Owner: __  | Phase: H  | Estimation: 4h
