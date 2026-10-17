@@ -1,7 +1,7 @@
 # Conformité du moteur — jeux de tests DPE 3CL
 
-_Généré le 2026-10-17T08:38:26+00:00 — profil de tolérance : `strict`_
-_Révision mesurée : `0eea51f` — arbre de travail modifié : 1 fichier(s) src/ non commités_
+_Généré le 2026-10-17T08:43:02+00:00 — profil de tolérance : `strict`_
+_Révision mesurée : `25c1f00` — arbre de travail modifié : 1 fichier(s) src/ non commités_
 
 Comparaison balise à balise de la totalité de `<donnee_intermediaire>` et
 `<sortie>` entre la sortie du moteur et la référence du cas. Aucune balise
@@ -27,7 +27,7 @@ Balises supplémentaires  : 1 988
 Conformité               : 90,19 %
 ```
 
-Sur ces écarts, **3 811 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **92,64 %**. Détail plus bas.
+Sur ces écarts, **4 210 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **92,90 %**. Détail plus bas.
 
 ## Écarts par famille fonctionnelle
 
@@ -168,6 +168,12 @@ reproduire le défaut d'un logiciel tiers éloignerait le moteur de la méthode.
 | `pertes_generateur_ch_recup` | 1 | la référence sérialise les apports et les pertes récupérées en Wh (3312583) quand les besoins du même bloc sont en kWh (14675), et publie en conséquence une fraction d’apports gratuits saturée à 1 |
 | `pertes_generateur_ch_recup_depensier` | 1 | la référence sérialise les apports et les pertes récupérées en Wh (3312583) quand les besoins du même bloc sont en kWh (14675), et publie en conséquence une fraction d’apports gratuits saturée à 1 |
 | `qp0` | 24 | la référence sérialise QP0 en kW (1.500) malgré l’unité W imposée par le XSD ; la valeur cohérente avec Pn=125000 W est 1500 W |
+| `ep_conso_fr_depensier` | 25 | la référence recopie ep_conso_fr dans ep_conso_fr_depensier alors que les consommations diffèrent (51 vs 129 kWh) |
+| `ep_conso_ecs_depensier` | 71 | la référence recopie ep_conso_ecs dans ep_conso_ecs_depensier alors que les consommations diffèrent (2217 vs 2879 kWh) |
+| `ep_conso_ch_depensier` | 97 | la référence recopie ep_conso_ch dans ep_conso_ch_depensier alors que les consommations diffèrent (151119 vs 195947 kWh) |
+| `emission_ges_fr_depensier` | 25 | la référence recopie emission_ges_fr dans emission_ges_fr_depensier alors que les consommations diffèrent (51 vs 129 kWh) |
+| `emission_ges_ecs_depensier` | 76 | la référence recopie emission_ges_ecs dans emission_ges_ecs_depensier alors que les consommations diffèrent (2217 vs 2879 kWh) |
+| `emission_ges_ch_depensier` | 105 | la référence recopie emission_ges_ch dans emission_ges_ch_depensier alors que les consommations diffèrent (151119 vs 195947 kWh) |
 | `cout_fr_depensier` | 23 | la référence recopie cout_fr dans cout_fr_depensier alors que les consommations diffèrent (51 vs 129 kWh) |
 | `cout_ecs_depensier` | 371 | la référence recopie cout_ecs dans cout_ecs_depensier alors que les consommations diffèrent (2217 vs 2879 kWh) |
 | `cout_ch_depensier` | 371 | la référence recopie cout_ch dans cout_ch_depensier alors que les consommations diffèrent (4934 vs 6434 kWh) |

@@ -48,6 +48,18 @@ final class ReferenceDefects
         ],
     ];
 
+    /**
+     * Agrégats qui, comme les coûts, sont à énergie donnée des multiples
+     * fixes de la consommation finale : l'énergie primaire et les émissions
+     * de gaz à effet de serre.
+     *
+     * @var list<array{0: string, 1: string}> [préfixe de bloc, racine de la grandeur]
+     */
+    private const AGREGATS_DEPENSIER = [
+        ['dpe/logement/sortie/ep_conso/', 'ep_conso'],
+        ['dpe/logement/sortie/emission_ges/', 'emission_ges'],
+    ];
+
     private const COUT_PREFIX = 'dpe/logement/sortie/cout/';
     private const EF_PREFIX = 'dpe/logement/sortie/ef_conso/';
     private const APPORT_PREFIX = 'dpe/logement/sortie/apport_et_besoin/';
@@ -154,31 +166,27 @@ final class ReferenceDefects
         }
 
         foreach (self::COUTS_DEPENSIER as [$cout, $coutDep, $conso, $consoDep]) {
-            $vCout = self::num($expected, self::COUT_PREFIX . $cout);
-            $vCoutDep = self::num($expected, self::COUT_PREFIX . $coutDep);
-            $vConso = self::num($expected, self::EF_PREFIX . $conso);
-            $vConsoDep = self::num($expected, self::EF_PREFIX . $consoDep);
-
-            if ($vCout === null || $vCoutDep === null || $vConso === null || $vConsoDep === null) {
-                continue;
-            }
-            if ($vCout == 0.0 || $vConso == 0.0) {
-                continue;
-            }
-            if (abs($vCout - $vCoutDep) / abs($vCout) > 1e-9) {
-                continue;
-            }
-            if (abs($vConso - $vConsoDep) / abs($vConso) <= 1e-6) {
-                continue;
-            }
-
-            $suspects[$coutDep] = sprintf(
-                'la référence recopie %s dans %s alors que les consommations diffèrent (%.0f vs %.0f kWh)',
+            $suspects += self::valeurDepensiereRecopiee(
+                $expected,
+                self::COUT_PREFIX,
                 $cout,
                 $coutDep,
-                $vConso,
-                $vConsoDep,
+                $conso,
+                $consoDep,
             );
+        }
+
+        foreach (self::AGREGATS_DEPENSIER as [$prefixe, $grandeur]) {
+            foreach (['ch', 'ecs', 'fr'] as $usage) {
+                $suspects += self::valeurDepensiereRecopiee(
+                    $expected,
+                    $prefixe,
+                    $grandeur . '_' . $usage,
+                    $grandeur . '_' . $usage . '_depensier',
+                    'conso_' . $usage,
+                    'conso_' . $usage . '_depensier',
+                );
+            }
         }
 
         return $suspects;
@@ -193,6 +201,55 @@ final class ReferenceDefects
      * @param array<string, string> $expected
      * @return array<string, string>
      */
+    /**
+     * Une grandeur du scénario dépensier recopiée du conventionnel alors que
+     * les deux consommations diffèrent.
+     *
+     * Le coût, l'énergie primaire et les émissions sont, à énergie donnée, des
+     * multiples fixes de la consommation finale : publier la même valeur pour
+     * deux consommations différentes est une contradiction du fichier seul,
+     * sans qu'aucun résultat de notre moteur n'intervienne.
+     *
+     * @param array<string, string> $expected
+     * @return array<string, string>
+     */
+    private static function valeurDepensiereRecopiee(
+        array $expected,
+        string $prefixe,
+        string $grandeur,
+        string $grandeurDep,
+        string $conso,
+        string $consoDep,
+    ): array {
+        $valeur = self::num($expected, $prefixe . $grandeur);
+        $valeurDep = self::num($expected, $prefixe . $grandeurDep);
+        $vConso = self::num($expected, self::EF_PREFIX . $conso);
+        $vConsoDep = self::num($expected, self::EF_PREFIX . $consoDep);
+
+        if ($valeur === null || $valeurDep === null || $vConso === null || $vConsoDep === null) {
+            return [];
+        }
+        if ($valeur == 0.0 || $vConso == 0.0) {
+            return [];
+        }
+        if (abs($valeur - $valeurDep) / abs($valeur) > 1e-9) {
+            return [];
+        }
+        if (abs($vConso - $vConsoDep) / abs($vConso) <= 1e-6) {
+            return [];
+        }
+
+        return [
+            $grandeurDep => sprintf(
+                'la référence recopie %s dans %s alors que les consommations diffèrent (%.0f vs %.0f kWh)',
+                $grandeur,
+                $grandeurDep,
+                $vConso,
+                $vConsoDep,
+            ),
+        ];
+    }
+
     private static function bouclageEcsSansAuxiliaire(array $expected, DOMDocument $doc): array
     {
         $xp = new DOMXPath($doc);
