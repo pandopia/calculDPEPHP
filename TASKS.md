@@ -766,3 +766,50 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   observations qui la soutiennent viennent d'un seul moteur.
 - À reprendre si le corpus livre un DPE de maison dont la référence applique
   E = 1,75 avec ventouse et régulation, ou l'inverse en immeuble.
+
+### TASK-K57 — Branches du moteur nouvellement couvertes : écarts restants
+
+- [ ] Owner: __ | Phase: K | Priorité: haute
+- Le jeu `ademe-branches-2026-10` (76 cas, 19 branches, manifeste suivi)
+  couvre les configurations §9.x, ventilations et générateurs que le corpus
+  stratifié n'atteignait pas. Classement par conformité après les quatre
+  corrections déjà livrées :
+
+  | Branche | Conf. | Écarts/cas |
+  |---|---:|---:|
+  | cfg-releve-chaudiere-bois (§9.5) | 78,3 % | 83,8 |
+  | ventilation-hybride | 76,1 % | 59,5 |
+  | cfg-chauffage-solaire (§9.2) | 79,6 % | 62,5 |
+  | cfg-solaire-insert-poele (§9.6) | 81,7 % | 60,5 |
+  | cfg-releve-pac-insert-poele (§9.7) | 82,1 % | 59,0 |
+  | chaudiere-bois-granules | 79,6 % | 53,8 |
+  | puits-climatique-echangeur | 81,5 % | 53,5 |
+  | froid-pac-eau-eau | 80,4 % | 53,0 |
+  | chaudiere-gpl-condensation | 84,1 % | 51,8 |
+
+- Ancrage commun aux trois branches de chaudières : `rendement_generation`
+  reste 1 à 6 % sous la référence, avec un rapport variable d'un cas à
+  l'autre (0,943 à 0,999) — le taux de charge, donc Cdimref, est le suspect.
+  Remonter là avant de toucher les consommations.
+- `conso_auxiliaire_ventilation` : la VMC basse pression vaut chez nous 1,84
+  à 3,33 fois la référence (2400E0855774N, 2600E1220588X, 2601E0299209H), et
+  le puits climatique 700,8 kWh contre 0 attendu (2401E3500380E). §5 p.50 dit
+  que « les puissances d'auxiliaires des VMC basse pression sont les mêmes
+  que pour les VMC classiques » : l'écart vient d'ailleurs.
+- `production_ch_solaire` reste faux sur les installations multiples :
+  §9.6 p.65 donne Prod = Bch × Fch × Σ facteur_i INT_i Ich_i, exact sur
+  2400E1027746V et 2601E0263293X, mais le rapport tombe à 0,85 et 0,52 sur
+  les deux installations de 2601E0370414Y.
+
+### TASK-K58 — `conso_auxiliaire_distribution_fr` : convention d'éditeur
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- §15 p.97 ne définit pour le refroidissement qu'un auxiliaire de
+  distribution, la génération étant comprise dans le SEER ; faute de modèle
+  de distribution de froid, sa valeur est nulle.
+- Le XSD la rend facultative, et les références se partagent exactement par
+  éditeur : LICIEL l'omet (432 fichiers sur 433), tous les autres la
+  publient à 0 (48 fichiers). Nous l'omettons. Les quatre balises associées
+  (coût, GES, EP) suivent le même partage.
+- Ne trancher qu'avec un texte, pas avec le corpus : le choix inverse
+  produirait 432 balises supplémentaires pour en combler 48.
