@@ -77,26 +77,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - `upb = 2,0` contre 0,5 : même motif que TASK-H08.
 - Apports et pertes récupérées sérialisés ×1 000 : cf. TASK-H03.
 
-### TASK-K33 — Coût d'une installation de chauffage bi-énergie
-
-- [~CLA] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
-- `CoutCalculator::primaryEnergieId` retient l'énergie du **premier** générateur
-  pour tarifer toute l'installation, comme le faisaient `EpConsoCalculator` et
-  `EmissionGesCalculator` avant d'être corrigés. Sur les configurations §9.3
-  à §9.5 — poêle bois plus convecteur électrique — la part électrique est donc
-  tarifée au prix du bois.
-- La correction n'est pas le simple portage de la pondération : le barème a des
-  **tranches d'abonnement** indexées sur la consommation annuelle par énergie
-  (cf. K10). Il faut tarifer chaque énergie séparément, à partir des
-  consommations par générateur, puis sommer — pas moyenner un prix.
-- Mesure de l'écart restant sur 2662E2454031K : `cout_ch` 1 439 contre 1 723
-  attendu, `cout_ch_depensier` 1 739 contre 2 067. Les consommations par énergie
-  (`sortie_par_energie_collection`) sont désormais exactes, l'entrée est donc
-  disponible.
-- Le garde posé sur la pondération EP/GES vaut ici aussi : n'utiliser les
-  consommations par générateur que lorsqu'elles répartissent celle de
-  l'installation.
-
 ### TASK-K40 — Auxiliaires de distribution de refroidissement : balise jamais produite
 
 - [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse

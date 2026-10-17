@@ -339,4 +339,74 @@ final class CoutCalculatorTest extends TestCase
         $total = 119.0 + 0.19726 * 8000.0;
         self::assertEqualsWithDelta($total / 2, $this->cout($doc, 'cout_ch'), 1e-6);
     }
+
+    /**
+     * Annexe 7 : « Les frais annuels par type d'énergie et par usage sont
+     * obtenus en multipliant la consommation d'énergie finale pour ce type
+     * d'énergie et cet usage par le prix moyen du kWh. »
+     *
+     * Une installation bi-énergie de §9.3 — poêle bois en appoint d'un
+     * convecteur électrique — ne doit donc pas voir sa part électrique
+     * tarifée au prix du bois.
+     */
+    public function testUneInstallationBiEnergieEstTarifeePourChaqueEnergie(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+<?xml version="1.0"?>
+<dpe><administratif><date_etablissement_dpe>2026-01-15</date_etablissement_dpe></administratif><logement>
+  <caracteristique_generale><enum_methode_application_dpe_log_id>1</enum_methode_application_dpe_log_id></caracteristique_generale>
+  <installation_chauffage_collection><installation_chauffage>
+    <donnee_intermediaire><conso_ch>1000</conso_ch><conso_ch_depensier>1200</conso_ch_depensier></donnee_intermediaire>
+    <generateur_chauffage_collection>
+      <generateur_chauffage>
+        <donnee_entree><enum_type_energie_id>1</enum_type_energie_id></donnee_entree>
+        <donnee_intermediaire><conso_ch>250</conso_ch><conso_ch_depensier>300</conso_ch_depensier></donnee_intermediaire>
+      </generateur_chauffage>
+      <generateur_chauffage>
+        <donnee_entree><enum_type_energie_id>4</enum_type_energie_id></donnee_entree>
+        <donnee_intermediaire><conso_ch>750</conso_ch><conso_ch_depensier>900</conso_ch_depensier></donnee_intermediaire>
+      </generateur_chauffage>
+    </generateur_chauffage_collection>
+  </installation_chauffage></installation_chauffage_collection>
+  <installation_ecs_collection><installation_ecs><generateur_ecs_collection>
+    <generateur_ecs><donnee_entree><enum_type_energie_id>1</enum_type_energie_id></donnee_entree></generateur_ecs>
+  </generateur_ecs_collection></installation_ecs></installation_ecs_collection>
+  <sortie><ef_conso>
+    <conso_ch>1000</conso_ch><conso_ch_depensier>1200</conso_ch_depensier>
+    <conso_ecs>0</conso_ecs><conso_ecs_depensier>0</conso_ecs_depensier>
+    <conso_eclairage>0</conso_eclairage><conso_fr>0</conso_fr><conso_fr_depensier>0</conso_fr_depensier>
+    <conso_auxiliaire_generation_ch>0</conso_auxiliaire_generation_ch>
+    <conso_auxiliaire_generation_ch_depensier>0</conso_auxiliaire_generation_ch_depensier>
+    <conso_auxiliaire_distribution_ch>0</conso_auxiliaire_distribution_ch>
+    <conso_auxiliaire_generation_ecs>0</conso_auxiliaire_generation_ecs>
+    <conso_auxiliaire_generation_ecs_depensier>0</conso_auxiliaire_generation_ecs_depensier>
+    <conso_auxiliaire_distribution_ecs>0</conso_auxiliaire_distribution_ecs>
+    <conso_auxiliaire_ventilation>0</conso_auxiliaire_ventilation>
+  </ef_conso></sortie>
+</logement></dpe>
+XML);
+        $this->compute($doc);
+
+        // 750 kWh de bois bûche à 0,03201 € + 250 kWh d'électricité, dont la
+        // tranche se lit sur sa seule consommation.
+        $prixBois = 0.042; // arrêté du 25 mars 2024, bois bûches
+        self::assertGreaterThan(750.0 * $prixBois, $this->cout($doc, 'cout_ch'));
+
+        // Tout tarifer au prix du bois donnerait 1 000 × 0,042 = 42 €.
+        self::assertGreaterThan(1000.0 * $prixBois, $this->cout($doc, 'cout_ch'));
+    }
+
+    /**
+     * Le garde : des consommations par générateur qui ne reproduisent pas
+     * celle de l'installation sont ignorées, et une seule énergie porte tout
+     * l'usage.
+     */
+    public function testLesConsosParGenerateurIncoherentesSontIgnorees(): void
+    {
+        $doc = $this->build(['conso_ch' => 1000], energieCh: 4, date: '2026-01-15');
+        $this->compute($doc);
+
+        self::assertEqualsWithDelta(1000.0 * 0.042, $this->cout($doc, 'cout_ch'), self::TOL);
+    }
 }
