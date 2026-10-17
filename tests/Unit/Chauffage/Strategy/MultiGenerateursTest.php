@@ -90,7 +90,46 @@ final class MultiGenerateursTest extends TestCase
     }
 
     /** @return array{DOMDocument, DOMElement, CalculationContext} */
-    private function installation(int $pac, int $chaudiere, string $zone, bool $inverse, float $rdim): array
+    /**
+     * §9.1.4.1 p.61 : « une chaudière bois assurant principalement le
+     * chauffage sauf par temps doux ou en mi-saison où une PAC ou chaudière
+     * prend le relais » — Cch1 = 0,75 × Bch pour la chaudière bois,
+     * Cch2 = 0,25 × Bch pour celle qui la relève.
+     *
+     * La répartition porte sur les **générateurs** d'une même installation :
+     * une maison qui n'en a qu'une gardait les trois quarts de son besoin.
+     */
+    public function testLaChaudiereBoisEtSaReleveSePartagentLeBesoin(): void
+    {
+        [$document, $installation, $context] = $this->installation(74, 97, '1', false, 1.0, cfgId: 6);
+        (new MultiGenerateurs())->calculate($installation, $context);
+        $xpath = new DOMXPath($document);
+
+        self::assertSame(1000.0, (float)$xpath->evaluate('string(donnee_intermediaire/besoin_ch)', $installation));
+
+        $parts = (array)$context->get(PartBesoinGenerateur::CLE_CONTEXTE, []);
+        self::assertEqualsWithDelta(1.0, array_sum($parts), 1e-9);
+        self::assertContains(0.75, $parts);
+        self::assertContains(0.25, $parts);
+    }
+
+    /** La chaudière bois porte 0,75 quel que soit son rang d'écriture. */
+    public function testLOrdreDesGenerateursNeChangeRien(): void
+    {
+        [$document, $installation, $context] = $this->installation(74, 97, '1', true, 1.0, cfgId: 6);
+        (new MultiGenerateurs())->calculate($installation, $context);
+        $xpath = new DOMXPath($document);
+
+        $cheminBois = 'generateur_chauffage_collection/generateur_chauffage'
+            . '[donnee_entree/enum_type_generateur_ch_id="74"]';
+        $bois = $xpath->query($cheminBois, $installation)->item(0);
+        self::assertInstanceOf(DOMElement::class, $bois);
+
+        $parts = (array)$context->get(PartBesoinGenerateur::CLE_CONTEXTE, []);
+        self::assertEqualsWithDelta(0.75, $parts[$bois->getNodePath()], 1e-9);
+    }
+
+    private function installation(int $pac, int $chaudiere, string $zone, bool $inverse, float $rdim, int $cfgId = 8): array
     {
         $generators = [];
         foreach ([['pac', $pac, 3], ['chaudiere', $chaudiere, 0.8]] as [$ref, $type, $rg]) {
@@ -104,7 +143,7 @@ final class MultiGenerateursTest extends TestCase
         $document->loadXML(<<<XML
             <logement><caracteristique_generale><hsp>2.5</hsp><surface_habitable_immeuble>100</surface_habitable_immeuble></caracteristique_generale>
             <installation_chauffage_collection><installation_chauffage>
-            <donnee_entree><enum_cfg_installation_ch_id>8</enum_cfg_installation_ch_id><surface_chauffee>100</surface_chauffee><rdim>$rdim</rdim></donnee_entree>
+            <donnee_entree><enum_cfg_installation_ch_id>$cfgId</enum_cfg_installation_ch_id><surface_chauffee>100</surface_chauffee><rdim>$rdim</rdim></donnee_entree>
             <emetteur_chauffage_collection><emetteur_chauffage>
             <donnee_entree><surface_chauffee>100</surface_chauffee><enum_lien_generateur_emetteur_id>1</enum_lien_generateur_emetteur_id></donnee_entree>
             <donnee_intermediaire><i0>0.9</i0><rendement_emission>0.95</rendement_emission><rendement_distribution>0.9</rendement_distribution><rendement_regulation>0.8</rendement_regulation></donnee_intermediaire>
