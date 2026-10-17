@@ -45,23 +45,75 @@ const STRATA = [
     ['perimetre' => 'appartement_issu_immeuble', 'methode' => 'dpe appartement généré à partir des données DPE immeuble', 'regime' => 'post_2026'],
 ];
 
+/**
+ * Branches du moteur que le corpus stratifié n'atteint pas.
+ *
+ * Le jeu `ademe-2026-09` équilibre les périmètres, pas les configurations :
+ * cinq des onze `enum_cfg_installation_ch_id`, dix-sept des trente-huit
+ * `enum_type_ventilation_id` et cent vingt-trois des cent soixante et onze
+ * `enum_type_generateur_ch_id` n'y figuraient pas. Les stratégies §9.2, §9.6,
+ * §9.7, §9.9 et §9.11, les ventilations double flux, hybrides et à puits
+ * climatique, et les colonnes « eau/eau » et « géothermique » du SCOP
+ * n'étaient donc validées que par nos propres tests unitaires.
+ *
+ * Chaque entrée vise une branche par un champ de l'open data ADEME. Le libellé
+ * est celui du jeu de données, pas celui du XSD.
+ */
+const BRANCHES = [
+    // §9.x — configurations d'installation de chauffage
+    ['branche' => 'cfg-chauffage-solaire',          'champ' => 'configuration_installation_chauffage_n1', 'valeur' => 'Installation de chauffage avec chauffage solaire'],
+    ['branche' => 'cfg-releve-chaudiere-bois',      'champ' => 'configuration_installation_chauffage_n1', 'valeur' => 'Installation de chauffage avec une chaudière ou une PAC en relève d’une chaudière bois'],
+    ['branche' => 'cfg-solaire-insert-poele',       'champ' => 'configuration_installation_chauffage_n1', 'valeur' => 'Installation de chauffage avec chauffage solaire et insert ou poêle bois en appoint'],
+    ['branche' => 'cfg-releve-pac-insert-poele',    'champ' => 'configuration_installation_chauffage_n1', 'valeur' => 'Installation de chauffage avec chaudière en relève de PAC avec insert ou poêle bois en appoint'],
+    ['branche' => 'cfg-convecteurs-bijonction',     'champ' => 'configuration_installation_chauffage_n1', 'valeur' => 'Convecteurs bi-jonction'],
+
+    // §4 — ventilations jamais rencontrées
+    ['branche' => 'vmc-df-individuelle-echangeur',  'champ' => 'type_ventilation', 'valeur' => 'VMC DF individuelle avec échangeur à partir de 2013'],
+    ['branche' => 'vmc-df-collective-echangeur',    'champ' => 'type_ventilation', 'valeur' => 'VMC DF collective avec échangeur avant 2013'],
+    ['branche' => 'vmc-df-sans-echangeur',          'champ' => 'type_ventilation', 'valeur' => 'VMC DF sans échangeur après 2012'],
+    ['branche' => 'ventilation-hybride',            'champ' => 'type_ventilation', 'valeur' => 'Ventilation hybride après 2012'],
+    ['branche' => 'puits-climatique-echangeur',     'champ' => 'type_ventilation', 'valeur' => 'Puits climatique avec échangeur avant 2013'],
+    ['branche' => 'vmc-basse-pression-hygro-b',     'champ' => 'type_ventilation', 'valeur' => 'VMC Basse pression Hygro B'],
+
+    // §12.4 et §13.2 — générateurs dont les colonnes et lignes ne sont jamais lues
+    ['branche' => 'pac-eau-eau',                    'champ' => 'type_generateur_n1_installation_n1', 'valeur' => 'PAC eau/eau installée après 2017'],
+    ['branche' => 'pac-geothermique',               'champ' => 'type_generateur_n1_installation_n1', 'valeur' => 'PAC géothermique installée avant 2008'],
+    ['branche' => 'chaudiere-bois-granules',        'champ' => 'type_generateur_n1_installation_n1', 'valeur' => 'Chaudière bois granulés après 2019'],
+    ['branche' => 'chaudiere-gpl-condensation',     'champ' => 'type_generateur_n1_installation_n1', 'valeur' => 'Chaudière gpl/propane/butane à condensation après 2015'],
+    ['branche' => 'generateur-air-chaud',           'champ' => 'type_generateur_n1_installation_n1', 'valeur' => 'générateur à air chaud à combustion avant 2006'],
+    ['branche' => 'poele-bouilleur-buche',          'champ' => 'type_generateur_n1_installation_n1', 'valeur' => 'poêle à bois bouilleur bûche installé à partir de 2012'],
+
+    // §10 — refroidissement hors PAC air/air
+    ['branche' => 'froid-pac-eau-eau',              'champ' => 'type_generateur_froid', 'valeur' => 'PAC eau/eau installée après 2017'],
+
+    // §18.4 — installation solaire couvrant chauffage et ECS
+    ['branche' => 'solaire-chauffage-et-ecs',       'champ' => 'type_installation_solaire_n1', 'valeur' => 'Chauffage + ECS solaire'],
+];
+
 const REGIME_RANGE = [
     'pre_2026' => ['2024-01-01', '2025-12-31'],
     'post_2026' => ['2026-01-01', '2026-12-31'],
 ];
 
-$options = getopt('h', ['build:', 'manifest:', 'per-stratum:', 'dry-run', 'help']);
+$options = getopt('h', ['build:', 'build-branches:', 'manifest:', 'per-stratum:', 'dry-run', 'help']);
 
-if (isset($options['h']) || isset($options['help']) || (!isset($options['build']) && !isset($options['manifest']))) {
+if (isset($options['h']) || isset($options['help'])
+    || (!isset($options['build']) && !isset($options['build-branches']) && !isset($options['manifest']))) {
     fwrite(STDOUT, <<<TXT
     Usage :
       php bin/fetch-official-corpus --build=<jeu> [--per-stratum=10] [--dry-run]
+      php bin/fetch-official-corpus --build-branches=<jeu> [--per-stratum=2] [--dry-run]
       php bin/fetch-official-corpus --manifest=<chemin/manifest.json>
 
     Options :
       --build=NOM        Crée resources/XML/official/NOM/ par échantillonnage
                          stratifié de l'open data ADEME.
       --per-stratum=N    Cas par strate (défaut 10). 8 strates → 8×N cas.
+      --build-branches=NOM
+                         Échantillonne les branches du moteur que le jeu
+                         stratifié n'atteint pas (configurations §9.x,
+                         ventilations, générateurs rares), N cas par branche
+                         et par régime EP (défaut 2).
       --manifest=CHEMIN  Retélécharge les cas listés dans un manifeste existant.
       --dry-run          Écrit le manifeste sans télécharger les XML.
 
@@ -72,7 +124,20 @@ if (isset($options['h']) || isset($options['help']) || (!isset($options['build']
 $projectRoot = dirname(__DIR__);
 $dryRun = isset($options['dry-run']);
 
-if (isset($options['manifest'])) {
+if (isset($options['build-branches'])) {
+    $corpus = (string) $options['build-branches'];
+    $perStratum = max(1, (int) ($options['per-stratum'] ?? 2));
+    $corpusDir = $projectRoot . '/resources/XML/official/' . $corpus;
+    $manifestPath = $corpusDir . '/metadata/manifest.json';
+
+    fwrite(STDOUT, "Échantillonnage par branche du moteur…\n");
+    $manifest = buildBranchManifest($corpus, $perStratum);
+
+    ensureDir(dirname($manifestPath));
+    file_put_contents($manifestPath, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    file_put_contents(dirname($manifestPath) . '/provenance.md', renderProvenance($manifest));
+    fwrite(STDOUT, sprintf("Manifeste écrit : %s (%d cas)\n", $manifestPath, count($manifest['cases'])));
+} elseif (isset($options['manifest'])) {
     $manifestPath = (string) $options['manifest'];
     $manifest = json_decode((string) file_get_contents($manifestPath), true);
     if (!is_array($manifest)) {
@@ -217,6 +282,100 @@ function buildManifest(string $corpus, int $perStratum): array
         'genere_le' => date('c'),
         'cases' => $cases,
     ];
+}
+
+/**
+ * Échantillonne les branches de BRANCHES, sur les deux régimes du coefficient
+ * EP de l'électricité pour que la bascule du 1er janvier 2026 soit couverte.
+ *
+ * @return array<string, mixed>
+ */
+function buildBranchManifest(string $corpus, int $perStratum): array
+{
+    $cases = [];
+    $seen = [];
+
+    foreach (BRANCHES as $branche) {
+        $total = 0;
+
+        foreach (REGIME_RANGE as $regime => [$from, $to]) {
+            $qs = sprintf(
+                '%s:"%s" AND date_etablissement_dpe:[%s TO %s]',
+                $branche['champ'],
+                str_replace('"', '', $branche['valeur']),
+                $from,
+                $to,
+            );
+
+            $url = OPENDATA_DATASET . '?' . http_build_query([
+                'size' => $perStratum * 4,
+                'select' => 'numero_dpe,methode_application_dpe,version_dpe,date_etablissement_dpe,type_batiment,'
+                    . 'periode_construction,surface_habitable_logement,' . $branche['champ'],
+                'qs' => $qs,
+                'sort' => 'numero_dpe',
+            ]);
+
+            $rows = httpJson($url)['results'] ?? [];
+            $kept = 0;
+
+            foreach ($rows as $row) {
+                $numero = (string) ($row['numero_dpe'] ?? '');
+                if ($numero === '' || isset($seen[$numero]) || $kept >= $perStratum) {
+                    continue;
+                }
+                $seen[$numero] = true;
+                $kept++;
+                $cases[] = [
+                    'numero_dpe' => $numero,
+                    'branche_cible' => $branche['branche'],
+                    'champ_branche' => $branche['champ'],
+                    'valeur_branche' => $row[$branche['champ']] ?? $branche['valeur'],
+                    'perimetre_cible' => perimetreDeMethode((string) ($row['methode_application_dpe'] ?? '')),
+                    'regime_coef_ep_elec' => $regime,
+                    'methode_application_dpe' => $row['methode_application_dpe'] ?? null,
+                    'version_dpe' => $row['version_dpe'] ?? null,
+                    'date_etablissement_dpe' => $row['date_etablissement_dpe'] ?? null,
+                    'type_batiment' => $row['type_batiment'] ?? null,
+                    'periode_construction' => $row['periode_construction'] ?? null,
+                    'source_xml' => sprintf(XML_ENDPOINT, $numero),
+                ];
+            }
+
+            $total += $kept;
+        }
+
+        fwrite(STDOUT, sprintf("  %-32s %d cas\n", $branche['branche'], $total));
+    }
+
+    return [
+        'corpus' => $corpus,
+        'organisme' => 'ADEME',
+        'jeu_de_donnees' => 'DPE Logements existants (depuis juillet 2021)',
+        'portail' => PORTAL_URL,
+        'api_selection' => OPENDATA_DATASET,
+        'api_xml' => XML_ENDPOINT,
+        'licence' => 'Licence Ouverte / Open Licence v2.0',
+        'statut' => "Substitut public — ce n'est PAS le jeu de cas tests officiel du CSTB, "
+            . 'qui n\'est pas diffusé publiquement (voir resources/XML/official/README.md).',
+        'echantillonnage' => 'Ciblé par branche du moteur (configuration §9.x, type de ventilation, '
+            . 'type de générateur, refroidissement, installation solaire) × régime du coefficient EP '
+            . 'électricité, tri déterministe par numero_dpe pour être reproductible.',
+        'genere_le' => date('c'),
+        'cases' => $cases,
+    ];
+}
+
+/** Périmètre CSTB §1.1 déduit du libellé open data de la méthode d'application. */
+function perimetreDeMethode(string $methode): string
+{
+    return match (true) {
+        str_contains($methode, 'maison individuelle') => 'maison_individuelle',
+        str_contains($methode, 'à partir des données DPE immeuble'),
+        str_contains($methode, 'à partir des données dpe immeuble') => 'appartement_issu_immeuble',
+        str_contains($methode, 'immeuble') => 'immeuble_collectif',
+        str_contains($methode, 'appartement') => 'appartement_individuel',
+        default => 'autre',
+    };
 }
 
 /** @param array<string, mixed> $manifest */
