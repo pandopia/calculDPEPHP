@@ -104,6 +104,44 @@ une.
   collectif et « celle de l'appartement seul » pour l'individuel — les deux
   phrases de l'annexe tarifaire que `PrixEnergie` cite déjà.
 
+### TASK-K70 — `auxiliaire_distribution_fr` : 69 % des balises manquantes, et la méthode n'en donne pas la formule
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- **Le constat.** Sur les 341 balises que le rapport compte manquantes,
+  **236 sont les quatre déclinaisons d'une seule grandeur** —
+  `conso_`, `cout_`, `emission_ges_` et `ep_conso_auxiliaire_distribution_fr`
+  — sur 59 cas. Nous ne la produisons nulle part : le moteur ne la connaît
+  que dans l'outillage de mesure.
+- **La méthode la nomme sans la définir.** §15 p.97 écrit « Pour les
+  installations de refroidissement, les consommations des auxiliaires de
+  génération sont prises en compte dans le SEER (EER). Seules les
+  consommations des auxiliaires de distribution sont donc à comptabiliser :
+  `Caux_fr = Caux_dist_fr` ». Mais §15.2 ne compte que trois sous-sections —
+  15.2.1 puissance des circulateurs, 15.2.2 chauffage, 15.2.3 ECS. **Il n'y a
+  pas de §15.2.4 pour le refroidissement.** Aucune formule, aucune table.
+- **Les références le confirment** : les 59 qui publient la balise publient
+  **toutes les 59 la valeur 0,000**. Pas une seule valeur non nulle au
+  corpus. Il n'y a rien à calculer.
+- **La publier coûterait quatre fois plus qu'elle ne rapporte.** 59 des
+  541 cas la portent ; l'émettre partout créerait **1 928 balises
+  supplémentaires** (482 × 4) pour en combler 236. Et elle ne se conditionne
+  pas : 52 des 59 qui la publient n'ont aucune installation de
+  climatisation, tandis que 27 cas qui en ont une l'omettent.
+- **C'est une convention d'éditeur, et la majoritaire est la nôtre.**
+
+  | Moteur de la référence | Publie | Omet |
+  |---|---:|---:|
+  | BBS_Slama_* | 0 | 356 |
+  | 3cl_tribu_2024.6.1.0 | 0 | 24 |
+  | 3cl_tribu_1.4.25.1 | 8 | 96 |
+  | 3cl_bbs_V* | 17 | 0 |
+  | « inconnu » | 23 | 0 |
+  | 3cl-2024.6.1.0 | 7 | 0 |
+
+- Condition de réouverture : un texte réglementaire qui donne la formule de
+  `Caux_dist_fr`, ou une référence qui en publie une valeur non nulle. Les
+  deux se vérifient en une passe sur le corpus.
+
 ### TASK-H23 — Ponts thermiques des parois en adjacence 22 : convention d'éditeur
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
