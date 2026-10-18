@@ -467,6 +467,28 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   Upb incorrect qui compensait les écarts. Voir aussi **2378E0434697F**.
 - Sources figées et mesures : `docs/corrections-campagne-50g.md`, corpus privé
   `tmp/dpe-campaign-50g-frozen` du dépôt applicatif.
+- **Poids actuel sur le corpus public** : 79 écarts sur `k` répartis sur
+  18 cas, plus 19 sur `deperdition_pont_thermique`. L'invariant
+  `deperdition_pont_thermique = Σ l × k` est vérifié sur les 541 cas : le
+  défaut est bien dans `k`, pas dans l'agrégation.
+- **47 des 79 écarts ont la même forme** : la référence publie `k = 0` et nous
+  une valeur tabulée. Ils se concentrent sur **9 fichiers**. L'un d'eux,
+  `2401E0166251L`, annule ses 13 liaisons et publie
+  `deperdition_pont_thermique = 0` — il n'y a rien à en tirer. Les 8 autres
+  n'en annulent qu'une partie.
+- **L'adjacence des parois n'est pas le critère**, bien qu'elle sépare
+  proprement les exemples pris un à un (`tv_id = 1` annulé avec un plancher en
+  adjacence 7, conservé en adjacence 1). Trois variantes mesurées en A/B
+  isolé, 541 cas, 0 crash, toutes désastreuses :
+  - toute adjacence non extérieure, liaisons 1 et 3 : **+15 581 écarts**,
+    3 cas améliorés contre 378 dégradés ;
+  - ajout des seules adjacences 7 et 12 : **+3 118**, 2 contre 86 ;
+  - ajout de la seule adjacence 7 : **+1 854**, 2 contre 61.
+  Les planchers sur terre-plein, vide sanitaire et sous comble ont bien leurs
+  ponts thermiques. Ne pas reprendre ces trois pistes.
+- Ni `tv_pont_thermique_id` ni `enum_type_liaison_id` ne séparent les deux
+  groupes : l'identifiant 1 apparaît 12 fois annulé et 3 fois conservé, le 29
+  sept fois et dix-neuf fois, le 85 dix fois et trois fois.
 
 ### TASK-K63 — Modèle DPE 2.7 : EPBD, nouvelles technologies, pef élec
 
