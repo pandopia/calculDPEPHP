@@ -209,6 +209,7 @@ final class ReferenceDefects
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
         $suspects += self::totalAuxiliaireIncoherent($expected);
+        $suspects += self::hventNulMaisRenouvellementDAirNon($expected);
 
         // Bloc confort d'été présent mais vide : le contenu que nous produisons
         // est conforme au schéma, c'est la référence qui ne l'est pas.
@@ -1212,6 +1213,43 @@ final class ReferenceDefects
      * @param array<string, string> $expected
      * @return array<string, string>
      */
+    /**
+     * `hvent` nul alors que le renouvellement d'air dépasse la seule
+     * perméabilité.
+     *
+     * Les déperditions par renouvellement d'air sont la somme de deux termes,
+     * `Hvent` et `Hperm` : une référence qui publie `hvent = 0,000` et un
+     * `deperdition_renouvellement_air` très supérieur à son `hperm` se
+     * contredit sur son propre fichier, sans qu'il soit besoin de recalculer
+     * quoi que ce soit. Cinq des six références de mode 26 du corpus le font —
+     * 2 861,935 contre 818,943 sur `2242E2979513I` —, la sixième non.
+     *
+     * @param array<string, string> $expected
+     *
+     * @return array<string, string>
+     */
+    private static function hventNulMaisRenouvellementDAirNon(array $expected): array
+    {
+        $prefixe = 'dpe/logement/sortie/deperdition/';
+        $hvent = self::num($expected, $prefixe . 'hvent');
+        $hperm = self::num($expected, $prefixe . 'hperm');
+        $total = self::num($expected, $prefixe . 'deperdition_renouvellement_air');
+
+        if ($hvent === null || $hperm === null || $total === null) {
+            return [];
+        }
+        if ($hvent > 0.0 || $total <= $hperm * (1.0 + self::TOLERANCE_FACTEUR)) {
+            return [];
+        }
+
+        return ['hvent' => sprintf(
+            'la référence publie hvent = 0 alors que son renouvellement d\'air vaut %.3f '
+            . 'pour un hperm de %.3f : les deux termes ne peuvent pas en sommer un troisième',
+            $total,
+            $hperm,
+        )];
+    }
+
     private static function totalAuxiliaireIncoherent(array $expected): array
     {
         $suspects = [];

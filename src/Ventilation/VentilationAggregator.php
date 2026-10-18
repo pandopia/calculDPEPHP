@@ -109,13 +109,19 @@ final class VentilationAggregator implements CalculatorInterface
         $deperdition = $this->ensureChild($context, $sortie, 'deperdition');
         $efConso     = $this->ensureChild($context, $sortie, 'ef_conso');
 
-        // §17.1 : pour les DPE immeuble (methode_id=26), ADEME convention écrit 0 dans
-        // sortie/deperdition/hvent (la vraie valeur est dans ventilation/donnee_intermediaire).
-        // deperdition_renouvellement_air est calculé correctement par DeperditionCalculator
-        // via le contexte ventilation.hvent.
-        $methodeId = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $node);
-
-        $accessor->setChildValue($deperdition, 'hvent', $methodeId === 26 ? 0.0 : $hvent);
+        // `hvent` est publié tel quel, quel que soit le mode d'application.
+        //
+        // Un zéro y était écrit pour la méthode 26, au titre d'une convention
+        // d'éditeur. C'en est bien une — cinq des six références de ce mode
+        // publient `hvent = 0,000` avec un `deperdition_renouvellement_air`
+        // très supérieur à leur `hperm` (2 861,935 contre 818,943), donc elles
+        // se contredisent : les déperditions par renouvellement d'air sont la
+        // somme des deux termes. Mais la sixième, `2501E0014261S`, est
+        // cohérente — 202,2966 + 76,8765 = 279,1731 — et c'est elle que la
+        // convention nous faisait rater. Imiter le défaut d'une référence
+        // n'est pas le reproduire une fois sur six : c'est le reproduire tout
+        // le temps, y compris là où elle a raison.
+        $accessor->setChildValue($deperdition, 'hvent', $hvent);
         $accessor->setChildValue($deperdition, 'hperm', $hperm);
         $accessor->setChildValue($efConso, 'conso_auxiliaire_ventilation', $caux);
 

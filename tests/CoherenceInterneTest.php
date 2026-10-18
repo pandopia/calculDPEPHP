@@ -40,11 +40,9 @@ final class CoherenceInterneTest extends TestCase
      * @var array<string, string>
      */
     private const DETTE_CONNUE = [
-        // `CoutCalculator::partsParEnergie` retombe sur une énergie unique
-        // lorsque les installations ne publient pas leur `conso_ch`, là où
-        // `SortieParEnergieAggregator` somme les générateurs : les deux
-        // tarifent alors des paniers différents.
-        '2675E2152874Y.xml' => 'TASK-K79',
+        // Une entrée ici est un bloc de sortie qui se contredit lui-même, pas
+        // un simple écart à la référence : elle appelle une TASK, pas une
+        // tolérance.
     ];
 
     /** Préfixe de chaque bloc de sortie, par nom de bloc. */
@@ -61,14 +59,10 @@ final class CoherenceInterneTest extends TestCase
         $cases = (new CorpusLocator(self::PROJECT_ROOT))->locate();
         usort($cases, static fn(array $a, array $b): int => strcmp($a['name'], $b['name']));
 
-        // Un échantillon suffit : le défaut cherché est structurel, pas
-        // particulier à un fichier. Un cas sur vingt garde le test rapide tout
-        // en couvrant les quatre périmètres et les deux régimes.
-        $i = 0;
+        // Le corpus entier, et non un échantillon : 541 cas coûtent onze
+        // secondes, et un défaut de cohérence se niche dans une configuration
+        // rare — la cascade de TASK-K80 n'apparaît que sur un fichier.
         foreach ($cases as $case) {
-            if ($i++ % 20 !== 0) {
-                continue;
-            }
             if (isset(self::DETTE_CONNUE[$case['name']])) {
                 continue;
             }
@@ -88,16 +82,13 @@ final class CoherenceInterneTest extends TestCase
         $ecarts = [];
 
         // La production photovoltaïque autoconsommée est retranchée des
-        // consommations, et deux invariants ne tiennent plus quand elle n'est
-        // pas nulle — neuf cas du corpus :
-        //
-        //  - `*_totale_auxiliaire = Σ postes` : la déduction porte sur le seul
-        //    total, les postes restent bruts. **C'est la convention des
-        //    références elles-mêmes**, qui publient le même écart au même
-        //    endroit (724,098 contre 974,310 sur 2400E0180612T).
-        //  - `* = Σ par énergie` : la ventilation par énergie somme les
-        //    générateurs, que la déduction n'atteint pas. Les références la
-        //    tiennent égale, elles — c'est TASK-K78.
+        // consommations, et un invariant n'y tient pas : la déduction porte
+        // sur le seul `*_totale_auxiliaire`, les postes restant bruts.
+        // **C'est la convention des références elles-mêmes**, qui publient le
+        // même écart au même endroit — 724,098 contre 974,310 sur
+        // 2400E0180612T. Seule cette exemption-là subsiste : la ventilation
+        // par énergie, elle, déduit désormais l'autoconsommation du chauffage
+        // et de l'ECS comme `ef_conso` le fait.
         $autoconsommation = (float) $xpath->evaluate('number(//production_elec_enr//conso_elec_ac)');
         $avecPv = $autoconsommation > 0.0;
 
@@ -136,13 +127,54 @@ final class CoherenceInterneTest extends TestCase
             foreach (['5_usages', 'ch', 'ecs'] as $usage) {
                 $agregat = $valeurs[$prefixe . '_' . $usage] ?? null;
                 $somme = $parEnergie[$prefixe . '_' . $usage] ?? null;
-                if (!$avecPv && !$totalArrondi && $agregat !== null && $agregat > 0.0 && $somme !== null) {
+                if (!$totalArrondi && $agregat !== null && $agregat > 0.0 && $somme !== null) {
                     $this->comparer($ecarts, $prefixe . '_' . $usage . ' = Σ par énergie', $agregat, $somme);
                 }
             }
         }
 
+        // Le bloc des déperditions : son enveloppe est la somme de ses postes,
+        // et son renouvellement d'air celle de ses deux termes. C'est ce
+        // second invariant qui a révélé que nous écrivions `hvent = 0` pour le
+        // mode 26, en imitant une convention d'éditeur.
+        $this->deperditionsCoherentes($xpath, $ecarts);
+
         self::assertSame([], $ecarts, "Sortie incohérente avec elle-même :\n" . implode("\n", $ecarts));
+    }
+
+    /** @param list<string> $ecarts */
+    private function deperditionsCoherentes(DOMXPath $xpath, array &$ecarts): void
+    {
+        $lire = static function (string $tag) use ($xpath): ?float {
+            $noeuds = $xpath->query('//sortie/deperdition/' . $tag);
+            return $noeuds !== false && $noeuds->length > 0
+                ? (float) str_replace(',', '.', (string) $noeuds->item(0)?->textContent)
+                : null;
+        };
+
+        $renouvellement = $lire('deperdition_renouvellement_air');
+        $hvent = $lire('hvent');
+        $hperm = $lire('hperm');
+        if ($renouvellement !== null && $renouvellement > 0.0 && $hvent !== null && $hperm !== null) {
+            $this->comparer($ecarts, 'renouvellement_air = hvent + hperm', $renouvellement, $hvent + $hperm);
+        }
+
+        $enveloppe = $lire('deperdition_enveloppe');
+        $somme = 0.0;
+        foreach ([
+            'deperdition_mur', 'deperdition_plancher_bas', 'deperdition_plancher_haut',
+            'deperdition_baie_vitree', 'deperdition_porte', 'deperdition_pont_thermique',
+            'deperdition_renouvellement_air',
+        ] as $poste) {
+            $valeur = $lire($poste);
+            if ($valeur === null) {
+                return;
+            }
+            $somme += $valeur;
+        }
+        if ($enveloppe !== null && $enveloppe > 0.0) {
+            $this->comparer($ecarts, 'deperdition_enveloppe = Σ postes', $enveloppe, $somme);
+        }
     }
 
     /** @param list<string> $ecarts */

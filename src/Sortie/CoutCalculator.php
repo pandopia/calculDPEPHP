@@ -62,6 +62,18 @@ use DOMElement;
  */
 final class CoutCalculator implements CalculatorInterface
 {
+    /**
+     * Écart relatif toléré entre la collecte par énergie et `ef_conso`.
+     *
+     * Les deux suivent le même chemin de calcul : au-delà de l'accumulation
+     * flottante, un désaccord signale une sortie incohérente, et la
+     * répartition par énergie n'y est alors pas fiable.
+     */
+    private const TOLERANCE_REPARTITION = 1e-6;
+
+    /** `enum_type_energie_id` de l'électricité du réseau, seule déduite par le PV. */
+    private const ELECTRICITE = 1;
+
     public function id(): string
     {
         return self::class;
@@ -69,7 +81,11 @@ final class CoutCalculator implements CalculatorInterface
 
     public function dependencies(): array
     {
-        return [EfConsoCalculator::class];
+        // §16.2 p.105 : l'électricité autoconsommée n'est pas achetée. Les
+        // frais se calculent donc sur `ef_conso` **après** sa déduction,
+        // faute de quoi le bloc `<cout>` facture des kilowattheures que la
+        // ventilation par énergie, elle, ne facture pas.
+        return [EfConsoCalculator::class, \CalculDpePHP\ProductionElec\ProductionPvCalculator::class];
     }
 
     public function appliesTo(DOMElement $node): bool
@@ -102,8 +118,8 @@ final class CoutCalculator implements CalculatorInterface
         // d'énergie et cet usage par le prix moyen du kWh. » Une installation
         // bi-énergie — poêle bois et convecteur électrique de §9.3 à §9.5 — a
         // donc autant de postes que d'énergies, chacune avec sa propre tranche.
-        $partsCh  = $this->partsParEnergie($accessor, $node, 'installation_chauffage', 'generateur_chauffage', $energieCh);
-        $partsEcs = $this->partsParEnergie($accessor, $node, 'installation_ecs', 'generateur_ecs', $energieEcs);
+        $partsCh  = $this->partsParEnergie($accessor, $node, 'installation_chauffage', 'generateur_chauffage', $energieCh, $ef['conso_ch'], $context);
+        $partsEcs = $this->partsParEnergie($accessor, $node, 'installation_ecs', 'generateur_ecs', $energieEcs, $ef['conso_ecs'], $context);
 
         $conventionnel = [
             'cout_ecs'                                 => [$energieEcs, $ef['conso_ecs'], $ecsCollectif],
@@ -138,6 +154,21 @@ final class CoutCalculator implements CalculatorInterface
             $depensier['cout_ecs_depensier#' . $energieId] = [$energieId, $ef['conso_ecs_depensier'] * $part, $ecsCollectif];
         }
         unset($conventionnel['cout_ecs'], $depensier['cout_ecs_depensier']);
+
+        // §16.2 p.105 : l'autoconsommation photovoltaïque est retranchée du
+        // seul `conso_totale_auxiliaire`, les cinq postes restant bruts — c'est
+        // la convention des références. Les tarifer tels quels élargirait
+        // l'assiette de l'abonnement électrique et abaisserait sa tranche,
+        // alors qu'ils décrivent les mêmes kilowattheures que ce total. Ils
+        // sont donc ramenés à lui ; hors autoconsommation le facteur vaut 1.
+        $facteurAux = $this->facteurAuxiliaires($ef);
+        foreach ([
+            'cout_auxiliaire_generation_ch', 'cout_auxiliaire_distribution_ch',
+            'cout_auxiliaire_generation_ecs', 'cout_auxiliaire_distribution_ecs',
+            'cout_auxiliaire_ventilation',
+        ] as $poste) {
+            $conventionnel[$poste][1] *= $facteurAux;
+        }
 
         $couts = $prix->tarifer($conventionnel) + $prix->tarifer($depensier);
         $couts = $this->recomposerPostesParEnergie($couts);
@@ -183,6 +214,7 @@ final class CoutCalculator implements CalculatorInterface
             'conso_auxiliaire_distribution_ch',
             'conso_auxiliaire_generation_ecs', 'conso_auxiliaire_generation_ecs_depensier',
             'conso_auxiliaire_distribution_ecs', 'conso_auxiliaire_ventilation',
+            'conso_totale_auxiliaire',
         ];
         $ef = [];
         foreach ($keys as $key) {
@@ -215,13 +247,40 @@ final class CoutCalculator implements CalculatorInterface
     }
 
     /**
-     * Répartition de la consommation d'un usage entre les énergies de ses
-     * générateurs, lue sur leurs `conso_ch` / `conso_ecs`.
+     * Facteur ramenant les cinq postes d'auxiliaires à `conso_totale_auxiliaire`.
      *
-     * Le garde est celui déjà posé sur la pondération EP et GES : ces
-     * consommations ne sont utilisées que lorsqu'elles **répartissent** celle
-     * des installations, c'est-à-dire que leur somme la reproduit. Sinon une
-     * seule énergie porte tout l'usage, comme auparavant.
+     * Vaut 1 dès que les deux coïncident, c'est-à-dire partout où il n'y a pas
+     * d'autoconsommation photovoltaïque.
+     *
+     * @param array<string, float> $ef
+     */
+    private function facteurAuxiliaires(array $ef): float
+    {
+        $total = $ef['conso_totale_auxiliaire'] ?? 0.0;
+        $postes = $ef['conso_auxiliaire_generation_ch']
+            + $ef['conso_auxiliaire_distribution_ch']
+            + $ef['conso_auxiliaire_generation_ecs']
+            + $ef['conso_auxiliaire_distribution_ecs']
+            + $ef['conso_auxiliaire_ventilation'];
+
+        return ($total > 0.0 && $postes > 0.0) ? $total / $postes : 1.0;
+    }
+
+    /**
+     * Répartition de la consommation d'un usage entre les énergies de ses
+     * générateurs.
+     *
+     * La collecte est celle de {@see ConsoParEnergieCollector}, partagée avec
+     * `sortie_par_energie` : chaque installation y est ramenée à l'échelle de
+     * la sortie par son propre facteur, et ce facteur diffère d'une
+     * installation à l'autre. Sommer les `conso_ch` brutes des générateurs,
+     * comme on le faisait ici, revenait à peser des grandeurs qui ne sont pas
+     * à la même échelle — et les deux blocs tarifaient alors des paniers
+     * différents en prétendant décrire les mêmes euros.
+     *
+     * Le garde subsiste, mais il porte désormais sur ce qu'il doit vérifier :
+     * la collecte doit **reproduire** la consommation publiée par `ef_conso`.
+     * Sinon une seule énergie porte tout l'usage, comme auparavant.
      *
      * @return array<int, float> enum_type_energie_id ⇒ part, de somme 1
      */
@@ -231,40 +290,48 @@ final class CoutCalculator implements CalculatorInterface
         string $installTag,
         string $generateurTag,
         int $energieParDefaut,
+        float $consoEf,
+        CalculationContext $context,
     ): array {
         $champ = $installTag === 'installation_chauffage' ? 'conso_ch' : 'conso_ecs';
-        $parEnergie = [];
-        $totalGenerateurs = 0.0;
-        $totalInstallations = 0.0;
 
-        foreach ($logement->getElementsByTagName($installTag) as $install) {
-            if (!$install instanceof DOMElement) {
-                continue;
-            }
-            $totalInstallations += $accessor->getFloatOrNull('./donnee_intermediaire/' . $champ, $install) ?? 0.0;
+        $collecte = ConsoParEnergieCollector::collecter(
+            $accessor,
+            $logement,
+            $installTag,
+            $generateurTag,
+            $champ,
+            $context,
+        );
 
-            foreach ($install->getElementsByTagName($generateurTag) as $generateur) {
-                if (!$generateur instanceof DOMElement) {
-                    continue;
-                }
-                $conso = $accessor->getFloatOrNull('./donnee_intermediaire/' . $champ, $generateur);
-                $energie = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $generateur);
-                if ($conso === null || $energie === null) {
-                    return [$energieParDefaut => 1.0];
-                }
-                $parEnergie[$energie] = ($parEnergie[$energie] ?? 0.0) + $conso;
-                $totalGenerateurs += $conso;
-            }
+        $parEnergie = array_map(
+            static fn(array $consos): float => $consos[0],
+            $collecte['byEnergie'],
+        );
+
+        // §16.2 p.105 : `ef_conso` est net de l'autoconsommation
+        // photovoltaïque, que la collecte — qui somme les générateurs — ne
+        // connaît pas. La retrancher de l'électricité remet les deux sur le
+        // même pied, pour le garde comme pour les parts : sans cela le garde
+        // voit un désaccord à chaque DPE équipé de panneaux et renvoie tout le
+        // chauffage sur une énergie unique.
+        $autoconsommation = (float) ($context->get(
+            $installTag === 'installation_chauffage' ? 'pv.ac_ch' : 'pv.ac_ecs',
+        ) ?? 0.0);
+        if ($autoconsommation > 0.0 && isset($parEnergie[self::ELECTRICITE])) {
+            $parEnergie[self::ELECTRICITE] = max(0.0, $parEnergie[self::ELECTRICITE] - $autoconsommation);
         }
 
-        if (count($parEnergie) < 2 || $totalGenerateurs <= 0.0 || $totalInstallations <= 0.0) {
+        $total = array_sum($parEnergie);
+
+        if (count($parEnergie) < 2 || $total <= 0.0 || $consoEf <= 0.0) {
             return [$energieParDefaut => 1.0];
         }
-        if (abs($totalGenerateurs - $totalInstallations) > 1e-6 * $totalInstallations) {
+        if (abs($total - $consoEf) > self::TOLERANCE_REPARTITION * $consoEf) {
             return [$energieParDefaut => 1.0];
         }
 
-        return array_map(static fn(float $conso): float => $conso / $totalGenerateurs, $parEnergie);
+        return array_map(static fn(float $conso): float => $conso / $total, $parEnergie);
     }
 
     /**

@@ -19,6 +19,164 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K83 — Pertes de stockage ECS récupérées : notre calcul est exact, la condition est indécidable
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- **Point de départ** : 31 des 33 maisons dont `besoin_ch` est hors tolérance
+  l'ont **sous-estimé**, ratios de 0,78 à 0,997. Le biais est directionnel, pas
+  du bruit.
+- **Premier intermédiaire divergent isolé** : sur 15 d'entre elles, `GV` et
+  `fraction_apport_gratuit_ch` sont justes, donc l'écart ne peut venir que du
+  terme suivant. En reconstruisant le besoin brut
+  `GV × ΣDH19 × (1 − F) / 1000`, la référence en retranche 0,24 à 0,60 % de
+  pertes récupérées quand nous en retranchons 2,07 à 3,78 % — six à dix fois
+  trop. Le coupable est `pertes_stockage_ecs_recup`, et l'écart le confirme au
+  kWh près : 427,43 publiés par nous contre 426,40 d'écart sur
+  `2400E0020849A`.
+- **Notre calcul n'est pas en cause.** Sur les **67 références au moins qui
+  publient une valeur non nulle, nous la reproduisons à 1,0000** — y compris
+  163 610,51 et 290 244,82 —, et 18 publient zéro là où nous publions une
+  valeur. (Ces deux nombres sont des minorants : le rapport ne détaille pas
+  les valeurs reproduites **exactement**, qui ne peuvent que renforcer le
+  premier.)
+- **Et la condition qui les distingue n'existe pas dans les données.** Testé et
+  écarté :
+  - `position_volume_chauffe` du générateur en repli de
+    `position_volume_chauffe_stockage` (large, puis restreint au stockage
+    intégré à la production) : **−9 écarts, mais 9 cas améliorés contre 7
+    dégradés**, et les dégradés partaient de 2, 3 et 4 écarts pour monter à
+    32, 39 et 44. Mesuré en A/B isolé, 0 crash.
+  - Le profil d'entrée ne sépare rien : `2600E1253780N` et `2600E0017120R`
+    sont tous deux de type 69, `position_volume_chauffe = 0`, stockage intégré
+    — le premier s'améliore, le second se dégrade.
+  - Le moteur éditeur non plus : Tribu publie 11 zéros et 20 valeurs, BBS
+    Slama 5 et 32.
+- Les références se contredisent donc entre elles sur des configurations
+  identiques. **Rouvrir si** le corpus livre un cas où une donnée d'entrée
+  sépare les deux comportements, ou si §9.1.1 reçoit une précision sur la
+  localisation du stockage.
+
+### TASK-K81 — Le coût dépensier des références recopie le conventionnel 4 fois sur 5
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- `cout_ch_depensier` et `cout_ecs_depensier` sont les deux plus gros postes du
+  rapport après les consommations — 500 et 505 écarts pour **autant de cas**,
+  soit un par fichier. Ce profil « un par cas » laissait espérer une règle
+  systématique à corriger. Il n'y en a pas.
+- **Les références recopient le coût conventionnel dans 163 cas sur 196**
+  (83 %), alors qu'elles calculent toujours une consommation dépensière
+  distincte — `conso_ch_depensier ≠ conso_ch` sur **196 sur 196**. Une
+  référence qui publie une consommation dépensière plus forte et un coût
+  identique se contredit elle-même.
+- **La recopie n'obéit à aucune règle reproductible.** Elle n'est ni propre à
+  un moteur (Tribu 85 recopient contre 8 qui calculent, BBS Slama 76 contre
+  12), ni à une année (2024 : 87/11 ; 2026 : 76/22), ni à une énergie de
+  chauffage (élec 78/10, gaz 39/8), ni à un mode d'application (méthode 1 :
+  62/24, méthode 2 : 37/1). La coder reviendrait à copier une observation.
+- **Et notre valeur n'a pas de défaut propre** : sur les 33 références qui
+  calculent vraiment, notre rapport dépensier/conventionnel colle au leur à
+  quelques millièmes — 1,2162 contre 1,2134, 1,2055 contre 1,2044, 1,2366
+  contre 1,2376. Les écarts restants viennent du `cout_ch` conventionnel, donc
+  de `conso_ch` en amont : c'est là qu'il faut remonter, pas sur le dépensier.
+- `ReferenceDefects::valeurDepensiereRecopiee` impute déjà ces écarts à la
+  référence. **Rouvrir si** un texte réglementaire définit le coût dépensier,
+  ou si un éditeur se met à le calculer systématiquement.
+
+### TASK-K82 — Méthode 26 : le facteur commun était interne, pas dans la référence
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- **Première conclusion, erronée** : le taux de conformité de `besoin_ch` par
+  mode d'application isole la méthode 26 — immeuble à chauffage **et** ECS
+  mixtes — avec 0 cas conforme sur 6, mais ses ratios obtenu/attendu sont
+  dispersés (1,2051 ; 1,0082 ; 0,9990 ; 0,9760 ; 1,0510 ; 1,0123). J'en avais
+  conclu qu'aucun facteur commun n'existait.
+- **Le facteur commun existait, et il était chez nous.** Un balayage
+  d'invariants internes — `deperdition_renouvellement_air = hvent + hperm` — a
+  désigné **exactement ces six fichiers, et eux seuls sur 541**. Nous
+  publiions `hvent = 0` pour le mode 26, au titre d'une « convention ADEME ».
+- Le travail correspondant est livré (commit « cesser d'imiter le hvent nul »)
+  et ce bloc n'est gardé que pour sa leçon : **un profil d'écarts dispersé ne
+  prouve pas l'absence de cause commune**. La comparaison à la référence ne
+  voyait rien, parce que cinq des six références portent le même défaut ; seul
+  un invariant interne pouvait le montrer.
+- Le seul écart franc qui subsiste sur ces six fichiers, `2242E2979513I` à
+  +20,5 % sur `conso_ch`, reste TASK-K67.
+
+### TASK-K81 — Le coût dépensier des références recopie le conventionnel 4 fois sur 5
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- `cout_ch_depensier` et `cout_ecs_depensier` sont les deux plus gros postes du
+  rapport après les consommations — 500 et 505 écarts pour **autant de cas**,
+  soit un par fichier. Ce profil « un par cas » laissait espérer une règle
+  systématique à corriger. Il n'y en a pas.
+- **Les références recopient le coût conventionnel dans 163 cas sur 196**
+  (83 %), alors qu'elles calculent toujours une consommation dépensière
+  distincte — `conso_ch_depensier ≠ conso_ch` sur **196 sur 196**. Une
+  référence qui publie une consommation dépensière plus forte et un coût
+  identique se contredit elle-même.
+- **La recopie n'obéit à aucune règle reproductible.** Elle n'est ni propre à
+  un moteur (Tribu 85 recopient contre 8 qui calculent, BBS Slama 76 contre
+  12), ni à une année (2024 : 87/11 ; 2026 : 76/22), ni à une énergie de
+  chauffage (élec 78/10, gaz 39/8), ni à un mode d'application (méthode 1 :
+  62/24, méthode 2 : 37/1). La coder reviendrait à copier une observation.
+- **Et notre valeur n'a pas de défaut propre** : sur les 33 références qui
+  calculent vraiment, notre rapport dépensier/conventionnel colle au leur à
+  quelques millièmes — 1,2162 contre 1,2134, 1,2055 contre 1,2044, 1,2366
+  contre 1,2376. Les écarts restants viennent du `cout_ch` conventionnel, donc
+  de `conso_ch` en amont : c'est là qu'il faut remonter, pas sur le dépensier.
+- `ReferenceDefects::valeurDepensiereRecopiee` impute déjà ces écarts à la
+  référence. **Rouvrir si** un texte réglementaire définit le coût dépensier,
+  ou si un éditeur se met à le calculer systématiquement.
+
+### TASK-K82 — Méthode 26 : zéro conforme sur six, mais aucun facteur commun
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- Le taux de conformité de `besoin_ch` par mode d'application isole la
+  **méthode 26** — immeuble collectif à chauffage **et** ECS mixtes — avec
+  0 cas conforme sur 6, quand les méthodes 7, 9 et 13 sont à 100 %.
+- Ce profil fait penser à un défaut systématique. Les ratios obtenu/attendu
+  disent le contraire : 1,2051, 1,0082, 0,9990, 0,9760, 1,0510, 1,0123. Aucun
+  facteur commun, et `2501E0014261S` est à 0,1 % près de la tolérance.
+- La méthode 26 est simplement le périmètre le plus difficile — deux
+  répartitions mixtes superposées — et ses six cas cumulent des écarts fins
+  d'origines différentes. Le seul écart franc, `2242E2979513I` à +20,5 %, est
+  déjà TASK-K67.
+- **Rouvrir si** le corpus gagne assez de cas de méthode 26 pour qu'un facteur
+  commun se dégage.
+
+### TASK-K80bis — Cascade avec priorité : le subordonné assure-t-il 5 % du besoin ?
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- **Le chantier de TASK-K80 est livré** (trois commits : reconnaissance de la
+  cascade, profil de charge par générateur, part du besoin pour les
+  auxiliaires). Ce qui est archivé ici est le verdict sur sa **dernière
+  question ouverte**, qui ne demande aucun code.
+- Nous faisons assurer **tout** le besoin au générateur prioritaire, et rien au
+  subordonné. La référence `2406E1688667C` publie 1 118 061,89 et 59 635,56,
+  soit 94,94 % / 5,06 %.
+- **Les 5 % de la référence ne se dérivent d'aucune lecture du profil.** Trois
+  candidats ont été calculés sur le Cdimref du fichier (0,8012, pour 700 kW
+  installés et 33 602 W/K) : `Σ(CTchx/Tchx)·pond` donne 8,15 %, `Σ pond·CTchx`
+  — l'énergie réellement fournie — 16,16 %, et `Σ pond·Tchx_final` 16,16 %
+  également. Aucun ne s'approche de 5,06 %, et aucun Cdimref plausible ne les
+  y amène : il faudrait 1,1285, soit un GV de 23 858 W/K quand la référence
+  publie elle-même 33 602.
+- **La règle appliquée est celle du moteur de référence CSTB.** open3cl la
+  documente — « le générateur prioritaire assure la totalité du besoin et son
+  taux de charge est calculé avec sa seule Pn » — et la rattache aux autotests
+  d'État APP5-0-4, 41 et 43. `getProrataGenerateur` y rend explicitement 0
+  pour le secondaire d'une cascade avec priorité.
+- Ce que notre modèle reproduit **exactement**, lui : les deux
+  `rendement_generation`, 0,9746848 contre 0,974685 et 0,9855410 contre
+  0,985541 ; et `cout_auxiliaire_generation_ch`, 235,69867951284 contre
+  235,69867951283419. Un modèle qui tombe juste à six et onze décimales sur
+  les grandeurs voisines n'est pas un modèle qu'une répartition 95/5 invalide.
+- `conso_ch` de l'installation reste à 0,056 % de la référence — dans la
+  tolérance stricte. Seules les deux lignes par générateur divergent.
+- **Rouvrir si** un second éditeur publie une répartition non nulle sur le
+  subordonné d'une cascade avec priorité, ou si un autotest CSTB accessible
+  contredit open3cl.
+
 ### TASK-K65 — Réseaux de chaleur : colonne ACV confirmée, 39 références contre 1
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
