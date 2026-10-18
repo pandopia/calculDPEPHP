@@ -43,12 +43,6 @@ final class CoherenceInterneTest extends TestCase
         // Une entrée ici est un bloc de sortie qui se contredit lui-même, pas
         // un simple écart à la référence : elle appelle une TASK, pas une
         // tolérance.
-        //
-        // Cascade de deux chaudières à priorités distinctes (§13.2.1.3.1) :
-        // faute de modèle de cascade, chaque générateur se voit écrire la
-        // consommation entière de l'installation, que `sortie_par_energie`
-        // additionne ensuite — d'où un `conso_ch` exactement doublé.
-        '2406E1688667C.xml' => 'TASK-K80',
     ];
 
     /** Préfixe de chaque bloc de sortie, par nom de bloc. */

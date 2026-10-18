@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Chauffage\Strategy;
 
+use CalculDpePHP\Chauffage\CascadeGenerateurs;
 use CalculDpePHP\Collectif\ChauffageInstallationMultiplicity;
 use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Engine\CalculatorInterface;
@@ -244,15 +245,54 @@ final class InstallationClassique implements CalculatorInterface
         $accessor->setChildValue($di, 'conso_ch_depensier', $consoChDep);
 
         if ($genCollection !== null) {
-            foreach ($genCollection->childNodes as $gen) {
-                if (!($gen instanceof DOMElement) || $gen->nodeName !== 'generateur_chauffage') {
-                    continue;
-                }
-                $genDi = $accessor->ensureDonneeIntermediaire($gen);
-                $accessor->setChildValue($genDi, 'conso_ch',           $consoCh);
-                $accessor->setChildValue($genDi, 'conso_ch_depensier', $consoChDep);
+            $this->repartirSurLesGenerateurs($accessor, $genCollection, $consoCh, $consoChDep);
+        }
+    }
+
+    /**
+     * Écrit à chaque générateur la consommation qu'il assure.
+     *
+     * Sans cascade hiérarchisée, les générateurs d'une installation desservent
+     * la même émission et se partagent sa consommation : chacun en porte sa
+     * part, et non le total — que `sortie_par_energie`, qui somme les
+     * générateurs, compterait alors autant de fois qu'il y en a.
+     *
+     * §13.2.1.3.1 : en cascade **avec** priorité, le prioritaire assure la
+     * totalité du besoin et le subordonné zéro.
+     */
+    private function repartirSurLesGenerateurs(
+        NodeAccessor $accessor,
+        DOMElement $genCollection,
+        float $consoCh,
+        float $consoChDep,
+    ): void {
+        $generateurs = $this->generateurs($genCollection);
+        $principaux  = CascadeGenerateurs::principaux($generateurs, $accessor);
+        $part        = 1.0 / max(1, count($principaux));
+
+        foreach ($generateurs as $gen) {
+            $assure = in_array($gen, $principaux, true);
+            $genDi  = $accessor->ensureDonneeIntermediaire($gen);
+            $accessor->setChildValue($genDi, 'conso_ch',           $assure ? $consoCh * $part : 0.0);
+            $accessor->setChildValue($genDi, 'conso_ch_depensier', $assure ? $consoChDep * $part : 0.0);
+        }
+    }
+
+    /**
+     * Générateurs d'une collection, dans l'ordre du document.
+     *
+     * @return list<DOMElement>
+     */
+    private function generateurs(DOMElement $genCollection): array
+    {
+        $generateurs = [];
+        foreach ($genCollection->childNodes as $gen) {
+            if ($gen instanceof DOMElement && $gen->nodeName === 'generateur_chauffage') {
+                $generateurs[] = $gen;
             }
         }
+
+        return $generateurs;
     }
 
     /**
@@ -384,10 +424,10 @@ final class InstallationClassique implements CalculatorInterface
         $count = 0;
         $sum   = 0.0;
 
-        foreach ($genCollection->childNodes as $gen) {
-            if (!($gen instanceof DOMElement) || $gen->nodeName !== 'generateur_chauffage') {
-                continue;
-            }
+        // §13.2.1.3.1 : en cascade avec priorité, c'est le générateur
+        // prioritaire qui assure le besoin. Moyenner son rendement avec celui
+        // d'un appoint qui ne fonctionne presque jamais fausse l'installation.
+        foreach (CascadeGenerateurs::principaux($this->generateurs($genCollection), $accessor) as $gen) {
             $value = $field === 'rendement_generation'
                 ? RendementGenerateur::lire($accessor, $gen)
                 : $accessor->getFloatOrNull("./donnee_intermediaire/{$field}", $gen);

@@ -1,7 +1,7 @@
 # Conformité du moteur — jeux de tests DPE 3CL
 
-_Généré le 2026-10-18T14:39:30+00:00 — profil de tolérance : `strict`_
-_Révision mesurée : `475e213` — arbre de travail modifié : 3 fichier(s) src/ non commités_
+_Généré le 2026-10-18T14:50:05+00:00 — profil de tolérance : `strict`_
+_Révision mesurée : `46998b1` — arbre de travail modifié : 2 fichier(s) src/ non commités_
 
 Comparaison balise à balise de la totalité de `<donnee_intermediaire>` et
 `<sortie>` entre la sortie du moteur et la référence du cas. Aucune balise
@@ -18,8 +18,8 @@ Partiellement conformes  : 540
 
 Valeurs comparées        : 168 273
 Exactes                  : 127 883
-Dans tolérance           : 24 431
-Hors tolérance           : 13 456
+Dans tolérance           : 24 432
+Hors tolérance           : 13 455
 Balises manquantes       : 335
 Balises supplémentaires  : 2 132
 Écarts non numériques    : 36
@@ -46,7 +46,7 @@ Sur ces écarts, **4 628 sont imputables à la référence** et non au moteur : 
 | Sorties énergie finale | 3587 | 1904 | 1077 | 598 | 4 | 4 | 83,11 % |
 | Sorties énergie primaire | 4328 | 2057 | 1428 | 819 | 0 | 1 | 80,52 % |
 | GES | 7274 | 3353 | 2524 | 1372 | 6 | 6 | 80,79 % |
-| Coûts | 6192 | 1308 | 2447 | 2425 | 6 | 6 | 60,64 % |
+| Coûts | 6192 | 1308 | 2448 | 2424 | 6 | 6 | 60,66 % |
 | Confort d'été | 3022 | 1178 | 0 | 172 | 0 | 1672 | 38,98 % |
 | Autre | 1108 | 686 | 268 | 149 | 2 | 3 | 86,10 % |
 
@@ -57,7 +57,7 @@ Périmètres du règlement d'évaluation CSTB §1.1, déduits de
 
 | Périmètre | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| immeuble_collectif | 244 | 82121 | 64158 | 12444 | 4013 | 26 | 93,00 % |
+| immeuble_collectif | 244 | 82121 | 64158 | 12445 | 4012 | 26 | 93,00 % |
 | maison_individuelle | 114 | 33816 | 25706 | 4103 | 3814 | 152 | 87,85 % |
 | appartement_issu_immeuble | 95 | 32048 | 22907 | 4828 | 3641 | 102 | 86,29 % |
 | appartement_individuel | 88 | 20288 | 15112 | 3056 | 1988 | 55 | 89,16 % |
@@ -67,7 +67,7 @@ Périmètres du règlement d'évaluation CSTB §1.1, déduits de
 | Régime | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | post_2026 | 389 | 118978 | 91508 | 17838 | 7718 | 214 | 91,60 % |
-| pre_2026 | 152 | 49295 | 36375 | 6593 | 5738 | 121 | 86,90 % |
+| pre_2026 | 152 | 49295 | 36375 | 6594 | 5737 | 121 | 86,90 % |
 
 ## Écarts par moteur de calcul de la référence
 
@@ -77,7 +77,7 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 | Moteur | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | BBS_Slama_2025.11.1.0 | 352 | 108854 | 85060 | 16401 | 5801 | 4 | 92,91 % |
-| 3cl_tribu_1.4.25.1 | 104 | 34702 | 25910 | 4845 | 3630 | 52 | 88,36 % |
+| 3cl_tribu_1.4.25.1 | 104 | 34702 | 25910 | 4846 | 3629 | 52 | 88,36 % |
 | 3cl_tribu_2024.6.1.0 | 24 | 8088 | 6229 | 1071 | 698 | 1 | 89,99 % |
 | inconnu | 23 | 6597 | 4383 | 838 | 1166 | 144 | 78,87 % |
 | 3cl_bbs_V2025.11.1.0 | 13 | 3334 | 1884 | 539 | 758 | 70 | 72,39 % |
@@ -109,7 +109,7 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 | 11 | Coûts | `cout_ch` | 400 | 177 | 138,2 % | hors-tol×396 suppl×2 manquante×2 |
 | 12 | Confort d'été | `aspect_traversant` | 371 | 371 | — | hors-tol×37 suppl×334 |
 | 13 | Confort d'été | `protection_solaire_exterieure` | 370 | 370 | 100,0 % | hors-tol×36 suppl×334 |
-| 14 | Coûts | `cout_ecs` | 368 | 182 | 65,9 % | hors-tol×364 suppl×2 manquante×2 |
+| 14 | Coûts | `cout_ecs` | 367 | 181 | 65,9 % | hors-tol×363 suppl×2 manquante×2 |
 | 15 | Confort d'été | `isolation_toiture` | 355 | 355 | 100,0 % | hors-tol×19 suppl×336 |
 | 16 | GES | `emission_ges_ch` | 344 | 149 | 15 993,3 % | hors-tol×340 suppl×2 manquante×2 |
 | 17 | Confort d'été | `brasseur_air` | 337 | 337 | 100,0 % | suppl×334 hors-tol×3 |
