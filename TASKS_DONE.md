@@ -170,6 +170,43 @@ une.
   grand de 27 %, pas sa troncature — à chercher dans `Pch`, donc dans le GV
   ou dans l'échelle retenue pour cet immeuble. Voir TASK-K74.
 
+### TASK-K75 — Dénominateur de `ubat` : les trois variantes du filtre, mesurées et écartées
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- **La piste.** `qualite_isol_enveloppe` est faux sur 43 cas, et dans **41**
+  d'entre eux `ubat` l'est aussi : la classe n'est pas le problème, le seuil
+  non plus. Sur 82 `ubat` hors tolérance (542 balises au corpus, soit 85 % de
+  conformité), **67 sont au-dessus** de la référence, médiane 1,33, jusqu'à
+  ×8. Et sur **54** d'entre eux la `deperdition_enveloppe` — le numérateur —
+  est juste. C'est donc le dénominateur, la somme des surfaces.
+- **Un cas le dit au centième.** `2600E0019751W`, appartement de 29,38 m² :
+  numérateur 11,185 W/K, `ubat` publié 0,1470, donc un dénominateur de
+  **76,09 m²**. La somme de **toutes** ses parois sans aucun filtre vaut
+  76,06 m² — 11,05 de murs, 29,38 de plancher bas, 29,38 de plancher haut,
+  4,45 de baies et 1,80 de porte. Le nôtre écarte les parois à `b = 0` et
+  l'adjacence 22, et tombe à 17,3.
+- **Et pourtant la règle est mauvaise sur le corpus.** A/B isolé, 541 cas,
+  0 plantage, référence 13 613 écarts :
+
+  | Dénominateur | Écarts | `ubat` hors tolérance |
+  |---|---:|---:|
+  | filtres actuels (`b > 0`, hors adjacence 22) | 13 613 | **82** |
+  | sans le filtre `b > 0` | 13 627 | — |
+  | sans l'exclusion de l'adjacence 22 | 13 667 | — |
+  | sans aucun des deux, parois murs/PB/baies/portes | 13 676 | — |
+  | **toutes les parois, plancher haut compris** | 13 665 | **122** |
+
+  La dernière ligne est celle qui reproduit `2600E0019751W` exactement, et
+  c'est celle qui dégrade le plus `ubat` : de 82 à **122** hors tolérance.
+  Les quatre combinaisons sont donc moins bonnes que celle en place.
+- **Ce n'est pas non plus une convention d'éditeur.** Le taux d'échec de
+  `ubat` se répartit sur tous les moteurs — 9 % chez BBS_Slama (33 cas sur
+  352), 23 % chez 3cl_tribu_1.4.25.1, 71 % chez 3cl-2024.6.1.0 — sans qu'un
+  groupe se détache.
+- Condition de réouverture : un texte qui définisse la surface déperditive de
+  `ubat`. §3 ne la donne pas, et nos seuils de classe viennent eux aussi
+  d'open3cl. Sans source, ne pas rejouer ces cinq mesures.
+
 ### TASK-H23 — Ponts thermiques des parois en adjacence 22 : convention d'éditeur
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
