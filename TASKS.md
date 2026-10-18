@@ -450,6 +450,33 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Ses balises `emission_ges_ecs` et `ep_conso_ecs` sont publiées permutées avec
   leurs dépensières, et déjà imputées à ce titre. Ne pas les instruire.
 
+### TASK-K84 — Réseau de chaleur multi-bâtiment : 0,75 ou 0,90, le corpus ne tranche plus
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- §14.3 p.95 distingue l'installation « isolée » (Rs × Rg = 0,9) de celle qui
+  ne l'est pas (0,75). Le XSD ne porte ce qualificatif que sur les réseaux
+  urbains 72/73 ; pour les « chaudière(s) … multi bâtiment modélisée(s) comme
+  un réseau de chaleur » (74-77, 134), `ReseauChaleurCalculator` le reconstruit
+  depuis les positions déclarées : générateur **et** ballon hors volume
+  chauffé ⇒ 0,75.
+- **La règle était unanime sur trente occurrences ; elle est désormais à deux
+  contre deux**, et le seul discriminant est la version du moteur éditeur :
+  0,75 sur `2501E1812848D` (3cl-2024.6.1.0) et `2513E0192986F`
+  (3cl_tribu_2024.6.1.0), 0,90 sur `2695E2427686K` et `2695E2608627R`
+  (BBS_Slama_2025.11.1.0). Les entrées sont identiques — type 76, stockage
+  hors volume chauffé, usage 3, saisie 1.
+- **Mesuré** : abandonner la règle (0,90 pour tout multi-bâtiment) donne
+  **exactement 0 écart de différence** en A/B isolé sur 541 cas, 0 crash —
+  deux cas gagnent 26 et 19 écarts, deux autres en perdent 25 et 20. Le
+  compteur ne peut donc pas arbitrer.
+- Le facteur est 1,2 exactement (0,90 / 0,75) et se propage à tout l'ECS :
+  sur `2695E2427686K`, `conso_ecs` vaut 3 548,33 contre 2 956,95 publiés,
+  pour un `besoin_ecs` identique à la onzième décimale.
+- **Trancher sur le texte, pas sur le corpus** : chercher si l'arrêté ou une
+  note CSTB qualifie l'isolation d'une sous-station multi-bâtiment, ou si la
+  version 2025.11 des moteurs a acté un changement. Rouvrir aussi si un
+  cinquième fichier en configuration « hors volume chauffé » arrive.
+
 ### TASK-K45 — Ponts thermiques des exports 7.x, après correction Ue
 
 - [ ] Owner: __ | Phase: K | Priorité: haute
