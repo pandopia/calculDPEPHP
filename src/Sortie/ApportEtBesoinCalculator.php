@@ -64,8 +64,15 @@ final class ApportEtBesoinCalculator implements CalculatorInterface
 
         $values = [
             'surface_sud_equivalente'                    => (float)($context->get('apport.sse_annuel') ?? 0.0),
-            'apport_solaire_fr'                          => (float)($context->get('apport.apport_solaire_fr')             ?? 0.0),
-            'apport_interne_fr'                          => (float)($context->get('apport.apport_interne_fr')             ?? 0.0),
+            // Les apports de la saison de froid suivent la même convention de
+            // sérialisation que ceux de la saison de chauffe : tous les formats
+            // sauf l'export LICIEL 2 les gardent en Wh quand les besoins du même
+            // bloc sont en kWh. Le facteur leur manquait, et nos deux valeurs
+            // valaient exactement le millième de celles de la référence sur les
+            // six fichiers du corpus qui publient un besoin de froid hors
+            // format 2 — trois en 0.1.0, un en 8.2.0, un en 8.2.1.
+            'apport_solaire_fr'                          => (float)($context->get('apport.apport_solaire_fr')             ?? 0.0) * $xmlPerKwh,
+            'apport_interne_fr'                          => (float)($context->get('apport.apport_interne_fr')             ?? 0.0) * $xmlPerKwh,
             'apport_solaire_ch'                          => (float)($context->get('apport.apport_solaire_ch')             ?? 0.0) * $xmlPerKwh,
             'apport_interne_ch'                          => (float)($context->get('apport.apport_interne_ch')             ?? 0.0) * $xmlPerKwh,
             'fraction_apport_gratuit_ch'                 => (float)($context->get('apport.fraction_ch')                   ?? 0.0),

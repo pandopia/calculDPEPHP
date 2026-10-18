@@ -135,6 +135,43 @@ XML;
         self::assertEqualsWithDelta(37250.0, (float)$this->childText($block, 'pertes_distribution_ecs_recup'), 0.01);
     }
 
+    /**
+     * Les apports de la saison de froid suivent la même convention que ceux de
+     * la saison de chauffe : la sérialisation est celle du bloc, pas celle de
+     * l'usage. Six fichiers du corpus publient un besoin de froid hors format
+     * LICIEL 2 ; nos deux apports y valaient exactement le millième des leurs.
+     */
+    public function testLesApportsDeFroidSuiventLaConventionDuFormat(): void
+    {
+        [$doc, $logement, $ctx] = $this->buildContextWithValues([
+            'apport.apport_solaire_fr' => 771.02907552,
+            'apport.apport_interne_fr' => 178.456135,
+        ]);
+        $doc->documentElement->setAttribute('version', '0.1.0');
+
+        (new ApportEtBesoinCalculator())->calculate($logement, $ctx);
+        $block = $doc->getElementsByTagName('apport_et_besoin')->item(0);
+
+        self::assertEqualsWithDelta(771029.07552, (float) $this->childText($block, 'apport_solaire_fr'), 0.01);
+        self::assertEqualsWithDelta(178456.135, (float) $this->childText($block, 'apport_interne_fr'), 0.01);
+    }
+
+    /** L'export LICIEL 2 est le seul à les publier en kWh, froid compris. */
+    public function testLExportLicielGardeLesApportsDeFroidEnKilowattheures(): void
+    {
+        [$doc, $logement, $ctx] = $this->buildContextWithValues([
+            'apport.apport_solaire_fr' => 771.02907552,
+            'apport.apport_interne_fr' => 178.456135,
+        ]);
+        $doc->documentElement->setAttribute('version', '2');
+
+        (new ApportEtBesoinCalculator())->calculate($logement, $ctx);
+        $block = $doc->getElementsByTagName('apport_et_besoin')->item(0);
+
+        self::assertEqualsWithDelta(771.02907552, (float) $this->childText($block, 'apport_solaire_fr'), 1e-6);
+        self::assertEqualsWithDelta(178.456135, (float) $this->childText($block, 'apport_interne_fr'), 1e-6);
+    }
+
     public function testNadeqAndV40(): void
     {
         $block = $this->runAndGetBlock([

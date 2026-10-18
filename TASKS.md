@@ -320,6 +320,29 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   suit son `rendement_generation` de chaudière gaz (0,8141 contre 0,8342) —
   c'est TASK-K31, pas §9.8.
 
+### TASK-K71 — `apport_interne_fr` : un facteur 0,3017 identique sur quatre fichiers 0.1.0
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- La convention de sérialisation des apports de froid est corrigée ; deux des
+  six fichiers concernés (8.2.0 et 8.2.1) sont désormais exacts à cinq
+  décimales. Les **quatre fichiers de format 0.1.0** gardent un écart d'une
+  autre nature, et c'est lui qui reste à instruire.
+- **`apport_interne_fr` y vaut exactement ×0,3017 de la référence**, sur les
+  quatre : 2401E2888143P, 2601E0370414Y, 2601E0734445D et 2601E0869643B.
+  Quatre fichiers indépendants au même rapport à quatre décimales ne peuvent
+  pas être une dérive numérique : c'est une définition qui diffère.
+- `apport_solaire_fr` y est en regard à 0,92–0,95, donc nettement plus proche :
+  les deux apports ne se trompent pas de la même façon, ce qui écarte un
+  facteur d'échelle commun au bloc.
+- Piste à vérifier en premier : la **saison de froid retenue**.
+  `BesoinAnnuelCalculator` n'accumule `apport_interne_fr` que sur les mois où
+  `DH28 > 0` (le commentaire cite octobre en H3, 2 h de Nref28 pour un DH28
+  nul). 1 / 0,3017 = 3,315 — soit à peu près le rapport entre une saison de
+  trois mois et une saison de dix. Comparer la somme des `Nref28` retenue de
+  part et d'autre avant de toucher à la formule.
+- Ne pas chercher du côté des unités : elles sont tranchées, et les deux
+  fichiers non-0.1.0 le prouvent.
+
 ### TASK-K67 — 2242E2979513I : conso_ch à +20 % une fois le facteur CO2 juste
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
