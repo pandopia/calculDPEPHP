@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CalculDpePHP\Chauffage\Rendement\Combustion;
 
 use CalculDpePHP\Chauffage\BesoinChauffageCalculator;
+use CalculDpePHP\Chauffage\CascadeGenerateurs;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -173,13 +174,18 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         $boilerCat = $this->boilerCategory($genId);
         $regulation = $accessor->getIntOrNull('./donnee_entree/presence_regulation_combustion', $node) === 1;
 
+        // §13.2.1.3.1 : en cascade avec priorité, chaque générateur a son
+        // propre profil de charge, bâti sur sa contribution au taux de charge
+        // du système.
+        $cascade = $this->cascadeAvecPriorite($node, $accessor);
+
         $rgPci = $this->computeAnnualYield(
             19.0, $tbase, $gvBuilding, $pn_kw, $pnCumule / 1000.0, $boilerCat, $rpn_pcs,
-            $rpint_pcs, $tfonc100, $tfonc30, $qp0_pcs, $pveil_pcs, $k, $regulation,
+            $rpint_pcs, $tfonc100, $tfonc30, $qp0_pcs, $pveil_pcs, $k, $regulation, $cascade,
         );
         $rgPciDepensier = $this->computeAnnualYield(
             21.0, $tbase, $gvBuilding, $pn_kw, $pnCumule / 1000.0, $boilerCat, $rpn_pcs,
-            $rpint_pcs, $tfonc100, $tfonc30, $qp0_pcs, $pveil_pcs, $k, $regulation,
+            $rpint_pcs, $tfonc100, $tfonc30, $qp0_pcs, $pveil_pcs, $k, $regulation, $cascade,
         );
 
         if ($rgPci === null || $rgPciDepensier === null) {
@@ -220,6 +226,7 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         float $pveilPcs,
         float $k,
         bool $regulation,
+        ?array $cascade = null,
     ): ?float {
         // Cdimref porte sur la puissance installée totale ; le profil de
         // charge qui en découle s'applique ensuite à ce générateur.
@@ -229,12 +236,7 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         $pmFou = 0.0;
         $pmCons = 0.0;
 
-        foreach (self::LOAD_POINTS as $i => $x) {
-            $weight = self::LOAD_WEIGHTS[$i];
-            if ($weight <= 0.0) {
-                continue;
-            }
-            $tchDim = $x >= 0.95 ? $x : min($x / max($cdimref, 1e-6), 1.0);
+        foreach ($this->profilDeCharge($cdimref, $cascade) as [$tchDim, $weight]) {
             $pxKw = $pnKw * $tchDim;
             if ($pxKw <= 0.0) {
                 continue;
@@ -254,6 +256,134 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
 
         $rgPcs = $pmFou / ($pmCons + 0.45 * ($qp0Pcs / 1000.0) + ($pveilPcs / 1000.0));
         return $k * $rgPcs;
+    }
+
+    /**
+     * Profil de charge du générateur : couples (taux de charge final,
+     * coefficient de pondération final).
+     *
+     * Hors cascade hiérarchisée, §13.2.1.2 pose `Tchx_final = Tchx_dim` et
+     * `Coeff_pondx_final = Coeff_pondx_dim` : le profil conventionnel,
+     * simplement resserré par Cdimref.
+     *
+     * En cascade avec priorité (§13.2.1.3.1), chaque générateur reçoit sa
+     * contribution au taux de charge du système :
+     *
+     *   CTchx_dim(gen₁) = min(Prel₁ ; Tchx_dim)
+     *   CTchx_dim(gen₂) = min(Prel₂ ; Tchx_dim − CTchx_dim(gen₁))
+     *   Tchx_final(genᵢ) = min(1 ; CTchx_dim(genᵢ) / Prelᵢ)
+     *
+     * et sa pondération est renormalisée sur sa propre contribution :
+     *
+     *   Coeff_pondx_final(genᵢ) ∝ CTchx_dim(genᵢ) / Tchx_dim × Coeff_pondx_dim
+     *
+     * Le subordonné ne reçoit de charge qu'aux points où le prioritaire sature,
+     * d'où un profil très différent du sien.
+     *
+     * @param array{prel: float, prelPrioritaire: float, prioritaire: bool}|null $cascade
+     *
+     * @return list<array{0: float, 1: float}>
+     */
+    private function profilDeCharge(float $cdimref, ?array $cascade): array
+    {
+        $points = [];
+        $somme  = 0.0;
+
+        foreach (self::LOAD_POINTS as $i => $x) {
+            $weight = self::LOAD_WEIGHTS[$i];
+            if ($weight <= 0.0) {
+                continue;
+            }
+
+            // §13.2.1.2 : Tch95_dim = Tch95, le dernier point n'est pas resserré.
+            $tchDim = $x >= 0.95 ? $x : min($x / max($cdimref, 1e-6), 1.0);
+
+            if ($cascade === null) {
+                $points[] = [$tchDim, $weight];
+                continue;
+            }
+
+            $contributionPrioritaire = min($cascade['prelPrioritaire'], $tchDim);
+            $contribution = $cascade['prioritaire']
+                ? $contributionPrioritaire
+                : max(0.0, min($cascade['prel'], $tchDim - $contributionPrioritaire));
+
+            if ($contribution <= 0.0 || $tchDim <= 0.0) {
+                continue;
+            }
+
+            $pond = $contribution / $tchDim * $weight;
+            $points[] = [min(1.0, $contribution / max($cascade['prel'], 1e-9)), $pond];
+            $somme += $pond;
+        }
+
+        if ($cascade === null || $somme <= 0.0) {
+            return $points;
+        }
+
+        return array_map(
+            static fn(array $point): array => [$point[0], $point[1] / $somme],
+            $points,
+        );
+    }
+
+    /**
+     * Décrit la place de ce générateur dans une cascade avec priorité, ou null
+     * s'il n'y en a pas.
+     *
+     * §13.2.1.3 : « ne seront traités que les configurations de cascade à deux
+     * générateurs ». Au-delà, et hors cascade hiérarchisée, le profil
+     * conventionnel s'applique tel quel.
+     *
+     * @return array{prel: float, prelPrioritaire: float, prioritaire: bool}|null
+     */
+    private function cascadeAvecPriorite(DOMElement $node, NodeAccessor $accessor): ?array
+    {
+        $installation = $this->installationParente($node);
+        if ($installation === null) {
+            return null;
+        }
+
+        $generateurs = [];
+        foreach ($installation->getElementsByTagName('generateur_chauffage') as $gen) {
+            if (!$gen instanceof DOMElement) {
+                continue;
+            }
+            $genId = \CalculDpePHP\Chauffage\GenerateurChAlias::normalizeNode(
+                $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $gen),
+                $gen,
+            );
+            if ($genId !== null && $genId >= self::COMBUSTION_MIN && $genId <= self::COMBUSTION_MAX) {
+                $generateurs[] = $gen;
+            }
+        }
+
+        if (count($generateurs) !== 2 || !CascadeGenerateurs::avecPriorite($generateurs, $accessor)) {
+            return null;
+        }
+
+        $puissances = [];
+        foreach ($generateurs as $gen) {
+            $pn = $accessor->getFloatOrNull('./donnee_intermediaire/pn', $gen) ?? 0.0;
+            if ($pn <= 0.0) {
+                return null;
+            }
+            $puissances[] = $pn;
+        }
+        $totale = array_sum($puissances);
+
+        $prioritaires = CascadeGenerateurs::principaux($generateurs, $accessor);
+        $indexPrioritaire = array_search($prioritaires[0], $generateurs, true);
+        $index = array_search($node, $generateurs, true);
+        if ($index === false || $indexPrioritaire === false) {
+            return null;
+        }
+
+        return [
+            'prel'            => $puissances[$index] / $totale,
+            'prelPrioritaire' => $puissances[$indexPrioritaire] / $totale,
+            'prioritaire'     => $index === $indexPrioritaire,
+        ];
     }
 
     /**
