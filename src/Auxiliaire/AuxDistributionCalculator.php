@@ -6,6 +6,7 @@ namespace CalculDpePHP\Auxiliaire;
 
 use CalculDpePHP\Common\ClimaticSolicitations;
 use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
@@ -300,6 +301,15 @@ final class AuxDistributionCalculator implements CalculatorInterface
 
             $cleInst = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ch', $install);
             if ($cleInst !== null && $cleInst > 0.0) {
+                // Une clé de 1 sur un appartement **généré** depuis l'immeuble
+                // ne décrit pas sa part : elle dit que l'installation n'a pas
+                // été répartie. C'est la part surfacique qui fait foi, comme
+                // pour `conso_ch` — sans quoi l'appartement porte les
+                // auxiliaires de tout le bâtiment, et `2313E3593866F` publie
+                // 7 792 kWh de circulateur pour 35 m².
+                if ($cleInst >= 1.0) {
+                    $cleInst = GeneratedApartment::surfaceShare($logement, $accessor) ?? $cleInst;
+                }
                 $cle = $cleInst;
             }
         }
