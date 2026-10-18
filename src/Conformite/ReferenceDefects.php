@@ -101,6 +101,14 @@ final class ReferenceDefects
      */
     private const ISOLATION_ABSENTE_OU_INCONNUE = [1, 2];
 
+    /**
+     * Écart relatif toléré entre deux rapports « valeur / consommation » qui
+     * devraient exhiber le même facteur d'énergie. Les sorties sont arrondies
+     * au dixième de kWh et de kgCO2, ce qui suffit à écarter les égalités
+     * fortuites sans rejeter les vraies.
+     */
+    private const TOLERANCE_FACTEUR = 1e-3;
+
     private const COUT_PREFIX = 'dpe/logement/sortie/cout/';
     private const EF_PREFIX = 'dpe/logement/sortie/ef_conso/';
     private const APPORT_PREFIX = 'dpe/logement/sortie/apport_et_besoin/';
@@ -224,29 +232,22 @@ final class ReferenceDefects
 
         foreach (self::AGREGATS_DEPENSIER as [$prefixe, $grandeur]) {
             foreach (['ch', 'ecs', 'fr'] as $usage) {
-                $suspects += self::valeurDepensiereRecopiee(
+                $arguments = [
                     $expected,
                     $prefixe,
                     $grandeur . '_' . $usage,
                     $grandeur . '_' . $usage . '_depensier',
                     'conso_' . $usage,
                     'conso_' . $usage . '_depensier',
-                );
+                ];
+                $suspects += self::valeurDepensiereRecopiee(...$arguments);
+                $suspects += self::valeursDepensieresPermutees(...$arguments);
             }
         }
 
         return $suspects;
     }
 
-    /**
-     * §15.2.3 pp.98-102 : un circulateur de réseau ECS bouclé appelle au moins
-     * 20 W, même hors puisage. §17.2.2.5.1 p.118 : sa consommation est aussi
-     * répartie aux appartements générés par une clé de besoins positive.
-     * Preuve sur la référence seule ; aucun résultat de notre moteur n'intervient.
-     * @spec-source resources/specsplitted/15-auxiliaires/02-aux-distribution.md
-     * @param array<string, string> $expected
-     * @return array<string, string>
-     */
     /**
      * Une grandeur du scénario dépensier recopiée du conventionnel alors que
      * les deux consommations diffèrent.
@@ -294,6 +295,78 @@ final class ReferenceDefects
                 $vConsoDep,
             ),
         ];
+    }
+
+    /**
+     * Conventionnel et dépensier publiés l'un à la place de l'autre.
+     *
+     * Même prémisse que {@see valeurDepensiereRecopiee} : à énergie donnée, le
+     * coût, l'énergie primaire et les émissions sont des multiples fixes de la
+     * consommation finale, et ce multiple — le facteur de l'énergie — est le
+     * même dans les deux scénarios. Le rapport `valeur / conso` doit donc être
+     * identique de part et d'autre.
+     *
+     * Quand il ne l'est pas, mais que le rapport **croisé** l'est — `valeur`
+     * sur la conso dépensière égale `valeur dépensière` sur la conso
+     * conventionnelle — les deux valeurs ont été calculées correctement puis
+     * écrites dans la mauvaise balise. La permutation s'établit sur le fichier
+     * seul, et elle est plus forte qu'un simple désordre des grandeurs : elle
+     * exhibe le facteur commun que les deux rapports croisés retrouvent.
+     *
+     * `2242E2979513I` en est le cas : son ECS publie 31 668,4 en
+     * conventionnel pour 22 459,9 en dépensier, alors que sa consommation
+     * dépensière est la plus grande des deux. Les deux rapports croisés valent
+     * 0,109000 — le contenu CO2 ACV de son réseau de chaleur au millésime
+     * applicable — là où les rapports directs donnent 0,154 et 0,077.
+     *
+     * Les deux balises sont imputées : aucune des deux n'est à sa place.
+     *
+     * @param array<string, string> $expected
+     * @return array<string, string>
+     */
+    private static function valeursDepensieresPermutees(
+        array $expected,
+        string $prefixe,
+        string $grandeur,
+        string $grandeurDep,
+        string $conso,
+        string $consoDep,
+    ): array {
+        $valeur = self::num($expected, $prefixe . $grandeur);
+        $valeurDep = self::num($expected, $prefixe . $grandeurDep);
+        $vConso = self::num($expected, self::EF_PREFIX . $conso);
+        $vConsoDep = self::num($expected, self::EF_PREFIX . $consoDep);
+
+        if ($valeur === null || $valeurDep === null || $vConso === null || $vConsoDep === null) {
+            return [];
+        }
+        if ($valeur <= 0.0 || $valeurDep <= 0.0 || $vConso <= 0.0 || $vConsoDep <= 0.0) {
+            return [];
+        }
+
+        $direct = $valeur / $vConso;
+        $directDep = $valeurDep / $vConsoDep;
+        if (abs($direct - $directDep) <= self::TOLERANCE_FACTEUR * $direct) {
+            return [];
+        }
+
+        $croise = $valeur / $vConsoDep;
+        $croiseDep = $valeurDep / $vConso;
+        if (abs($croise - $croiseDep) > self::TOLERANCE_FACTEUR * $croise) {
+            return [];
+        }
+
+        $preuve = sprintf(
+            'la référence publie %s et %s permutés : leurs rapports à la consommation valent '
+            . '%.5f et %.5f en direct, mais %.5f de part et d\'autre une fois croisés',
+            $grandeur,
+            $grandeurDep,
+            $direct,
+            $directDep,
+            $croise,
+        );
+
+        return [$grandeur => $preuve, $grandeurDep => $preuve];
     }
 
     private static function bouclageEcsSansAuxiliaire(array $expected, DOMDocument $doc): array

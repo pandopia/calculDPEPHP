@@ -1,7 +1,7 @@
 # Conformité du moteur — jeux de tests DPE 3CL
 
-_Généré le 2026-10-17T21:58:24+00:00 — profil de tolérance : `strict`_
-_Révision mesurée : `f9e745e` — arbre de travail modifié : 1 fichier(s) src/ non commités_
+_Généré le 2026-10-18T04:08:04+00:00 — profil de tolérance : `strict`_
+_Révision mesurée : `3cddfa2` — arbre de travail modifié : 1 fichier(s) src/ non commités_
 
 Comparaison balise à balise de la totalité de `<donnee_intermediaire>` et
 `<sortie>` entre la sortie du moteur et la référence du cas. Aucune balise
@@ -17,17 +17,17 @@ Totalement conformes     : 0
 Partiellement conformes  : 541
 
 Valeurs comparées        : 168 269
-Exactes                  : 127 840
-Dans tolérance           : 24 303
-Hors tolérance           : 13 604
+Exactes                  : 127 841
+Dans tolérance           : 24 304
+Hors tolérance           : 13 603
 Balises manquantes       : 357
 Balises supplémentaires  : 2 128
-Écarts non numériques    : 37
+Écarts non numériques    : 36
 
 Conformité               : 90,42 %
 ```
 
-Sur ces écarts, **4 626 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **93,17 %**. Détail plus bas.
+Sur ces écarts, **4 628 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **93,17 %**. Détail plus bas.
 
 ## Écarts par famille fonctionnelle
 
@@ -45,7 +45,7 @@ Sur ces écarts, **4 626 sont imputables à la référence** et non au moteur : 
 | PV | 3838 | 3752 | 10 | 67 | 6 | 3 | 98,02 % |
 | Sorties énergie finale | 3587 | 1904 | 1079 | 596 | 4 | 4 | 83,16 % |
 | Sorties énergie primaire | 4328 | 2057 | 1429 | 818 | 0 | 1 | 80,55 % |
-| GES | 7274 | 3353 | 2517 | 1378 | 6 | 6 | 80,70 % |
+| GES | 7274 | 3354 | 2518 | 1377 | 6 | 6 | 80,73 % |
 | Coûts | 6192 | 1277 | 2347 | 2556 | 6 | 6 | 58,53 % |
 | Confort d'été | 3022 | 1178 | 0 | 172 | 0 | 1672 | 38,98 % |
 | Autre | 1108 | 686 | 268 | 149 | 2 | 3 | 86,10 % |
@@ -57,7 +57,7 @@ Périmètres du règlement d'évaluation CSTB §1.1, déduits de
 
 | Périmètre | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| immeuble_collectif | 244 | 82117 | 64132 | 12354 | 4113 | 40 | 92,87 % |
+| immeuble_collectif | 244 | 82117 | 64133 | 12355 | 4112 | 40 | 92,87 % |
 | maison_individuelle | 114 | 33816 | 25703 | 4100 | 3823 | 152 | 87,84 % |
 | appartement_issu_immeuble | 95 | 32048 | 22907 | 4810 | 3659 | 102 | 86,23 % |
 | appartement_individuel | 88 | 20288 | 15098 | 3039 | 2009 | 63 | 89,01 % |
@@ -67,7 +67,7 @@ Périmètres du règlement d'évaluation CSTB §1.1, déduits de
 | Régime | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | post_2026 | 389 | 118978 | 91471 | 17744 | 7841 | 222 | 91,50 % |
-| pre_2026 | 152 | 49291 | 36369 | 6559 | 5763 | 135 | 86,82 % |
+| pre_2026 | 152 | 49291 | 36370 | 6560 | 5762 | 135 | 86,83 % |
 
 ## Écarts par moteur de calcul de la référence
 
@@ -85,7 +85,7 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 | 3cl_bbs_V2024.6.1.0 | 4 | 1310 | 778 | 139 | 347 | 18 | 69,79 % |
 | BBS_Slama_2024.6.1.0 | 4 | 1281 | 972 | 189 | 106 | 0 | 90,35 % |
 | V 2024.6.1.0 | 1 | 294 | 196 | 7 | 85 | 5 | 68,81 % |
-| 3cl_tribu_1.4.25.0 | 1 | 279 | 187 | 32 | 48 | 4 | 78,21 % |
+| 3cl_tribu_1.4.25.0 | 1 | 279 | 188 | 33 | 47 | 4 | 78,93 % |
 | 3cl_tribu_1.4.24.0 | 1 | 260 | 173 | 2 | 84 | 0 | 67,05 % |
 | V 2025.11.1.0 | 1 | 242 | 158 | 3 | 77 | 4 | 66,26 % |
 | V 1.4.25.1 | 1 | 231 | 106 | 4 | 115 | 5 | 47,41 % |
@@ -116,7 +116,7 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 | 18 | Apports | `inertie_lourde` | 337 | 337 | — | suppl×335 hors-tol×2 |
 | 19 | Auxiliaires | `cout_auxiliaire_generation_ch_depensier` | 274 | 274 | 359,4 % | hors-tol×274 |
 | 20 | Génération ECS | `rendement_stockage` | 216 | 80 | 40,0 % | hors-tol×182 manquante×34 |
-| 21 | GES | `emission_ges_ecs` | 215 | 106 | 20 212,9 % | hors-tol×211 suppl×2 manquante×2 |
+| 21 | GES | `emission_ges_ecs` | 214 | 106 | 20 212,9 % | hors-tol×210 suppl×2 manquante×2 |
 | 22 | Auxiliaires | `cout_auxiliaire_generation_ecs_depensier` | 208 | 208 | 141,7 % | hors-tol×208 |
 | 23 | Auxiliaires | `cout_total_auxiliaire` | 189 | 189 | 20 278,1 % | hors-tol×189 |
 | 24 | Besoin chauffage | `besoin_ch_depensier` | 166 | 79 | 1 009,5 % | hors-tol×164 manquante×2 |
@@ -169,10 +169,10 @@ reproduire le défaut d'un logiciel tiers éloignerait le moteur de la méthode.
 | `pertes_generateur_ch_recup_depensier` | 1 | la référence sérialise les apports et les pertes récupérées en Wh (3312583) quand les besoins du même bloc sont en kWh (14675), et publie en conséquence une fraction d’apports gratuits saturée à 1 |
 | `qp0` | 24 | la référence sérialise QP0 en kW (1.500) malgré l’unité W imposée par le XSD ; la valeur cohérente avec Pn=125000 W est 1500 W |
 | `ep_conso_fr_depensier` | 26 | la référence recopie ep_conso_fr dans ep_conso_fr_depensier alors que les consommations diffèrent (51 vs 129 kWh) |
-| `ep_conso_ecs_depensier` | 78 | la référence recopie ep_conso_ecs dans ep_conso_ecs_depensier alors que les consommations diffèrent (2217 vs 2879 kWh) |
+| `ep_conso_ecs_depensier` | 79 | la référence recopie ep_conso_ecs dans ep_conso_ecs_depensier alors que les consommations diffèrent (2217 vs 2879 kWh) |
 | `ep_conso_ch_depensier` | 99 | la référence recopie ep_conso_ch dans ep_conso_ch_depensier alors que les consommations diffèrent (1369 vs 1823 kWh) |
 | `emission_ges_fr_depensier` | 26 | la référence recopie emission_ges_fr dans emission_ges_fr_depensier alors que les consommations diffèrent (51 vs 129 kWh) |
-| `emission_ges_ecs_depensier` | 80 | la référence recopie emission_ges_ecs dans emission_ges_ecs_depensier alors que les consommations diffèrent (2217 vs 2879 kWh) |
+| `emission_ges_ecs_depensier` | 81 | la référence recopie emission_ges_ecs dans emission_ges_ecs_depensier alors que les consommations diffèrent (2217 vs 2879 kWh) |
 | `emission_ges_ch_depensier` | 105 | la référence recopie emission_ges_ch dans emission_ges_ch_depensier alors que les consommations diffèrent (1369 vs 1823 kWh) |
 | `cout_fr_depensier` | 24 | la référence recopie cout_fr dans cout_fr_depensier alors que les consommations diffèrent (51 vs 129 kWh) |
 | `cout_ecs_depensier` | 380 | la référence recopie cout_ecs dans cout_ecs_depensier alors que les consommations diffèrent (2217 vs 2879 kWh) |
@@ -191,7 +191,8 @@ reproduire le défaut d'un logiciel tiers éloignerait le moteur de la méthode.
 | `conso_auxiliaire_ventilation` | 35 | la référence publie pvent_moy = 0 alors que le même fichier déclare une consommation d'auxiliaires de ventilation non nulle dans sortie/ef_conso, ce que §5 p.41 (Caux_vent = 8760 × Pventmoy / 1000) interdit |
 | `pvent_moy` | 26 | la référence publie pvent_moy = 0 alors que le même fichier déclare une consommation d'auxiliaires de ventilation non nulle dans sortie/ef_conso, ce que §5 p.41 (Caux_vent = 8760 × Pventmoy / 1000) interdit |
 | `production_ch_solaire` | 8 | la référence publie production_ch_solaire = 14225.096 et conso_ch = 11968.755 pour fch = 0.28 : §9.2 p.62 et §9.6 p.65 posent les deux sur le même produit Bch × Σ(part × INT × Ich), d'où Prod / Cch = Fch / (1 − Fch) = 0.3889, quand le fichier publie 1.1885 |
-| `emission_ges_ecs` | 28 | la référence publie emission_ges_ecs = 972.3 mais sa propre ventilation par énergie en somme 10.3 sur 2 ligne(s) : le XSD définit sortie_par_energie comme la décomposition de <sortie>, leur somme est l'agrégat par construction |
+| `ep_conso_ecs` | 1 | la référence publie ep_conso_ecs et ep_conso_ecs_depensier permutés : leurs rapports à la consommation valent 1.41000 et 0.70922 en direct, mais 1.00000 de part et d'autre une fois croisés |
+| `emission_ges_ecs` | 27 | la référence publie emission_ges_ecs = 972.3 mais sa propre ventilation par énergie en somme 10.3 sur 2 ligne(s) : le XSD définit sortie_par_energie comme la décomposition de <sortie>, leur somme est l'agrégat par construction |
 | `emission_ges_ch` | 33 | la référence publie emission_ges_ch = 5040.5 mais sa propre ventilation par énergie en somme 53.4 sur 2 ligne(s) : le XSD définit sortie_par_energie comme la décomposition de <sortie>, leur somme est l'agrégat par construction |
 | `k` | 19 | la référence publie des k déjà multipliés par la longueur : leur somme (22.038) reproduit deperdition_pont_thermique, alors que Σ k × l vaut 110.211 — le XSD définit k en W/(m·K) |
 | `cout_ch` | 2 | la référence publie cout_ch = 1214.0 mais sa propre ventilation par énergie en somme 0.0 sur 1 ligne(s) : le XSD définit sortie_par_energie comme la décomposition de <sortie>, leur somme est l'agrégat par construction |
