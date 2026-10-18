@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CalculDpePHP\Chauffage\Strategy;
 
 use CalculDpePHP\Chauffage\CascadeGenerateurs;
+use CalculDpePHP\Chauffage\PartBesoinGenerateur;
 use CalculDpePHP\Collectif\ChauffageInstallationMultiplicity;
 use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Engine\CalculatorInterface;
@@ -245,7 +246,7 @@ final class InstallationClassique implements CalculatorInterface
         $accessor->setChildValue($di, 'conso_ch_depensier', $consoChDep);
 
         if ($genCollection !== null) {
-            $this->repartirSurLesGenerateurs($accessor, $genCollection, $consoCh, $consoChDep);
+            $this->repartirSurLesGenerateurs($accessor, $context, $genCollection, $consoCh, $consoChDep);
         }
     }
 
@@ -262,6 +263,7 @@ final class InstallationClassique implements CalculatorInterface
      */
     private function repartirSurLesGenerateurs(
         NodeAccessor $accessor,
+        CalculationContext $context,
         DOMElement $genCollection,
         float $consoCh,
         float $consoChDep,
@@ -275,6 +277,12 @@ final class InstallationClassique implements CalculatorInterface
             $genDi  = $accessor->ensureDonneeIntermediaire($gen);
             $accessor->setChildValue($genDi, 'conso_ch',           $assure ? $consoCh * $part : 0.0);
             $accessor->setChildValue($genDi, 'conso_ch_depensier', $assure ? $consoChDep * $part : 0.0);
+
+            // §15.1.1 : l'auxiliaire de génération suit le besoin que le
+            // générateur assure. Un subordonné qui n'assure rien n'a pas
+            // d'auxiliaire, et deux générateurs qui se partagent le besoin ne
+            // facturent pas chacun celui de l'installation entière.
+            PartBesoinGenerateur::publier($context, $gen, $assure ? $part : 0.0);
         }
     }
 
