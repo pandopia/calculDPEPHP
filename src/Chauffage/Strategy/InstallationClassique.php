@@ -29,7 +29,7 @@ use DOMElement;
  *   - ZONE collectif (methode_calcul=4, type_installation=2) :
  *       valeur de <rdim> (=1 pour un unique système collectif)
  *
- * @spec-section  9.1.2
+ * @spec-section  9.1.2, 9.10
  * @spec-pages    59
  * @spec-source   resources/specsplitted/09-conso-chauffage/01-installation-seule/02-classique.md
  * @xml-input     installation_chauffage.donnee_entree.{surface_chauffee, rdim, enum_methode_calcul_conso_id,
@@ -222,10 +222,20 @@ final class InstallationClassique implements CalculatorInterface
             return;
         }
 
-        $denom      = max(1e-9, $rg * $re * $rd * $rr);
-        $denomDep   = max(1e-9, $rgDep * $re * $rd * $rr);
-        $consoCh    = $besoinMoy    * $int / $denom;
-        $consoChDep = $besoinMoyDep * $int / $denomDep;
+        // §9.1.3 p.60 : avec plusieurs émissions pour un même générateur, la
+        // consommation est la **somme** des parts de chaque émetteur, chacune
+        // avec son intermittence et son Ich — pas le produit des moyennes.
+        $facteurEmission = \CalculDpePHP\Chauffage\FacteurEmission::parEmetteurOuNull($accessor, $node);
+        if ($facteurEmission !== null) {
+            $intCommun  = 1.0 / (1.0 + 0.1 * ($g - 1.0));
+            $consoCh    = $besoinMoy    * $facteurEmission * $intCommun / max(1e-9, $rg);
+            $consoChDep = $besoinMoyDep * $facteurEmission * $intCommun / max(1e-9, $rgDep);
+        } else {
+            $denom      = max(1e-9, $rg * $re * $rd * $rr);
+            $denomDep   = max(1e-9, $rgDep * $re * $rd * $rr);
+            $consoCh    = $besoinMoy    * $int / $denom;
+            $consoChDep = $besoinMoyDep * $int / $denomDep;
+        }
 
         $di = $accessor->ensureDonneeIntermediaire($node);
         $accessor->setChildValue($di, 'besoin_ch',          $besoinInstall);

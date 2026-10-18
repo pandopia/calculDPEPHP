@@ -1,7 +1,7 @@
 ---
 section_id: "18.5"
 title: "Coefficients d'orientation et d'inclinaison parois vitrées (C1)"
-spec_pages: [144]
+spec_pages: [144-147]
 xml_outputs: []
 tables: []
 depends_on: ["18"]
@@ -10,7 +10,7 @@ status: "verbatim"
 
 # §18.5 — Coefficients d'orientation et d'inclinaison parois vitrées (C1)
 
-> Source : `resources/spec.pdf` p.144
+> Source : `resources/spec.pdf` p.144-147
 > Extraction verbatim via `pdftotext -layout`. À digitaliser : tables en pipe-markdown, formules en LaTeX.
 
 ## Texte verbatim

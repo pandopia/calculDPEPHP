@@ -14,13 +14,29 @@ declare(strict_types=1);
  *
  * Valeurs 0 : mois hors saison de chauffe pour la zone/altitude concernée.
  *
- * Source : open3cl/src/tv.js → `dh14` (fidèle à la spec §18.2/§18.3 p.121-136).
+ * Extraite d'open3cl, puis **recoupée une à une avec l'annexe** : `ilpa = 0`
+ * contre les tableaux « DH14 (°Ch) » de §18.2.1 à §18.2.3, `ilpa = 1` contre
+ * ceux de §18.3.1 à §18.3.3, qui donnent les valeurs réduites des bâtiments
+ * à inertie lourde en parois anciennes. 575 des 576 valeurs concordaient.
+ *
+ * La seule qui ne concordait pas est corrigée ici : `ilpa = 1`, H3,
+ * ≥ 800 m, octobre portait 1 822,0, la valeur du tableau `ilpa = 0` de
+ * §18.2.3, alors que §18.3.3 y publie un tiret — comme pour sa température
+ * extérieure du même mois. Le mois sortait donc de la saison de chauffe pour
+ * l'une des deux tables et pas pour l'autre, et §9.8 l'aurait traité avec
+ * une température nulle.
+ *
+ * **Les six croisements entièrement vides sont ceux de l'annexe**, pas des
+ * trous de transcription : à partir de 800 m, H1a, H2a et H2b n'ont de
+ * données ni en §18.2.3 ni en §18.3.3, dans les deux valeurs d'`ilpa`.
  *
  * @spec-section 9.8
- * @spec-pages   65-66
+ * @spec-pages   65-66, 121-143
  * @spec-source  resources/specsplitted/09-conso-chauffage/08-collectif-base-appoint.md
+ * @spec-source  resources/specsplitted/18-annexes/02-sollicitations-exterieures/
+ * @spec-source  resources/specsplitted/18-annexes/03-inertie-lourde/
  * @generated-on 2026-04-30
- * @status complete
+ * @status verified-spec — 576 valeurs recoupées, une corrigée
  */
 
 // ── Raccourcis colonnes (1=H1a, 2=H1b, 3=H1c, 4=H2a, 5=H2b, 6=H2c, 7=H2d, 8=H3) ─────────
@@ -129,7 +145,7 @@ return [
             7  => $row(   0.0,      0.0,     0.0,     0.0,     0.0,     0.0,     0.0,     0.0),
             8  => $row(   0.0,      0.0,     0.0,     0.0,     0.0,     0.0,     0.0,     0.0),
             9  => $row(   0.0,      0.0,   623.8,     0.0,     0.0,   168.3,   605.4,     0.0),
-            10 => $row(   0.0,   3107.8,  3781.7,     0.0,     0.0,  2549.1,  2359.0,  1822.0),
+            10 => $row(   0.0,   3107.8,  3781.7,     0.0,     0.0,  2549.1,  2359.0,     0.0),
             11 => $row(   0.0,   8233.8,  7474.7,     0.0,     0.0,  6455.8,  6590.0,  5542.7),
             12 => $row(   0.0,  10560.5, 10992.4,     0.0,     0.0,  9643.9,  9641.0,  7762.7),
         ],

@@ -127,6 +127,42 @@ XML;
         return [$doc, $ctx, $install];
     }
 
+    /**
+     * §18.3 tabule des températures extérieures moyennes **négatives** dès la
+     * classe d'altitude 3 : H1c y donne −0,2 °C en janvier, −0,1 en février et
+     * −0,8 en décembre. Un garde `Textj <= 0` les prenait pour des données
+     * manquantes et vidait la base de ces trois mois — ceux où elle travaille
+     * le plus. La base doit donc couvrir davantage en H1c altitude 3 qu'en
+     * altitude 1 à puissance et besoin égaux, le froid y étant plus vif.
+     */
+    public function testLesMoisATemperatureNegativeComptentPourLaBase(): void
+    {
+        $parts = [];
+        foreach ([1, 3] as $altId) {
+            [$doc, $ctx, $node] = $this->buildXml(
+                bch: 10000, gv: 200, surface: 80, sh: 80, hsp: 2.5,
+                rdim: 1, pnW: 4000, rgBase: 1.0, reBase: 1.0, rdBase: 1.0, rrBase: 1.0, i0Base: 1.0,
+                rgAppoint: 1.0, reAppoint: 1.0, rdAppoint: 1.0, rrAppoint: 1.0, i0Appoint: 1.0,
+                zoneId: 3, altId: $altId,
+            );
+            (new CollectifBaseAppoint())->calculate($node, $ctx);
+
+            $xp = new \DOMXPath($doc);
+            $generateurs = $xp->query('//generateur_chauffage/donnee_intermediaire/conso_ch');
+            $base = (float) $generateurs->item(0)->textContent;
+            $appoint = (float) $generateurs->item(1)->textContent;
+            self::assertGreaterThan(0.0, $base + $appoint, "altitude $altId : aucune consommation");
+            $parts[$altId] = $base / ($base + $appoint);
+        }
+
+        self::assertGreaterThan(0.0, $parts[3], 'la base est vide en altitude 3');
+        self::assertGreaterThan(
+            $parts[1],
+            $parts[3],
+            'la base devrait couvrir davantage en altitude 3 : ses mois les plus froids y sont comptés',
+        );
+    }
+
     public function testAppliesToCfg10(): void
     {
         $calc = new CollectifBaseAppoint();

@@ -553,4 +553,41 @@ XML;
             1e-6,
         );
     }
+
+    /**
+     * §12.4.1 p.76 ouvre deux lignes électriques : « générateur à effet joule
+     * direct » à Rg = 1 et « chaudières électriques » à Rg = 0,97. Le
+     * chauffage applique déjà la seconde à `enum_type_generateur_ch_id` = 106 ;
+     * l'ECS la doit au type 118 — 2400E1027746V, dont la référence publie
+     * 0,97 quand nous publiions 1.
+     *
+     * Le chauffe-eau instantané, « assimilé à un ballon électrique au niveau
+     * du modèle », et les ballons à accumulation restent à 1.
+     */
+    public function testUneChaudiereElectriqueEcsPorteLeRendementDeLaLigne124(): void
+    {
+        foreach ([118 => 0.97, 117 => 1.0, 68 => 1.0, 71 => 1.0] as $type => $attendu) {
+            $document = new DOMDocument();
+            $document->loadXML(<<<XML
+<logement><installation_ecs><generateur_ecs_collection><generateur_ecs>
+  <donnee_entree>
+    <enum_type_generateur_ecs_id>$type</enum_type_generateur_ecs_id>
+    <enum_type_energie_id>1</enum_type_energie_id>
+    <enum_usage_generateur_id>2</enum_usage_generateur_id>
+  </donnee_entree>
+</generateur_ecs></generateur_ecs_collection></installation_ecs></logement>
+XML);
+            $contexte = new CalculationContext(
+                document: $document,
+                tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+            );
+            $generateur = $document->getElementsByTagName('generateur_ecs')->item(0);
+
+            (new CombustionCalculator())->calculate($generateur, $contexte);
+
+            $rg = $document->getElementsByTagName('rendement_generation')->item(0);
+            self::assertNotNull($rg, "type $type : aucun rendement publié");
+            self::assertEqualsWithDelta($attendu, (float) $rg->textContent, 1e-9, "type $type");
+        }
+    }
 }

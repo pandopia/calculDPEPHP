@@ -25,7 +25,38 @@ declare(strict_types=1);
  * @spec-pages   121-136
  * @spec-source  resources/specsplitted/18-annexes/02-sollicitations-exterieures/
  * @generated-on 2026-04-29
- * @status verified-spec — valeurs transcrites depuis les tables p.121-136
+ * @status verified-spec — les **1 440 valeurs** des cinq colonnes E, Nref19,
+ *         DH19, Nref21 et DH21 sont recoupées une à une avec §18.2.1 à
+ *         §18.2.3, pour les trois classes d'altitude. 1 439 concordent.
+ *
+ * **La seule exception est un défaut de l'annexe, et la table garde notre
+ * valeur.** §18.2 publie pour H2d en décembre un DH19 de 15 639,4 (≤ 400 m),
+ * 18 255,9 (400-800 m) et 20 887,4 (≥ 800 m), là où la table porte
+ * respectivement 9 533, 11 021 et 12 509. Trois arguments, tous internes à
+ * l'annexe :
+ *   1. rapporté aux 744 heures de Nref19 du même tableau, le DH19 publié
+ *      donne un déficit moyen de 21,0 °C sous la consigne de 19 °C, quand
+ *      les sept autres zones tiennent entre 10,4 et 14,6 °C — notre valeur
+ *      en donne 12,8, au milieu de cette plage ;
+ *   2. la Textmoy de H2d en décembre est 9,4 °C, la plus douce des zones H1
+ *      et H2 après H2a ; un DH19 supérieur de 63 % à celui de H1c, dont la
+ *      Textmoy est 7,3 °C, est exclu ;
+ *   3. le DH14 du même mois et de la même zone vaut 6 669,3, à côté des
+ *      6 667,9 de H2c — l'écart entre bases 14 et 19 ne peut pas y être
+ *      trois fois celui des zones voisines.
+ *
+ * L'argument décisif est le quatrième, et il tient en une ligne de l'annexe :
+ * §18.3 publie **la même température extérieure de 5,0 °C en décembre pour
+ * H1a et pour H2d**, et les mêmes 744 heures de chauffage — puis un DH19 de
+ * 9 573,3 pour l'une et de 15 639,4 pour l'autre. À température et durée
+ * égales, les degrés-heures le sont aussi. Notre valeur de 9 533 est à 0,4 %
+ * de celle de H1a, ce que cette égalité impose.
+ *
+ * La valeur fautive figure à l'identique dans §18.2 **et** dans §18.3, aux
+ * trois altitudes : c'est la même coquille reprise d'une annexe à l'autre,
+ * pas deux mesures indépendantes.
+ *
+ * Un chiffre sur 1 440 : le reste de l'annexe est fiable, cette cellule non.
  */
 
 $null = null;

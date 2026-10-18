@@ -60,6 +60,39 @@ final class ReferenceDefects
         ['dpe/logement/sortie/emission_ges/', 'emission_ges'],
     ];
 
+    /** `enum_methode_saisie_carac_sys_id` = 1 : « valeurs forfaitaires ». */
+    private const SAISIE_FORFAITAIRE = 1;
+
+    /**
+     * Les seules valeurs de COP que §14.2 p.95 tabule, deux zones et trois
+     * millésimes confondus.
+     *
+     * @var list<float>
+     */
+    private const COP_TABULES_14_2 = [2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.8, 2.9];
+
+    /**
+     * `enum_type_doublage_id` dont §3.2.1.2 p.16 fixe la résistance à
+     * 0,21 m².K/W : 4 « lame d'air de plus de 15 mm », 5 « matériau de
+     * doublage connu (plâtre, brique, bois) ».
+     *
+     * @var list<int>
+     */
+    private const DOUBLAGES_A_021 = [4, 5];
+
+    /**
+     * `enum_methode_saisie_u0_id` qui passent par la table ou le forfait :
+     * 1 « type de paroi inconnu (valeur par défaut) » et 2 « déterminé selon
+     * le matériau et épaisseur à partir de la table de valeur forfaitaire ».
+     * Les méthodes 3 et 4 saisissent U0 directement.
+     *
+     * @var list<int>
+     */
+    private const METHODES_U0_TABULE = [1, 2];
+
+    /** 1 / (1/3,90 + 0,21), la plus grande valeur tabulée étant 3,90. */
+    private const UMUR0_MAX_AVEC_DOUBLAGE = 2.144;
+
     /**
      * `enum_type_isolation_id` : 1 « inconnu », 2 « non isolé ». Les autres
      * valeurs déclarent une isolation.
@@ -67,6 +100,14 @@ final class ReferenceDefects
      * @var list<int>
      */
     private const ISOLATION_ABSENTE_OU_INCONNUE = [1, 2];
+
+    /**
+     * Écart relatif toléré entre deux rapports « valeur / consommation » qui
+     * devraient exhiber le même facteur d'énergie. Les sorties sont arrondies
+     * au dixième de kWh et de kgCO2, ce qui suffit à écarter les égalités
+     * fortuites sans rejeter les vraies.
+     */
+    private const TOLERANCE_FACTEUR = 1e-3;
 
     private const COUT_PREFIX = 'dpe/logement/sortie/cout/';
     private const EF_PREFIX = 'dpe/logement/sortie/ef_conso/';
@@ -161,6 +202,9 @@ final class ReferenceDefects
             $suspects += self::isolantDePlancherBasDeclareMaisIgnore($referenceDoc);
             $suspects += self::agregatIncompatibleAvecSaVentilation($referenceDoc);
             $suspects += self::mesureDEtancheiteDeclareeMaisIgnoree($referenceDoc);
+            $suspects += self::productionSolaireIncompatibleAvecSaConso($referenceDoc);
+            $suspects += self::doublageDeMurDeclareMaisIgnore($referenceDoc);
+            $suspects += self::copForfaitaireHorsTable($referenceDoc);
         }
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
@@ -188,29 +232,22 @@ final class ReferenceDefects
 
         foreach (self::AGREGATS_DEPENSIER as [$prefixe, $grandeur]) {
             foreach (['ch', 'ecs', 'fr'] as $usage) {
-                $suspects += self::valeurDepensiereRecopiee(
+                $arguments = [
                     $expected,
                     $prefixe,
                     $grandeur . '_' . $usage,
                     $grandeur . '_' . $usage . '_depensier',
                     'conso_' . $usage,
                     'conso_' . $usage . '_depensier',
-                );
+                ];
+                $suspects += self::valeurDepensiereRecopiee(...$arguments);
+                $suspects += self::valeursDepensieresPermutees(...$arguments);
             }
         }
 
         return $suspects;
     }
 
-    /**
-     * §15.2.3 pp.98-102 : un circulateur de réseau ECS bouclé appelle au moins
-     * 20 W, même hors puisage. §17.2.2.5.1 p.118 : sa consommation est aussi
-     * répartie aux appartements générés par une clé de besoins positive.
-     * Preuve sur la référence seule ; aucun résultat de notre moteur n'intervient.
-     * @spec-source resources/specsplitted/15-auxiliaires/02-aux-distribution.md
-     * @param array<string, string> $expected
-     * @return array<string, string>
-     */
     /**
      * Une grandeur du scénario dépensier recopiée du conventionnel alors que
      * les deux consommations diffèrent.
@@ -258,6 +295,78 @@ final class ReferenceDefects
                 $vConsoDep,
             ),
         ];
+    }
+
+    /**
+     * Conventionnel et dépensier publiés l'un à la place de l'autre.
+     *
+     * Même prémisse que {@see valeurDepensiereRecopiee} : à énergie donnée, le
+     * coût, l'énergie primaire et les émissions sont des multiples fixes de la
+     * consommation finale, et ce multiple — le facteur de l'énergie — est le
+     * même dans les deux scénarios. Le rapport `valeur / conso` doit donc être
+     * identique de part et d'autre.
+     *
+     * Quand il ne l'est pas, mais que le rapport **croisé** l'est — `valeur`
+     * sur la conso dépensière égale `valeur dépensière` sur la conso
+     * conventionnelle — les deux valeurs ont été calculées correctement puis
+     * écrites dans la mauvaise balise. La permutation s'établit sur le fichier
+     * seul, et elle est plus forte qu'un simple désordre des grandeurs : elle
+     * exhibe le facteur commun que les deux rapports croisés retrouvent.
+     *
+     * `2242E2979513I` en est le cas : son ECS publie 31 668,4 en
+     * conventionnel pour 22 459,9 en dépensier, alors que sa consommation
+     * dépensière est la plus grande des deux. Les deux rapports croisés valent
+     * 0,109000 — le contenu CO2 ACV de son réseau de chaleur au millésime
+     * applicable — là où les rapports directs donnent 0,154 et 0,077.
+     *
+     * Les deux balises sont imputées : aucune des deux n'est à sa place.
+     *
+     * @param array<string, string> $expected
+     * @return array<string, string>
+     */
+    private static function valeursDepensieresPermutees(
+        array $expected,
+        string $prefixe,
+        string $grandeur,
+        string $grandeurDep,
+        string $conso,
+        string $consoDep,
+    ): array {
+        $valeur = self::num($expected, $prefixe . $grandeur);
+        $valeurDep = self::num($expected, $prefixe . $grandeurDep);
+        $vConso = self::num($expected, self::EF_PREFIX . $conso);
+        $vConsoDep = self::num($expected, self::EF_PREFIX . $consoDep);
+
+        if ($valeur === null || $valeurDep === null || $vConso === null || $vConsoDep === null) {
+            return [];
+        }
+        if ($valeur <= 0.0 || $valeurDep <= 0.0 || $vConso <= 0.0 || $vConsoDep <= 0.0) {
+            return [];
+        }
+
+        $direct = $valeur / $vConso;
+        $directDep = $valeurDep / $vConsoDep;
+        if (abs($direct - $directDep) <= self::TOLERANCE_FACTEUR * $direct) {
+            return [];
+        }
+
+        $croise = $valeur / $vConsoDep;
+        $croiseDep = $valeurDep / $vConso;
+        if (abs($croise - $croiseDep) > self::TOLERANCE_FACTEUR * $croise) {
+            return [];
+        }
+
+        $preuve = sprintf(
+            'la référence publie %s et %s permutés : leurs rapports à la consommation valent '
+            . '%.5f et %.5f en direct, mais %.5f de part et d\'autre une fois croisés',
+            $grandeur,
+            $grandeurDep,
+            $direct,
+            $directDep,
+            $croise,
+        );
+
+        return [$grandeur => $preuve, $grandeurDep => $preuve];
     }
 
     private static function bouclageEcsSansAuxiliaire(array $expected, DOMDocument $doc): array
@@ -399,19 +508,11 @@ final class ReferenceDefects
         DOMDocument $doc,
     ): array {
         $consoSortie = self::num($expected, self::EF_PREFIX . 'conso_auxiliaire_ventilation');
-        if ($consoSortie === null || $consoSortie <= 0.0) {
-            return [];
-        }
-
         $xpath = new DOMXPath($doc);
         $ventilations = $xpath->query('//logement/ventilation_collection/ventilation');
         if ($ventilations === false || $ventilations->length === 0) {
             return [];
         }
-
-        $motif = 'la référence publie pvent_moy = 0 alors que le même fichier déclare une '
-            . 'consommation d\'auxiliaires de ventilation non nulle dans sortie/ef_conso, '
-            . 'ce que §5 p.41 (Caux_vent = 8760 × Pventmoy / 1000) interdit';
 
         $suspects = [];
         foreach ($ventilations as $index => $ventilation) {
@@ -422,6 +523,28 @@ final class ReferenceDefects
             if ($pvent === null || $pvent != 0.0) {
                 continue;
             }
+
+            // La contradiction se lit à deux endroits, indépendamment : dans
+            // l'agrégat de `sortie`, ou dans la `donnee_intermediaire` de la
+            // ventilation elle-même. Le corpus porte les deux formes, et la
+            // seconde parfois **sous** une sortie nulle — le fichier se
+            // contredit alors entre ses deux niveaux en plus de contredire §5.
+            $consoLocale = self::nodeNum(
+                $xpath,
+                './donnee_intermediaire/conso_auxiliaire_ventilation',
+                $ventilation,
+            );
+            $parLaSortie = $consoSortie !== null && $consoSortie > 0.0;
+            $parLIntermediaire = $consoLocale !== null && $consoLocale > 0.0;
+            if (!$parLaSortie && !$parLIntermediaire) {
+                continue;
+            }
+
+            $motif = 'la référence publie pvent_moy = 0 alors que le même fichier déclare une '
+                . 'consommation d\'auxiliaires de ventilation non nulle dans '
+                . ($parLaSortie ? 'sortie/ef_conso' : 'la donnee_intermediaire de la ventilation')
+                . ', ce que §5 p.41 (Caux_vent = 8760 × Pventmoy / 1000) interdit';
+
             $suffixe = $ventilations->length === 1 ? '' : '@' . ($index + 1);
             $suspects['pvent_moy' . $suffixe] = $motif;
             $suspects['conso_auxiliaire_ventilation' . $suffixe] = $motif;
@@ -586,6 +709,193 @@ final class ReferenceDefects
      * @var list<int>
      */
     private const SAISIES_Q4PA_MESUREES = [2, 3];
+
+    /**
+     * `production_ch_solaire` que la consommation du même bloc contredit.
+     *
+     * §9.2 p.62 et §9.6 p.65 écrivent les deux grandeurs sur le même produit :
+     *
+     *   Cch  = Bch × (1 − Fch) × Σ_i (part_i × INT_i × Ich_i)
+     *   Prod = Bch ×      Fch  × Σ_i (part_i × INT_i × Ich_i)
+     *
+     * La somme, les rendements et le besoin s'éliminent entre les deux : il
+     * reste `Prod / Cch = Fch / (1 − Fch)`, quelle que soit l'installation.
+     * Les trois valeurs étant publiées côte à côte dans la même
+     * `donnee_intermediaire`, la contradiction se démontre sur le seul fichier
+     * de référence, sans aucun calcul de notre moteur.
+     *
+     * Huit installations du corpus sur les dix qui publient les trois balises
+     * la violent, dans les deux sens — de 0,52 à 3,32 fois le rapport imposé.
+     *
+     * @return array<string, string>
+     */
+    private static function productionSolaireIncompatibleAvecSaConso(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+
+        foreach ($xpath->query('//installation_chauffage') as $installation) {
+            if (!$installation instanceof DOMElement) {
+                continue;
+            }
+
+            $production = self::nombreEnfant($xpath, './donnee_intermediaire/production_ch_solaire', $installation);
+            $conso = self::nombreEnfant($xpath, './donnee_intermediaire/conso_ch', $installation);
+            $fch = self::nombreEnfant($xpath, './donnee_intermediaire/fch', $installation);
+            if ($production === null || $conso === null || $fch === null
+                || $conso <= 0.0 || $fch <= 0.0 || $fch >= 1.0) {
+                continue;
+            }
+
+            $impose = $fch / (1.0 - $fch);
+            $publie = $production / $conso;
+            if (abs($publie - $impose) <= 0.01 * $impose) {
+                continue;
+            }
+
+            return [
+                'production_ch_solaire' => sprintf(
+                    'la référence publie production_ch_solaire = %.3f et conso_ch = %.3f pour '
+                    . 'fch = %.2f : §9.2 p.62 et §9.6 p.65 posent les deux sur le même produit '
+                    . 'Bch × Σ(part × INT × Ich), d\'où Prod / Cch = Fch / (1 − Fch) = %.4f, '
+                    . 'quand le fichier publie %.4f',
+                    $production,
+                    $conso,
+                    $fch,
+                    $impose,
+                    $publie,
+                ),
+            ];
+        }
+
+        return [];
+    }
+
+    /**
+     * Résistance de doublage déclarée, puis absente du `umur0` publié.
+     *
+     * §3.2.1.2 p.16 : « pour l'ensemble des parois, la présence d'un doublage
+     * apporte une résistance thermique supplémentaire », avec
+     * `Rdoublage` = 0,21 m².K/W pour une lame d'air de plus de 15 mm ou un
+     * matériau connu — `enum_type_doublage_id` 4 et 5.
+     *
+     * La borne qui en découle est arithmétique : la plus grande valeur tabulée
+     * de §3.2.1.2 est 3,90 W/(m².K) (briques pleines simples ≤ 9 cm, p.15), et
+     * `1 / (1/3,90 + 0,21) = 2,144`. Un `umur0` publié au-dessus de cette
+     * borne sur un mur qui déclare un tel doublage ne peut donc venir ni de la
+     * table ni du forfait 2,5 des parois inconnues : la résistance déclarée
+     * n'a pas été appliquée.
+     *
+     * La preuve n'exige que le fichier de référence : son
+     * `enum_type_doublage_id`, sa méthode de saisie et son `umur0`. Elle ne
+     * vaut que pour `Rdoublage` = 0,21 — avec 0,10 le plafond de 2,5 reste
+     * atteignable (`1 / (1/3,90 + 0,10) = 2,806`), et il n'y a rien à prouver.
+     *
+     * @return array<string, string>
+     */
+    private static function doublageDeMurDeclareMaisIgnore(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+
+        foreach ($xpath->query('//mur') as $mur) {
+            if (!$mur instanceof DOMElement) {
+                continue;
+            }
+
+            $doublage = self::nombreEnfant($xpath, './donnee_entree/enum_type_doublage_id', $mur);
+            if ($doublage === null || !in_array((int) $doublage, self::DOUBLAGES_A_021, true)) {
+                continue;
+            }
+
+            // Un U0 saisi et justifié échappe à la table : rien à démontrer.
+            $methode = self::nombreEnfant($xpath, './donnee_entree/enum_methode_saisie_u0_id', $mur);
+            if ($methode === null || !in_array((int) $methode, self::METHODES_U0_TABULE, true)) {
+                continue;
+            }
+
+            $umur0 = self::nombreEnfant($xpath, './donnee_intermediaire/umur0', $mur);
+            if ($umur0 === null || $umur0 <= self::UMUR0_MAX_AVEC_DOUBLAGE + 1e-9) {
+                continue;
+            }
+
+            return [
+                'umur0' => sprintf(
+                    'la référence déclare un doublage (enum_type_doublage_id = %d, '
+                    . 'Rdoublage = 0,21 m².K/W) mais publie umur0 = %.3f : §3.2.1.2 p.16 '
+                    . 'plafonne alors Umur0 à 1 / (1/3,90 + 0,21) = %.3f, la plus grande '
+                    . 'valeur tabulée étant 3,90 W/(m².K)',
+                    (int) $doublage,
+                    $umur0,
+                    self::UMUR0_MAX_AVEC_DOUBLAGE,
+                ),
+            ];
+        }
+
+        return [];
+    }
+
+    /**
+     * COP forfaitaire d'un chauffe-eau thermodynamique absent de §14.2.
+     *
+     * §14.2 p.95 : « Le tableau suivant donne les caractéristiques par défaut
+     * des chauffe-eau thermodynamiques **si les caractéristiques exactes des
+     * équipements ne peuvent pas être saisies** ». Ce tableau est fini : trois
+     * familles — CET sur air extérieur ou ambiant, CET sur air extrait, PAC
+     * double service — par trois millésimes et deux groupes de zones, soit
+     * les seules valeurs 2 ; 2,1 ; 2,2 ; 2,3 ; 2,4 ; 2,5 ; 2,6 ; 2,8 ; 2,9.
+     *
+     * Quand le générateur déclare `enum_methode_saisie_carac_sys_id` = 1,
+     * « valeurs forfaitaires », son COP ne peut donc être qu'une de ces neuf
+     * valeurs. Un COP publié hors de cet ensemble ne vient d'aucune ligne de
+     * la méthode, et la déclaration exclut la saisie justifiée qui
+     * l'autoriserait. La preuve tient sur le seul fichier de référence.
+     *
+     * Les COP présents dans l'ensemble mais lus sur la mauvaise ligne — zone
+     * H3 au lieu de H1/H2, ou famille voisine — ne sont pas couverts : les
+     * départager demanderait de refaire le calcul, pas de lire le fichier.
+     *
+     * @return array<string, string>
+     */
+    private static function copForfaitaireHorsTable(DOMDocument $doc): array
+    {
+        $xpath = new DOMXPath($doc);
+
+        foreach ($xpath->query('//generateur_ecs') as $generateur) {
+            if (!$generateur instanceof DOMElement) {
+                continue;
+            }
+
+            $saisie = self::nombreEnfant($xpath, './donnee_entree/enum_methode_saisie_carac_sys_id', $generateur);
+            if ($saisie === null || (int) $saisie !== self::SAISIE_FORFAITAIRE) {
+                continue;
+            }
+
+            $cop = self::nombreEnfant($xpath, './donnee_intermediaire/cop', $generateur);
+            if ($cop === null || $cop <= 0.0) {
+                continue;
+            }
+
+            foreach (self::COP_TABULES_14_2 as $tabule) {
+                if (abs($cop - $tabule) < 1e-9) {
+                    continue 2;
+                }
+            }
+
+            return [
+                'cop' => sprintf(
+                    'la référence déclare une saisie forfaitaire '
+                    . '(enum_methode_saisie_carac_sys_id = 1) mais publie cop = %s : §14.2 p.95 '
+                    . 'ne tabule que %s pour les chauffe-eau thermodynamiques',
+                    rtrim(rtrim(sprintf('%.4f', $cop), '0'), '.'),
+                    implode(' ; ', array_map(
+                        static fn (float $v): string => rtrim(rtrim(sprintf('%.1f', $v), '0'), '.'),
+                        self::COP_TABULES_14_2,
+                    )),
+                ),
+            ];
+        }
+
+        return [];
+    }
 
     /**
      * Une perméabilité mesurée, saisie et justifiée, que la référence publie

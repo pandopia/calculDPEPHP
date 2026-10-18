@@ -27,14 +27,44 @@ declare(strict_types=1);
  *   Générateur air chaud avant 2006, Pn≤300 (ID 69) :
  *     rpn=77/100, rpint=74/100, qp0=Pn×(1.75−0.55×log10(Pn))/100
  *
- * @spec-section 13.2.2
- * @spec-pages   86-92
+ * @spec-section 13.2.2, 14.1
+ * @spec-pages   86-95
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
+ * @spec-source  resources/specsplitted/14-rendement-ecs-generateurs/01-combustion.md
  * @generated-on 2026-04-30
- * @status       partial — IDs 1-69 implémentés (gaz, fioul, bois bûche/plaquette/granulés,
- *               charbon via alias GenerateurChAlias, air chaud id 69).
- *               IDs 70-93 (air chaud 2006+, radiateurs gaz, accumulateurs/chauffe-eau
- *               gaz — usage principalement ECS) restent à digitaliser dans TASK-A07.
+ * @status       complete — **93 lignes, sans trou de 1 à 93.** Les IDs 70 à 93
+ *               ont été ajoutés le 2026-10-18 : générateurs d'air chaud à partir
+ *               de 2006 (§13.2.2.1), radiateurs à gaz (§13.2.2.2), accumulateurs
+ *               gaz (§14.1.3) et chauffe-eau gaz instantanés (§14.1.1).
+ *
+ * L'ID **76** manquait alors qu'il est au corpus : `2400E0669425G` et
+ * `2400E0669495Y` déclarent un radiateur à gaz d'avant 2006, et
+ * `ChaudiereDefautCalculator` ne trouvant pas la ligne recopiait la saisie —
+ * c'est-à-dire rien, le générateur étant en saisie forfaitaire. Ces deux
+ * fichiers sortaient donc sans `pn` ni `rpn` pour ce générateur.
+ *
+ * Les valeurs constantes des 93 lignes sont recoupées avec la feuille
+ * `generateur_combustion` de `valeur_tables.xlsx` de l'observatoire DPE de
+ * l'ADEME : **231 concordances, aucun désaccord**, les 126 des lignes déjà
+ * implémentées servant de validation croisée de cette source avant de s'en
+ * servir pour les 24 nouvelles. Chaque ligne reste par ailleurs tracée à son
+ * paragraphe de la méthode, qui l'énonce aux mêmes valeurs.
+ *
+ * **`rpint` vaut 0 là où la méthode ne le tabule pas**, et c'est un défaut
+ * connu de cette livraison : §13.2.2.2 ne donne aux radiateurs à gaz qu'un
+ * Rpn, et §14.1.1 comme §14.1.3 n'énoncent pas de rendement à charge
+ * intermédiaire pour les générateurs d'ECS seule. Le zéro est écrit parce que
+ * `RendementAnnuelMoyenCalculator` en a besoin pour produire quoi que ce soit ;
+ * il conduit sur les radiateurs à gaz à un `rendement_generation` de 1,11,
+ * impossible pour une combustion. Voir TASK-K76.
+ *
+ * `qp0` vaut en revanche **zéro à bon droit** pour les radiateurs : leurs
+ * pertes suivent « QPx = 1,04 × (100 − RPn)/RPn × Pn × x » (§13.2.2.2), qui
+ * s'annule à l'arrêt.
+ *
+ * Hors périmètre : les IDs 94 à 97 de la table amont sont les chaudières bois
+ * granulés à condensation d'après 2024, introduites par le modèle DPE 2.7
+ * (`enum_type_generateur_ch_id` 177 et 182) — cf. TASK-K63.
  */
 
 // ─── Helpers de formules ──────────────────────────────────────────────────────
@@ -889,7 +919,304 @@ return [
         ];
     },
 
-    // Entrées 70-93 (générateurs air chaud, radiateurs gaz, accumulateurs et
-    // chauffe-eau gaz — usage ECS/air chaud) : restent à digitaliser (TASK-A07).
-    // Ne pas lever d'exception ici — l'appelant doit gérer null gracieusement.
+    // ── Générateurs d'air chaud — §13.2.2.1 p.86-87 ──────────────────────────
+    // « L'expression de QP0 est valable pour une puissance nominale inférieure
+    // ou égale à 300 kW. On conservera les valeurs pour Pn = 300 kW si
+    // Pn > 300 kW. » — d'où le plafond sur la seule puissance de QP0.
+
+    // ID 70 : Générateur air chaud avant 2006 — Pn>300
+    70 => static function (float $pnKw, float $e, float $f): array {
+        $pnQp0 = min($pnKw, 300.0);
+
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.77,
+            'rpint' => 0.74,
+            'qp0'   => $pnQp0 * (1.75 - 0.55 * log10($pnQp0)) * 1000.0 / 100.0,
+            'pveil' => 0.0,
+        ];
+    },
+
+    // ID 71 : Générateur air chaud standard à partir de 2006 — Pn≤300
+    71 => static function (float $pnKw, float $e, float $f): array {
+        $pnQp0 = min($pnKw, 300.0);
+
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.84,
+            'rpint' => 0.77,
+            'qp0'   => $pnQp0 * (1.75 - 0.55 * log10($pnQp0)) * 1000.0 / 100.0,
+            'pveil' => 0.0,
+        ];
+    },
+
+    // ID 72 : Générateur air chaud standard à partir de 2006 — Pn>300
+    72 => static function (float $pnKw, float $e, float $f): array {
+        $pnQp0 = min($pnKw, 300.0);
+
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.84,
+            'rpint' => 0.77,
+            'qp0'   => $pnQp0 * (1.75 - 0.55 * log10($pnQp0)) * 1000.0 / 100.0,
+            'pveil' => 0.0,
+        ];
+    },
+
+    // ID 73 : Générateur air chaud à condensation à partir de 2006 — Pn≤300
+    73 => static function (float $pnKw, float $e, float $f): array {
+        $pnQp0 = min($pnKw, 300.0);
+
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.9,
+            'rpint' => 0.83,
+            'qp0'   => $pnQp0 * (1.75 - 0.55 * log10($pnQp0)) * 1000.0 / 100.0,
+            'pveil' => 0.0,
+        ];
+    },
+
+    // ID 74 : Générateur air chaud à condensation à partir de 2006 — Pn>300
+    74 => static function (float $pnKw, float $e, float $f): array {
+        $pnQp0 = min($pnKw, 300.0);
+
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.9,
+            'rpint' => 0.83,
+            'qp0'   => $pnQp0 * (1.75 - 0.55 * log10($pnQp0)) * 1000.0 / 100.0,
+            'pveil' => 0.0,
+        ];
+    },
+
+
+    // ── Radiateurs à gaz — §13.2.2.2 p.88 ────────────────────────────────────
+    // La section ne donne que Rpn, par période et par bande de puissance :
+    // 70 % et 73 % avant 2006, 80 % et 82 % à partir de 2006, la bascule étant
+    // à 5 kW. Elle ne tabule pas Rpint, d'où le `null`.
+    //
+    // QP0 vaut en revanche **zéro, et c'est une valeur, pas une absence** :
+    // les pertes du radiateur suivent « QPx = 1,04 × (100 − RPn)/RPn × Pn × x »,
+    // qui s'annule à l'arrêt. §15.1 p.97 le confirme de son côté en donnant aux
+    // radiateurs gaz G = 40 et H = 0, soit des auxiliaires indépendants de Pn.
+
+    // ID 75 : Radiateur à gaz indépendant ou autonome avant 2006 — Pn≤5 — rpn=70%
+    75 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.7,
+            'rpint' => 0.0,
+            'qp0'   => 0.0,
+            'pveil' => 0.0,
+        ];
+    },
+
+    // ID 76 : Radiateur à gaz indépendant ou autonome avant 2006 — Pn>5 — rpn=73%
+    76 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.73,
+            'rpint' => 0.0,
+            'qp0'   => 0.0,
+            'pveil' => 0.0,
+        ];
+    },
+
+    // ID 77 : Radiateur à gaz indépendant ou autonome à partir de 2006 — Pn≤5 — rpn=80%
+    77 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.8,
+            'rpint' => 0.0,
+            'qp0'   => 0.0,
+            'pveil' => 0.0,
+        ];
+    },
+
+    // ID 78 : Radiateur à gaz indépendant ou autonome à partir de 2006 — Pn>5 — rpn=82%
+    78 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.82,
+            'rpint' => 0.0,
+            'qp0'   => 0.0,
+            'pveil' => 0.0,
+        ];
+    },
+
+
+    // ── Accumulateurs gaz — §14.1.3 p.94 ─────────────────────────────────────
+    // « QP0 = 1,5 × Pn / 100 ». Les condensations ne portent pas de veilleuse
+    // (« NA » au tableau).
+
+    // ID 79 : Accumulateur gaz classique avant 1990 — rpn=81%, pveil=200 W
+    79 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.81,
+            'rpint' => 0.0,
+            'qp0'   => 1.5 * $pnKw * 1000.0 / 100.0,
+            'pveil' => 200.0,
+        ];
+    },
+
+    // ID 80 : Accumulateur gaz classique 1990-2000 — rpn=84%, pveil=150 W
+    80 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.84,
+            'rpint' => 0.0,
+            'qp0'   => 1.5 * $pnKw * 1000.0 / 100.0,
+            'pveil' => 150.0,
+        ];
+    },
+
+    // ID 81 : Accumulateur gaz classique après 2000 — rpn=84%, pveil=150 W
+    81 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.84,
+            'rpint' => 0.0,
+            'qp0'   => 1.5 * $pnKw * 1000.0 / 100.0,
+            'pveil' => 150.0,
+        ];
+    },
+
+    // ID 82 : Accumulateur gaz à condensation 1996-2000 — rpn=98%, pveil=0 W
+    82 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.98,
+            'rpint' => 0.0,
+            'qp0'   => 1.5 * $pnKw * 1000.0 / 100.0,
+            'pveil' => 0.0,
+        ];
+    },
+
+    // ID 83 : Accumulateur gaz à condensation après 2000 — rpn=98%, pveil=0 W
+    83 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.98,
+            'rpint' => 0.0,
+            'qp0'   => 1.5 * $pnKw * 1000.0 / 100.0,
+            'pveil' => 0.0,
+        ];
+    },
+
+
+    // ── Chauffe-eau gaz à production instantanée — §14.1.1 p.93 ──────────────
+    // Le tableau croise l'ancienneté et la bande de 10 kW : les cinq périodes
+    // donnent leurs deux Rpn, leur QP0 en pourcentage de Pn, et la puissance de
+    // veilleuse lorsqu'il y en a une. « Après 2015 » n'en porte pas.
+
+    // ID 84 : Chauffe-eau gaz instantané avant 1981 — Pn≤10 — rpn=70%, qp0=4% de Pn
+    84 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.7,
+            'rpint' => 0.0,
+            'qp0'   => 4.0 * $pnKw * 1000.0 / 100.0,
+            'pveil' => 150.0,
+        ];
+    },
+
+    // ID 85 : Chauffe-eau gaz instantané 1981-1989 — Pn≤10 — rpn=75%, qp0=2% de Pn
+    85 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.75,
+            'rpint' => 0.0,
+            'qp0'   => 2.0 * $pnKw * 1000.0 / 100.0,
+            'pveil' => 120.0,
+        ];
+    },
+
+    // ID 86 : Chauffe-eau gaz instantané 1990-2000 — Pn≤10 — rpn=81%, qp0=1.2% de Pn
+    86 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.81,
+            'rpint' => 0.0,
+            'qp0'   => 1.2 * $pnKw * 1000.0 / 100.0,
+            'pveil' => 120.0,
+        ];
+    },
+
+    // ID 87 : Chauffe-eau gaz instantané 2001-2015 — Pn≤10 — rpn=82%, qp0=1% de Pn
+    87 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.82,
+            'rpint' => 0.0,
+            'qp0'   => 1.0 * $pnKw * 1000.0 / 100.0,
+            'pveil' => 100.0,
+        ];
+    },
+
+    // ID 88 : Chauffe-eau gaz instantané après 2015 — Pn≤10 — rpn=82%, qp0=1% de Pn
+    88 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.82,
+            'rpint' => 0.0,
+            'qp0'   => 1.0 * $pnKw * 1000.0 / 100.0,
+            'pveil' => 0.0,
+        ];
+    },
+
+    // ID 89 : Chauffe-eau gaz instantané avant 1981 — Pn>10 — rpn=70%, qp0=4% de Pn
+    89 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.7,
+            'rpint' => 0.0,
+            'qp0'   => 4.0 * $pnKw * 1000.0 / 100.0,
+            'pveil' => 150.0,
+        ];
+    },
+
+    // ID 90 : Chauffe-eau gaz instantané 1981-1989 — Pn>10 — rpn=75%, qp0=2% de Pn
+    90 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.75,
+            'rpint' => 0.0,
+            'qp0'   => 2.0 * $pnKw * 1000.0 / 100.0,
+            'pveil' => 120.0,
+        ];
+    },
+
+    // ID 91 : Chauffe-eau gaz instantané 1990-2000 — Pn>10 — rpn=82%, qp0=1.2% de Pn
+    91 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.82,
+            'rpint' => 0.0,
+            'qp0'   => 1.2 * $pnKw * 1000.0 / 100.0,
+            'pveil' => 120.0,
+        ];
+    },
+
+    // ID 92 : Chauffe-eau gaz instantané 2001-2015 — Pn>10 — rpn=84%, qp0=1% de Pn
+    92 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.84,
+            'rpint' => 0.0,
+            'qp0'   => 1.0 * $pnKw * 1000.0 / 100.0,
+            'pveil' => 100.0,
+        ];
+    },
+
+    // ID 93 : Chauffe-eau gaz instantané après 2015 — Pn>10 — rpn=84%, qp0=0.6% de Pn
+    93 => static function (float $pnKw, float $e, float $f): array {
+        return [
+            'pn'    => $pnKw * 1000.0,
+            'rpn'   => 0.84,
+            'rpint' => 0.0,
+            'qp0'   => 0.6 * $pnKw * 1000.0 / 100.0,
+            'pveil' => 0.0,
+        ];
+    },
 ];

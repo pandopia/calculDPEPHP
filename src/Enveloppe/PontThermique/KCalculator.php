@@ -360,6 +360,19 @@ final class KCalculator implements CalculatorInterface
     ];
 
     /**
+     * `enum_type_plancher_haut_id` dont le libellé XSD décrit une structure
+     * lourde : 8 « dalle béton » et 11 « plafond lourd type entrevous
+     * terre-cuite, poutrelles béton ».
+     *
+     * Le pendant léger est déjà porté, avec sa justification, par le garde
+     * §3.4.3 du début de `calculate()` : une seule liste pour une seule
+     * question.
+     *
+     * @var list<int>
+     */
+    private const PLANCHERS_HAUTS_LOURDS = [8, 11];
+
+    /**
      * §3.4 p.32 : « Seuls les ponts thermiques entre parois lourdes ou entre
      * une paroi et une menuiserie sont conservés », et §3.4.1 p.35 : « Seuls
      * les murs et planchers bas constitués d'un matériau lourd (béton,
@@ -387,6 +400,19 @@ final class KCalculator implements CalculatorInterface
         }
 
         if ($paroi->nodeName === 'plancher_bas' && $this->isConcreteSlab($paroi)) {
+            return true;
+        }
+
+        // §3.4.3 p.36 : « Les ponts thermiques des planchers haut en structure
+        // légère sont négligés », et sa table s'intitule « Terrasse ou plancher
+        // haut lourd ». C'est donc la **structure** qui décide, que
+        // `enum_type_plancher_haut_id` nomme. `paroi_lourde` ne peut pas en
+        // tenir lieu : le XSD le documente comme « la paroi est elle
+        // considérée comme lourde **pour le calcul de l'inertie** », une autre
+        // question — 2691E0507798K déclare ainsi `paroi_lourde` = 0 sur une
+        // « dalle béton ».
+        if ($paroi->nodeName === 'plancher_haut'
+            && in_array($this->intChild($paroi, 'enum_type_plancher_haut_id'), self::PLANCHERS_HAUTS_LOURDS, true)) {
             return true;
         }
 

@@ -34,6 +34,18 @@ declare(strict_types=1);
  * @spec-pages   68, 121-143
  * @spec-source  resources/specsplitted/18-annexes/02-sollicitations-exterieures/
  * @generated-on 2026-10-17
+ * @status verified-spec — les **576 valeurs** (2 consignes × 8 zones ×
+ *         3 altitudes × 12 mois) recoupées une à une avec les tableaux
+ *         « Textmoy_clim (°C) » de §18.2.1 à §18.2.3. Aucune correction.
+ *
+ * Le défaut de duplication de §18.2.2 est quantifié : à l'altitude 400-800 m,
+ * les tables « Tcons=26°C » et « Tcons=28°C » sont identiques sur **les 96
+ * cellules**, alors qu'elles ne coïncident que sur 54 et 74 cellules aux deux
+ * autres altitudes — et ces coïncidences-là sont pour l'essentiel des mois
+ * hors saison, marqués d'un tiret dans les deux. L'annexe a imprimé deux fois
+ * la même table sous deux consignes différentes. C'est ce que
+ * `BesoinAnnuelCalculator::consignesIndiscernables()` détecte pour retomber
+ * sur les degrés-heures tabulés.
  */
 
 return [

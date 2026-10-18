@@ -639,4 +639,57 @@ XML);
     }
 
 
+
+    /**
+     * §5 p.41 : `Caux_vent = 8760 × Pventmoy / 1000`. Une puissance nulle
+     * interdit toute consommation, et la contradiction se lit aussi bien dans
+     * l'agrégat de `sortie` que dans la `donnee_intermediaire` de la
+     * ventilation — parfois **sous** une sortie nulle, le fichier se
+     * contredisant alors entre ses deux niveaux.
+     *
+     * 2401E0473146C et 2601E0076852C publient pvent_moy = 0,
+     * conso_auxiliaire_ventilation = 1 dans la ventilation, et 0 en sortie.
+     */
+    public function test_une_ventilation_sans_puissance_qui_consomme_dans_son_intermediaire(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<dpe><logement><ventilation_collection><ventilation>
+  <donnee_intermediaire>
+    <pvent_moy>0</pvent_moy>
+    <conso_auxiliaire_ventilation>1</conso_auxiliaire_ventilation>
+  </donnee_intermediaire>
+</ventilation></ventilation_collection></logement></dpe>
+XML);
+
+        $suspects = ReferenceDefects::detect(
+            ['dpe/logement/sortie/ef_conso/conso_auxiliaire_ventilation' => '0'],
+            $document,
+        );
+
+        self::assertArrayHasKey('conso_auxiliaire_ventilation', $suspects);
+        self::assertArrayHasKey('pvent_moy', $suspects);
+        self::assertStringContainsString('donnee_intermediaire', $suspects['pvent_moy']);
+    }
+
+    /** Une ventilation cohérente de bout en bout ne déclenche rien. */
+    public function test_une_ventilation_nulle_et_coherente_nest_pas_signalee(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<dpe><logement><ventilation_collection><ventilation>
+  <donnee_intermediaire>
+    <pvent_moy>0</pvent_moy>
+    <conso_auxiliaire_ventilation>0</conso_auxiliaire_ventilation>
+  </donnee_intermediaire>
+</ventilation></ventilation_collection></logement></dpe>
+XML);
+
+        $suspects = ReferenceDefects::detect(
+            ['dpe/logement/sortie/ef_conso/conso_auxiliaire_ventilation' => '0'],
+            $document,
+        );
+
+        self::assertArrayNotHasKey('pvent_moy', $suspects);
+    }
 }
