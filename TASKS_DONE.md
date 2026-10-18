@@ -60,6 +60,50 @@ une.
   téléchargement PDF, protection anti-robot sur les pages LODA. Ne pas y
   repasser du temps.
 
+### TASK-K68 — Tranche tarifaire de l'électricité : les deux assiettes alternatives coûtent plus cher
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- **Point de départ.** La famille « Coûts » est la plus basse du rapport hors
+  confort d'été — 58,53 % en strict, 67,91 % au profil réglementaire. Deux
+  balises y sont fausses sur presque tous les cas du corpus avec une seule
+  occurrence chacune, signature d'une règle et non d'une dérive :
+  `cout_eclairage` sur 125 cas et `cout_auxiliaire_ventilation` sur 117.
+- **Le tri utile** est celui qui isole la tarification de l'amont : sur **117
+  cas, `cout_eclairage` est hors tolérance alors que `conso_eclairage` ne
+  l'est pas**, et 109 pour la ventilation. L'éclairage et les auxiliaires de
+  ventilation étant toujours électriques, il ne reste que le prix du kWh.
+- **Ce prix se laisse inverser.** Le barème donne `coût = fixe + prix × Cef` :
+  de `cout_eclairage / conso_eclairage` on remonte au Cef que la référence a
+  réellement retenu pour choisir sa tranche. Sur plusieurs cas, ce Cef vaut
+  **exactement** sa ligne `sortie_par_energie[enum_type_energie_id=1]`, c'est-
+  à-dire toute son électricité ; nous retenons une assiette plus petite, parce
+  que `PrixEnergie` sépare l'électricité en deux abonnements, collectif et
+  individuel. `2659E2047646C` est le cas d'école : nos deux paniers valent
+  1 035,3 et 209,4 kWh, dont la somme 1 244,7 est au kWh près la ligne
+  électricité de la référence — et nos consommations, elles, concordent.
+- **Les deux assiettes alternatives ont été mesurées, et elles coûtent plus
+  cher.** A/B isolé, 541 cas, 0 plantage, référence 13 603 écarts :
+
+  | Variante | Écarts | `cout_eclairage` | `cout_aux_ventilation` |
+  |---|---:|---:|---:|
+  | Deux abonnements (en place) | 13 603 | 125 | 117 |
+  | Électricité non scindée | 13 823 (**+220**) | 178 | 166 |
+  | Tranche individuelle sur toute l'électricité | 14 083 (**+480**) | 178 | 166 |
+
+  Les deux dégradent **aussi le sous-ensemble qu'elles visaient**, de 125 à
+  178 : la direction est fausse, pas seulement le dosage. Le découpage par
+  abonnement de TASK-K10 reste le meilleur que le corpus soutienne.
+- **Ne pas rouvrir par l'aval.** Le reste de la famille suit ses
+  consommations : `cout_ch` (401 occurrences) et `cout_ecs` (394) sont les
+  ombres de `conso_ch` et `conso_ecs`, premières sources d'écart du rapport,
+  et `cout_ch_depensier` comme `cout_ecs_depensier` sont déjà imputés à la
+  référence pour 380 d'entre eux. Le travail utile est dans « Génération
+  chauffage » et « Auxiliaires », pas dans les coûts.
+- Condition de réouverture : un texte qui définisse l'assiette de la tranche
+  autrement que « la consommation de l'ensemble de l'immeuble » pour le
+  collectif et « celle de l'appartement seul » pour l'individuel — les deux
+  phrases de l'annexe tarifaire que `PrixEnergie` cite déjà.
+
 ### TASK-H23 — Ponts thermiques des parois en adjacence 22 : convention d'éditeur
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
