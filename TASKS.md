@@ -292,41 +292,23 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   surface habitable du bâtiment », ce que le code applique déjà : chercher la
   source avant de s'en écarter, et mesurer en A/B.
 
-### TASK-K65 — Réseaux de chaleur : deux millésimes manquent, et le choix est approché
+### TASK-K65 — Réseaux de chaleur : le résidu après les millésimes manquants
 
-- [ ] Owner: __ | Phase: K | Priorité: moyenne
-- `arrete_reseau_chaleur.json`, copié de l'amont ADEME dans
-  `editeur/public/schemas/`, donne la correspondance **officielle** : six
-  arrêtés, chacun avec sa plage d'application et son lien Légifrance.
-
-  | Millésime | Arrêté | En vigueur |
-  |---|---|---|
-  | 2020 | 2020-10-12 | 2020-10-17 → 2022-01-18 |
-  | 2021 | 2021-10-21 | 2022-01-18 → 2023-04-23 |
-  | 2022 | 2023-03-16 | 2023-03-16 → 2024-09-20 |
-  | 2023 | 2024-07-05 | 2024-07-05 → 2025-07-01 |
-  | 2024 | 2025-04-11 | 2025-04-11 → 2026-09-01 |
-  | 2025 | 2026-04-25 | 2026-05-10 → … |
-
-- **`tv_reseau_chaleur` ne porte que 2022 à 2025.** Les millésimes 2020 et
-  2021 manquent, alors que la méthode 3CL s'applique depuis le 1er juillet
-  2021 : tout DPE antérieur au 16 mars 2023 relève de l'un des deux.
-- **Le choix du millésime est anachronique pour ces DPE.**
-  `ReseauChaleurFactorResolver` prend `max(2022, année(date) − 1)` : un DPE du
-  6 avril 2022 se voit appliquer l'arrêté du **16 mars 2023**, publié après
-  lui. C'est la faute que TASK-K02 a corrigée pour les tarifs d'énergie.
-  `2242E2979513I` en est le cas : sa référence implique 0,109 pour `4211C`
-  quand nos millésimes 2022 et 2023 donnent 0,075.
-- La règle `année − 1` ne vaut d'ailleurs pas pour les deux plus anciens :
-  l'arrêté 2021-10-21 porte le millésime **2021**, pas 2020. Remplacer
-  l'approximation par les plages du JSON, qui sont la donnée officielle.
-- Ordre de travail : digitaliser d'abord les deux millésimes depuis leurs
-  liens Légifrance (colonne « Contenu CO2 ACV »), **puis** basculer sur les
-  plages — faire l'inverse ferait tomber les DPE anciens sur le forfait
-  « autre réseau » de 0,385, pire que le plafonnement actuel.
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- **Livré** : les millésimes 2020 et 2021 sont digitalisés, les 69 valeurs
+  tronquées du millésime 2024 reprises, et `ReseauChaleurFactorResolver`
+  applique désormais les plages publiées au lieu de `max(2022, année − 1)`.
+  Source : `valeur_tables.xlsx` du dépôt amont de l'observatoire DPE, feuilles
+  `reseau_chaleur_2020` à `2025` — Légifrance ne sert plus les PDF de ces
+  arrêtés (HTTP 403, puis protection anti-robot sur les pages LODA).
 - Reste indépendant de ce chantier : `5703C` au millésime 2023 (arrêté du
   5 juillet 2024), où `2457E3582864U` implique 0,068 quand nous lisons 0,092.
   Vérifier la ligne dans l'arrêté avant de conclure.
+- Reste ouvert sur `2242E2979513I`, mais **ce n'est plus le facteur** : ses
+  trois lignes `sortie_par_energie` donnent un rapport émissions / consommation
+  de 0,109000 à six décimales, que nous appliquons maintenant. L'écart restant
+  est en amont, sur `conso_ch` — 160 558 kWh calculés contre 133 765 publiés.
+  C'est un problème de consommation de chauffage, à instruire comme tel.
 
 ### TASK-K45 — Ponts thermiques des exports 7.x, après correction Ue
 

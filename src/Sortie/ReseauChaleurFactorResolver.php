@@ -11,13 +11,34 @@ use DOMElement;
 /**
  * Résout le contenu CO2 ACV d'un réseau de chaleur ou de froid.
  *
- * L'arrêté applicable à un DPE référence les données de l'année précédente.
+ * Le millésime applicable est celui dont la **plage d'application** contient
+ * la date du DPE, lue dans `reference/tv_arrete_reseau_chaleur` : les arrêtés
+ * ne paraissent pas à date fixe, et « année − 1 » faisait appliquer à un DPE
+ * d'avril 2022 un arrêté du 16 mars 2023, publié après lui.
+ *
+ * Deux index se succèdent, la coupure étant au 18 janvier 2022 — le XSD dit de
+ * `tv_reseau_chaleur_id` qu'il est « OBSOLETE et remplacé par
+ * identifiant_reseau_chaleur à partir du 18 janvier 2022 ». Le millésime 2020
+ * est donc lu sur le numéro de ligne, les suivants sur l'identifiant national.
+ *
  * Lorsqu'un identifiant n'existe pas dans le millésime demandé, la recherche
- * remonte les millésimes disponibles ; un identifiant absent utilise la valeur
- * officielle « autres réseaux ».
+ * remonte les millésimes de même index ; un identifiant absent de tous utilise
+ * la valeur officielle « autres réseaux ».
+ *
+ * @tables reference/tv_reseau_chaleur, reference/tv_arrete_reseau_chaleur
  */
 final class ReseauChaleurFactorResolver
 {
+    private const TABLE_CONTENUS = 'reference/tv_reseau_chaleur';
+    private const TABLE_ARRETES = 'reference/tv_arrete_reseau_chaleur';
+
+    /**
+     * Millésime antérieur à l'identifiant national : son annexe est indexée
+     * par `tv_reseau_chaleur_id`, et elle publie un contenu CO2 **direct**,
+     * pas un contenu ACV.
+     */
+    private const MILLESIME_PAR_IDENTIFIANT_OBSOLETE = 2020;
+
     public const AUTRE_RESEAU_CHALEUR = 0.385;
     public const AUTRE_RESEAU_FROID = 0.120;
 
@@ -57,6 +78,46 @@ final class ReseauChaleurFactorResolver
         return $ecs === null ? null : (self::COMBUSTIBLE_ECS[$ecs] ?? null);
     }
 
+    /**
+     * Millésime applicable, lu sur les plages publiées.
+     *
+     * `date_arrete_reseau_chaleur` désigne le millésime sans ambiguïté quand
+     * l'export la renseigne — le XSD la définit comme « la date de l'arrêté
+     * qui modifie l'annexe 7 ». À défaut, la date d'établissement du DPE est
+     * cherchée dans les plages, prises de la plus récente à la plus ancienne
+     * parce que l'amont les laisse se chevaucher d'un mois entre 2021 et 2022.
+     *
+     * Un DPE antérieur au premier arrêté retombe sur le millésime le plus
+     * ancien : la méthode 3CL ne s'applique que depuis le 1er juillet 2021,
+     * à l'intérieur de la plage de 2020.
+     */
+    private static function millesime(?string $dateArrete, ?string $dateDpe, CalculationContext $context): int
+    {
+        /** @var list<array<string, mixed>> $arretes */
+        $arretes = $context->tables->load(self::TABLE_ARRETES);
+
+        if ($dateArrete !== null && $dateArrete !== '') {
+            $jour = substr($dateArrete, 0, 10);
+            foreach ($arretes as $arrete) {
+                if ($arrete['date_arrete'] === $jour) {
+                    return (int) $arrete['millesime'];
+                }
+            }
+        }
+
+        $jour = $dateDpe === null ? null : substr($dateDpe, 0, 10);
+        if ($jour !== null && $jour !== '') {
+            foreach ($arretes as $arrete) {
+                $fin = $arrete['valid_to'];
+                if ($jour >= (string) $arrete['valid_from'] && ($fin === null || $jour < (string) $fin)) {
+                    return (int) $arrete['millesime'];
+                }
+            }
+        }
+
+        return (int) $arretes[array_key_last($arretes)]['millesime'];
+    }
+
     public static function resolve(
         DOMElement $generator,
         NodeAccessor $accessor,
@@ -67,25 +128,39 @@ final class ReseauChaleurFactorResolver
             return $combustible;
         }
 
+        $millesime = self::millesime(
+            $accessor->getStringOrNull('./donnee_entree/date_arrete_reseau_chaleur', $generator),
+            $accessor->getStringOrNull('//date_etablissement_dpe', $generator),
+            $context,
+        );
+
         $reseauId = $accessor->getStringOrNull('./donnee_entree/identifiant_reseau_chaleur', $generator);
+        if ($millesime === self::MILLESIME_PAR_IDENTIFIANT_OBSOLETE) {
+            // Avant le 18 janvier 2022, l'annexe est indexée par le numéro de
+            // ligne de sa table et non par l'identifiant national, que le XSD
+            // n'introduit qu'à cette date.
+            $ligne = $accessor->getIntOrNull('./donnee_entree/tv_reseau_chaleur_id', $generator);
+            $reseauId = $ligne === null ? null : (string) $ligne;
+        }
+
         if ($reseauId === null || $reseauId === '') {
             return self::AUTRE_RESEAU_CHALEUR;
         }
 
-        $dateArrete = $accessor->getStringOrNull('./donnee_entree/date_arrete_reseau_chaleur', $generator);
-        $dateRef = $dateArrete ?: $accessor->getStringOrNull('//date_etablissement_dpe', $generator);
-        $year = 2022;
-        if ($dateRef !== null) {
-            $timestamp = strtotime($dateRef);
-            if ($timestamp !== false) {
-                $year = max(2022, (int)date('Y', $timestamp) - 1);
-            }
+        $table = $context->tables->load(self::TABLE_CONTENUS);
+        $cle = $millesime === self::MILLESIME_PAR_IDENTIFIANT_OBSOLETE ? (int) $reseauId : $reseauId;
+        if (isset($table[$millesime][$cle])) {
+            return (float) $table[$millesime][$cle];
         }
 
-        $table = $context->tables->load('reference/tv_reseau_chaleur');
-        for ($candidateYear = $year; $candidateYear >= 2022; $candidateYear--) {
-            if (isset($table[$candidateYear][$reseauId])) {
-                return (float)$table[$candidateYear][$reseauId];
+        // Réseau absent de son millésime : les millésimes voisins indexés de la
+        // même façon sont parcourus du plus proche au plus ancien, un réseau
+        // n'étant retiré de l'annexe que lorsqu'il cesse d'être exploité.
+        if ($millesime !== self::MILLESIME_PAR_IDENTIFIANT_OBSOLETE) {
+            for ($annee = $millesime; $annee > self::MILLESIME_PAR_IDENTIFIANT_OBSOLETE; $annee--) {
+                if (isset($table[$annee][$reseauId])) {
+                    return (float) $table[$annee][$reseauId];
+                }
             }
         }
 
