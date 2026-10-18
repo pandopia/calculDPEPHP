@@ -18,21 +18,14 @@ use PHPUnit\Framework\TestCase;
  * et le harness ne mesurait que les balises présentes.
  *
  * Le contrôle est générique et porte sur la source : il ne connaît pas la
- * liste des Calculators, il la découvre.
+ * liste des Calculators, il parcourt `src/` et la découvre. Les classes
+ * abstraites en sont exclues — ce sont leurs sous-classes concrètes que la
+ * fabrique doit citer.
  */
 final class PipelineCompletTest extends TestCase
 {
     private const PROJECT_ROOT = __DIR__ . '/../../..';
 
-    /** Domaines dont chaque Calculator doit être cité par la fabrique. */
-    private const DOSSIERS = [
-        'src/Chauffage/Strategy',
-        'src/Ecs',
-        'src/Froid',
-        'src/Auxiliaire',
-        'src/Ventilation',
-        'src/Sortie',
-    ];
 
     public function testChaqueCalculatorEstBrancheDansLaFabrique(): void
     {
@@ -41,8 +34,10 @@ final class PipelineCompletTest extends TestCase
 
         $absents = [];
         foreach ($this->calculators() as $classe) {
-            $court = substr($classe, strrpos($classe, '\\') + 1);
-            if (!str_contains($fabrique, $court . '(')) {
+            // Le nom complet, pas le nom court : cinq `BCalculator` distincts
+            // cohabitent sous `Enveloppe\\`, et n'en citer qu'un suffirait à
+            // faire passer les quatre autres pour branchés.
+            if (!str_contains($fabrique, '\\' . $classe . '(')) {
                 $absents[] = $classe;
             }
         }
@@ -56,37 +51,41 @@ final class PipelineCompletTest extends TestCase
      */
     public function testLaDecouverteTrouveBienDesCalculators(): void
     {
-        self::assertGreaterThan(30, count($this->calculators()));
+        self::assertGreaterThan(70, count($this->calculators()));
     }
 
     /** @return list<class-string<CalculatorInterface>> */
     private function calculators(): array
     {
         $trouves = [];
-        foreach (self::DOSSIERS as $dossier) {
-            $chemin = self::PROJECT_ROOT . '/' . $dossier;
-            if (!is_dir($chemin)) {
+        $fichiers = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator(self::PROJECT_ROOT . '/src'),
+        );
+
+        foreach ($fichiers as $fichier) {
+            if (!$fichier->isFile() || $fichier->getExtension() !== 'php') {
                 continue;
             }
 
-            $fichiers = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($chemin));
-            foreach ($fichiers as $fichier) {
-                if (!$fichier->isFile() || $fichier->getExtension() !== 'php') {
-                    continue;
-                }
-
-                $source = file_get_contents($fichier->getPathname());
-                if ($source === false
-                    || !preg_match('/^namespace\s+([^;]+);/m', $source, $ns)
-                    || !preg_match('/^(?:final\s+)?class\s+(\w+)/m', $source, $cl)) {
-                    continue;
-                }
-
-                $classe = $ns[1] . '\\' . $cl[1];
-                if (class_exists($classe) && is_a($classe, CalculatorInterface::class, true)) {
-                    $trouves[] = $classe;
-                }
+            $source = file_get_contents($fichier->getPathname());
+            if ($source === false
+                || !preg_match('/^namespace\s+([^;]+);/m', $source, $ns)
+                || !preg_match('/^(?:final\s+)?class\s+(\w+)/m', $source, $cl)) {
+                continue;
             }
+
+            $classe = $ns[1] . '\\' . $cl[1];
+            if (!class_exists($classe) || !is_a($classe, CalculatorInterface::class, true)) {
+                continue;
+            }
+
+            // Une classe abstraite n'est pas instanciable : ce sont ses
+            // sous-classes concrètes que la fabrique doit citer.
+            if ((new \ReflectionClass($classe))->isAbstract()) {
+                continue;
+            }
+
+            $trouves[] = $classe;
         }
 
         return $trouves;
