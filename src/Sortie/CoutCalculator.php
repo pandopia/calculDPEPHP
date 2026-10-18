@@ -62,6 +62,15 @@ use DOMElement;
  */
 final class CoutCalculator implements CalculatorInterface
 {
+    /**
+     * Écart relatif toléré entre la collecte par énergie et `ef_conso`.
+     *
+     * Les deux suivent le même chemin de calcul : au-delà de l'accumulation
+     * flottante, un désaccord signale une sortie incohérente, et la
+     * répartition par énergie n'y est alors pas fiable.
+     */
+    private const TOLERANCE_REPARTITION = 1e-6;
+
     public function id(): string
     {
         return self::class;
@@ -102,8 +111,8 @@ final class CoutCalculator implements CalculatorInterface
         // d'énergie et cet usage par le prix moyen du kWh. » Une installation
         // bi-énergie — poêle bois et convecteur électrique de §9.3 à §9.5 — a
         // donc autant de postes que d'énergies, chacune avec sa propre tranche.
-        $partsCh  = $this->partsParEnergie($accessor, $node, 'installation_chauffage', 'generateur_chauffage', $energieCh);
-        $partsEcs = $this->partsParEnergie($accessor, $node, 'installation_ecs', 'generateur_ecs', $energieEcs);
+        $partsCh  = $this->partsParEnergie($accessor, $node, 'installation_chauffage', 'generateur_chauffage', $energieCh, $ef['conso_ch'], $context);
+        $partsEcs = $this->partsParEnergie($accessor, $node, 'installation_ecs', 'generateur_ecs', $energieEcs, $ef['conso_ecs'], $context);
 
         $conventionnel = [
             'cout_ecs'                                 => [$energieEcs, $ef['conso_ecs'], $ecsCollectif],
@@ -216,12 +225,19 @@ final class CoutCalculator implements CalculatorInterface
 
     /**
      * Répartition de la consommation d'un usage entre les énergies de ses
-     * générateurs, lue sur leurs `conso_ch` / `conso_ecs`.
+     * générateurs.
      *
-     * Le garde est celui déjà posé sur la pondération EP et GES : ces
-     * consommations ne sont utilisées que lorsqu'elles **répartissent** celle
-     * des installations, c'est-à-dire que leur somme la reproduit. Sinon une
-     * seule énergie porte tout l'usage, comme auparavant.
+     * La collecte est celle de {@see ConsoParEnergieCollector}, partagée avec
+     * `sortie_par_energie` : chaque installation y est ramenée à l'échelle de
+     * la sortie par son propre facteur, et ce facteur diffère d'une
+     * installation à l'autre. Sommer les `conso_ch` brutes des générateurs,
+     * comme on le faisait ici, revenait à peser des grandeurs qui ne sont pas
+     * à la même échelle — et les deux blocs tarifaient alors des paniers
+     * différents en prétendant décrire les mêmes euros.
+     *
+     * Le garde subsiste, mais il porte désormais sur ce qu'il doit vérifier :
+     * la collecte doit **reproduire** la consommation publiée par `ef_conso`.
+     * Sinon une seule énergie porte tout l'usage, comme auparavant.
      *
      * @return array<int, float> enum_type_energie_id ⇒ part, de somme 1
      */
@@ -231,40 +247,34 @@ final class CoutCalculator implements CalculatorInterface
         string $installTag,
         string $generateurTag,
         int $energieParDefaut,
+        float $consoEf,
+        CalculationContext $context,
     ): array {
         $champ = $installTag === 'installation_chauffage' ? 'conso_ch' : 'conso_ecs';
-        $parEnergie = [];
-        $totalGenerateurs = 0.0;
-        $totalInstallations = 0.0;
 
-        foreach ($logement->getElementsByTagName($installTag) as $install) {
-            if (!$install instanceof DOMElement) {
-                continue;
-            }
-            $totalInstallations += $accessor->getFloatOrNull('./donnee_intermediaire/' . $champ, $install) ?? 0.0;
+        $collecte = ConsoParEnergieCollector::collecter(
+            $accessor,
+            $logement,
+            $installTag,
+            $generateurTag,
+            $champ,
+            $context,
+        );
 
-            foreach ($install->getElementsByTagName($generateurTag) as $generateur) {
-                if (!$generateur instanceof DOMElement) {
-                    continue;
-                }
-                $conso = $accessor->getFloatOrNull('./donnee_intermediaire/' . $champ, $generateur);
-                $energie = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $generateur);
-                if ($conso === null || $energie === null) {
-                    return [$energieParDefaut => 1.0];
-                }
-                $parEnergie[$energie] = ($parEnergie[$energie] ?? 0.0) + $conso;
-                $totalGenerateurs += $conso;
-            }
-        }
+        $parEnergie = array_map(
+            static fn(array $consos): float => $consos[0],
+            $collecte['byEnergie'],
+        );
+        $total = array_sum($parEnergie);
 
-        if (count($parEnergie) < 2 || $totalGenerateurs <= 0.0 || $totalInstallations <= 0.0) {
+        if (count($parEnergie) < 2 || $total <= 0.0 || $consoEf <= 0.0) {
             return [$energieParDefaut => 1.0];
         }
-        if (abs($totalGenerateurs - $totalInstallations) > 1e-6 * $totalInstallations) {
+        if (abs($total - $consoEf) > self::TOLERANCE_REPARTITION * $consoEf) {
             return [$energieParDefaut => 1.0];
         }
 
-        return array_map(static fn(float $conso): float => $conso / $totalGenerateurs, $parEnergie);
+        return array_map(static fn(float $conso): float => $conso / $total, $parEnergie);
     }
 
     /**

@@ -459,24 +459,28 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - `tests/CoherenceInterneTest.php` saute ces deux invariants quand
   l'autoconsommation est non nulle, en citant cette tâche.
 
-### TASK-K79 — `partsParEnergie` retombe sur une énergie unique sans `conso_ch` d'installation
+### TASK-K80 — Cascade de deux chaudières : §13.2.1.3 n'est pas modélisée
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
-- `CoutCalculator::partsParEnergie` répartit la consommation entre énergies en
-  sommant les générateurs, mais **abandonne** — en renvoyant
-  `[$energieParDefaut => 1.0]` — si les installations ne publient pas leur
-  propre `conso_ch`, le total d'installation servant de contrôle. Tout le
-  chauffage est alors tarifé au barème d'une seule énergie.
-- `SortieParEnergieAggregator`, lui, somme les générateurs sans ce contrôle.
-  Les deux blocs tarifent donc des paniers différents : sur `2675E2152874Y`,
-  `cout_ch` vaut 420,22 dans `<cout>` et 453,31 une fois ventilé par énergie,
-  soit 7,9 % d'écart, alors que **les consommations, elles, concordent**
-  (829,10 de gaz et 1 256,67 d'électricité des deux côtés).
-- Le fichier a deux installations de chauffage d'une énergie chacune, et
-  aucune ne publie `conso_ch` : c'est la stratégie qui les calcule qui ne
-  l'écrit pas. Commencer par là — un `conso_ch` d'installation manquant est
-  en soi une balise que le schéma prévoit.
-- Ce cas est la seule entrée de `CoherenceInterneTest::DETTE_CONNUE`.
+- Une installation `enum_cfg_installation_ch_id = 1` portant deux générateurs
+  à combustion de `priorite_generateur_cascade` **distinctes** ne passe par
+  aucun modèle de cascade : `InstallationClassique` écrit à chaque générateur
+  la consommation **entière** de l'installation. `sortie_par_energie`, qui
+  somme les générateurs, publie alors exactement le double.
+- Seul `writeCascadeSansPriorite` existe (§13.2.1.3.2, prorata de Pn), et il
+  exige une priorité de 1 des deux côtés. **§13.2.1.3.1 — cascade avec
+  priorité — n'est pas implémentée** : le générateur 1 prend
+  `min(Prel₁ ; Tch_x)` à chaque point de charge et le second le reliquat, d'où
+  des rendements et des parts distincts même à puissances égales.
+- Cas témoin `2406E1688667C` (immeuble, 143 appartements, deux chaudières gaz
+  à condensation de 350 kW en cascade 1/2). La référence publie 1 118 061,89 et
+  59 635,56 — 94,94 % / 5,06 % — et des `rendement_generation` de 0,974685 et
+  0,985541 ; nous publions 1 146 866,70 deux fois et 1,0014 des deux côtés.
+  Un rendement de génération supérieur à 1 est en soi le signe que le profil
+  de charge n'est pas celui de ce générateur.
+- Le balayage complet de `CoherenceInterneTest` sur les 541 cas ne trouve que
+  ce fichier : la configuration est rare, le défaut est franc.
+- C'est la seule entrée de `CoherenceInterneTest::DETTE_CONNUE`.
 
 ### TASK-K67 — 2242E2979513I : conso_ch à +20 % une fois le facteur CO2 juste
 
