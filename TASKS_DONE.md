@@ -142,6 +142,34 @@ une.
   `Caux_dist_fr`, ou une référence qui en publie une valeur non nulle. Les
   deux se vérifient en une passe sur le corpus.
 
+### TASK-K73 — Le plafond de 400 kW sur Pn : lecture littérale de §15.1 mesurée et écartée
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- **La question.** `ChaudiereDefautCalculator` plafonne `pn` à 400 kW pour les
+  chaudières gaz et fioul. Or §15.1 p.97 énonce ce plafond **à l'intérieur de
+  l'équation des auxiliaires** : « Détermination des puissances par défaut des
+  auxiliaires : Paux_g = G + H × Pn (W). **Dans cette équation** : pour les
+  chaudières gaz ou fioul : si Pn > 400 kW alors Pn = 400 kW », suivi des
+  mêmes bornes à 300 kW pour les générateurs d'air chaud et 70 kW pour les
+  chaudières bois. §13.2.2.4, qui définit Pn depuis Pdim, n'énonce **aucun**
+  plafond : au-delà de 40 kW, `Pn = (partie entière(Pdim / 5) + 1) × 5`, sans
+  borne supérieure. La lecture littérale veut donc un `pn` non plafonné, le
+  plafond ne valant que pour Paux_g — que `AuxGenerationCalculator` applique
+  déjà de son côté, dans sa table G/H, pour les trois types.
+- **Mesurée, et écartée sans appel.** A/B isolé, 541 cas, 0 plantage :
+  retirer le plafond de `ChaudiereDefautCalculator` coûte **+1 019 écarts**
+  (13 613 → 14 632), **30 cas dégradés et aucun amélioré**. 2678E0469617K
+  passe de 9 à 79 écarts, 2675E0124737R de 9 à 77, 2675E0066612C de 9 à 74.
+  Le plafond se propage à `rpn`, `rpint` et `qp0`, qui se lisent sur des
+  tranches de Pn, et toute la chaîne suit. Les références plafonnent donc bien
+  `pn` lui-même. Ne pas y revenir sans un texte qui contredise §15.1.
+- **Ce que l'A/B a révélé en passant, et qui reste ouvert :** les 21 écarts de
+  `pn` à 370 000 W ne venaient pas du plafond. Ils appartiennent tous au même
+  immeuble (série 2400E03338xx) et, **plafond retiré**, nous produisons
+  470 000 W quand la référence en publie 370 000. C'est `Pdim` qui est trop
+  grand de 27 %, pas sa troncature — à chercher dans `Pch`, donc dans le GV
+  ou dans l'échelle retenue pour cet immeuble. Voir TASK-K74.
+
 ### TASK-H23 — Ponts thermiques des parois en adjacence 22 : convention d'éditeur
 
 - [ ] Owner: __ | Phase: K | Priorité: basse

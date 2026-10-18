@@ -367,6 +367,25 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   (ses apports publiés ne reproduisent pas son besoin publié) mais elle
   demande de rejouer §10.2, ce qui sort du cadre de l'outil.
 
+### TASK-K74 — Série 2400E03338xx : Pdim trop grand de 27 %
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- Vingt et un cas du corpus publient `pn` = 370 000 W quand nous produisons
+  400 000, notre plafond. Ils appartiennent tous au **même immeuble**, la
+  série `2400E03338xx`. Le plafond n'est pas en cause : retiré, nous
+  produisons 470 000 W pour les mêmes cas (cf. TASK-K73 dans `TASKS_DONE.md`).
+- 370 kW correspond à un `Pdim` dans [365 ; 370[, 470 kW à un `Pdim` dans
+  [465 ; 470[ — notre puissance de dimensionnement est donc trop grande
+  d'environ **27 %**, et c'est elle qu'il faut reprendre.
+- `Pdim = max(Pch ; Pecs)` (§13.2.2.4). Commencer par départager lequel des
+  deux domine chez nous et chez la référence : si c'est `Pch`, l'écart est
+  dans le GV ou dans l'échelle retenue pour l'immeuble ; si c'est `Pecs`, il
+  est dans le volume de stockage de §13.2.2.4.
+- `pn` est la première source d'écart de la famille « Génération chauffage »
+  après les consommations elles-mêmes — 126 occurrences sur 78 cas, dont ces
+  21 — et il se propage à `rpn`, `rpint` et `qp0`, qui se lisent sur des
+  tranches de Pn. Un seul immeuble, mais un cinquième de la balise.
+
 ### TASK-K67 — 2242E2979513I : conso_ch à +20 % une fois le facteur CO2 juste
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
