@@ -51,6 +51,8 @@ use DOMElement;
  */
 final class CollectifBaseAppoint implements CalculatorInterface
 {
+    use StrategieComputeTrait;
+
     /** Tbase (°C) par zone_id (1-8) et altitude_id (1-3) — §18.1 p.121 */
     private const TBASE = [
         1 => [1 => -9.5, 2 => -11.5, 3 => -13.5],   // H1a
@@ -149,7 +151,13 @@ final class CollectifBaseAppoint implements CalculatorInterface
         $pe = ($pnKw > 0.0) ? $pnKw * $rdBase * $rrBase * $reBase : 0.0;
 
         // ── 7. Besoin de l'installation (kWh) ─────────────────────────────────
-        $bch1 = $bch * ($surface / $shImmeuble);  // part de l'installation
+        // Part de l'installation dans le besoin. §17.1 ne rapporte la surface
+        // chauffée à celle de l'immeuble que lorsque `chauffage.besoin_ch` est
+        // lui-même à l'échelle de l'immeuble ; sur les modes qui le portent au
+        // logement seul, le diviseur est la surface du logement et la part
+        // vaut 1. `partSurfacique` porte cette distinction pour les dix autres
+        // stratégies : la dupliquer ici reviendrait à la laisser diverger.
+        $bch1 = $bch * $this->partSurfacique($accessor, $node);
 
         // ── 8. DH14 saison complète (Σ mois) ─────────────────────────────────
         $dh14Saison = 0.0;
@@ -189,7 +197,17 @@ final class CollectifBaseAppoint implements CalculatorInterface
             if ($t < -999.0) {
                 // Convention 50%
                 $bchBaseJ = 0.5 * $bchJ;
-            } elseif ($pe <= 0.0 || $dh14j <= 0.0 || $textj <= 0.0) {
+            } elseif ($pe <= 0.0 || $dh14j <= 0.0) {
+                // Hors saison de chauffe, DH14j est nul et le mois ne porte
+                // aucun besoin : rien à répartir entre base et appoint.
+                //
+                // Le test ne peut pas porter sur `Textj` : c'est une
+                // température extérieure moyenne en °C, et §18.3 la tabule
+                // **négative** en janvier, février et décembre dès la classe
+                // d'altitude 3 — −0,8 °C en décembre pour H1c, par exemple.
+                // Les traiter comme des données manquantes vidait la base de
+                // trois mois d'hiver sur les huit tabulations concernées,
+                // c'est-à-dire là où elle travaille le plus.
                 $bchBaseJ = 0.0;
             } else {
                 $denomXj = $textj - $tbase;

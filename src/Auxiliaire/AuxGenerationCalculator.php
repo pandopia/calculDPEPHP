@@ -114,6 +114,7 @@ final class AuxGenerationCalculator implements CalculatorInterface
             '\CalculDpePHP\Chauffage\Strategy\MultiGenerateurs',
             '\CalculDpePHP\Chauffage\Strategy\InsertElecSdb',
             '\CalculDpePHP\Chauffage\Strategy\SolaireInsertPoele',
+            '\CalculDpePHP\Chauffage\Strategy\CollectifBaseAppoint',
         ];
     }
 

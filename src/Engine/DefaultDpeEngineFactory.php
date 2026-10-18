@@ -84,6 +84,7 @@ final class DefaultDpeEngineFactory
         $pipeline->add(new \CalculDpePHP\Chauffage\Strategy\ConvecteurBijonction());
         $pipeline->add(new \CalculDpePHP\Chauffage\Strategy\ChauffageSolaire());
         $pipeline->add(new \CalculDpePHP\Chauffage\Strategy\SolaireInsertPoele());
+        $pipeline->add(new \CalculDpePHP\Chauffage\Strategy\CollectifBaseAppoint());
         $pipeline->add(new \CalculDpePHP\Auxiliaire\AuxGenerationCalculator());
         $pipeline->add(new \CalculDpePHP\Auxiliaire\AuxDistributionCalculator());
         $pipeline->add(new \CalculDpePHP\Eclairage\ConsoEclairageCalculator());

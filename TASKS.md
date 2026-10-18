@@ -292,6 +292,34 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   surface habitable du bâtiment », ce que le code applique déjà : chercher la
   source avant de s'en écarter, et mesurer en A/B.
 
+### TASK-K69 — §9.8 collectif base + appoint : les deux résidus après branchement
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- La stratégie est désormais branchée et le garde `Textj <= 0` corrigé.
+  `besoin_ch` est **exact** sur les deux cas du corpus, et la répartition
+  base/appoint de `2600E0006037K` est juste à la proportion près (97,8 % /
+  2,2 %, comme sa référence). Restent deux choses, distinctes.
+- **1. Pn absent quand la base n'est pas une chaudière.** `2478E0866009E`
+  porte deux générateurs électriques (102 plancher rayonnant, 100 radiateur) :
+  `ChaudiereDefautCalculator` ne les dimensionne pas, `pn` reste vide, donc
+  `Pe = 0` et §9.8 retombe sur la convention de 50 %. Sa référence répartit
+  82 % / 18 %. Une recherche de la puissance émise qui reproduirait ce partage
+  donne **Pe ≈ 12,3 kW pour 1 762 m²**, soit 7 W/m² — trop faible pour un
+  dimensionnement, donc la convention de 50 % n'est pas simplement mal
+  calibrée : c'est la source de Pn qu'il faut trouver pour un générateur
+  électrique. §9.8 ne la donne pas ; chercher du côté de §13.2.2.4 (Pdim) et
+  de open3cl avant d'écrire quoi que ce soit.
+- **2. Six tabulations d'altitude 3 sont vides.** `dh14_base_appoint` et
+  `text_mensuel_base_appoint` ont, l'une comme l'autre et aux mêmes endroits,
+  tous leurs mois d'hiver à zéro pour **(alt 3, zones 1, 4 et 5)** — H1a, H2a
+  et H2b au-dessus de 800 m — dans les deux valeurs d'`ilpa`. Les deux cas du
+  corpus n'y tombent pas, mais un DPE de montagne en H1a y produirait une base
+  nulle sans rien signaler. Règle d'or n° 2 : vérifier dans §18.2-18.3 si ces
+  croisements existent réellement, et les digitaliser s'ils existent.
+- Résidu mesuré de `2600E0006037K` après correction : `conso_ch` à ×1,12, qui
+  suit son `rendement_generation` de chaudière gaz (0,8141 contre 0,8342) —
+  c'est TASK-K31, pas §9.8.
+
 ### TASK-K67 — 2242E2979513I : conso_ch à +20 % une fois le facteur CO2 juste
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
