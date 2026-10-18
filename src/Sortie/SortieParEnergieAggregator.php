@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Sortie;
 
-use CalculDpePHP\Collectif\ChauffageInstallationMultiplicity;
-use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
-use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
@@ -135,24 +132,19 @@ final class SortieParEnergieAggregator implements CalculatorInterface
                 : 0.0;
         }
 
-        // Mode ZONE (DPE appartement) : les consos par énergie doivent être ramenées
-        // au logement (rdim échantillon × cle_repartition), comme dans EfConsoCalculator.
-        $isZone   = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node) !== null;
-        $nbreAppt = $accessor->getFloatOrNull('./caracteristique_generale/nombre_appartement', $node) ?? 1.0;
-
         // ── 2. Collecter les consos par energie depuis les générateurs CH ──────
         /** @var array<int, float[]> */
-        $chByEnergie  = []; // energieId → [conso, consoDep]
+        $collecteCh   = ConsoParEnergieCollector::collecter($accessor, $node, 'installation_chauffage', 'generateur_chauffage', 'conso_ch', $context);
+        $chByEnergie  = $collecteCh['byEnergie']; // energieId → [conso, consoDep]
         /** @var array<int, float> */
-        $chReseauGes = [];
-        $this->collectGenConso($accessor, $node, 'installation_chauffage', 'generateur_chauffage', 'conso_ch', $chByEnergie, $chReseauGes, $isZone, $nbreAppt, $context);
+        $chReseauGes  = $collecteCh['reseauGes'];
 
         // ── 3. Collecter les consos par energie depuis les générateurs ECS ─────
         /** @var array<int, float[]> */
-        $ecsByEnergie = []; // energieId → [conso, consoDep]
+        $collecteEcs  = ConsoParEnergieCollector::collecter($accessor, $node, 'installation_ecs', 'generateur_ecs', 'conso_ecs', $context);
+        $ecsByEnergie = $collecteEcs['byEnergie']; // energieId → [conso, consoDep]
         /** @var array<int, float> */
-        $ecsReseauGes = [];
-        $this->collectGenConso($accessor, $node, 'installation_ecs', 'generateur_ecs', 'conso_ecs', $ecsByEnergie, $ecsReseauGes, $isZone, $nbreAppt, $context);
+        $ecsReseauGes = $collecteEcs['reseauGes'];
 
         // ── 4. Union des types d'énergie + toujours électricité (id=1) ─────────
         $energieIds = array_unique(array_merge(
@@ -271,133 +263,6 @@ final class SortieParEnergieAggregator implements CalculatorInterface
             $accessor->setChildValue($item, 'cout_ch',        $coutChE);
             $accessor->setChildValue($item, 'cout_ecs',       $coutEcsE);
             $accessor->setChildValue($item, 'cout_5_usages',  $cout5E);
-        }
-    }
-
-    /**
-     * Collecte les consos par énergie depuis les générateurs d'une collection.
-     *
-     * @param array<int, float[]> $byEnergie
-     * @param array<int, float> $reseauGesByEnergie
-     */
-    /**
-     * Mise à l'échelle identique à EfConsoCalculator (§17) :
-     *   BAT  : conso × rdimEff (rdim, ou nbApt×ratio_virt/Σéchantillon pour ZONE individuel)
-     *   ZONE : le total est ensuite ramené au logement via cle_repartition_ch/ecs.
-     */
-    private function collectGenConso(
-        NodeAccessor $accessor,
-        DOMElement $logement,
-        string $installTag,
-        string $genTag,
-        string $consoField,
-        array &$byEnergie,
-        array &$reseauGesByEnergie,
-        bool $isZone,
-        float $nbreAppt,
-        CalculationContext $context,
-    ): void {
-        $consoDepField = $consoField . '_depensier';
-        $collTag  = $installTag . '_collection';
-        $isCh     = $installTag === 'installation_chauffage';
-        $sumField = $isCh ? 'nombre_logement_echantillon' : 'nombre_logement';
-        $cleField = $isCh ? 'cle_repartition_ch' : 'cle_repartition_ecs';
-
-        foreach ($logement->childNodes as $child) {
-            if (!$child instanceof DOMElement || $child->nodeName !== $collTag) {
-                continue;
-            }
-
-            // Σ(nombre_logement[_echantillon]) pour le rdim effectif ZONE individuel
-            $sumEchantillon = 0.0;
-            foreach ($child->childNodes as $install) {
-                if ($install instanceof DOMElement && $install->nodeName === $installTag) {
-                    $sumEchantillon += $accessor->getFloatOrNull('./donnee_entree/' . $sumField, $install) ?? 0.0;
-                }
-            }
-            if ($sumEchantillon <= 0.0) {
-                $sumEchantillon = 1.0;
-            }
-
-            foreach ($child->childNodes as $install) {
-                if (!$install instanceof DOMElement || $install->nodeName !== $installTag) {
-                    continue;
-                }
-
-                $methode     = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $install) ?? 1;
-                $typeInstall = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id',    $install) ?? 1;
-                $rdim        = $accessor->getFloatOrNull('./donnee_entree/rdim',                       $install) ?? 1.0;
-                $ratioVirt   = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation',       $install) ?? 1.0;
-
-                if ($methode === 1) {
-                    $rdimEff = $rdim;
-                } elseif (!$isCh && $methode === 4 && $typeInstall === 1) {
-                    $rdimEff = EcsInstallationMultiplicity::sampledOrNull($install, $accessor)
-                        ?? ($nbreAppt * $ratioVirt / $sumEchantillon);
-                } elseif ($typeInstall === 1) {
-                    $rdimEff = ($isCh ? ChauffageInstallationMultiplicity::sampledOrNull($install, $accessor) : null)
-                        ?? ($nbreAppt * $ratioVirt / $sumEchantillon);
-                } else {
-                    $rdimEff = $rdim;
-                }
-                $rdimEff = max(1e-9, $rdimEff);
-
-                // ZONE : ramener du bâtiment au logement via la clé de répartition
-                $scale = $rdimEff;
-                if ($isZone) {
-                    $cle = $accessor->getFloatOrNull('./donnee_entree/' . $cleField, $install);
-                    if ($cle !== null && $cle > 0.0) {
-                        if ($isCh && $cle >= 1.0) {
-                            $cle = GeneratedApartment::surfaceShare($logement, $accessor) ?? $cle;
-                        }
-                        $scale *= $cle;
-                    }
-                }
-
-                // Le format ADEME natif reprend le total de l'installation
-                // lorsqu'elle ne possède qu'un générateur. Cela évite les
-                // écarts de précision dus au rendement réécrit sur le générateur.
-                $generators = $install->getElementsByTagName($genTag);
-                if (IntermediateEnergyUnit::isNativeAdeme($context->document) && $generators->length === 1) {
-                    $gen = $generators->item(0);
-                    if ($gen instanceof DOMElement) {
-                        $eId = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $gen) ?? 1;
-                        $conso = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoField, $install) ?? 0.0) * $scale;
-                        $consoDep = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoDepField, $install) ?? 0.0) * $scale;
-                        $byEnergie[$eId] ??= [0.0, 0.0];
-                        $byEnergie[$eId][0] += $conso;
-                        $byEnergie[$eId][1] += $consoDep;
-                        if ($eId === 8) {
-                            $factor = ReseauChaleurFactorResolver::resolve($gen, $accessor, $context);
-                            $reseauGesByEnergie[$eId] = ($reseauGesByEnergie[$eId] ?? 0.0) + $conso * $factor;
-                        }
-                        continue;
-                    }
-                }
-
-                foreach ($install->childNodes as $genColl) {
-                    if (!$genColl instanceof DOMElement) {
-                        continue;
-                    }
-                    foreach ($genColl->childNodes as $gen) {
-                        if (!$gen instanceof DOMElement || $gen->nodeName !== $genTag) {
-                            continue;
-                        }
-                        $eId      = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $gen) ?? 1;
-                        $conso    = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoField,    $gen) ?? 0.0) * $scale;
-                        $consoDep = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoDepField, $gen) ?? 0.0) * $scale;
-                        if (!isset($byEnergie[$eId])) {
-                            $byEnergie[$eId] = [0.0, 0.0];
-                        }
-                        $byEnergie[$eId][0] += $conso;
-                        $byEnergie[$eId][1] += $consoDep;
-                        if ($eId === 8) {
-                            $factor = ReseauChaleurFactorResolver::resolve($gen, $accessor, $context);
-                            $reseauGesByEnergie[$eId] = ($reseauGesByEnergie[$eId] ?? 0.0) + $conso * $factor;
-                        }
-                    }
-                }
-            }
         }
     }
 

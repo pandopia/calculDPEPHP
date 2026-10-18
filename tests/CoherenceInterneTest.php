@@ -40,11 +40,15 @@ final class CoherenceInterneTest extends TestCase
      * @var array<string, string>
      */
     private const DETTE_CONNUE = [
-        // `CoutCalculator::partsParEnergie` retombe sur une énergie unique
-        // lorsque les installations ne publient pas leur `conso_ch`, là où
-        // `SortieParEnergieAggregator` somme les générateurs : les deux
-        // tarifent alors des paniers différents.
-        '2675E2152874Y.xml' => 'TASK-K79',
+        // Une entrée ici est un bloc de sortie qui se contredit lui-même, pas
+        // un simple écart à la référence : elle appelle une TASK, pas une
+        // tolérance.
+        //
+        // Cascade de deux chaudières à priorités distinctes (§13.2.1.3.1) :
+        // faute de modèle de cascade, chaque générateur se voit écrire la
+        // consommation entière de l'installation, que `sortie_par_energie`
+        // additionne ensuite — d'où un `conso_ch` exactement doublé.
+        '2406E1688667C.xml' => 'TASK-K80',
     ];
 
     /** Préfixe de chaque bloc de sortie, par nom de bloc. */
@@ -61,14 +65,10 @@ final class CoherenceInterneTest extends TestCase
         $cases = (new CorpusLocator(self::PROJECT_ROOT))->locate();
         usort($cases, static fn(array $a, array $b): int => strcmp($a['name'], $b['name']));
 
-        // Un échantillon suffit : le défaut cherché est structurel, pas
-        // particulier à un fichier. Un cas sur vingt garde le test rapide tout
-        // en couvrant les quatre périmètres et les deux régimes.
-        $i = 0;
+        // Le corpus entier, et non un échantillon : 541 cas coûtent onze
+        // secondes, et un défaut de cohérence se niche dans une configuration
+        // rare — la cascade de TASK-K80 n'apparaît que sur un fichier.
         foreach ($cases as $case) {
-            if ($i++ % 20 !== 0) {
-                continue;
-            }
             if (isset(self::DETTE_CONNUE[$case['name']])) {
                 continue;
             }
