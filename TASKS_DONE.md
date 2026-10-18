@@ -207,6 +207,24 @@ une.
   `ubat`. §3 ne la donne pas, et nos seuils de classe viennent eux aussi
   d'open3cl. Sans source, ne pas rejouer ces cinq mesures.
 
+**La rubrique de plancher haut est tranchée aussi, et dans l'autre sens.**
+Le schéma prévoit trois rubriques — comble aménagé, toit terrasse, comble
+perdu — et nous n'en renseignons qu'une, celle du sous-type qui porte la plus
+grande surface déperditive. Le corpus le confirme : sur 542 références, **501
+en publient exactement une**, 32 aucune et 9 plusieurs.
+
+Les 50 écarts structurels de ces rubriques se décomposent ainsi : 26 cas où
+nous publions une rubrique que la référence omet (et leurs planchers hauts
+sont bien déperditifs, `b` valant 1 ou 0,95 — ce n'est donc pas une règle de
+`b`), 14 où nous n'en publions aucune, et **4 seulement où nous nous trompons
+de sous-type**.
+
+Publier une rubrique **par sous-type présent** a été mesuré : les balises
+supplémentaires passent de 30 à **132** pour n'économiser que 10 manquantes,
+soit +92 au total. Sur `2401E0166251L`, qui publie à la fois `comble_perdu`
+et `comble_amenage` pour ses deux planchers hauts de 23,8 et 22,4 m², nous
+retenons le plus grand et c'est la bonne règle 501 fois sur 542.
+
 ### TASK-H23 — Ponts thermiques des parois en adjacence 22 : convention d'éditeur
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
