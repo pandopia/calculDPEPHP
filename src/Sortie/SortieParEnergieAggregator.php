@@ -118,6 +118,23 @@ final class SortieParEnergieAggregator implements CalculatorInterface
         $consoFr     = $efNode ? ($accessor->getFloatOrNull('./conso_fr',                $efNode) ?? 0.0) : 0.0;
         $consoFrDep  = $efNode ? ($accessor->getFloatOrNull('./conso_fr_depensier',      $efNode) ?? 0.0) : 0.0;
 
+        // Les auxiliaires ne forment pas un seul poste tarifaire : ceux d'une
+        // installation collective relèvent de l'abonnement de l'immeuble,
+        // ceux de la ventilation de celui du logement. `CoutCalculator` les
+        // sépare déjà ainsi, et les deux blocs décrivent les mêmes euros —
+        // les additionner ici dans un panier unique élargissait l'assiette de
+        // la tranche individuelle et faisait baisser son prix du kWh.
+        $auxParPoste = [];
+        foreach ([
+            'conso_auxiliaire_generation_ch',    'conso_auxiliaire_distribution_ch',
+            'conso_auxiliaire_generation_ecs',   'conso_auxiliaire_distribution_ecs',
+            'conso_auxiliaire_ventilation',
+        ] as $poste) {
+            $auxParPoste[$poste] = $efNode
+                ? ($accessor->getFloatOrNull('./' . $poste, $efNode) ?? 0.0)
+                : 0.0;
+        }
+
         // Mode ZONE (DPE appartement) : les consos par énergie doivent être ramenées
         // au logement (rdim échantillon × cle_repartition), comme dans EfConsoCalculator.
         $isZone   = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node) !== null;
@@ -199,8 +216,27 @@ final class SortieParEnergieAggregator implements CalculatorInterface
             $postesCout[$eId . '|ecs'] = [$eId, $consoEcsE, $prix->ecsCollectif];
             if (PrixEnergie::estElectricite($eId)) {
                 $postesCout[$eId . '|ecl'] = [$eId, $consoEclE, false];
-                $postesCout[$eId . '|aux'] = [$eId, $consoAuxE, false];
                 $postesCout[$eId . '|fr']  = [$eId, $consoFrE, false];
+                // Même ventilation des auxiliaires que `CoutCalculator`. Les
+                // cinq postes sont remis à l'échelle de `conso_totale_auxiliaire`
+                // pour que leur somme la reproduise exactement ; s'ils sont tous
+                // nuls — un bloc `ef_conso` qui ne publie que le total —, tout
+                // retombe sur l'abonnement individuel, comme auparavant.
+                $sommePostes = array_sum($auxParPoste);
+                if ($sommePostes > 0.0) {
+                    $facteur = $consoAuxE / $sommePostes;
+                    foreach ([
+                        'conso_auxiliaire_generation_ch'    => $prix->chauffageCollectif,
+                        'conso_auxiliaire_distribution_ch'  => $prix->chauffageCollectif,
+                        'conso_auxiliaire_generation_ecs'   => $prix->ecsCollectif,
+                        'conso_auxiliaire_distribution_ecs' => $prix->ecsCollectif,
+                        'conso_auxiliaire_ventilation'      => false,
+                    ] as $poste => $collectif) {
+                        $postesCout[$eId . '|' . $poste] = [$eId, $auxParPoste[$poste] * $facteur, $collectif];
+                    }
+                } else {
+                    $postesCout[$eId . '|conso_auxiliaire_ventilation'] = [$eId, $consoAuxE, false];
+                }
             }
 
             $item = $context->document->createElement('sortie_par_energie');
@@ -223,8 +259,14 @@ final class SortieParEnergieAggregator implements CalculatorInterface
             $coutEcsE = $couts[$eId . '|ecs'] ?? 0.0;
             $cout5E   = $coutChE + $coutEcsE
                 + ($couts[$eId . '|ecl'] ?? 0.0)
-                + ($couts[$eId . '|aux'] ?? 0.0)
                 + ($couts[$eId . '|fr'] ?? 0.0);
+            foreach ([
+                'conso_auxiliaire_generation_ch',  'conso_auxiliaire_distribution_ch',
+                'conso_auxiliaire_generation_ecs', 'conso_auxiliaire_distribution_ecs',
+                'conso_auxiliaire_ventilation',
+            ] as $poste) {
+                $cout5E += $couts[$eId . '|' . $poste] ?? 0.0;
+            }
 
             $accessor->setChildValue($item, 'cout_ch',        $coutChE);
             $accessor->setChildValue($item, 'cout_ecs',       $coutEcsE);

@@ -73,11 +73,17 @@ trait StrategieComputeTrait
                     $generateurs[] = $gen;
                 }
             }
+            // La consommation du générateur est sa **part**, pas le total de
+            // l'installation : les écrire toutes au total faisait compter
+            // celui-ci autant de fois qu'il y a de générateurs dans
+            // `sortie_par_energie`, qui somme les générateurs par énergie.
+            // La part est la même que celle du besoin, publiée juste après.
+            $part = 1.0 / max(1, count($generateurs));
             foreach ($generateurs as $gen) {
                 $genDi = $accessor->ensureDonneeIntermediaire($gen);
-                $accessor->setChildValue($genDi, 'conso_ch',           $consoCh);
-                $accessor->setChildValue($genDi, 'conso_ch_depensier', $consoChDep);
-                $this->publierPartDuBesoin($context, $gen, 1.0 / max(1, count($generateurs)));
+                $accessor->setChildValue($genDi, 'conso_ch',           $consoCh * $part);
+                $accessor->setChildValue($genDi, 'conso_ch_depensier', $consoChDep * $part);
+                $this->publierPartDuBesoin($context, $gen, $part);
             }
         }
 

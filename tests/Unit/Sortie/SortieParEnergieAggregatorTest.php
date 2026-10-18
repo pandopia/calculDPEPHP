@@ -219,6 +219,49 @@ XML;
      * chaque usage : chauffage + ECS + éclairage + auxiliaires partagent un
      * seul abonnement, donc une seule part fixe.
      */
+    /**
+     * Les auxiliaires d'une installation collective relèvent de l'abonnement de
+     * l'immeuble, pas de celui du logement : `CoutCalculator` les répartit
+     * ainsi, et les deux blocs décrivent les mêmes euros.
+     *
+     * L'agrégateur les additionnait en un panier unique rattaché à
+     * l'abonnement individuel, ce qui élargissait l'assiette de sa tranche et
+     * faisait baisser son prix du kWh : sur le corpus, le `cout_ecs` du bloc
+     * `<cout>` et celui de `<sortie_par_energie>` divergeaient de 4 à 5 %.
+     */
+    public function testLesAuxiliairesCollectifsNeGonflentPasLAbonnementIndividuel(): void
+    {
+        $doc = $this->buildDoc(1, 1, 5000.0, 2000.0, 300.0, 400.0);
+
+        // Même conso totale d'auxiliaires, mais ventilée : 380 kWh pour la
+        // génération d'ECS collective, 20 pour la ventilation du logement.
+        $ef = $doc->getElementsByTagName('ef_conso')->item(0);
+        foreach (['conso_auxiliaire_generation_ecs' => 380.0, 'conso_auxiliaire_ventilation' => 20.0] as $tag => $v) {
+            $n = $doc->createElement($tag, (string) $v);
+            $ef->appendChild($n);
+        }
+        // L'installation d'ECS est collective.
+        $de = $doc->createElement('donnee_entree');
+        $de->appendChild($doc->createElement('enum_type_installation_id', '2'));
+        $doc->getElementsByTagName('installation_ecs')->item(0)->appendChild($de);
+
+        $logement = $doc->getElementsByTagName('logement')->item(0);
+        (new SortieParEnergieAggregator())->calculate($logement, $this->makeContext($doc));
+
+        $coutEcs = $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=1]/cout_ecs')[0];
+        $consoEcs = $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=1]/conso_ecs')[0];
+
+        // Le panier individuel ne porte plus que l'éclairage, la ventilation et
+        // l'ECS : sa tranche est plus haute, donc son prix du kWh aussi que si
+        // les 400 kWh d'auxiliaires y figuraient tous.
+        self::assertGreaterThan(0.0, $coutEcs);
+        self::assertGreaterThan(
+            0.19,
+            $coutEcs / $consoEcs,
+            "le prix du kWh doit rester celui d'un petit abonnement individuel",
+        );
+    }
+
     public function testTrancheElectriquePorteSurLeTotalDeLEnergie(): void
     {
         $doc = $this->buildDoc(1, 1, 5000.0, 2000.0, 300.0, 400.0);
