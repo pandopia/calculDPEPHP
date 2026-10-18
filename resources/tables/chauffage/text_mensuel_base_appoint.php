@@ -16,13 +16,28 @@ declare(strict_types=1);
  *
  * Valeurs 0 : mois hors saison de chauffe pour la zone/altitude concernée.
  *
- * Source : open3cl/src/tv.js → `text` (températures mensuelles moyennes hors heures non-chauffage).
+ * Extraite d'open3cl, puis **recoupée une à une avec l'annexe** : `ilpa = 0`
+ * contre les tableaux « Text (°C) » de §18.2.1 à §18.2.3, `ilpa = 1` contre
+ * ceux de §18.3.1 à §18.3.3. **576 valeurs sur 576.**
+ *
+ * Attention en lisant l'annexe : §18.2 porte deux tables de température, et
+ * ce n'est pas la même grandeur. « Text (°C) », en tête de section, est celle
+ * que §9.8 emploie ; « Textmoy_clim (°C) », plus bas, est la température
+ * moyenne pendant les périodes de refroidissement, pour §10.2, et elle est
+ * tabulée par consigne — c'est `reference/tv_textmoy_clim`.
+ *
+ * Les valeurs sont des températures en °C et peuvent être **négatives** :
+ * §18.2.2 et §18.2.3 en donnent dès la classe d'altitude 2. Un zéro signale
+ * un mois hors saison de chauffe, pas une valeur manquante, et le départage
+ * se fait sur DH14 — voir le garde de `CollectifBaseAppoint`.
  *
  * @spec-section 9.8
- * @spec-pages   65-66
+ * @spec-pages   65-66, 121-143
  * @spec-source  resources/specsplitted/09-conso-chauffage/08-collectif-base-appoint.md
+ * @spec-source  resources/specsplitted/18-annexes/02-sollicitations-exterieures/
+ * @spec-source  resources/specsplitted/18-annexes/03-inertie-lourde/
  * @generated-on 2026-04-30
- * @status complete
+ * @status verified-spec — 576 valeurs recoupées, aucune corrigée
  */
 
 $row = static fn(float $h1a, float $h1b, float $h1c, float $h2a, float $h2b, float $h2c, float $h2d, float $h3): array => [

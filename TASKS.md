@@ -309,13 +309,12 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   calibrée : c'est la source de Pn qu'il faut trouver pour un générateur
   électrique. §9.8 ne la donne pas ; chercher du côté de §13.2.2.4 (Pdim) et
   de open3cl avant d'écrire quoi que ce soit.
-- **2. Six tabulations d'altitude 3 sont vides.** `dh14_base_appoint` et
-  `text_mensuel_base_appoint` ont, l'une comme l'autre et aux mêmes endroits,
-  tous leurs mois d'hiver à zéro pour **(alt 3, zones 1, 4 et 5)** — H1a, H2a
-  et H2b au-dessus de 800 m — dans les deux valeurs d'`ilpa`. Les deux cas du
-  corpus n'y tombent pas, mais un DPE de montagne en H1a y produirait une base
-  nulle sans rien signaler. Règle d'or n° 2 : vérifier dans §18.2-18.3 si ces
-  croisements existent réellement, et les digitaliser s'ils existent.
+- **2. Les six tabulations vides d'altitude 3 : tranché, elles sont vides dans
+  l'annexe.** §18.2.3 et §18.3.3 ne publient aucune donnée pour H1a, H2a et
+  H2b au-dessus de 800 m. Ce n'était pas un trou de transcription. Les deux
+  tables ont été recoupées une à une avec §18.2.1-18.2.3 (`ilpa = 0`) et
+  §18.3.1-18.3.3 (`ilpa = 1`) : 576 valeurs chacune, une seule corrigée. Rien
+  à reprendre de ce côté.
 - Résidu mesuré de `2600E0006037K` après correction : `conso_ch` à ×1,12, qui
   suit son `rendement_generation` de chaudière gaz (0,8141 contre 0,8342) —
   c'est TASK-K31, pas §9.8.
