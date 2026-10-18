@@ -19,6 +19,48 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K81 — Le coût dépensier des références recopie le conventionnel 4 fois sur 5
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- `cout_ch_depensier` et `cout_ecs_depensier` sont les deux plus gros postes du
+  rapport après les consommations — 500 et 505 écarts pour **autant de cas**,
+  soit un par fichier. Ce profil « un par cas » laissait espérer une règle
+  systématique à corriger. Il n'y en a pas.
+- **Les références recopient le coût conventionnel dans 163 cas sur 196**
+  (83 %), alors qu'elles calculent toujours une consommation dépensière
+  distincte — `conso_ch_depensier ≠ conso_ch` sur **196 sur 196**. Une
+  référence qui publie une consommation dépensière plus forte et un coût
+  identique se contredit elle-même.
+- **La recopie n'obéit à aucune règle reproductible.** Elle n'est ni propre à
+  un moteur (Tribu 85 recopient contre 8 qui calculent, BBS Slama 76 contre
+  12), ni à une année (2024 : 87/11 ; 2026 : 76/22), ni à une énergie de
+  chauffage (élec 78/10, gaz 39/8), ni à un mode d'application (méthode 1 :
+  62/24, méthode 2 : 37/1). La coder reviendrait à copier une observation.
+- **Et notre valeur n'a pas de défaut propre** : sur les 33 références qui
+  calculent vraiment, notre rapport dépensier/conventionnel colle au leur à
+  quelques millièmes — 1,2162 contre 1,2134, 1,2055 contre 1,2044, 1,2366
+  contre 1,2376. Les écarts restants viennent du `cout_ch` conventionnel, donc
+  de `conso_ch` en amont : c'est là qu'il faut remonter, pas sur le dépensier.
+- `ReferenceDefects::valeurDepensiereRecopiee` impute déjà ces écarts à la
+  référence. **Rouvrir si** un texte réglementaire définit le coût dépensier,
+  ou si un éditeur se met à le calculer systématiquement.
+
+### TASK-K82 — Méthode 26 : zéro conforme sur six, mais aucun facteur commun
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- Le taux de conformité de `besoin_ch` par mode d'application isole la
+  **méthode 26** — immeuble collectif à chauffage **et** ECS mixtes — avec
+  0 cas conforme sur 6, quand les méthodes 7, 9 et 13 sont à 100 %.
+- Ce profil fait penser à un défaut systématique. Les ratios obtenu/attendu
+  disent le contraire : 1,2051, 1,0082, 0,9990, 0,9760, 1,0510, 1,0123. Aucun
+  facteur commun, et `2501E0014261S` est à 0,1 % près de la tolérance.
+- La méthode 26 est simplement le périmètre le plus difficile — deux
+  répartitions mixtes superposées — et ses six cas cumulent des écarts fins
+  d'origines différentes. Le seul écart franc, `2242E2979513I` à +20,5 %, est
+  déjà TASK-K67.
+- **Rouvrir si** le corpus gagne assez de cas de méthode 26 pour qu'un facteur
+  commun se dégage.
+
 ### TASK-K80bis — Cascade avec priorité : le subordonné assure-t-il 5 % du besoin ?
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
