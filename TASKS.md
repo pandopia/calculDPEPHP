@@ -529,18 +529,45 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   (technique, économique, ventilation), l'auditeur, et la famille des gains
   (`ef_conso_5_usages_m2_gain`, `_gain_cumule`, `_gain_relatif`, idem EP et
   GES).
-- **À explorer avant toute ligne de code** :
-  1. Dresser l'inventaire des 153 éléments en trois tas — dérivés
-     arithmétiques de nos sorties, données saisies par l'auditeur, règles
-     réglementaires. Seul le troisième tas est du travail de méthode.
-  2. Lire l'arrêté du 4 mai 2022 (audit énergétique réglementaire) et ses
+- **Inventaire fait.** Contre `DPEv2.7.xsd` (589 éléments), `audit_v2.6.xsd`
+  en compte 644, dont **126 propres à l'audit** — le chiffre de 153 était
+  mesuré contre le modèle 2.6. Les quatre tas :
+
+  | Tas | Nombre | Nature |
+  |---|---:|---|
+  | Saisie de l'auditeur et présentation | **68** | identité et qualification, dates, descriptifs, observations, pathologies, recommandations, coûts `cout_min`/`cout_max`, aides, caractéristiques de travaux par technique (`pac_air_eau`, `isolation_mur_ite`, `menuiseries_double_vitrage`…) |
+  | Dérivés arithmétiques de nos sorties | **32** | les `*_m2`, les quatre familles de gains (`_gain`, `_gain_cumule`, `_gain_relatif`, `_gain_cumule_relatif`) en EF, EP et GES, `facture_gain`, les `cout_cumule*`, `ubat_base`, `qualite_isol` |
+  | Règles réglementaires | **12** | `enum_scenario_id`, `enum_etape_id`, `enum_lot_travaux_audit_id`, `enum_type_travaux_id`, les trois `enum_derogation_*_id`, `enum_etat_composant_id`, `enum_etat_ventilation_id`, `enum_modele_audit_id`, `enum_version_audit_id`, `enum_version_dpe_id` |
+  | Conteneurs de structure | 14 | `audit`, `logement_collection`, `etape_travaux`, les `*_collection` |
+
+  **Seuls les 12 du troisième tas sont du travail de méthode**, et aucun n'est
+  une grandeur physique : ce sont des règles d'éligibilité et de contenu de
+  scénario, à lire dans l'arrêté du 4 mai 2022.
+- **Le modèle de calcul est bien partagé, vérifié dans l'autre sens.** 71
+  éléments du DPE 2.7 sont absents de l'audit, et **aucun n'est une entrée ni
+  un intermédiaire de la méthode 3CL** : ce sont l'identité du
+  diagnostiqueur (12), les recommandations et packs de travaux du DPE —
+  l'audit a ses propres `etape_travaux` —, les consommations relevées sur
+  factures, le tertiaire et le neuf (`rsee`, `rset`, `shon`, `surface_utile`,
+  `enum_modele_dpe_id`), et l'enveloppe documentaire du DPE lui-même.
+- **Quatre points de câblage précis, et ils tiennent à une date.**
+  `date_etablissement_dpe` n'existe pas dans le modèle audit, qui porte
+  `date_etablissement_audit`. Or quatre composants du moteur la lisent pour
+  choisir un barème daté : `PrixEnergie` (tarifs), `CoutCalculator`,
+  `SeuilsClasses` (seuils d'étiquette) et `ReseauChaleurFactorResolver`
+  (millésime d'arrêté). S'y ajoute `DpeEngine`, qui lit `enum_version_id` —
+  l'audit a `enum_version_dpe_id`, qui dit « quelle version du calcul DPE est
+  utilisée ». Ces cinq lectures sont le vrai périmètre du branchement, pas
+  les Calculators.
+- **À explorer ensuite** :
+  1. Lire l'arrêté du 4 mai 2022 (audit énergétique réglementaire) et ses
      modificatifs : lots obligatoires par scénario, classes à atteindre,
      conditions de dérogation. Le XSD ne donne que les emplacements, jamais
      les règles — même discipline que pour le 3CL.
-  3. Vérifier ce que l'état initial partage avec un DPE : `enum_version_dpe_id`
+  2. Vérifier ce que l'état initial partage avec un DPE : `enum_version_dpe_id`
      dit quelle version de calcul l'audit emploie, et les champs EPBD de
      TASK-K63 y sont bloquants **pour l'état initial seulement**.
-  4. Chercher un corpus : l'observatoire publie les audits comme les DPE
+  3. Chercher un corpus : l'observatoire publie les audits comme les DPE
      (numéro ADEME en `[2-3][0-9]{2}[0-9A-B][ETN][0-9]{7}[A-Z]`), à confirmer.
      Sans référence, pas de mesure de conformité possible.
 - **Câblage pressenti dans le moteur**, à valider par l'exploration :
