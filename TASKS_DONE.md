@@ -225,6 +225,44 @@ soit +92 au total. Sur `2401E0166251L`, qui publie à la fois `comble_perdu`
 et `comble_amenage` pour ses deux planchers hauts de 23,8 et 22,4 m², nous
 retenons le plus grand et c'est la bonne règle 501 fois sur 542.
 
+### TASK-K77 — Confort d'été : la règle en place est la meilleure, et le corpus ne s'accorde pas avec lui-même
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- **L'indicateur n'est pas dans la méthode.** §10 ne définit ni
+  `enum_indicateur_confort_ete_id` ni ses cinq drapeaux : c'est un indicateur
+  du rapport, pas du calcul, et notre implémentation vient d'open3cl. Il n'y a
+  donc pas de texte à opposer au corpus.
+- **Les 77 écarts de l'indicateur sont l'ombre de deux drapeaux.** La règle est
+  « insuffisant si `protection_solaire_exterieure` = 0 **ou**
+  `isolation_toiture` = 0 » : 54 cas attendent « moyen » et 18 « bon » là où
+  nous disons « insuffisant », et ces 72 suivent les 27 écarts de protection
+  solaire et les 18 d'isolation de toiture. Corriger l'indicateur sans
+  corriger les drapeaux n'aurait aucun sens.
+- **Notre règle de protection solaire est la meilleure des trois testées.**
+  Elle met 0 dès qu'une baie non-nord déclare « absence de fermeture ». Sur les
+  202 références qui publient le drapeau :
+
+  | Règle | Justes | Faux |
+  |---|---:|---:|
+  | une baie non-nord sans fermeture suffit (en place) | **171** | 31 |
+  | seuil à 25 % de la surface non-nord sans fermeture | 165 | 37 |
+
+  La répartition par part de surface explique pourquoi : la tranche 0-25 %
+  est **franchement ambiguë** — 29 références y publient 0 et 23 publient 1 —
+  alors que les tranches supérieures sont nettes (22 contre 1, 12 contre 1,
+  19 contre 2). Aucun seuil ne sépare cette tranche.
+- **Le masque proche n'est pas le discriminant.** L'hypothèse qu'un masque
+  tiendrait lieu de protection a été vérifiée : sur les 109 fichiers qui ont
+  au moins une baie non-nord sans fermeture, **aucun** n'a toutes ces baies
+  masquées. L'information n'existe pas dans les entrées.
+- **Ce n'est pas non plus une convention d'éditeur.** Le taux de divergence se
+  répartit sur tous les moteurs : 22 % chez 3cl_tribu_1.4.25.1 (9 cas sur 40),
+  21 % chez BBS_Slama_2025.11.1.0 (8 sur 39), 33 % chez « inconnu », 38 % chez
+  3cl_tribu_2024.6.1.0. Les références ne s'accordent pas entre elles.
+- Condition de réouverture : le texte de l'arrêté qui définit l'indicateur de
+  confort d'été et ses drapeaux. Sans lui, les trois mesures ci-dessus sont ce
+  qu'on peut savoir, et la règle en place est celle qui colle le mieux.
+
 ### TASK-H23 — Ponts thermiques des parois en adjacence 22 : convention d'éditeur
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
