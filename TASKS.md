@@ -367,24 +367,35 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   (ses apports publiés ne reproduisent pas son besoin publié) mais elle
   demande de rejouer §10.2, ce qui sort du cadre de l'outil.
 
-### TASK-K74 — Série 2400E03338xx : Pdim trop grand de 27 %
+### TASK-K74 — Série 2400E03338xx : un `pn` que la référence ne tire pas de son propre GV
 
-- [ ] Owner: __ | Phase: K | Priorité: moyenne
-- Vingt et un cas du corpus publient `pn` = 370 000 W quand nous produisons
-  400 000, notre plafond. Ils appartiennent tous au **même immeuble**, la
-  série `2400E03338xx`. Le plafond n'est pas en cause : retiré, nous
-  produisons 470 000 W pour les mêmes cas (cf. TASK-K73 dans `TASKS_DONE.md`).
-- 370 kW correspond à un `Pdim` dans [365 ; 370[, 470 kW à un `Pdim` dans
-  [465 ; 470[ — notre puissance de dimensionnement est donc trop grande
-  d'environ **27 %**, et c'est elle qu'il faut reprendre.
-- `Pdim = max(Pch ; Pecs)` (§13.2.2.4). Commencer par départager lequel des
-  deux domine chez nous et chez la référence : si c'est `Pch`, l'écart est
-  dans le GV ou dans l'échelle retenue pour l'immeuble ; si c'est `Pecs`, il
-  est dans le volume de stockage de §13.2.2.4.
-- `pn` est la première source d'écart de la famille « Génération chauffage »
-  après les consommations elles-mêmes — 126 occurrences sur 78 cas, dont ces
-  21 — et il se propage à `rpn`, `rpint` et `qp0`, qui se lisent sur des
-  tranches de Pn. Un seul immeuble, mais un cinquième de la balise.
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- Vingt et un cas publient `pn` = 370 000 W quand nous publions 400 000. Ils
+  appartiennent tous au **même immeuble**, la série `2400E03338xx`, mode 7
+  (immeuble collectif, chauffage collectif), H1a à 400-800 m, 2 064 m².
+- **Trois choses sont établies, et elles ferment les pistes évidentes.**
+  1. Le plafond n'est pas en cause : retiré, nous produisons 470 000 W
+     (cf. TASK-K73 dans `TASKS_DONE.md`, qui mesure aussi son retrait à
+     +1 019 écarts).
+  2. **Le GV est identique au nôtre à la dixième décimale** —
+     `deperdition_enveloppe` = 10 938,545 615 99 W/K des deux côtés, et
+     chacun de ses sept postes concorde. L'enveloppe est hors de cause.
+  3. Notre valeur est l'application **littérale** de §13.2.2.4 avec le Tbase
+     de §18.1 : `Pch = 1,2 × 10 938,55 × (19 − (−11,5)) / (1000 × 0,95³)`
+     = 466,95 kW, d'où `Pn = (⌊466,95/5⌋ + 1) × 5` = 470 kW, plafonné à 400.
+- **La référence ne tire pas son 370 kW de son propre GV.** Il faudrait
+  GV = 8 667 W/K, soit **79,2 %** de celui qu'elle publie. Aucune
+  décomposition du GV publié ne donne ce chiffre : sans les ponts thermiques
+  on tombe à 280 kW, sans le renouvellement d'air à 385, sans `hperm` à 455.
+- **Et notre chaîne est bonne ailleurs** : sur les **733 balises `pn`** des
+  328 références qui en publient, **588 sont exactes** et 12 de plus dans la
+  tolérance, soit 81,9 % de conformité. Les 126 écarts ne forment pas une
+  famille — leur rapport va de 0,27 à 8,54 — et 19 d'entre eux sont ce seul
+  immeuble.
+- Donc : soit un élément d'entrée propre à cet immeuble nous échappe, soit sa
+  référence a dimensionné autrement. **Ne pas toucher à la formule** : 588
+  valeurs exactes la soutiennent. Reprendre par les entrées de ce bâtiment,
+  ou conclure au défaut de référence si rien ne les distingue.
 
 ### TASK-K67 — 2242E2979513I : conso_ch à +20 % une fois le facteur CO2 juste
 
