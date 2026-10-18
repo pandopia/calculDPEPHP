@@ -89,7 +89,21 @@ final class ConvecteurBijonction implements CalculatorInterface
             return;
         }
 
-        $this->computeAndWrite($besoin, $besoinDep, $node, $context);
+        // §9.9 p.66 : `Cch1 = 0,6 Bch INT1 Ich1` pour le circuit **collectif**
+        // qui assure la base, `Cch2 = 0,4 Bch INT2 Ich2` pour le circuit
+        // individuel d'appoint. Les deux INT ne sont pas le même : la base
+        // collective ne s'interrompt pas, et les références le confirment —
+        // sur `2601E0208630M`, 0,6 × 4 869,27 × 1,1696 = 3 417,0 contre
+        // 3 415,95 publiés sur le générateur, soit INT1 = 1, et le total de
+        // 5 361,60 se reconstruit à 0,015 % près avec INT2 = notre
+        // intermittence. Quatre cas du corpus, tous à la même lecture.
+        $this->computeAndWrite(
+            $besoin,
+            $besoinDep,
+            $node,
+            $context,
+            partContinue: self::FACTORS[1],
+        );
     }
 
     private function cfgId(DOMElement $node): ?int

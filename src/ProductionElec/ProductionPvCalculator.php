@@ -251,9 +251,10 @@ final class ProductionPvCalculator implements CalculatorInterface
 
                 // Surface : surface_totale_capteurs OU nombre_module × 1,6
                 $surface = $accessor->getFloatOrNull('./surface_totale_capteurs', $panneau);
-                if ($surface === null || $surface <= 0.0) {
-                    $nbModule = $accessor->getIntOrNull('./nombre_module', $panneau) ?? 0;
-                    $surface  = $nbModule * self::SURFACE_PAR_MODULE;
+                $nbModule = $accessor->getIntOrNull('./nombre_module', $panneau) ?? 0;
+                $forfait = $nbModule * self::SURFACE_PAR_MODULE;
+                if ($surface === null || $surface <= 0.0 || $surface < $forfait) {
+                    $surface = $forfait;
                 }
 
                 if ($surface <= 0.0) {

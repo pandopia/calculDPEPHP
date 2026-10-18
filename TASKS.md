@@ -450,6 +450,118 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Ses balises `emission_ges_ecs` et `ep_conso_ecs` sont publiées permutées avec
   leurs dépensières, et déjà imputées à ce titre. Ne pas les instruire.
 
+### TASK-K85 — Cdimref : le périmètre du GV reste à trancher pour 25 générateurs
+
+- [ ] Owner: __ | Phase: K | Priorité: haute
+- **Acquis, et livré** : quand §17.1.4.2 ramène le GV à l'appartement moyen,
+  Cdimref se calcule sur la chaudière **moyenne**, pas sur le générateur
+  courant. Les références donnent un Cdimref commun à tous les générateurs
+  d'un même bâtiment — 2,6834 et 2,6848 sur `2513E2308028Z`, rapport 0,9995.
+  Gain mesuré : −99 écarts.
+- **Reste 25 générateurs** dont `pn`, `rpn`, `rpint`, `qp0` et les températures
+  de fonctionnement sont **exacts** et le `rendement_generation` faux : 15 en
+  méthode 6, 5 en méthode 1, 2 en méthode 2, 2 en méthode 10, 1 en méthode 3.
+  Les quinze de méthode 6 sont tous **sous-estimés**, de 2 à 11 %.
+- **Un Cdimref implicite reconstruit exactement.** Sur `2400E0669882V`
+  (méthode 6, 8 appartements, 6 installations individuelles, GV 1 047,603,
+  zone 2 altitude 1 donc Tbase −9,5), la résolution à rebours du rendement
+  publié donne **1,6077** pour sa chaudière à condensation. Or
+  48 000 / (1 047,603 × 28,5) = **1,608** : la référence utilise le **GV
+  complet et la puissance totale**, sans rien ramener. Exact à 0,02 %.
+- **Mais la règle ne peut pas être généralisée.** Ne plus ramener le GV pour
+  les méthodes 6 et 8 — les immeubles, par opposition aux appartements
+  générés 10 et 12 — a été mesuré en A/B isolé, 541 cas, 0 crash :
+  **+2 075 écarts**, 3 cas améliorés contre 82 dégradés, dont douze passant
+  de 10 à 37-39 écarts. Le cas témoin, lui, gagne 29 écarts (53 → 24).
+- Ce qui distingue `2400E0669882V` des autres méthode 6 reste à trouver. Deux
+  observations à creuser : seules **2 de ses 6 installations** portent un
+  générateur à combustion (les autres sont électriques, type 99), et ses
+  installations ne couvrent donc pas tous les logements. Les pistes
+  « diviseur = nombre de systèmes » et « part des logements équipés » ont été
+  calculées à la main et ne reproduisent pas 1,6077.
+- Méthode qui marche, à reprendre : résoudre le Cdimref à rebours depuis le
+  rendement publié, puis le comparer aux combinaisons (GV complet, GV/nblgt,
+  GV/nb systèmes) × (Pn générateur, Pn totale, Pn moyenne).
+- **Ce qui ne marchera pas** : chercher un facteur commun dans les ratios. Ils
+  sont dispersés de 0,914 à 1,005, sans aucune valeur ronde, et se concentrent
+  sur quelques fichiers — `2400E0575636Z` en porte six à lui seul,
+  `2600E0035103I` quatre. Les gains de cette campagne sont tous venus de
+  **rapports exacts** (0,9995 pour le Cdimref commun, 0,75 pour la surface de
+  module, 0,9072 répété pour la bi-jonction) ; leur absence ici signale des
+  résidus de second ordre, pas une formule manquante.
+
+### TASK-K86 — Appartements générés de méthode 33/34 : une clé de répartition que rien ne publie
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- Quatre cas — `2659E2542205P` (94 écarts), `2659E2596084W` (58),
+  `2659E2277989L` (60), `2659E2596108U` (57) — ont leur `conso_ch`
+  **d'installation juste** et leur `conso_ch` de `ef_conso` faux : seul le
+  passage à l'échelle du logement diverge. Sur `2659E2542205P`, l'installation
+  publie 159 258,72 contre 159 362,16 (0,065 %, conforme) et `ef_conso`
+  7 239,03 contre 15 420,40.
+- **Le facteur implicite de la référence n'est ni la part surfacique ni
+  1/Nblgt**, et il n'est pas constant :
+
+  | Cas | facteur réf. | sh_log / sh_imm | 1/Nblgt | rapport |
+  |---|---:|---:|---:|---:|
+  | 2659E2542205P | 0,096763 | 0,045455 | 0,038462 | 2,13 |
+  | 2659E2596084W | 0,058069 | 0,037850 | 0,035714 | 1,53 |
+  | 2659E2277989L | 0,080142 | 0,067172 | 0,071429 | 1,19 |
+  | 2659E2596108U | 0,028544 | 0,034065 | 0,035714 | 0,84 |
+
+- Les quatre déclarent `cle_repartition_ch = 1` et `rdim = 1` ; leur
+  installation est collective (type 2 ou 3). La surface implicite qu'on en
+  déduit — 178,8 m² pour un logement de 84 m², 37,7 pour un de 45 — ne
+  correspond à aucune donnée du fichier.
+- **Rouvrir si** un export de ce type publie enfin une clé exploitable, ou si
+  §17.2 précise la répartition d'une installation collective vers un
+  appartement généré en chauffage mixte.
+
+### TASK-K87 — cfg 9 : la branche d'appoint bois sur-estimée de 24 %
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- `2601E0060401J` (47 écarts) porte une installation `cfg = 9` — chaudière en
+  relève de PAC **avec insert ou poêle en appoint** — à trois générateurs
+  répartis sur deux branches par `enum_lien_generateur_emetteur_id`.
+- **Les deux branches ne divergent pas de la même façon**, ce qui localise le
+  défaut : les deux générateurs de la branche 1 (types 7 et 106) sont à
+  ×1,0329 de la référence, le générateur de la branche 2 (type 43, insert) à
+  **×1,2412**. Un écart propre à une branche est un écart de **part**, pas de
+  rendement — ceux-ci sont identiques des deux côtés (0,97 et 0,75).
+- Part de la branche 2 : 0,4934 chez nous contre 0,4477 dans la référence.
+  Ni 0,25 ni 0,1, donc ce n'est pas un facteur §9.x lu tel quel ; et
+  reconstruire l'intermittence à rebours donne 1,067 pour notre branche 2,
+  une valeur impossible — le produit `part × INT` est donc mal réparti.
+- Commencer par vérifier ce que `ChaudiereReleve` attribue à chaque branche,
+  et avec quelle intermittence, plutôt que les rendements.
+
+### TASK-K84 — Réseau de chaleur multi-bâtiment : 0,75 ou 0,90, le corpus ne tranche plus
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- §14.3 p.95 distingue l'installation « isolée » (Rs × Rg = 0,9) de celle qui
+  ne l'est pas (0,75). Le XSD ne porte ce qualificatif que sur les réseaux
+  urbains 72/73 ; pour les « chaudière(s) … multi bâtiment modélisée(s) comme
+  un réseau de chaleur » (74-77, 134), `ReseauChaleurCalculator` le reconstruit
+  depuis les positions déclarées : générateur **et** ballon hors volume
+  chauffé ⇒ 0,75.
+- **La règle était unanime sur trente occurrences ; elle est désormais à deux
+  contre deux**, et le seul discriminant est la version du moteur éditeur :
+  0,75 sur `2501E1812848D` (3cl-2024.6.1.0) et `2513E0192986F`
+  (3cl_tribu_2024.6.1.0), 0,90 sur `2695E2427686K` et `2695E2608627R`
+  (BBS_Slama_2025.11.1.0). Les entrées sont identiques — type 76, stockage
+  hors volume chauffé, usage 3, saisie 1.
+- **Mesuré** : abandonner la règle (0,90 pour tout multi-bâtiment) donne
+  **exactement 0 écart de différence** en A/B isolé sur 541 cas, 0 crash —
+  deux cas gagnent 26 et 19 écarts, deux autres en perdent 25 et 20. Le
+  compteur ne peut donc pas arbitrer.
+- Le facteur est 1,2 exactement (0,90 / 0,75) et se propage à tout l'ECS :
+  sur `2695E2427686K`, `conso_ecs` vaut 3 548,33 contre 2 956,95 publiés,
+  pour un `besoin_ecs` identique à la onzième décimale.
+- **Trancher sur le texte, pas sur le corpus** : chercher si l'arrêté ou une
+  note CSTB qualifie l'isolation d'une sous-station multi-bâtiment, ou si la
+  version 2025.11 des moteurs a acté un changement. Rouvrir aussi si un
+  cinquième fichier en configuration « hors volume chauffé » arrive.
+
 ### TASK-K45 — Ponts thermiques des exports 7.x, après correction Ue
 
 - [ ] Owner: __ | Phase: K | Priorité: haute

@@ -39,6 +39,7 @@ trait StrategieComputeTrait
         CalculationContext $context,
         ?float $besoinPublie = null,
         ?float $besoinPublieDep = null,
+        float $partContinue = 0.0,
     ): float {
         $accessor = new NodeAccessor($context->document);
 
@@ -49,6 +50,14 @@ trait StrategieComputeTrait
         $g   = ($hsp * $shImmeuble) > 0.0 ? $gv / ($hsp * $shImmeuble) : 1.0;
         $i0  = $this->weightedEmetteurFloat($accessor, $node, 'i0') ?? 1.0;
         $int = $i0 / (1.0 + 0.1 * ($g - 1.0));
+
+        // Une part de l'installation peut fonctionner **sans** intermittence :
+        // §9.9, où le circuit collectif d'un convecteur bi-jonction assure la
+        // base en continu et seul son circuit individuel est régulé. Les deux
+        // parts partagent alors le même Ich, mais pas le même INT.
+        if ($partContinue > 0.0) {
+            $int = $partContinue + (1.0 - $partContinue) * $int;
+        }
 
         $re = $this->weightedEmetteurFloat($accessor, $node, 'rendement_emission')    ?? 1.0;
         $rd = $this->weightedEmetteurFloat($accessor, $node, 'rendement_distribution') ?? 1.0;

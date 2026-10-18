@@ -112,10 +112,22 @@ final class ReseauChaleurCalculator implements CalculatorInterface
      * Un générateur sans ballon n'a pas de stockage à placer : sa position
      * seule ne suffit pas à le déclarer non isolé.
      *
-     * Les trente occurrences du corpus s'y rangent sans exception : les deux
-     * seules à 0,75 (2501E1812848D, 2513E0192986F) ont générateur et ballon
-     * hors volume chauffé, et les vingt-huit à 0,90 ont soit l'un des deux à
-     * l'intérieur, soit aucun ballon.
+     * **Cette règle n'est plus départagée par le corpus, et le rester serait
+     * la seule raison de la garder.** Elle l'était sur trente occurrences ;
+     * elle est aujourd'hui à deux contre deux. Les quatre fichiers en
+     * configuration « générateur et ballon hors volume chauffé » ont des
+     * entrées identiques — type 76, usage 3, saisie 1 — et des sorties
+     * opposées :
+     *
+     *   - 0,75 : `2501E1812848D` (3cl-2024.6.1.0), `2513E0192986F`
+     *     (3cl_tribu_2024.6.1.0) ;
+     *   - 0,90 : `2695E2427686K`, `2695E2608627R` (BBS_Slama_2025.11.1.0).
+     *
+     * Le seul discriminant est la **version du moteur éditeur**, pas une
+     * donnée du fichier. Abandonner la règle — 0,90 pour tout multi-bâtiment —
+     * a été mesuré en A/B isolé sur 541 cas : **exactement 0 écart de
+     * différence**, deux cas gagnant 26 et 19 écarts, deux autres en perdant
+     * 25 et 20. Voir TASK-K84.
      *
      * @spec-section 14.3
      * @spec-pages   95

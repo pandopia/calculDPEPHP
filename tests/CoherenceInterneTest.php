@@ -133,6 +133,28 @@ final class CoherenceInterneTest extends TestCase
             }
         }
 
+        // Les auxiliaires d'une installation ne peuvent pas consommer plus que
+        // le chauffage qu'ils servent : un circulateur dimensionné sur le
+        // réseau de l'immeuble publié sur un appartement de 35 m² donnait
+        // 7 792 kWh pour 1 919 de chauffage. La ventilation seule peut
+        // dépasser un chauffage très faible, d'où le seuil.
+        $lireEf = static function (string $tag) use ($xpath): ?float {
+            $noeuds = $xpath->query('//sortie/ef_conso/' . $tag);
+            return $noeuds !== false && $noeuds->length > 0
+                ? (float) str_replace(',', '.', (string) $noeuds->item(0)?->textContent)
+                : null;
+        };
+        $consoCh = $lireEf('conso_ch');
+        $auxCh = ($lireEf('conso_auxiliaire_generation_ch') ?? 0.0)
+            + ($lireEf('conso_auxiliaire_distribution_ch') ?? 0.0);
+        if ($consoCh !== null && $consoCh > 0.0 && $auxCh > $consoCh) {
+            $ecarts[] = sprintf(
+                'auxiliaires de chauffage (%.3f) supérieurs à la consommation de chauffage (%.3f)',
+                $auxCh,
+                $consoCh,
+            );
+        }
+
         // Le bloc des déperditions : son enveloppe est la somme de ses postes,
         // et son renouvellement d'air celle de ses deux termes. C'est ce
         // second invariant qui a révélé que nous écrivions `hvent = 0` pour le
