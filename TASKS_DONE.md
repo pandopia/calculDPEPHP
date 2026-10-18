@@ -19,6 +19,41 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K83 — Pertes de stockage ECS récupérées : notre calcul est exact, la condition est indécidable
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- **Point de départ** : 31 des 33 maisons dont `besoin_ch` est hors tolérance
+  l'ont **sous-estimé**, ratios de 0,78 à 0,997. Le biais est directionnel, pas
+  du bruit.
+- **Premier intermédiaire divergent isolé** : sur 15 d'entre elles, `GV` et
+  `fraction_apport_gratuit_ch` sont justes, donc l'écart ne peut venir que du
+  terme suivant. En reconstruisant le besoin brut
+  `GV × ΣDH19 × (1 − F) / 1000`, la référence en retranche 0,24 à 0,60 % de
+  pertes récupérées quand nous en retranchons 2,07 à 3,78 % — six à dix fois
+  trop. Le coupable est `pertes_stockage_ecs_recup`, et l'écart le confirme au
+  kWh près : 427,43 publiés par nous contre 426,40 d'écart sur
+  `2400E0020849A`.
+- **Notre calcul n'est pas en cause.** Sur les **67 références qui publient une
+  valeur non nulle, nous la reproduisons à 1,0000** — y compris 163 610,51 et
+  290 244,82. Seules 18 références publient zéro là où nous publions une
+  valeur.
+- **Et la condition qui les distingue n'existe pas dans les données.** Testé et
+  écarté :
+  - `position_volume_chauffe` du générateur en repli de
+    `position_volume_chauffe_stockage` (large, puis restreint au stockage
+    intégré à la production) : **−9 écarts, mais 9 cas améliorés contre 7
+    dégradés**, et les dégradés partaient de 2, 3 et 4 écarts pour monter à
+    32, 39 et 44. Mesuré en A/B isolé, 0 crash.
+  - Le profil d'entrée ne sépare rien : `2600E1253780N` et `2600E0017120R`
+    sont tous deux de type 69, `position_volume_chauffe = 0`, stockage intégré
+    — le premier s'améliore, le second se dégrade.
+  - Le moteur éditeur non plus : Tribu publie 11 zéros et 20 valeurs, BBS
+    Slama 5 et 32.
+- Les références se contredisent donc entre elles sur des configurations
+  identiques. **Rouvrir si** le corpus livre un cas où une donnée d'entrée
+  sépare les deux comportements, ou si §9.1.1 reçoit une précision sur la
+  localisation du stockage.
+
 ### TASK-K81 — Le coût dépensier des références recopie le conventionnel 4 fois sur 5
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
