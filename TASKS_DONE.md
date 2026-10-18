@@ -19,6 +19,47 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K65 — Réseaux de chaleur : colonne ACV confirmée, 39 références contre 1
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- **Le chantier de cette tâche est livré** (commit « digitaliser les millésimes
+  2020 et 2021 ») : millésimes 2020 et 2021 digitalisés, 69 valeurs tronquées
+  du millésime 2024 reprises, et choix du millésime par les plages publiées au
+  lieu de `max(2022, année − 1)`. Ce qui est archivé ici est le **verdict sur
+  sa dernière question ouverte**, qui ne demande aucun code.
+- **La colonne est l'ACV, et le corpus le dit à 39 contre 1.** Pour chaque
+  référence qui déclare un unique réseau de chaleur, le rapport
+  `emission_ges_5_usages / conso_5_usages` de sa ligne
+  `sortie_par_energie[enum_type_energie_id=8]` donne le contenu CO2 que la
+  référence a réellement appliqué. Sur les 45 fichiers concernés :
+
+  | Colonne lue par la référence | Fichiers |
+  |---|---:|
+  | « Contenu CO2 ACV » — la nôtre | **39** |
+  | « Contenu CO2 » direct | 1 |
+  | ni l'une ni l'autre (sorties déjà imputées) | 5 |
+
+  Les 39 concordent **à six décimales** avec le millésime que les plages
+  désignent, ce qui valide du même coup la table et la règle de sélection.
+- **`5703C` est donc tranché, et c'est la référence.** `2457E3582864U` (DPE du
+  12 octobre 2024, `date_arrete_reseau_chaleur` = 2024-07-05, soit le millésime
+  2023) implique 0,068. L'annexe donne pour ce réseau et ce millésime 0,068 en
+  **contenu direct** et 0,092 en **contenu ACV** : la référence a lu la
+  mauvaise colonne de la bonne ligne. Le cas est par ailleurs à 93,3 % avec
+  10 écarts, dont 9 déjà imputés.
+- **Pas de règle `ReferenceDefects` pour autant.** Elle demanderait de faire
+  entrer le `TableRepository` et la sélection de millésime dans `ReferenceDefects`,
+  qui ne travaille aujourd'hui que sur le fichier de référence, pour imputer
+  4 balises d'un seul fichier. Rouvrir si un second éditeur apparaît dans la
+  colonne directe — la mesure ci-dessus se refait en une passe.
+- **Les cinq « ni l'une ni l'autre »** sont les `sortie_par_energie` à zéro ou
+  à 0,00276 déjà couverts par `agregatIncompatibleAvecSaVentilation` ; rien à
+  y chercher de plus.
+- Source des contenus : `valeur_tables.xlsx` du dépôt de l'observatoire DPE de
+  l'ADEME. **Légifrance n'est plus une voie praticable** : 403 sur les liens de
+  téléchargement PDF, protection anti-robot sur les pages LODA. Ne pas y
+  repasser du temps.
+
 ### TASK-H23 — Ponts thermiques des parois en adjacence 22 : convention d'éditeur
 
 - [ ] Owner: __ | Phase: K | Priorité: basse

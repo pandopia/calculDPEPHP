@@ -292,23 +292,21 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   surface habitable du bâtiment », ce que le code applique déjà : chercher la
   source avant de s'en écarter, et mesurer en A/B.
 
-### TASK-K65 — Réseaux de chaleur : le résidu après les millésimes manquants
+### TASK-K67 — 2242E2979513I : conso_ch à +20 % une fois le facteur CO2 juste
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
-- **Livré** : les millésimes 2020 et 2021 sont digitalisés, les 69 valeurs
-  tronquées du millésime 2024 reprises, et `ReseauChaleurFactorResolver`
-  applique désormais les plages publiées au lieu de `max(2022, année − 1)`.
-  Source : `valeur_tables.xlsx` du dépôt amont de l'observatoire DPE, feuilles
-  `reseau_chaleur_2020` à `2025` — Légifrance ne sert plus les PDF de ces
-  arrêtés (HTTP 403, puis protection anti-robot sur les pages LODA).
-- Reste indépendant de ce chantier : `5703C` au millésime 2023 (arrêté du
-  5 juillet 2024), où `2457E3582864U` implique 0,068 quand nous lisons 0,092.
-  Vérifier la ligne dans l'arrêté avant de conclure.
-- Reste ouvert sur `2242E2979513I`, mais **ce n'est plus le facteur** : ses
-  trois lignes `sortie_par_energie` donnent un rapport émissions / consommation
-  de 0,109000 à six décimales, que nous appliquons maintenant. L'écart restant
-  est en amont, sur `conso_ch` — 160 558 kWh calculés contre 133 765 publiés.
-  C'est un problème de consommation de chauffage, à instruire comme tel.
+- Le facteur d'émission de ce DPE est désormais exact — ses trois lignes
+  `sortie_par_energie` donnent 0,109000 à six décimales, et nous l'appliquons
+  (cf. le bloc TASK-K65 de `TASKS_DONE.md`). Sa branche ECS en devient juste au
+  millième : 22 459,878 calculés contre 22 459,880 publiés.
+- **Ce qui reste est en amont, sur la consommation de chauffage** : 160 558 kWh
+  calculés contre 133 765 publiés, soit +20,0 %. Le besoin, les rendements et
+  l'échelle sont à reprendre dans cet ordre, pas les agrégats d'aval.
+- Le fichier est un DPE du 6 avril 2022 au modèle 2.2 — le plus ancien du
+  corpus. Vérifier d'abord si son échelle (immeuble ou logement) est celle que
+  nous lui prêtons : c'est le suspect habituel d'un écart de +20 % franc.
+- Ses balises `emission_ges_ecs` et `ep_conso_ecs` sont publiées permutées avec
+  leurs dépensières, et déjà imputées à ce titre. Ne pas les instruire.
 
 ### TASK-K45 — Ponts thermiques des exports 7.x, après correction Ue
 
