@@ -434,6 +434,50 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   dont il vaut 4,876 %. Ne rien coder tant que la forme n'est pas sourcée :
   §13.2.2.2 ne donne que QPx, et l'assemblage vers Rg est ailleurs.
 
+### TASK-K78 — Le photovoltaïque autoconsommé n'est déduit que des agrégats
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- `ProductionPvCalculator` retranche l'autoconsommation de `conso_ch`,
+  `conso_ecs`, `conso_fr`, `conso_eclairage` et `conso_totale_auxiliaire` du
+  bloc `ef_conso`, puis met `conso_5_usages` à jour. Il ne touche ni aux
+  **postes d'auxiliaires** ni aux lignes de **`sortie_par_energie`**.
+- **Le premier n'est pas un défaut** : les références font pareil. Sur
+  `2400E0180612T` la référence publie `conso_totale_auxiliaire` = 724,098
+  quand ses cinq postes somment 974,310, et nous publions 723,785. La
+  déduction porte sur le total, les postes restent bruts — convention à
+  conserver.
+- **Le second en est un** : les références tiennent `conso_5_usages` du bloc
+  `ef_conso` égal à la somme de sa ventilation par énergie, et nous non —
+  8 409,5 contre 8 473,1 sur le même fichier. `SortieParEnergieAggregator`
+  somme les **générateurs**, que la déduction n'atteint pas ; ajouter une
+  dépendance d'ordonnancement vers `ProductionPvCalculator` ne change donc
+  rien, c'est vérifié.
+- **Neuf cas du corpus** ont une autoconsommation non nulle : 2133E0741159K,
+  2651E0229108A, 2601E0370414Y, 2601E0981468A, 2400E0615430N, 2400E1027746V,
+  2400E0180612T, 2601E0406718G, 2401E1474278E. Les 533 autres publient
+  `conso_elec_ac` nul ou absent, d'où la portée limitée.
+- `tests/CoherenceInterneTest.php` saute ces deux invariants quand
+  l'autoconsommation est non nulle, en citant cette tâche.
+
+### TASK-K79 — `partsParEnergie` retombe sur une énergie unique sans `conso_ch` d'installation
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- `CoutCalculator::partsParEnergie` répartit la consommation entre énergies en
+  sommant les générateurs, mais **abandonne** — en renvoyant
+  `[$energieParDefaut => 1.0]` — si les installations ne publient pas leur
+  propre `conso_ch`, le total d'installation servant de contrôle. Tout le
+  chauffage est alors tarifé au barème d'une seule énergie.
+- `SortieParEnergieAggregator`, lui, somme les générateurs sans ce contrôle.
+  Les deux blocs tarifent donc des paniers différents : sur `2675E2152874Y`,
+  `cout_ch` vaut 420,22 dans `<cout>` et 453,31 une fois ventilé par énergie,
+  soit 7,9 % d'écart, alors que **les consommations, elles, concordent**
+  (829,10 de gaz et 1 256,67 d'électricité des deux côtés).
+- Le fichier a deux installations de chauffage d'une énergie chacune, et
+  aucune ne publie `conso_ch` : c'est la stratégie qui les calcule qui ne
+  l'écrit pas. Commencer par là — un `conso_ch` d'installation manquant est
+  en soi une balise que le schéma prévoit.
+- Ce cas est la seule entrée de `CoherenceInterneTest::DETTE_CONNUE`.
+
 ### TASK-K67 — 2242E2979513I : conso_ch à +20 % une fois le facteur CO2 juste
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
