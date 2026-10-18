@@ -19,6 +19,7 @@ use DOMElement;
  * Facteurs d'émission (kgCO2eq/kWh EF) par type d'énergie et usage :
  *   Électricité CH   : 0.079  Électricité ECS   : 0.065
  *   Électricité ECL  : 0.069  Électricité AUX   : 0.064
+ *   Électricité FR   : 0.064
  *   Gaz naturel      : 0.227  Fioul domestique  : 0.324
  *   Bois (toutes formes) : 0.030  Propane : 0.272
  *   Réseau chaleur : contenu CO2 ACV de l'arrêté annuel, sinon 0.385
@@ -46,6 +47,23 @@ final class EmissionGesCalculator implements CalculatorInterface
     private const GES_ELEC_ECS = 0.065;
     private const GES_ELEC_ECL = 0.069;
     private const GES_ELEC_AUX = 0.064;
+
+    /**
+     * Refroidissement — annexe 5, même valeur que les auxiliaires.
+     *
+     * Le contenu CO2 de l'électricité est différencié par usage : 0,079 pour
+     * le chauffage, 0,065 pour l'ECS, 0,069 pour l'éclairage, 0,064 pour les
+     * auxiliaires **et pour le refroidissement**. Le facteur du chauffage
+     * s'appliquait ici au froid, surestimant ses émissions de 23,4 %
+     * (0,079 / 0,064 = 1,2344) — exactement le rapport que 22 références du
+     * corpus affichent, dans les deux régimes du coefficient EP, et avec une
+     * `conso_fr` par ailleurs juste.
+     *
+     * `SortieParEnergieAggregator` portait déjà `elec_fr => 0.064` : les deux
+     * calculateurs décrivent les mêmes kilogrammes, vus par usage puis par
+     * énergie, et ne pouvaient pas diverger.
+     */
+    private const GES_ELEC_FR  = 0.064;
 
     // Facteurs GES par type d'énergie (kgCO2eq/kWh EF)
     private const GES_BY_ENERGY = [
@@ -135,8 +153,8 @@ final class EmissionGesCalculator implements CalculatorInterface
         $efConsoEcl   = $accessor->getFloatOrNull('./conso_eclairage',    $efConso) ?? 0.0;
 
         // Froid : électricité (COP intégré dans ConsoFroidCalculator)
-        $gesConsoFr    = $efConsoFr    * self::GES_ELEC_CH;
-        $gesConsoFrDep = $efConsoFrDep * self::GES_ELEC_CH;
+        $gesConsoFr    = $efConsoFr    * self::GES_ELEC_FR;
+        $gesConsoFrDep = $efConsoFrDep * self::GES_ELEC_FR;
 
         // Éclairage
         $gesConsoEcl = $efConsoEcl * self::GES_ELEC_ECL;

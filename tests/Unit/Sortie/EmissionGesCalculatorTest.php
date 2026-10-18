@@ -17,6 +17,7 @@ use PHPUnit\Framework\TestCase;
  * Facteurs GES (kgCO2eq/kWh EF) :
  *   Électricité CH  : 0.079   Électricité ECS : 0.065
  *   Électricité ECL : 0.069   Auxiliaires     : 0.064
+ *   Refroidissement : 0.064
  *   Gaz naturel     : 0.227
  */
 final class EmissionGesCalculatorTest extends TestCase
@@ -74,6 +75,32 @@ XML;
     /**
      * Éclairage : ef=100 × 0.069 = 6.9.
      */
+    /**
+     * Le refroidissement partage le facteur des auxiliaires, 0,064, et non
+     * celui du chauffage : le contenu CO2 de l'électricité est différencié par
+     * usage à l'annexe 5. Le facteur du chauffage surestimait ses émissions de
+     * 23,4 % — 0,079 / 0,064 = 1,2344, exactement le rapport que 22 références
+     * du corpus affichaient avec une `conso_fr` par ailleurs juste.
+     */
+    public function testFroidUtiliseLeFacteurDesAutresUsages(): void
+    {
+        [$doc, $node, $ctx] = $this->buildDocWithEfConso(
+            ['conso_fr' => 100.0, 'conso_fr_depensier' => 250.0],
+            shLogement: 100.0,
+            shImmeuble: 1000.0,
+        );
+
+        (new EmissionGesCalculator())->calculate($node, $ctx);
+
+        $emGes = $doc->getElementsByTagName('emission_ges')->item(0);
+        $lire = static fn(string $tag): float
+            => (float) $emGes->getElementsByTagName($tag)->item(0)->textContent;
+
+        self::assertEqualsWithDelta(100.0 * 0.064, $lire('emission_ges_fr'), 0.001);
+        self::assertEqualsWithDelta(250.0 * 0.064, $lire('emission_ges_fr_depensier'), 0.001);
+        self::assertNotEqualsWithDelta(100.0 * 0.079, $lire('emission_ges_fr'), 0.001);
+    }
+
     public function testEclairageGes(): void
     {
         [$doc, $node, $ctx] = $this->buildDocWithEfConso(
