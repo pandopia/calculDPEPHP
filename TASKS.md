@@ -459,29 +459,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - `tests/CoherenceInterneTest.php` saute ces deux invariants quand
   l'autoconsommation est non nulle, en citant cette tâche.
 
-### TASK-K80 — Cascade de deux chaudières : §13.2.1.3 n'est pas modélisée
-
-- [~CLA] Owner: Claude | Phase: K | Priorité: moyenne
-- Une installation `enum_cfg_installation_ch_id = 1` portant deux générateurs
-  à combustion de `priorite_generateur_cascade` **distinctes** ne passe par
-  aucun modèle de cascade : `InstallationClassique` écrit à chaque générateur
-  la consommation **entière** de l'installation. `sortie_par_energie`, qui
-  somme les générateurs, publie alors exactement le double.
-- Seul `writeCascadeSansPriorite` existe (§13.2.1.3.2, prorata de Pn), et il
-  exige une priorité de 1 des deux côtés. **§13.2.1.3.1 — cascade avec
-  priorité — n'est pas implémentée** : le générateur 1 prend
-  `min(Prel₁ ; Tch_x)` à chaque point de charge et le second le reliquat, d'où
-  des rendements et des parts distincts même à puissances égales.
-- Cas témoin `2406E1688667C` (immeuble, 143 appartements, deux chaudières gaz
-  à condensation de 350 kW en cascade 1/2). La référence publie 1 118 061,89 et
-  59 635,56 — 94,94 % / 5,06 % — et des `rendement_generation` de 0,974685 et
-  0,985541 ; nous publions 1 146 866,70 deux fois et 1,0014 des deux côtés.
-  Un rendement de génération supérieur à 1 est en soi le signe que le profil
-  de charge n'est pas celui de ce générateur.
-- Le balayage complet de `CoherenceInterneTest` sur les 541 cas ne trouve que
-  ce fichier : la configuration est rare, le défaut est franc.
-- C'est la seule entrée de `CoherenceInterneTest::DETTE_CONNUE`.
-
 ### TASK-K67 — 2242E2979513I : conso_ch à +20 % une fois le facteur CO2 juste
 
 - [ ] Owner: __ | Phase: K | Priorité: basse

@@ -19,6 +19,39 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K80bis — Cascade avec priorité : le subordonné assure-t-il 5 % du besoin ?
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- **Le chantier de TASK-K80 est livré** (trois commits : reconnaissance de la
+  cascade, profil de charge par générateur, part du besoin pour les
+  auxiliaires). Ce qui est archivé ici est le verdict sur sa **dernière
+  question ouverte**, qui ne demande aucun code.
+- Nous faisons assurer **tout** le besoin au générateur prioritaire, et rien au
+  subordonné. La référence `2406E1688667C` publie 1 118 061,89 et 59 635,56,
+  soit 94,94 % / 5,06 %.
+- **Les 5 % de la référence ne se dérivent d'aucune lecture du profil.** Trois
+  candidats ont été calculés sur le Cdimref du fichier (0,8012, pour 700 kW
+  installés et 33 602 W/K) : `Σ(CTchx/Tchx)·pond` donne 8,15 %, `Σ pond·CTchx`
+  — l'énergie réellement fournie — 16,16 %, et `Σ pond·Tchx_final` 16,16 %
+  également. Aucun ne s'approche de 5,06 %, et aucun Cdimref plausible ne les
+  y amène : il faudrait 1,1285, soit un GV de 23 858 W/K quand la référence
+  publie elle-même 33 602.
+- **La règle appliquée est celle du moteur de référence CSTB.** open3cl la
+  documente — « le générateur prioritaire assure la totalité du besoin et son
+  taux de charge est calculé avec sa seule Pn » — et la rattache aux autotests
+  d'État APP5-0-4, 41 et 43. `getProrataGenerateur` y rend explicitement 0
+  pour le secondaire d'une cascade avec priorité.
+- Ce que notre modèle reproduit **exactement**, lui : les deux
+  `rendement_generation`, 0,9746848 contre 0,974685 et 0,9855410 contre
+  0,985541 ; et `cout_auxiliaire_generation_ch`, 235,69867951284 contre
+  235,69867951283419. Un modèle qui tombe juste à six et onze décimales sur
+  les grandeurs voisines n'est pas un modèle qu'une répartition 95/5 invalide.
+- `conso_ch` de l'installation reste à 0,056 % de la référence — dans la
+  tolérance stricte. Seules les deux lignes par générateur divergent.
+- **Rouvrir si** un second éditeur publie une répartition non nulle sur le
+  subordonné d'une cascade avec priorité, ou si un autotest CSTB accessible
+  contredit open3cl.
+
 ### TASK-K65 — Réseaux de chaleur : colonne ACV confirmée, 39 références contre 1
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
