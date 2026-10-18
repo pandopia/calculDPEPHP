@@ -164,11 +164,9 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         // de tous les appartements visités face au GV d'un seul les confondrait.
         // Sinon le GV reste celui du bâtiment entier et la puissance installée
         // est le cumul de tous ses générateurs.
-        $pnCumule   = $this->puissanceCombustionCumulee(
-            $accessor,
-            $context,
-            $gvRameneAuLogementMoyen ? $this->installationParente($node) : null,
-        );
+        $pnCumule   = $gvRameneAuLogementMoyen
+            ? $this->puissanceDuGenerateurMoyen($node, $accessor, $context)
+            : $this->puissanceCombustionCumulee($accessor, $context, null);
 
         // Calcul QPx selon le type de chaudière
         $boilerCat = $this->boilerCategory($genId);
@@ -658,6 +656,45 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         }
 
         return $total;
+    }
+
+    /**
+     * Puissance du générateur « moyen » d'un immeuble à chauffage individuel.
+     *
+     * §17.1.4.2 raisonne sur un appartement moyen : son GV est celui de
+     * l'immeuble divisé par le nombre de logements. Le Cdimref qui s'y compare
+     * doit décrire le **même** logement moyen, donc une chaudière moyenne — et
+     * non celle du générateur courant, sans quoi Cdimref varie d'un
+     * générateur à l'autre alors que §13.2.1.2 le définit pour la zone.
+     *
+     * Les références le confirment sur `2513E2308028Z` : sept chaudières de
+     * 24 et 10 kW y partagent un Cdimref implicite de 2,6834 et 2,6848, soit
+     * un rapport de 0,9995. C'est pourquoi leur grosse chaudière sort avec un
+     * **meilleur** rendement que les petites — son `Rpn` est meilleur — quand
+     * un Cdimref proportionnel à sa puissance lui donnait le pire.
+     */
+    private function puissanceDuGenerateurMoyen(
+        DOMElement $node,
+        NodeAccessor $accessor,
+        CalculationContext $context,
+    ): float {
+        $total = $this->puissanceCombustionCumulee($accessor, $context, null);
+        $nombre = 0;
+        foreach ($context->document->getElementsByTagName('generateur_chauffage') as $gen) {
+            if (!$gen instanceof DOMElement) {
+                continue;
+            }
+            $genId = \CalculDpePHP\Chauffage\GenerateurChAlias::normalizeNode(
+                $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $gen),
+                $gen,
+            );
+            if ($genId !== null && $genId >= self::COMBUSTION_MIN && $genId <= self::COMBUSTION_MAX
+                && ($accessor->getFloatOrNull('./donnee_intermediaire/pn', $gen) ?? 0.0) > 0.0) {
+                $nombre++;
+            }
+        }
+
+        return $nombre > 0 ? $total / $nombre : $total;
     }
 
     /** Installation de chauffage à laquelle appartient le générateur. */
