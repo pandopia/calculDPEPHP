@@ -461,7 +461,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K79 — `partsParEnergie` retombe sur une énergie unique sans `conso_ch` d'installation
 
-- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- [~CLA] Owner: Claude | Phase: K | Priorité: moyenne
 - `CoutCalculator::partsParEnergie` répartit la consommation entre énergies en
   sommant les générateurs, mais **abandonne** — en renvoyant
   `[$energieParDefaut => 1.0]` — si les installations ne publient pas leur
