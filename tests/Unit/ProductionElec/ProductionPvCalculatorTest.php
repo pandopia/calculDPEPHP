@@ -237,6 +237,67 @@ XML;
     }
 
     /**
+     * §16.2 p.103 : « 1,6 : surface par défaut d'un module photovoltaïque ».
+     *
+     * Le forfait sert de **plancher**, pas seulement de repli : une surface
+     * totale de capteurs inférieure à celle des modules qu'elle contient ne
+     * décrit pas des capteurs. Trois références du corpus déclarent
+     * 1,2 m²/module — 21,6 m² pour 18 modules sur `2400E0615430N` — et
+     * produisent comme si elles en avaient 1,6, d'où un rapport de 0,75
+     * exactement sur leur `production_pv`.
+     *
+     * Une surface déclarée **supérieure** au forfait est conservée telle
+     * quelle : `2601E0011359D` publie 56 m² pour un module et reste conforme.
+     *
+     * @return iterable<string, array{float, int, float}>
+     */
+    public static function surfacesDeclarees(): iterable
+    {
+        yield 'surface sous le forfait : le forfait prend le relais' => [21.6, 18, 18 * 1.6];
+        yield 'surface au-dessus du forfait : elle est conservee' => [56.0, 1, 56.0];
+        yield 'surface absente : forfait' => [0.0, 5, 5 * 1.6];
+        yield 'aucun module declare : surface telle quelle' => [10.0, 0, 10.0];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('surfacesDeclarees')]
+    public function testLeForfaitParModuleEstUnPlancher(float $surface, int $modules, float $attendue): void
+    {
+        $declaration = $surface > 0.0 ? "<surface_totale_capteurs>$surface</surface_totale_capteurs>" : '';
+        $declaration .= $modules > 0 ? "<nombre_module>$modules</nombre_module>" : '';
+
+        $xml = <<<XML
+<?xml version="1.0"?>
+<logement>
+    <caracteristique_generale><surface_habitable_logement>100</surface_habitable_logement></caracteristique_generale>
+    <production_elec_enr>
+        <donnee_entree><presence_production_pv>1</presence_production_pv></donnee_entree>
+        <panneaux_pv_collection><panneaux_pv>
+            <enum_orientation_pv_id>1</enum_orientation_pv_id><enum_inclinaison_pv_id>1</enum_inclinaison_pv_id>
+            $declaration
+        </panneaux_pv></panneaux_pv_collection>
+    </production_elec_enr>
+    <installation_chauffage_collection/>
+    <installation_ecs_collection/>
+    <sortie><ef_conso>
+        <conso_ch>1000</conso_ch><conso_ecs>300</conso_ecs><conso_fr>0</conso_fr>
+        <conso_eclairage>200</conso_eclairage><conso_totale_auxiliaire>50</conso_totale_auxiliaire>
+        <conso_5_usages>1550</conso_5_usages>
+    </ef_conso></sortie>
+</logement>
+XML;
+        $doc = $this->runOnLogement($xml);
+        $di = $doc->getElementsByTagName('production_elec_enr')->item(0)
+            ?->getElementsByTagName('donnee_intermediaire')->item(0);
+        self::assertNotNull($di);
+
+        $sumEpvH1a = 50.1 + 54.7 + 123.4 + 169.3 + 208.2 + 217.8 + 221.9 + 173.3 + 163.6 + 88.9 + 59.1 + 43.2;
+        $attendu = 1.00 * $attendue * 0.17 * $sumEpvH1a * 0.86;
+        $obtenu = (float) $di->getElementsByTagName('production_pv')->item(0)->textContent;
+
+        $this->assertEqualsWithDelta($attendu, $obtenu, $attendu * self::TOL);
+    }
+
+    /**
      * EF conso réduite par autoconsommation (conso_5_usages doit baisser).
      */
     public function testEfConsoReducedByAutoconsumption(): void
