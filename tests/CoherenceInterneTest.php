@@ -133,7 +133,48 @@ final class CoherenceInterneTest extends TestCase
             }
         }
 
+        // Le bloc des déperditions : son enveloppe est la somme de ses postes,
+        // et son renouvellement d'air celle de ses deux termes. C'est ce
+        // second invariant qui a révélé que nous écrivions `hvent = 0` pour le
+        // mode 26, en imitant une convention d'éditeur.
+        $this->deperditionsCoherentes($xpath, $ecarts);
+
         self::assertSame([], $ecarts, "Sortie incohérente avec elle-même :\n" . implode("\n", $ecarts));
+    }
+
+    /** @param list<string> $ecarts */
+    private function deperditionsCoherentes(DOMXPath $xpath, array &$ecarts): void
+    {
+        $lire = static function (string $tag) use ($xpath): ?float {
+            $noeuds = $xpath->query('//sortie/deperdition/' . $tag);
+            return $noeuds !== false && $noeuds->length > 0
+                ? (float) str_replace(',', '.', (string) $noeuds->item(0)?->textContent)
+                : null;
+        };
+
+        $renouvellement = $lire('deperdition_renouvellement_air');
+        $hvent = $lire('hvent');
+        $hperm = $lire('hperm');
+        if ($renouvellement !== null && $renouvellement > 0.0 && $hvent !== null && $hperm !== null) {
+            $this->comparer($ecarts, 'renouvellement_air = hvent + hperm', $renouvellement, $hvent + $hperm);
+        }
+
+        $enveloppe = $lire('deperdition_enveloppe');
+        $somme = 0.0;
+        foreach ([
+            'deperdition_mur', 'deperdition_plancher_bas', 'deperdition_plancher_haut',
+            'deperdition_baie_vitree', 'deperdition_porte', 'deperdition_pont_thermique',
+            'deperdition_renouvellement_air',
+        ] as $poste) {
+            $valeur = $lire($poste);
+            if ($valeur === null) {
+                return;
+            }
+            $somme += $valeur;
+        }
+        if ($enveloppe !== null && $enveloppe > 0.0) {
+            $this->comparer($ecarts, 'deperdition_enveloppe = Σ postes', $enveloppe, $somme);
+        }
     }
 
     /** @param list<string> $ecarts */
