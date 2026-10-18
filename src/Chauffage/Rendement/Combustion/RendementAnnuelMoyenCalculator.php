@@ -585,7 +585,7 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
             $nblgt = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement');
             if ($nblgt !== null && $nblgt > 1) {
                 $share = \CalculDpePHP\Collectif\ChauffageInstallationMultiplicity::directShareOrNull($node, $accessor)
-                    ?? (1.0 / $nblgt);
+                    ?? (1.0 / max($nblgt, $this->nombreDeSystemesIndividuels($node, $accessor)));
                 return [$gv * $share, true];
             }
         }
@@ -617,6 +617,44 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
                 continue;
             }
             $total += $accessor->getFloatOrNull('./donnee_intermediaire/pn', $gen) ?? 0.0;
+        }
+
+        return $total;
+    }
+
+    /**
+     * Nombre de systèmes de chauffage individuels décrits par le document.
+     *
+     * Cdimref compare la puissance installée d'**un** générateur au GV qu'il
+     * dessert. Quand §17.1.4.2 ramène ce GV à l'appartement « moyen », le
+     * diviseur ne peut pas être inférieur au nombre de systèmes décrits : un
+     * immeuble peut en porter davantage que son `nombre_appartement` — sept
+     * chaudières individuelles pour six appartements sur `2400E0575636Z` —, et
+     * chacune dessert alors moins qu'un appartement moyen.
+     *
+     * Le maximum des deux, et non le seul nombre de systèmes : un GV par
+     * système **supérieur** au GV par logement n'a pas de sens dans un
+     * immeuble à chauffage individuel, et le mesurer le confirme — la règle
+     * non bornée coûte 537 écarts sur 23 cas.
+     */
+    private function nombreDeSystemesIndividuels(DOMElement $node, NodeAccessor $accessor): float
+    {
+        $logement = $node;
+        while ($logement instanceof DOMElement && $logement->nodeName !== 'logement') {
+            $parent = $logement->parentNode;
+            $logement = $parent instanceof DOMElement ? $parent : null;
+        }
+        if ($logement === null) {
+            return 0.0;
+        }
+
+        $total = 0.0;
+        foreach ($logement->getElementsByTagName('installation_chauffage') as $install) {
+            if (!$install instanceof DOMElement
+                || $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $install) !== 1) {
+                continue;
+            }
+            $total += $accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0;
         }
 
         return $total;
