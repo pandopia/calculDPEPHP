@@ -461,7 +461,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K80 — Cascade de deux chaudières : §13.2.1.3 n'est pas modélisée
 
-- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- [~CLA] Owner: Claude | Phase: K | Priorité: moyenne
 - Une installation `enum_cfg_installation_ch_id = 1` portant deux générateurs
   à combustion de `priorite_generateur_cascade` **distinctes** ne passe par
   aucun modèle de cascade : `InstallationClassique` écrit à chaque générateur
