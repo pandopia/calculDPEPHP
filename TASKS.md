@@ -483,6 +483,33 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   rendement publié, puis le comparer aux combinaisons (GV complet, GV/nblgt,
   GV/nb systèmes) × (Pn générateur, Pn totale, Pn moyenne).
 
+### TASK-K86 — Appartements générés de méthode 33/34 : une clé de répartition que rien ne publie
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- Quatre cas — `2659E2542205P` (94 écarts), `2659E2596084W` (58),
+  `2659E2277989L` (60), `2659E2596108U` (57) — ont leur `conso_ch`
+  **d'installation juste** et leur `conso_ch` de `ef_conso` faux : seul le
+  passage à l'échelle du logement diverge. Sur `2659E2542205P`, l'installation
+  publie 159 258,72 contre 159 362,16 (0,065 %, conforme) et `ef_conso`
+  7 239,03 contre 15 420,40.
+- **Le facteur implicite de la référence n'est ni la part surfacique ni
+  1/Nblgt**, et il n'est pas constant :
+
+  | Cas | facteur réf. | sh_log / sh_imm | 1/Nblgt | rapport |
+  |---|---:|---:|---:|---:|
+  | 2659E2542205P | 0,096763 | 0,045455 | 0,038462 | 2,13 |
+  | 2659E2596084W | 0,058069 | 0,037850 | 0,035714 | 1,53 |
+  | 2659E2277989L | 0,080142 | 0,067172 | 0,071429 | 1,19 |
+  | 2659E2596108U | 0,028544 | 0,034065 | 0,035714 | 0,84 |
+
+- Les quatre déclarent `cle_repartition_ch = 1` et `rdim = 1` ; leur
+  installation est collective (type 2 ou 3). La surface implicite qu'on en
+  déduit — 178,8 m² pour un logement de 84 m², 37,7 pour un de 45 — ne
+  correspond à aucune donnée du fichier.
+- **Rouvrir si** un export de ce type publie enfin une clé exploitable, ou si
+  §17.2 précise la répartition d'une installation collective vers un
+  appartement généré en chauffage mixte.
+
 ### TASK-K84 — Réseau de chaleur multi-bâtiment : 0,75 ou 0,90, le corpus ne tranche plus
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
