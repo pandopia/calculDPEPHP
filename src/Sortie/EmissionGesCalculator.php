@@ -143,6 +143,17 @@ final class EmissionGesCalculator implements CalculatorInterface
             ? ($isZone ? $gesEcsDepTotal * $cleRepartitionEcs : $gesEcsDepTotal)
             : $gesConsoEcsEf;
 
+        // §16.2 p.105 : l'électricité autoconsommée n'est ni achetée ni émise.
+        // Les émissions du chauffage et de l'ECS sont agrégées depuis les
+        // installations, que `ProductionPvCalculator` n'atteint pas — il ne
+        // réduit que `ef_conso`. Les kilowattheures économisés étant
+        // électriques, c'est le facteur de l'électricité qui se retranche.
+        // Le scénario dépensier n'est pas déduit, comme dans `ef_conso`.
+        $gesConsoChEf  = max(0.0, $gesConsoChEf
+            - (float) ($context->get('pv.ac_ch') ?? 0.0) * self::GES_ELEC_CH);
+        $gesConsoEcsEf = max(0.0, $gesConsoEcsEf
+            - (float) ($context->get('pv.ac_ecs') ?? 0.0) * self::GES_ELEC_ECS);
+
         // ── 4. ef_conso depuis le DOM ────────────────────────────────────────
         $sortie    = $accessor->ensureSortie($node);
         $efConso   = $this->ensureChild($context->document, $sortie, 'ef_conso');
@@ -175,7 +186,15 @@ final class EmissionGesCalculator implements CalculatorInterface
         $gesCauxGenEcsDep = ($nativeAdeme ? $cauxGenEcsDep : $cauxGenEcs) * self::GES_ELEC_AUX;
         $gesCauxDistEcs   = $cauxDistEcs   * self::GES_ELEC_AUX;
         $gesCauxVent      = $cauxVent      * self::GES_ELEC_AUX;
-        $gesCauxTotal     = $gesCauxGenCh + $gesCauxDistCh + $gesCauxGenEcs + $gesCauxDistEcs + $gesCauxVent;
+        // Le total est celui de `conso_totale_auxiliaire`, pas la somme des
+        // postes : §16.2 déduit l'autoconsommation du seul total, les postes
+        // restant bruts — convention que les références suivent elles aussi
+        // (724,098 contre 974,310 de postes sur 2400E0180612T). Hors
+        // autoconsommation les deux coïncident, et ce total vaut la somme.
+        $cauxTotal        = $accessor->getFloatOrNull('./conso_totale_auxiliaire', $efConso);
+        $gesCauxTotal     = $cauxTotal !== null
+            ? $cauxTotal * self::GES_ELEC_AUX
+            : $gesCauxGenCh + $gesCauxDistCh + $gesCauxGenEcs + $gesCauxDistEcs + $gesCauxVent;
 
         // ── 6. 5 usages GES ─────────────────────────────────────────────────
         $ges5   = $gesConsoChEf + $gesConsoEcsEf + $gesConsoFr + $gesConsoEcl + $gesCauxTotal;

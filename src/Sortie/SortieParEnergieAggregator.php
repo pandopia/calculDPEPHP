@@ -95,7 +95,12 @@ final class SortieParEnergieAggregator implements CalculatorInterface
 
     public function dependencies(): array
     {
-        return [EpConsoCalculator::class, EmissionGesCalculator::class, CoutCalculator::class];
+        return [
+            EpConsoCalculator::class,
+            EmissionGesCalculator::class,
+            CoutCalculator::class,
+            \CalculDpePHP\ProductionElec\ProductionPvCalculator::class,
+        ];
     }
 
     public function appliesTo(DOMElement $node): bool
@@ -185,6 +190,22 @@ final class SortieParEnergieAggregator implements CalculatorInterface
                 $consoFrEDep = $consoFrDep;
             }
 
+            // §16.2 p.105 : l'électricité autoconsommée n'est pas achetée.
+            // `ProductionPvCalculator` la retranche usage par usage de
+            // `ef_conso` ; cette ventilation décrit les mêmes kilowattheures et
+            // doit donc la retrancher aussi, sans quoi `conso_5_usages` cesse
+            // d'être la somme de sa ventilation.
+            //
+            // **Seuls le chauffage et l'ECS** : le froid, l'éclairage et les
+            // auxiliaires sont lus plus haut dans `ef_conso`, donc déjà nets,
+            // quand le chauffage et l'ECS viennent des générateurs, que la
+            // déduction n'atteint pas. Le scénario dépensier n'est pas déduit,
+            // là non plus — c'est la convention de `ef_conso`.
+            if ($eId === 1) {
+                $consoChE  = max(0.0, $consoChE  - $this->autoconsommation($context, 'ch'));
+                $consoEcsE = max(0.0, $consoEcsE - $this->autoconsommation($context, 'ecs'));
+            }
+
             $conso5E    = $consoChE + $consoEcsE + $consoFrE + $consoAuxE + $consoEclE;
 
             // GES
@@ -264,6 +285,18 @@ final class SortieParEnergieAggregator implements CalculatorInterface
             $accessor->setChildValue($item, 'cout_ecs',       $coutEcsE);
             $accessor->setChildValue($item, 'cout_5_usages',  $cout5E);
         }
+    }
+
+    /**
+     * Part d'autoconsommation photovoltaïque affectée à un usage.
+     *
+     * `ProductionPvCalculator` la publie dans le contexte parce qu'elle ne
+     * peut pas transiter par le XML : le schéma ADEME ne déclare pas de balise
+     * pour la déduction par usage, seulement `conso_elec_ac` au total.
+     */
+    private function autoconsommation(CalculationContext $context, string $usage): float
+    {
+        return (float) ($context->get('pv.ac_' . $usage) ?? 0.0);
     }
 
     private function getChild(DOMElement $parent, string $tagName): ?DOMElement

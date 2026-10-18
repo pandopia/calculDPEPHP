@@ -82,16 +82,13 @@ final class CoherenceInterneTest extends TestCase
         $ecarts = [];
 
         // La production photovoltaïque autoconsommée est retranchée des
-        // consommations, et deux invariants ne tiennent plus quand elle n'est
-        // pas nulle — neuf cas du corpus :
-        //
-        //  - `*_totale_auxiliaire = Σ postes` : la déduction porte sur le seul
-        //    total, les postes restent bruts. **C'est la convention des
-        //    références elles-mêmes**, qui publient le même écart au même
-        //    endroit (724,098 contre 974,310 sur 2400E0180612T).
-        //  - `* = Σ par énergie` : la ventilation par énergie somme les
-        //    générateurs, que la déduction n'atteint pas. Les références la
-        //    tiennent égale, elles — c'est TASK-K78.
+        // consommations, et un invariant n'y tient pas : la déduction porte
+        // sur le seul `*_totale_auxiliaire`, les postes restant bruts.
+        // **C'est la convention des références elles-mêmes**, qui publient le
+        // même écart au même endroit — 724,098 contre 974,310 sur
+        // 2400E0180612T. Seule cette exemption-là subsiste : la ventilation
+        // par énergie, elle, déduit désormais l'autoconsommation du chauffage
+        // et de l'ECS comme `ef_conso` le fait.
         $autoconsommation = (float) $xpath->evaluate('number(//production_elec_enr//conso_elec_ac)');
         $avecPv = $autoconsommation > 0.0;
 
@@ -130,7 +127,7 @@ final class CoherenceInterneTest extends TestCase
             foreach (['5_usages', 'ch', 'ecs'] as $usage) {
                 $agregat = $valeurs[$prefixe . '_' . $usage] ?? null;
                 $somme = $parEnergie[$prefixe . '_' . $usage] ?? null;
-                if (!$avecPv && !$totalArrondi && $agregat !== null && $agregat > 0.0 && $somme !== null) {
+                if (!$totalArrondi && $agregat !== null && $agregat > 0.0 && $somme !== null) {
                     $this->comparer($ecarts, $prefixe . '_' . $usage . ' = Σ par énergie', $agregat, $somme);
                 }
             }
