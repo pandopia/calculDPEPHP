@@ -319,25 +319,34 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   suit son `rendement_generation` de chaudière gaz (0,8141 contre 0,8342) —
   c'est TASK-K31, pas §9.8.
 
-### TASK-K71 — Froid : `apport_solaire_fr` et le mois à DH non nul mais Nref nul
+### TASK-K71 — Froid : `apport_solaire_fr` à un facteur 1,057 constant
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
-- **Le gros est corrigé** : les deux colonnes `Nref` de l'altitude 400-800 m
-  sont reprises de §18.2.2, et `apport_interne_fr` devient exact — à douze
-  chiffres sur `2605E1578332M`. Reste `apport_solaire_fr`, encore à 0,92-0,95
-  sur les quatre fichiers 0.1.0 de H1c 400-800 m et sur `2605E1578332M`
-  (277,03 attendu contre 262,10).
-- Piste la plus probable, et elle est dans les défauts d'annexe que le
-  doc-block de `tv_sollicitations_froid` énumère : nous n'accumulons les
-  apports que sur les mois où `DH28 > 0`, or H1c 400-800 m publie en
-  **septembre** un `DH28` de 8,3 pour un `Nref28` tiret. Si la référence
-  retient ce mois pour les apports solaires mais pas pour les apports
-  internes — ce que la combinaison « solaire faux, interne exact » suggère —
-  le critère de saison n'est pas le même pour les deux. Vérifier le `E_fr_28`
-  de ce mois avant de conclure.
-- **Ne pas toucher aux `Nref`** : les 1 536 valeurs des six colonnes sont
-  désormais recoupées une à une avec §18.2.1-18.2.3, et le test
-  `TvSollicitationsFroidTest` les fige.
+- **Ce qui est fait** : les deux colonnes `Nref` de l'altitude 400-800 m sont
+  reprises de §18.2.2, et `apport_interne_fr` devient exact — à douze chiffres
+  sur `2605E1578332M`. Les 1 728 valeurs de `tv_sollicitations_froid` et les
+  576 de `tv_textmoy_clim` sont désormais recoupées une à une avec l'annexe,
+  sans écart : **l'écart restant n'est pas dans les tables.**
+- **Ce qui reste** : `apport_solaire_fr` est en dessous de la référence d'un
+  facteur remarquablement stable — 1,0576, 1,0563, 1,0582 et 1,0570 sur
+  quatre fichiers indépendants, et 1,0910 sur un cinquième.
+- **La piste du mois de septembre est morte, ne pas la reprendre.** L'idée
+  était que la référence retienne les mois où l'annexe publie un `DH28` non
+  nul en regard d'un `Nref28` tiret (H1c 400-800 m en septembre, par exemple).
+  Mais `E_fr_28` y vaut **0** : inclure ce mois n'ajoute rien aux apports
+  solaires. Pour H1c à cette altitude, seuls les mois 6, 7 et 8 portent un
+  `E_fr_28` non nul, et nous les retenons tous les trois.
+- **Chercher donc dans `ssej`**, la surface sud équivalente mensuelle, et non
+  dans le choix des mois. `apport_solaire_ch` est pourtant exact sur ces mêmes
+  fichiers — mais il ne porte que sur les mois de chauffe. Regarder ce que
+  `sseMensuel` et `sseEtsMensuel` valent en juin, juillet et août, quand les
+  masques et les facteurs d'orientation d'été diffèrent de ceux d'hiver.
+- **Les trois cas où nous publions zéro ne sont pas un défaut.** Deux —
+  `2600E0015965G` et `2600E0020799E` — n'ont aucun bloc `<climatisation>` et
+  leur référence publie quand même un besoin de froid. Ils sont **seuls de
+  leur espèce** : sur les 541 cas, 506 sans climatisation publient un
+  `besoin_fr` nul comme nous, et deux ne le font pas. Le troisième,
+  `2600E0019751W`, attend 0,03. Ne rien changer pour 2 cas contre 506.
 
 ### TASK-K72 — `2605E1578332M` : un besoin de froid qui contredit ses propres apports
 
