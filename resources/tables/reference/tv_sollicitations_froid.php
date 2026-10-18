@@ -24,10 +24,10 @@ declare(strict_types=1);
  * E_fr — et ses zéros de juin à septembre n'ont donc aucun effet.
  *
  * @generated-on 2026-05-17
- * @status verified — les **1 536 valeurs** des six colonnes Nref26, Nref28,
+ * @status verified — les **1 728 valeurs** des six colonnes Nref26, Nref28,
  *         DH26, DH28, E_fr_26 et E_fr_28 sont recoupées une à une avec les
  *         tableaux de §18.2.1 à §18.2.3 p.121-143, pour les trois classes
- *         d'altitude (§18.2.3 ne publie pas E_fr, d'où 576 + 576 + 384).
+ *         d'altitude — 576 par altitude, aucune colonne manquante.
  *
  * La table venait d'open3cl et seule l'altitude ≤ 400 m avait été recoupée.
  * Le reste a été vérifié depuis : les altitudes ≤ 400 m et ≥ 800 m étaient

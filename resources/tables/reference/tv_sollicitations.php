@@ -44,6 +44,18 @@ declare(strict_types=1);
  *   3. le DH14 du même mois et de la même zone vaut 6 669,3, à côté des
  *      6 667,9 de H2c — l'écart entre bases 14 et 19 ne peut pas y être
  *      trois fois celui des zones voisines.
+ *
+ * L'argument décisif est le quatrième, et il tient en une ligne de l'annexe :
+ * §18.3 publie **la même température extérieure de 5,0 °C en décembre pour
+ * H1a et pour H2d**, et les mêmes 744 heures de chauffage — puis un DH19 de
+ * 9 573,3 pour l'une et de 15 639,4 pour l'autre. À température et durée
+ * égales, les degrés-heures le sont aussi. Notre valeur de 9 533 est à 0,4 %
+ * de celle de H1a, ce que cette égalité impose.
+ *
+ * La valeur fautive figure à l'identique dans §18.2 **et** dans §18.3, aux
+ * trois altitudes : c'est la même coquille reprise d'une annexe à l'autre,
+ * pas deux mesures indépendantes.
+ *
  * Un chiffre sur 1 440 : le reste de l'annexe est fiable, cette cellule non.
  */
 

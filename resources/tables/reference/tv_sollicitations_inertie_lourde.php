@@ -11,7 +11,16 @@ declare(strict_types=1);
  * @spec-pages   137-145
  * @spec-source  resources/specsplitted/18-annexes/03-inertie-lourde/
  * @generated-on 2026-09-01
- * @status verified-spec — espace complet 8 zones × 3 altitudes × 12 mois
+ * @status verified-spec — espace complet 8 zones × 3 altitudes × 12 mois,
+ *         et les **1 440 valeurs** des cinq colonnes recoupées une à une avec
+ *         §18.3.1 à §18.3.3. 1 439 concordent ; la seule exception est la
+ *         cellule H2d de décembre, que §18.3 reprend telle quelle de §18.2 et
+ *         dont le doc-block de `reference/tv_sollicitations` démontre
+ *         l'impossibilité. La table garde notre valeur, ici comme là-bas.
+ *
+ * La saison de chauffe y est effectivement raccourcie : 325 des 1 440
+ * valeurs diffèrent de `reference/tv_sollicitations`, toutes en
+ * demi-saison.
  */
 
 $m = static fn(?float $E, ?int $N19, ?float $DH19, ?int $N21, ?float $DH21): ?array =>
