@@ -450,6 +450,39 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Ses balises `emission_ges_ecs` et `ep_conso_ecs` sont publiées permutées avec
   leurs dépensières, et déjà imputées à ce titre. Ne pas les instruire.
 
+### TASK-K85 — Cdimref : le périmètre du GV reste à trancher pour 25 générateurs
+
+- [ ] Owner: __ | Phase: K | Priorité: haute
+- **Acquis, et livré** : quand §17.1.4.2 ramène le GV à l'appartement moyen,
+  Cdimref se calcule sur la chaudière **moyenne**, pas sur le générateur
+  courant. Les références donnent un Cdimref commun à tous les générateurs
+  d'un même bâtiment — 2,6834 et 2,6848 sur `2513E2308028Z`, rapport 0,9995.
+  Gain mesuré : −99 écarts.
+- **Reste 25 générateurs** dont `pn`, `rpn`, `rpint`, `qp0` et les températures
+  de fonctionnement sont **exacts** et le `rendement_generation` faux : 15 en
+  méthode 6, 5 en méthode 1, 2 en méthode 2, 2 en méthode 10, 1 en méthode 3.
+  Les quinze de méthode 6 sont tous **sous-estimés**, de 2 à 11 %.
+- **Un Cdimref implicite reconstruit exactement.** Sur `2400E0669882V`
+  (méthode 6, 8 appartements, 6 installations individuelles, GV 1 047,603,
+  zone 2 altitude 1 donc Tbase −9,5), la résolution à rebours du rendement
+  publié donne **1,6077** pour sa chaudière à condensation. Or
+  48 000 / (1 047,603 × 28,5) = **1,608** : la référence utilise le **GV
+  complet et la puissance totale**, sans rien ramener. Exact à 0,02 %.
+- **Mais la règle ne peut pas être généralisée.** Ne plus ramener le GV pour
+  les méthodes 6 et 8 — les immeubles, par opposition aux appartements
+  générés 10 et 12 — a été mesuré en A/B isolé, 541 cas, 0 crash :
+  **+2 075 écarts**, 3 cas améliorés contre 82 dégradés, dont douze passant
+  de 10 à 37-39 écarts. Le cas témoin, lui, gagne 29 écarts (53 → 24).
+- Ce qui distingue `2400E0669882V` des autres méthode 6 reste à trouver. Deux
+  observations à creuser : seules **2 de ses 6 installations** portent un
+  générateur à combustion (les autres sont électriques, type 99), et ses
+  installations ne couvrent donc pas tous les logements. Les pistes
+  « diviseur = nombre de systèmes » et « part des logements équipés » ont été
+  calculées à la main et ne reproduisent pas 1,6077.
+- Méthode qui marche, à reprendre : résoudre le Cdimref à rebours depuis le
+  rendement publié, puis le comparer aux combinaisons (GV complet, GV/nblgt,
+  GV/nb systèmes) × (Pn générateur, Pn totale, Pn moyenne).
+
 ### TASK-K84 — Réseau de chaleur multi-bâtiment : 0,75 ou 0,90, le corpus ne tranche plus
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
