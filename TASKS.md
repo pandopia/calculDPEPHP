@@ -320,28 +320,44 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   suit son `rendement_generation` de chaudière gaz (0,8141 contre 0,8342) —
   c'est TASK-K31, pas §9.8.
 
-### TASK-K71 — `apport_interne_fr` : un facteur 0,3017 identique sur quatre fichiers 0.1.0
+### TASK-K71 — Froid : `apport_solaire_fr` et le mois à DH non nul mais Nref nul
 
-- [ ] Owner: __ | Phase: K | Priorité: moyenne
-- La convention de sérialisation des apports de froid est corrigée ; deux des
-  six fichiers concernés (8.2.0 et 8.2.1) sont désormais exacts à cinq
-  décimales. Les **quatre fichiers de format 0.1.0** gardent un écart d'une
-  autre nature, et c'est lui qui reste à instruire.
-- **`apport_interne_fr` y vaut exactement ×0,3017 de la référence**, sur les
-  quatre : 2401E2888143P, 2601E0370414Y, 2601E0734445D et 2601E0869643B.
-  Quatre fichiers indépendants au même rapport à quatre décimales ne peuvent
-  pas être une dérive numérique : c'est une définition qui diffère.
-- `apport_solaire_fr` y est en regard à 0,92–0,95, donc nettement plus proche :
-  les deux apports ne se trompent pas de la même façon, ce qui écarte un
-  facteur d'échelle commun au bloc.
-- Piste à vérifier en premier : la **saison de froid retenue**.
-  `BesoinAnnuelCalculator` n'accumule `apport_interne_fr` que sur les mois où
-  `DH28 > 0` (le commentaire cite octobre en H3, 2 h de Nref28 pour un DH28
-  nul). 1 / 0,3017 = 3,315 — soit à peu près le rapport entre une saison de
-  trois mois et une saison de dix. Comparer la somme des `Nref28` retenue de
-  part et d'autre avant de toucher à la formule.
-- Ne pas chercher du côté des unités : elles sont tranchées, et les deux
-  fichiers non-0.1.0 le prouvent.
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- **Le gros est corrigé** : les deux colonnes `Nref` de l'altitude 400-800 m
+  sont reprises de §18.2.2, et `apport_interne_fr` devient exact — à douze
+  chiffres sur `2605E1578332M`. Reste `apport_solaire_fr`, encore à 0,92-0,95
+  sur les quatre fichiers 0.1.0 de H1c 400-800 m et sur `2605E1578332M`
+  (277,03 attendu contre 262,10).
+- Piste la plus probable, et elle est dans les défauts d'annexe que le
+  doc-block de `tv_sollicitations_froid` énumère : nous n'accumulons les
+  apports que sur les mois où `DH28 > 0`, or H1c 400-800 m publie en
+  **septembre** un `DH28` de 8,3 pour un `Nref28` tiret. Si la référence
+  retient ce mois pour les apports solaires mais pas pour les apports
+  internes — ce que la combinaison « solaire faux, interne exact » suggère —
+  le critère de saison n'est pas le même pour les deux. Vérifier le `E_fr_28`
+  de ce mois avant de conclure.
+- **Ne pas toucher aux `Nref`** : les 1 536 valeurs des six colonnes sont
+  désormais recoupées une à une avec §18.2.1-18.2.3, et le test
+  `TvSollicitationsFroidTest` les fige.
+
+### TASK-K72 — `2605E1578332M` : un besoin de froid qui contredit ses propres apports
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- Ce fichier publie `apport_interne_fr` = 71,738679571428563, que nous
+  reproduisons désormais à **douze chiffres** : sa valeur est celle que donne
+  la somme des `Nref28` de §18.2.2 pour H1c à 400-800 m, soit 116 heures.
+- Mais son `besoin_fr` de 381,23 est celui qu'on obtient avec les **anciennes**
+  valeurs, fausses, de 35 heures ; avec les apports qu'il publie lui-même, le
+  besoin vaut 435,71. La référence a donc calculé son besoin avec un jeu de
+  sollicitations et publié ses apports avec un autre.
+- Son budget de non-régression est passé de 18 à 23 pour cette raison, et
+  c'est le seul relâché de la campagne — les dix autres cas touchés ont vu le
+  leur se resserrer. Le relâchement est volontaire et documenté ici.
+- À instruire avec TASK-K71 : si la saison retenue pour les apports solaires
+  explique les 5,39 % restants, ce cas se referme peut-être tout seul. Sinon,
+  c'est un candidat à `ReferenceDefects` — la preuve est interne au fichier
+  (ses apports publiés ne reproduisent pas son besoin publié) mais elle
+  demande de rejouer §10.2, ce qui sort du cadre de l'outil.
 
 ### TASK-K67 — 2242E2979513I : conso_ch à +20 % une fois le facteur CO2 juste
 
