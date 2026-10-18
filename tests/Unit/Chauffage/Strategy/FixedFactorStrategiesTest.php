@@ -383,6 +383,42 @@ XML;
     }
 
     /**
+     * §9.9 p.66 : `Cch1 = 0,6 Bch INT1 Ich1` pour le circuit **collectif** qui
+     * assure la base, `Cch2 = 0,4 Bch INT2 Ich2` pour le circuit individuel
+     * d'appoint. Les deux INT ne sont pas le même : la base collective ne
+     * s'interrompt pas.
+     *
+     * Avec une intermittence de 0,5 sur l'appoint, la consommation vaut donc
+     * `Bch × (0,6 + 0,4 × 0,5)` et non `Bch × 0,5`.
+     *
+     * Les références le confirment : sur `2601E0208630M`,
+     * 0,6 × 4 869,27 × 1,1696 = 3 417,0 contre 3 415,95 publiés, soit
+     * INT1 = 1, et le total de 5 361,60 se reconstruit à 0,015 % près.
+     */
+    public function testConvecteurBijonction_baseCollectiveSansIntermittence(): void
+    {
+        // Le montage donne un facteur G de 1, donc une intermittence d'appoint
+        // égale à i0 : la consommation vaut Bch × (0,6 + 0,4 × 0,5).
+        [$doc, $node] = $this->buildInstallation(11, 1, rg: 1.0, re: 1.0, rd: 1.0, rr: 1.0, i0: 0.5);
+        (new ConvecteurBijonction())->calculate($node, $this->makeContext($doc, 1000.0));
+
+        $this->assertEqualsWithDelta(800.0, $this->consoCh($node), self::TOL);
+    }
+
+    /**
+     * Et sans cette distinction, l'intermittence s'appliquerait au tout :
+     * 500 au lieu de 800. Le test précédent échouerait en nommant cette
+     * valeur si la base redevenait intermittente.
+     */
+    public function testConvecteurBijonction_intermittenceNeSAppliquePasAuTout(): void
+    {
+        [$doc, $node] = $this->buildInstallation(11, 1, rg: 1.0, re: 1.0, rd: 1.0, rr: 1.0, i0: 0.5);
+        (new ConvecteurBijonction())->calculate($node, $this->makeContext($doc, 1000.0));
+
+        self::assertGreaterThan(500.0, $this->consoCh($node));
+    }
+
+    /**
      * §9.4 p.63 : `Cch1 = 0,9 × Bch × INT1 × Ich1` pour le poêle ou l'insert,
      * `Cch2 = 0,1 × Bch × INT2 × Ich2` pour le chauffage électrique de la salle
      * de bains. Les deux branches vivent dans une seule installation et se
