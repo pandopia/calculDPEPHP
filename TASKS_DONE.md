@@ -33,10 +33,12 @@ une.
   trop. Le coupable est `pertes_stockage_ecs_recup`, et l'écart le confirme au
   kWh près : 427,43 publiés par nous contre 426,40 d'écart sur
   `2400E0020849A`.
-- **Notre calcul n'est pas en cause.** Sur les **67 références qui publient une
-  valeur non nulle, nous la reproduisons à 1,0000** — y compris 163 610,51 et
-  290 244,82. Seules 18 références publient zéro là où nous publions une
-  valeur.
+- **Notre calcul n'est pas en cause.** Sur les **67 références au moins qui
+  publient une valeur non nulle, nous la reproduisons à 1,0000** — y compris
+  163 610,51 et 290 244,82 —, et 18 publient zéro là où nous publions une
+  valeur. (Ces deux nombres sont des minorants : le rapport ne détaille pas
+  les valeurs reproduites **exactement**, qui ne peuvent que renforcer le
+  premier.)
 - **Et la condition qui les distingue n'existe pas dans les données.** Testé et
   écarté :
   - `position_volume_chauffe` du générateur en repli de
