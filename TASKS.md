@@ -535,6 +535,39 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Commencer par vérifier ce que `ChaudiereReleve` attribue à chaque branche,
   et avec quelle intermittence, plutôt que les rendements.
 
+### TASK-K89 — Les références tarifent la ventilation dans une autre assiette que le reste
+
+- [ ] Owner: __ | Phase: K | Priorité: haute
+- **35 cas ont leur `conso_ch` juste et leur `cout_ch` faux**, tous
+  sous-estimés de 1 à 9 %. Le défaut est donc dans la tarification, pas en
+  amont — et il est isolable au prix unitaire près.
+- Sur `2600E0281136D` (méthode 10, 24 appartements, installations toutes
+  **individuelles**), **toutes les consommations sont justes** et **tous les
+  coûts faux** :
+
+  | | Référence | Nous |
+  |---|---:|---:|
+  | `cout_ch` / `conso_ch` | 0,25335 | 0,24820 |
+  | `cout_ecs` / `conso_ecs` | 0,25335 | 0,24820 |
+  | `cout_auxiliaire_ventilation` / `conso` | **0,20950** | 0,24820 |
+
+- **Nous appliquons un prix unique, la référence en applique deux** : le même
+  au chauffage et à l'ECS, un plus bas de 15 % à la ventilation. Un prix plus
+  bas signifie une assiette plus large, donc un abonnement distinct — l'inverse
+  exact de notre convention, qui rattache la ventilation à l'abonnement
+  individuel.
+- **Mais ce n'est pas l'abonnement d'immeuble entier** : le rapport des
+  surfaces vaut ici 45, ce qui donnerait un prix bien plus bas que 0,2095. Il
+  manque le périmètre exact de cette seconde assiette.
+- `surface_ventile > surface_habitable_logement` ne sépare pas les deux
+  groupes : 35 % des 100 cas à `cout_auxiliaire_ventilation` faux l'ont, contre
+  26 % des 74 cas justes.
+- Le bloc de `CoutCalculator` qui énonce « la ventilation reste individuelle :
+  la rattacher à l'abonnement d'immeuble dégrade nettement l'accord » reste
+  donc vrai pour l'immeuble entier, mais il ne décrit pas ce que font ces 35
+  références. Chercher l'assiette qui donne 0,2095 sur ce fichier, par exemple
+  en résolvant la tranche à rebours depuis `tv_prix_energie`.
+
 ### TASK-K84 — Réseau de chaleur multi-bâtiment : 0,75 ou 0,90, le corpus ne tranche plus
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
