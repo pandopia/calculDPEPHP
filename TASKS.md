@@ -691,6 +691,27 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Le défaut pèse maintenant **159 écarts de `k` sur 44 cas**, plus 44 sur
   `deperdition_pont_thermique`, et il explique **21 des 31 GV faux** du jeu
   `ademe-emetteurs-2026-10`.
+- **Vingt de ces références se contredisent, et sont désormais imputées.** Un
+  même `tv_pont_thermique_id` y vaut à la fois 0 et la valeur de table ; or un
+  identifiant tabulé ne désigne qu'une valeur. `ReferenceDefects` les relève
+  sans recalcul — +35 écarts imputés. Les treize autres fichiers qui annulent
+  n'ont qu'une occurrence de l'identifiant concerné : rien à démontrer, ils
+  restent à notre charge.
+- **open3cl n'est pas un oracle ici, et c'est la découverte qui ferme la
+  piste.** Son `3.4_pont_thermique.js` ouvre par `if (pt_di.k === 0) return 0;`
+  — il **recopie** le `k` de la `donnee_intermediaire` du fichier d'entrée au
+  lieu de le calculer, et son propre commentaire parle de `bug_for_bug_compat`.
+  Il reproduit donc les zéros des éditeurs sans les expliquer.
+- Nos entrées, elles, sont purgées : `OutputPurger` ne préserve les valeurs de
+  `donnee_intermediaire` que sur `generateur_chauffage`, `generateur_ecs` et
+  `climatisation`, et **aucun des 12 869 ponts thermiques du corpus ne porte de
+  `k` en entrée**. C'est correct — les 93 cas sont tous déclarés
+  `enum_methode_saisie_pont_thermique_id = 1`, donc forfaitaires, donc calculés
+  depuis la table, et `k_saisi` n'existe que pour les méthodes 2 et 3.
+- **Conséquence** : ces zéros ne sont pas reproductibles par le calcul, et
+  chercher la règle qui les produirait est sans objet. Ne rouvrir que si un
+  export publie un `k` nul avec une méthode de saisie 2 ou 3, ou si le texte
+  introduit une annulation que §3.4 ne mentionne pas.
 
 ### TASK-K63 — Modèle DPE 2.7 : EPBD, nouvelles technologies, pef élec
 
