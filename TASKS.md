@@ -562,11 +562,28 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - `surface_ventile > surface_habitable_logement` ne sépare pas les deux
   groupes : 35 % des 100 cas à `cout_auxiliaire_ventilation` faux l'ont, contre
   26 % des 74 cas justes.
-- Le bloc de `CoutCalculator` qui énonce « la ventilation reste individuelle :
-  la rattacher à l'abonnement d'immeuble dégrade nettement l'accord » reste
-  donc vrai pour l'immeuble entier, mais il ne décrit pas ce que font ces 35
-  références. Chercher l'assiette qui donne 0,2095 sur ce fichier, par exemple
-  en résolvant la tranche à rebours depuis `tv_prix_energie`.
+- **Les deux assiettes sont résolues**, en inversant le barème du 1er juillet
+  2024 (électricité : 0,18954 + 158/C entre 1 000 et 2 500 kWh ; 0,19726 +
+  119/C entre 5 000 et 15 000) :
+  - 0,25335 €/kWh ⇒ assiette de **2 475 kWh**, soit exactement le total du
+    logement **moins** sa ventilation (2 691 − 216) ;
+  - 0,20950 €/kWh ⇒ assiette de **9 722 kWh**, soit la ventilation multipliée
+    par le rapport des surfaces (215,845 × 45,06 = 9 726).
+  La référence tarife donc bien la ventilation sur l'**abonnement
+  d'immeuble**, mécanisme que `PrixEnergie` sait déjà appliquer.
+- **Mais la règle n'est pas généralisable en l'état.** Trois variantes mesurées
+  en A/B isolé, 541 cas, 0 crash :
+  - ventilation toujours collective : **+1 018 écarts**, 55 cas améliorés
+    contre 299 dégradés ;
+  - collective si `surface_ventile > surface_habitable_logement` : **−25**,
+    mais 31 améliorés contre **30 dégradés** ;
+  - la même, restreinte aux DPE non-immeuble : identique au précédent, la
+    série `2400E03338xx` étant en méthode 11.
+  Le gain net est positif mais l'équilibre est trop fragile pour livrer une
+  règle inférée : il manque le critère qui sépare vraiment les deux groupes.
+- Chercher ce critère dans le bloc `ventilation` lui-même —
+  `enum_type_ventilation_id` collectif, présence d'un caisson commun — plutôt
+  que dans les surfaces.
 
 ### TASK-K84 — Réseau de chaleur multi-bâtiment : 0,75 ou 0,90, le corpus ne tranche plus
 
