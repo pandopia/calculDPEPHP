@@ -1,7 +1,7 @@
 # Conformité du moteur — jeux de tests DPE 3CL
 
-_Généré le 2026-10-19T07:06:50+00:00 — profil de tolérance : `strict`_
-_Révision mesurée : `1b7bbba`_
+_Généré le 2026-10-19T07:27:18+00:00 — profil de tolérance : `strict`_
+_Révision mesurée : `09c125f` — arbre de travail modifié : 2 fichier(s) src/ non commités_
 
 Comparaison balise à balise de la totalité de `<donnee_intermediaire>` et
 `<sortie>` entre la sortie du moteur et la référence du cas. Aucune balise
@@ -25,9 +25,12 @@ Balises supplémentaires  : 2 132
 Écarts non numériques    : 30
 
 Conformité               : 90,66 %
+Avancement               : 93,23 %
 ```
 
-Sur ces écarts, **4 626 sont imputables à la référence** et non au moteur : le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement atteignable sur ce corpus : **93,41 %**. Détail plus bas.
+**Avancement : 93,23 %.** C'est le chiffre de suivi : la part des valeurs **atteignables** qui sont conformes. Il vaut 100 % quand tout ce qui dépend du moteur est juste.
+
+Il se distingue de la conformité brute (90,66 %) par un point : 4 626 écarts sont imputables à la **référence** et non au moteur — le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels, et les reproduire nous éloignerait de la méthode. Ces écarts sortent du dénominateur de l'avancement, jamais du décompte brut : la mesure ne se maquille pas. Détail des imputations plus bas.
 
 ## Écarts par famille fonctionnelle
 
