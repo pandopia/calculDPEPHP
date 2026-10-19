@@ -89,6 +89,28 @@ const BRANCHES = [
     // §18.4 — installation solaire couvrant chauffage et ECS
     ['branche' => 'solaire-chauffage-et-ecs',       'champ' => 'type_installation_solaire_n1', 'valeur' => 'Chauffage + ECS solaire'],
 
+    // §9.1 et §15.2 — les dix-sept `enum_type_emission_distribution_id` que le
+    // corpus n'atteignait pas. Chacun porte ses propres lignes de rendement
+    // d'émission, de distribution et d'intermittence : familles entières
+    // absentes — plafonds chauffants, détente directe, ventiloconvecteurs.
+    ['branche' => 'em-plafond-rayonnant-sans-regul', 'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Plafond rayonnant électrique sans régulation'],
+    ['branche' => 'em-plafond-collectif-ht',         'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Plafond chauffant sur réseau collectif eau chaude haute température(sup ou egal 65°C)'],
+    ['branche' => 'em-plafond-collectif-bt',         'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Plafond chauffant sur réseau collectif eau chaude basse ou moyenne température(inf 65°C)'],
+    ['branche' => 'em-plafond-individuel-ht',        'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Plafond chauffant sur réseau individuel eau chaude haute température(sup ou egal 65°C)'],
+    ['branche' => 'em-plafond-individuel-bt',        'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Plafond chauffant sur réseau individuel eau chaude basse ou moyenne température(inf 65°C)'],
+    ['branche' => 'em-poele-fioul',                  'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Poêle fioul'],
+    ['branche' => 'em-poele-gpl',                    'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Poêle GPL'],
+    ['branche' => 'em-monotube-sans-robinet-col-ht', 'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Radiateur monotube sans robinet thermostatique sur réseau collectif eau chaude haute température(sup ou egal 65°C)'],
+    ['branche' => 'em-monotube-sans-robinet-ind-bt', 'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Radiateur monotube sans robinet thermostatique sur réseau individuel eau chaude basse ou moyenne température(inf 65°C)'],
+    ['branche' => 'em-plancher-detente-directe',     'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Plancher chauffant avec distribution par fluide frigorigène (plancher chauffant à détente directe)'],
+    ['branche' => 'em-plafond-detente-directe',      'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Plafond chauffant avec distribution par fluide frigorigène (Plafond chauffant à détente directe)'],
+    ['branche' => 'em-radiateur-detente-directe',    'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Radiateur avec distribution par fluide frigorigène (à détente directe)'],
+    ['branche' => 'em-ventilo-collectif-ht',         'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Soufflage d\'air chaud (Ventiloconvecteur) sur réseau collectif eau chaude haute température(sup ou egal 65°C)'],
+    ['branche' => 'em-ventilo-collectif-bt',         'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Soufflage d\'air chaud (Ventiloconvecteur) sur réseau collectif eau chaude basse ou moyenne température(inf 65°C)'],
+    ['branche' => 'em-ventilo-individuel-ht',        'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Soufflage d\'air chaud (Ventiloconvecteur) sur réseau individuel eau chaude haute température(sup ou egal 65°C)'],
+    ['branche' => 'em-ventilo-individuel-bt',        'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Soufflage d\'air chaud (Ventiloconvecteur) sur réseau individuel eau chaude basse ou moyenne température(inf 65°C)'],
+    ['branche' => 'em-ventilo-electrique',           'champ' => 'type_emetteur_installation_chauffage_n1', 'valeur' => 'Soufflage d\'air chaud sans réseau de distribution (ventiloconvecteur éléctrique)'],
+
     // §4 — les neuf derniers `enum_type_ventilation_id` que le corpus n'a
     // jamais portés. Ce ne sont pas des branches de code mais des **lignes de
     // table** — `tv_debits_ventilation`, `tv_q4pa_conv` : une ligne absente ne
