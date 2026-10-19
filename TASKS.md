@@ -676,6 +676,21 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Ni `tv_pont_thermique_id` ni `enum_type_liaison_id` ne séparent les deux
   groupes : l'identifiant 1 apparaît 12 fois annulé et 3 fois conservé, le 29
   sept fois et dix-neuf fois, le 85 dix fois et trois fois.
+- **Le corpus élargi à 645 cas fait apparaître le groupe symétrique** : sur
+  159 écarts de `k`, 93 ont la référence à zéro et **33 nous ont à zéro** avec
+  une référence non nulle. Ces 33 sont à 96 % sur les liaisons 1 et 3 — celles
+  que `isNegligibleByAdjacency` traite. Le garde annule donc parfois à tort.
+- **Mais le resserrer coûte davantage qu'il ne rapporte.** Deux variantes
+  mesurées en A/B isolé, 645 cas, 0 crash :
+  - retrait complet du garde : **+104 écarts**, 4 cas améliorés contre 8
+    dégradés, dont `2618E2138973C` qui passe de 24 à 74 ;
+  - garde restreint aux seuls planchers bordant la circulation, le mur ne
+    déclenchant plus l'annulation : **+61**, 3 améliorés contre 6 dégradés.
+  Le garde actuel reste donc le meilleur des trois. Les cas où un **mur** en
+  circulation justifie l'annulation sont bien réels.
+- Le défaut pèse maintenant **159 écarts de `k` sur 44 cas**, plus 44 sur
+  `deperdition_pont_thermique`, et il explique **21 des 31 GV faux** du jeu
+  `ademe-emetteurs-2026-10`.
 
 ### TASK-K63 — Modèle DPE 2.7 : EPBD, nouvelles technologies, pef élec
 
