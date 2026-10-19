@@ -14,9 +14,10 @@ use PHPUnit\Framework\TestCase;
 /**
  * §17.1.4.2 — GV de l'appartement « moyen » servant de base à Cdimref.
  *
- * Un immeuble à chauffage individuel peut décrire **plus de systèmes que
- * d'appartements** : `2400E0575636Z` porte sept chaudières pour six
- * logements. Diviser le GV par le seul `nombre_appartement` attribue alors à
+ * Un **appartement généré** depuis les données d'immeuble (modes 10 et 12)
+ * peut en décrire **plus de systèmes que d'appartements** : `2400E0575636Z`
+ * porte sept chaudières pour six logements. Les DPE immeuble, eux, gardent le
+ * GV du bâtiment entier — voir `CascadeAvecPrioriteTest`. Diviser le GV par le seul `nombre_appartement` attribue alors à
  * chaque chaudière plus de déperditions qu'elle n'en dessert, ce qui abaisse
  * Cdimref, relève le taux de charge et gonfle le rendement — de 0,775 % sur ce
  * fichier, qui se propage ensuite à toute la chaîne de consommation.
@@ -58,7 +59,7 @@ final class GvParSystemeTest extends TestCase
             <?xml version="1.0"?>
             <dpe><logement>
               <caracteristique_generale>
-                <enum_methode_application_dpe_log_id>6</enum_methode_application_dpe_log_id>
+                <enum_methode_application_dpe_log_id>10</enum_methode_application_dpe_log_id>
                 <nombre_appartement>{$appartements}</nombre_appartement>
               </caracteristique_generale>
               <meteo><enum_zone_climatique_id>2</enum_zone_climatique_id><enum_classe_altitude_id>1</enum_classe_altitude_id></meteo>

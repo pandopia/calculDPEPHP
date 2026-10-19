@@ -1,7 +1,7 @@
 # Conformité du moteur — jeux de tests DPE 3CL
 
-_Généré le 2026-10-19T08:29:59+00:00 — profil de tolérance : `strict`_
-_Révision mesurée : `cf133e7` — arbre de travail modifié : 1 fichier(s) src/ non commités_
+_Généré le 2026-10-19T08:40:04+00:00 — profil de tolérance : `strict`_
+_Révision mesurée : `b7c1f06` — arbre de travail modifié : 1 fichier(s) src/ non commités_
 
 Comparaison balise à balise de la totalité de `<donnee_intermediaire>` et
 `<sortie>` entre la sortie du moteur et la référence du cas. Aucune balise
@@ -17,20 +17,20 @@ Totalement conformes     : 1
 Partiellement conformes  : 644
 
 Valeurs comparées        : 197 715
-Exactes                  : 148 803
-Dans tolérance           : 27 969
-Hors tolérance           : 18 046
+Exactes                  : 148 809
+Dans tolérance           : 28 102
+Hors tolérance           : 17 907
 Balises manquantes       : 626
 Balises supplémentaires  : 2 224
 Écarts non numériques    : 47
 
-Conformité               : 89,41 %
-Avancement               : 91,76 %
+Conformité               : 89,48 %
+Avancement               : 91,83 %
 ```
 
-**Avancement : 91,76 %.** C'est le chiffre de suivi : la part des valeurs **atteignables** qui sont conformes. Il vaut 100 % quand tout ce qui dépend du moteur est juste.
+**Avancement : 91,83 %.** C'est le chiffre de suivi : la part des valeurs **atteignables** qui sont conformes. Il vaut 100 % quand tout ce qui dépend du moteur est juste.
 
-Il se distingue de la conformité brute (89,41 %) par un point : 5 077 écarts sont imputables à la **référence** et non au moteur — le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels, et les reproduire nous éloignerait de la méthode. Ces écarts sortent du dénominateur de l'avancement, jamais du décompte brut : la mesure ne se maquille pas. Détail des imputations plus bas.
+Il se distingue de la conformité brute (89,48 %) par un point : 5 067 écarts sont imputables à la **référence** et non au moteur — le corpus n'est pas la vérité réglementaire, ce sont les sorties d'autres logiciels, et les reproduire nous éloignerait de la méthode. Ces écarts sortent du dénominateur de l'avancement, jamais du décompte brut : la mesure ne se maquille pas. Détail des imputations plus bas.
 
 ## Écarts par famille fonctionnelle
 
@@ -41,15 +41,15 @@ Il se distingue de la conformité brute (89,41 %) par un point : 5 077 écarts s
 | Apports | 19539 | 16822 | 1888 | 486 | 0 | 343 | 95,76 % |
 | Besoin chauffage | 3114 | 28 | 2494 | 592 | 0 | 0 | 80,99 % |
 | Besoin ECS | 5551 | 5081 | 400 | 70 | 0 | 0 | 98,74 % |
-| Génération chauffage | 12720 | 5460 | 4701 | 2536 | 10 | 13 | 79,88 % |
+| Génération chauffage | 12720 | 5460 | 4773 | 2464 | 10 | 13 | 80,45 % |
 | Génération ECS | 11405 | 7458 | 2082 | 1755 | 79 | 31 | 83,65 % |
 | Auxiliaires | 21930 | 14279 | 4017 | 3633 | 0 | 1 | 83,43 % |
 | Froid | 8416 | 7184 | 363 | 438 | 424 | 7 | 89,67 % |
 | PV | 4596 | 4444 | 21 | 113 | 15 | 3 | 97,15 % |
-| Sorties énergie finale | 4275 | 2217 | 1185 | 857 | 10 | 6 | 79,58 % |
-| Sorties énergie primaire | 5160 | 2355 | 1623 | 1152 | 0 | 1 | 77,09 % |
-| GES | 8670 | 3805 | 2925 | 1898 | 15 | 9 | 77,62 % |
-| Coûts | 7380 | 1494 | 2735 | 3127 | 15 | 9 | 57,30 % |
+| Sorties énergie finale | 4275 | 2219 | 1193 | 847 | 10 | 6 | 79,81 % |
+| Sorties énergie primaire | 5160 | 2358 | 1635 | 1137 | 0 | 1 | 77,38 % |
+| GES | 8670 | 3806 | 2949 | 1873 | 15 | 9 | 77,91 % |
+| Coûts | 7380 | 1494 | 2752 | 3110 | 15 | 9 | 57,53 % |
 | Confort d'été | 3545 | 1578 | 0 | 270 | 0 | 1697 | 44,51 % |
 | Autre | 1232 | 746 | 292 | 189 | 2 | 3 | 84,25 % |
 
@@ -60,7 +60,7 @@ Périmètres du règlement d'évaluation CSTB §1.1, déduits de
 
 | Périmètre | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| immeuble_collectif | 249 | 83986 | 65530 | 12722 | 4186 | 41 | 92,90 % |
+| immeuble_collectif | 249 | 83986 | 65536 | 12855 | 4047 | 41 | 93,06 % |
 | maison_individuelle | 169 | 50971 | 38579 | 5873 | 6151 | 294 | 86,92 % |
 | appartement_issu_immeuble | 96 | 32349 | 23142 | 4978 | 3556 | 102 | 86,67 % |
 | appartement_individuel | 131 | 30409 | 21552 | 4396 | 4153 | 189 | 84,96 % |
@@ -69,8 +69,8 @@ Périmètres du règlement d'évaluation CSTB §1.1, déduits de
 
 | Régime | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| post_2026 | 441 | 134015 | 102294 | 19525 | 10061 | 356 | 90,60 % |
-| pre_2026 | 204 | 63700 | 46509 | 8444 | 7985 | 270 | 85,99 % |
+| post_2026 | 441 | 134015 | 102296 | 19596 | 9988 | 356 | 90,66 % |
+| pre_2026 | 204 | 63700 | 46513 | 8506 | 7919 | 270 | 86,10 % |
 
 ## Écarts par moteur de calcul de la référence
 
@@ -79,13 +79,13 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 
 | Moteur | Cas | Comparées | Exactes | Tolérance | Hors tol. | Manquantes | Conformité |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| BBS_Slama_2025.11.1.0 | 381 | 116984 | 91337 | 17409 | 6624 | 4 | 92,66 % |
-| 3cl_tribu_1.4.25.1 | 150 | 47401 | 34906 | 6434 | 5617 | 163 | 86,94 % |
+| BBS_Slama_2025.11.1.0 | 381 | 116984 | 91339 | 17480 | 6551 | 4 | 92,72 % |
+| 3cl_tribu_1.4.25.1 | 150 | 47401 | 34910 | 6495 | 5552 | 163 | 87,07 % |
 | inconnu | 39 | 11416 | 7567 | 1173 | 2314 | 261 | 76,30 % |
 | 3cl_tribu_2024.6.1.0 | 24 | 8088 | 6230 | 1145 | 623 | 1 | 90,91 % |
 | 3cl_bbs_V2025.11.1.0 | 18 | 4825 | 2822 | 780 | 1035 | 95 | 74,38 % |
 | 3cl-2024.6.1.0 | 12 | 3243 | 2241 | 354 | 576 | 61 | 79,72 % |
-| 3cl_bbs_V2024.6.1.0 | 4 | 1310 | 774 | 139 | 351 | 18 | 69,48 % |
+| 3cl_bbs_V2024.6.1.0 | 4 | 1310 | 774 | 140 | 350 | 18 | 69,56 % |
 | BBS_Slama_2024.6.1.0 | 4 | 1281 | 972 | 189 | 106 | 0 | 90,35 % |
 | 3cl_BBS_2025.11.1.0 | 3 | 810 | 531 | 161 | 103 | 0 | 85,12 % |
 | V 1.4.25.1 | 2 | 432 | 196 | 6 | 215 | 10 | 46,54 % |
@@ -99,17 +99,17 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 
 | # | Famille | Balise | Occurrences | Cas touchés | Écart max | Statuts |
 |---:|---|---|---:|---:|---:|---|
-| 1 | Génération chauffage | `conso_ch` | 1135 | 219 | 6 900,0 % | hors-tol×1127 suppl×3 manquante×5 |
-| 2 | Génération chauffage | `conso_ch_depensier` | 910 | 227 | 6 900,0 % | hors-tol×910 |
+| 1 | Génération chauffage | `conso_ch` | 1107 | 215 | 6 900,0 % | hors-tol×1099 suppl×3 manquante×5 |
+| 2 | Génération chauffage | `conso_ch_depensier` | 876 | 224 | 6 900,0 % | hors-tol×876 |
 | 3 | Génération ECS | `conso_ecs` | 805 | 147 | 817,5 % | hors-tol×797 suppl×3 manquante×5 |
-| 4 | Coûts | `cout_5_usages` | 744 | 307 | 824,9 % | hors-tol×736 suppl×3 manquante×5 |
+| 4 | Coûts | `cout_5_usages` | 737 | 305 | 824,9 % | hors-tol×729 suppl×3 manquante×5 |
 | 5 | Génération ECS | `conso_ecs_depensier` | 673 | 155 | 549,6 % | hors-tol×673 |
-| 6 | GES | `emission_ges_5_usages` | 641 | 270 | 25 908,1 % | hors-tol×633 suppl×3 manquante×5 |
-| 7 | Sorties énergie finale | `conso_5_usages` | 636 | 263 | 1 016 120,1 % | hors-tol×628 suppl×3 manquante×5 |
-| 8 | Coûts | `cout_ch_depensier` | 596 | 596 | 128,8 % | hors-tol×596 |
+| 6 | GES | `emission_ges_5_usages` | 632 | 267 | 25 908,1 % | hors-tol×624 suppl×3 manquante×5 |
+| 7 | Sorties énergie finale | `conso_5_usages` | 628 | 260 | 1 016 120,1 % | hors-tol×620 suppl×3 manquante×5 |
+| 8 | Coûts | `cout_ch_depensier` | 596 | 596 | 116,2 % | hors-tol×596 |
 | 9 | Coûts | `cout_ecs_depensier` | 591 | 591 | 540,5 % | hors-tol×591 |
-| 10 | Coûts | `cout_ch` | 565 | 244 | 138,2 % | hors-tol×557 suppl×3 manquante×5 |
-| 11 | GES | `emission_ges_ch` | 505 | 215 | 15 993,3 % | hors-tol×497 suppl×3 manquante×5 |
+| 10 | Coûts | `cout_ch` | 555 | 240 | 138,2 % | hors-tol×547 suppl×3 manquante×5 |
+| 11 | GES | `emission_ges_ch` | 495 | 210 | 15 993,3 % | hors-tol×487 suppl×3 manquante×5 |
 | 12 | Coûts | `cout_ecs` | 475 | 233 | 799,1 % | hors-tol×467 suppl×3 manquante×5 |
 | 13 | Confort d'été | `enum_indicateur_confort_ete_id` | 466 | 466 | 200,0 % | hors-tol×127 suppl×339 |
 | 14 | Confort d'été | `protection_solaire_exterieure` | 393 | 393 | 100,0 % | hors-tol×54 suppl×339 |
@@ -124,12 +124,12 @@ particularité de ce logiciel qu'un défaut de notre implémentation.
 | 23 | Auxiliaires | `cout_total_auxiliaire` | 246 | 246 | 20 278,1 % | hors-tol×246 |
 | 24 | Génération ECS | `rendement_stockage` | 243 | 106 | 42,8 % | hors-tol×191 manquante×51 suppl×1 |
 | 25 | Auxiliaires | `cout_auxiliaire_generation_ecs_depensier` | 241 | 241 | 141,7 % | hors-tol×241 |
-| 26 | Sorties énergie primaire | `ep_conso_5_usages` | 237 | 237 | 267,7 % | hors-tol×237 |
-| 27 | Sorties énergie primaire | `ep_conso_5_usages_m2` | 230 | 230 | 267,3 % | hors-tol×230 |
-| 28 | Sorties énergie finale | `conso_5_usages_m2` | 224 | 224 | 292,1 % | hors-tol×224 |
-| 29 | GES | `emission_ges_ch_depensier` | 220 | 220 | 12 237,9 % | hors-tol×220 |
-| 30 | Sorties énergie primaire | `ep_conso_ch_depensier` | 212 | 212 | 98,2 % | hors-tol×212 |
-| 31 | Sorties énergie primaire | `ep_conso_ch` | 206 | 206 | 93,5 % | hors-tol×206 |
+| 26 | Sorties énergie primaire | `ep_conso_5_usages` | 235 | 235 | 267,7 % | hors-tol×235 |
+| 27 | Sorties énergie primaire | `ep_conso_5_usages_m2` | 227 | 227 | 267,3 % | hors-tol×227 |
+| 28 | Sorties énergie finale | `conso_5_usages_m2` | 222 | 222 | 292,1 % | hors-tol×222 |
+| 29 | GES | `emission_ges_ch_depensier` | 215 | 215 | 12 237,9 % | hors-tol×215 |
+| 30 | Sorties énergie primaire | `ep_conso_ch_depensier` | 207 | 207 | 98,2 % | hors-tol×207 |
+| 31 | Sorties énergie primaire | `ep_conso_ch` | 201 | 201 | 93,5 % | hors-tol×201 |
 | 32 | Coûts | `cout_eclairage` | 180 | 180 | 72,0 % | hors-tol×180 |
 | 33 | Auxiliaires | `cout_auxiliaire_ventilation` | 165 | 165 | 112,0 % | hors-tol×165 |
 | 34 | Auxiliaires | `cout_auxiliaire_distribution_ch` | 161 | 161 | 77,5 % | hors-tol×161 |
@@ -173,10 +173,10 @@ reproduire le défaut d'un logiciel tiers éloignerait le moteur de la méthode.
 | `qp0` | 27 | la référence sérialise QP0 en kW (1.500) malgré l’unité W imposée par le XSD ; la valeur cohérente avec Pn=125000 W est 1500 W |
 | `ep_conso_fr_depensier` | 34 | la référence recopie ep_conso_fr dans ep_conso_fr_depensier alors que les consommations diffèrent (51 vs 129 kWh) |
 | `ep_conso_ecs_depensier` | 92 | la référence recopie ep_conso_ecs dans ep_conso_ecs_depensier alors que les consommations diffèrent (2217 vs 2879 kWh) |
-| `ep_conso_ch_depensier` | 120 | la référence recopie ep_conso_ch dans ep_conso_ch_depensier alors que les consommations diffèrent (1369 vs 1823 kWh) |
+| `ep_conso_ch_depensier` | 115 | la référence recopie ep_conso_ch dans ep_conso_ch_depensier alors que les consommations diffèrent (1369 vs 1823 kWh) |
 | `emission_ges_fr_depensier` | 34 | la référence recopie emission_ges_fr dans emission_ges_fr_depensier alors que les consommations diffèrent (51 vs 129 kWh) |
 | `emission_ges_ecs_depensier` | 95 | la référence recopie emission_ges_ecs dans emission_ges_ecs_depensier alors que les consommations diffèrent (2217 vs 2879 kWh) |
-| `emission_ges_ch_depensier` | 128 | la référence recopie emission_ges_ch dans emission_ges_ch_depensier alors que les consommations diffèrent (1369 vs 1823 kWh) |
+| `emission_ges_ch_depensier` | 123 | la référence recopie emission_ges_ch dans emission_ges_ch_depensier alors que les consommations diffèrent (1369 vs 1823 kWh) |
 | `cout_fr_depensier` | 30 | la référence recopie cout_fr dans cout_fr_depensier alors que les consommations diffèrent (51 vs 129 kWh) |
 | `cout_ecs_depensier` | 421 | la référence recopie cout_ecs dans cout_ecs_depensier alors que les consommations diffèrent (2217 vs 2879 kWh) |
 | `cout_ch_depensier` | 422 | la référence recopie cout_ch dans cout_ch_depensier alors que les consommations diffèrent (4934 vs 6434 kWh) |
@@ -237,8 +237,8 @@ Aucun chemin produit hors de ceux déclarés par `resources/ademe_DPE.xsd`.
 | `2400E0669425G.xml` | immeuble_collectif | pre_2026 | 724 | 107 | 85,22 % |
 | `2601E0076852C.xml` | maison_individuelle | post_2026 | 389 | 107 | 72,49 % |
 | `2406E0400266F.xml` | appartement_individuel | pre_2026 | 239 | 107 | 55,23 % |
-| `2501E0122493M.xml` | immeuble_collectif | pre_2026 | 276 | 106 | 61,59 % |
 | `2401E0473146C.xml` | maison_individuelle | pre_2026 | 368 | 105 | 71,47 % |
+| `2501E0122493M.xml` | immeuble_collectif | pre_2026 | 276 | 105 | 61,96 % |
 | `2313E3593866F.xml` | appartement_issu_immeuble | pre_2026 | 307 | 104 | 66,12 % |
 | `2313E3593911Y.xml` | appartement_issu_immeuble | pre_2026 | 307 | 103 | 66,45 % |
 | `2406E0661311K.xml` | appartement_individuel | pre_2026 | 271 | 102 | 62,36 % |
