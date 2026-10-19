@@ -205,6 +205,7 @@ final class ReferenceDefects
             $suspects += self::productionSolaireIncompatibleAvecSaConso($referenceDoc);
             $suspects += self::doublageDeMurDeclareMaisIgnore($referenceDoc);
             $suspects += self::copForfaitaireHorsTable($referenceDoc);
+            $suspects += self::pontThermiqueTabuleIncoherent($referenceDoc);
         }
 
         $suspects += self::besoinsDepensiersIncoherents($expected);
@@ -1248,6 +1249,87 @@ final class ReferenceDefects
             $total,
             $hperm,
         )];
+    }
+
+    /**
+     * Un même `tv_pont_thermique_id` publié à la fois nul et non nul.
+     *
+     * L'identifiant tabulé d'un pont thermique désigne une valeur unique : le
+     * même DPE ne peut pas lui donner 0,92 à une liaison et 0 à une autre.
+     * Quand il le fait, ce sont les zéros qui sont fautifs — la valeur non
+     * nulle est celle de la table.
+     *
+     * Vingt fichiers du corpus se contredisent ainsi. Le critère tient sur le
+     * fichier de référence seul, sans recalculer quoi que ce soit : il suffit
+     * de comparer ses propres `k` entre eux.
+     *
+     * @return array<string, string>
+     */
+    private static function pontThermiqueTabuleIncoherent(DOMDocument $referenceDoc): array
+    {
+        /** @var array<string, array<string, bool>> $valeursParIdentifiant */
+        $valeursParIdentifiant = [];
+        /** @var array<string, list<string>> $cheminsNuls */
+        $cheminsNuls = [];
+
+        foreach ($referenceDoc->getElementsByTagName('pont_thermique') as $pont) {
+            if (!$pont instanceof DOMElement) {
+                continue;
+            }
+            $identifiant = self::texteEnfant($pont, 'donnee_entree', 'tv_pont_thermique_id');
+            $k = self::texteEnfant($pont, 'donnee_intermediaire', 'k');
+            if ($identifiant === null || $k === null) {
+                continue;
+            }
+
+            $nul = (float) str_replace(',', '.', $k) === 0.0;
+            $valeursParIdentifiant[$identifiant][$nul ? 'nul' : 'non_nul'] = true;
+            if ($nul) {
+                $cheminsNuls[$identifiant][] = $pont->getNodePath() . '/donnee_intermediaire/k';
+            }
+        }
+
+        $suspects = [];
+        foreach ($valeursParIdentifiant as $identifiant => $vues) {
+            if (count($vues) < 2) {
+                continue;
+            }
+            foreach ($cheminsNuls[$identifiant] ?? [] as $chemin) {
+                $suspects[self::cheminDpe($chemin)] = sprintf(
+                    'la référence publie k = 0 pour tv_pont_thermique_id = %s, alors qu\'elle '
+                    . 'publie une valeur non nulle pour ce même identifiant ailleurs dans le '
+                    . 'fichier : un identifiant tabulé ne désigne qu\'une valeur',
+                    $identifiant,
+                );
+            }
+        }
+
+        return $suspects;
+    }
+
+    /** Texte d'un petit-enfant, ou null. */
+    private static function texteEnfant(DOMElement $parent, string $bloc, string $balise): ?string
+    {
+        foreach ($parent->childNodes as $enfant) {
+            if (!$enfant instanceof DOMElement || $enfant->nodeName !== $bloc) {
+                continue;
+            }
+            foreach ($enfant->childNodes as $petit) {
+                if ($petit instanceof DOMElement && $petit->nodeName === $balise) {
+                    $texte = trim($petit->textContent);
+
+                    return $texte === '' ? null : $texte;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /** `getNodePath()` rend `/dpe/logement[1]/…` ; le rapport indexe sans les [1]. */
+    private static function cheminDpe(string $chemin): string
+    {
+        return ltrim((string) preg_replace('/\[1\]/', '', $chemin), '/');
     }
 
     private static function totalAuxiliaireIncoherent(array $expected): array

@@ -97,6 +97,66 @@ final class CascadeAvecPrioriteTest extends TestCase
     }
 
     /**
+     * §13.2.1.2 sur un DPE **immeuble** : le GV reste celui du bâtiment entier
+     * et chaque installation individuelle compte autant de fois qu'elle
+     * représente de logements.
+     *
+     * open3cl, citant le moteur de référence CSTB (`Calcul_batiment.cs`,
+     * CTchx), pose `Cdimref += Pn × Rdim / (GV × (Tcons − Tbase))`. Doubler le
+     * `rdim` double donc la puissance vue par Cdimref, ce qui resserre le
+     * profil de charge et change le rendement.
+     */
+    public function testSurUnImmeubleLeRdimPondereLaPuissanceDeCdimref(): void
+    {
+        self::assertNotEqualsWithDelta(
+            $this->rendementImmeuble(rdim: 1.0),
+            $this->rendementImmeuble(rdim: 2.0),
+            1e-9,
+        );
+    }
+
+    /** Rendement d'une chaudière unique sur un DPE immeuble de `rdim` donné. */
+    private function rendementImmeuble(float $rdim): float
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<XML
+            <?xml version="1.0"?>
+            <dpe><logement>
+              <caracteristique_generale>
+                <enum_methode_application_dpe_log_id>7</enum_methode_application_dpe_log_id>
+                <nombre_appartement>10</nombre_appartement>
+              </caracteristique_generale>
+              <meteo><enum_zone_climatique_id>2</enum_zone_climatique_id><enum_classe_altitude_id>1</enum_classe_altitude_id></meteo>
+              <installation_chauffage_collection><installation_chauffage>
+                <donnee_entree><enum_type_installation_id>1</enum_type_installation_id><rdim>{$rdim}</rdim></donnee_entree>
+                <generateur_chauffage_collection><generateur_chauffage>
+                  <donnee_entree>
+                    <enum_type_generateur_ch_id>97</enum_type_generateur_ch_id>
+                    <enum_type_energie_id>2</enum_type_energie_id>
+                  </donnee_entree>
+                  <donnee_intermediaire>
+                    <pn>24000</pn><rpn>0.93</rpn><rpint>0.98</rpint><qp0>120</qp0>
+                    <temp_fonc_100>70</temp_fonc_100><temp_fonc_30>40</temp_fonc_30>
+                  </donnee_intermediaire>
+                </generateur_chauffage></generateur_chauffage_collection>
+              </installation_chauffage></installation_chauffage_collection>
+            </logement></dpe>
+            XML);
+
+        $context = new CalculationContext(
+            document: $document,
+            tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        );
+        $context->set('chauffage.gv', 2400.0);
+
+        $generateur = $document->getElementsByTagName('generateur_chauffage')->item(0);
+        self::assertInstanceOf(DOMElement::class, $generateur);
+        (new RendementAnnuelMoyenCalculator())->calculate($generateur, $context);
+
+        return (float) $generateur->getElementsByTagName('rendement_generation')->item(0)?->textContent;
+    }
+
+    /**
      * Les deux chaudières sont identiques au bit près ; seule la priorité les
      * sépare, et elle suffit à écarter leurs rendements de plus d'un point.
      */

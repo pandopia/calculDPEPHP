@@ -585,6 +585,31 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   `enum_type_ventilation_id` collectif, présence d'un caisson commun — plutôt
   que dans les surfaces.
 
+### TASK-K90 — `ef_conso` retient une seule clé de répartition pour toutes les installations
+
+- [ ] Owner: __ | Phase: K | Priorité: haute
+- `EfConsoCalculator::aggregateChauffage` accumule les consommations de toutes
+  les installations, puis multiplie le total par **la dernière**
+  `cle_repartition_ch` lue — la boucle écrase la précédente à chaque tour.
+- Sur `2601E0158771V` (méthode 2, deux installations de clés **0,7866** et
+  **0,2134**, qui somment à 1), `ef_conso` publie 49,087 là où
+  `sortie_par_energie` — qui applique la clé installation par installation —
+  publie 123,152. Soit le total brut de 230,02 ramené à la seule clé 0,2134.
+  Même défaut sur `2601E0304014C`, où l'écart atteint un facteur 14.
+- Les deux cas viennent du jeu `ademe-emetteurs-2026-10` : la configuration
+  n'existait pas dans le corpus avant lui.
+- **La correction évidente est fausse** : pondérer chaque installation par sa
+  propre clé a été mesuré en A/B isolé, 645 cas, 0 crash — **+411 écarts, 75
+  cas dégradés, aucun amélioré**. La raison est que les installations sans clé
+  déclarée se mêlent à celles qui en portent une : aujourd'hui la clé trouvée
+  s'applique à tout le monde, et c'est ce que la plupart des références
+  attendent.
+- Chercher d'abord ce que la référence fait quand **une partie seulement** des
+  installations déclare une clé, puis traiter le cas où elles somment à 1 —
+  qui est le seul où le défaut se voit.
+- Les deux fichiers sont les seules entrées de
+  `CoherenceInterneTest::DETTE_CONNUE`.
+
 ### TASK-K84 — Réseau de chaleur multi-bâtiment : 0,75 ou 0,90, le corpus ne tranche plus
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
@@ -651,6 +676,42 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Ni `tv_pont_thermique_id` ni `enum_type_liaison_id` ne séparent les deux
   groupes : l'identifiant 1 apparaît 12 fois annulé et 3 fois conservé, le 29
   sept fois et dix-neuf fois, le 85 dix fois et trois fois.
+- **Le corpus élargi à 645 cas fait apparaître le groupe symétrique** : sur
+  159 écarts de `k`, 93 ont la référence à zéro et **33 nous ont à zéro** avec
+  une référence non nulle. Ces 33 sont à 96 % sur les liaisons 1 et 3 — celles
+  que `isNegligibleByAdjacency` traite. Le garde annule donc parfois à tort.
+- **Mais le resserrer coûte davantage qu'il ne rapporte.** Deux variantes
+  mesurées en A/B isolé, 645 cas, 0 crash :
+  - retrait complet du garde : **+104 écarts**, 4 cas améliorés contre 8
+    dégradés, dont `2618E2138973C` qui passe de 24 à 74 ;
+  - garde restreint aux seuls planchers bordant la circulation, le mur ne
+    déclenchant plus l'annulation : **+61**, 3 améliorés contre 6 dégradés.
+  Le garde actuel reste donc le meilleur des trois. Les cas où un **mur** en
+  circulation justifie l'annulation sont bien réels.
+- Le défaut pèse maintenant **159 écarts de `k` sur 44 cas**, plus 44 sur
+  `deperdition_pont_thermique`, et il explique **21 des 31 GV faux** du jeu
+  `ademe-emetteurs-2026-10`.
+- **Vingt de ces références se contredisent, et sont désormais imputées.** Un
+  même `tv_pont_thermique_id` y vaut à la fois 0 et la valeur de table ; or un
+  identifiant tabulé ne désigne qu'une valeur. `ReferenceDefects` les relève
+  sans recalcul — +35 écarts imputés. Les treize autres fichiers qui annulent
+  n'ont qu'une occurrence de l'identifiant concerné : rien à démontrer, ils
+  restent à notre charge.
+- **open3cl n'est pas un oracle ici, et c'est la découverte qui ferme la
+  piste.** Son `3.4_pont_thermique.js` ouvre par `if (pt_di.k === 0) return 0;`
+  — il **recopie** le `k` de la `donnee_intermediaire` du fichier d'entrée au
+  lieu de le calculer, et son propre commentaire parle de `bug_for_bug_compat`.
+  Il reproduit donc les zéros des éditeurs sans les expliquer.
+- Nos entrées, elles, sont purgées : `OutputPurger` ne préserve les valeurs de
+  `donnee_intermediaire` que sur `generateur_chauffage`, `generateur_ecs` et
+  `climatisation`, et **aucun des 12 869 ponts thermiques du corpus ne porte de
+  `k` en entrée**. C'est correct — les 93 cas sont tous déclarés
+  `enum_methode_saisie_pont_thermique_id = 1`, donc forfaitaires, donc calculés
+  depuis la table, et `k_saisi` n'existe que pour les méthodes 2 et 3.
+- **Conséquence** : ces zéros ne sont pas reproductibles par le calcul, et
+  chercher la règle qui les produirait est sans objet. Ne rouvrir que si un
+  export publie un `k` nul avec une méthode de saisie 2 ou 3, ou si le texte
+  introduit une annulation que §3.4 ne mentionne pas.
 
 ### TASK-K63 — Modèle DPE 2.7 : EPBD, nouvelles technologies, pef élec
 
@@ -690,14 +751,30 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
     produite sur site en kWh et par source, puis son rapport à la
     consommation d'énergie finale totale — « la consommation d'énergie à
     considérer contient l'autoconsommation ». Aucun seuil n'est fixé.
-- **Bloquant pour coder** : les formules de 1.2.1, 1.2.2, 1.2.4 et 1.2.7 sont
-  des **images** dans la page Légifrance, remplacées par « Vous pouvez
-  consulter l'intégralité du texte avec ses images ». Elles ne sont que dans
-  l'extrait PDF du Journal officiel, que Légifrance refuse en téléchargement
-  direct (HTTP 403). Les récupérer avant d'écrire une ligne : les formes
-  attendues — `Cch_pac × (SCOP − 1)` pour la chaleur ambiante, par exemple —
-  sont plausibles mais **ne sont pas sourcées**, et la règle d'or n° 1
-  l'interdit.
+- **Déblocage** : l'arrêté est déposé dans `resources/textes/`
+  (JO n° 188 du 13 août 2026, texte 23). Les formules, images dans la page
+  HTML, y sont lisibles — `production_enr` et `mention_a0` sont **livrés**,
+  cf. `ProductionEnrCalculator`. Le « logigramme » d'attribution de A0 annoncé
+  par l'annexe 1 **ne figure pas dans l'extrait du JO** ; le texte précise
+  qu'il ne fait qu'« intégrer ces conditions », qui sont complètes, et c'est
+  d'elles que part l'implémentation.
+- **Reste à qualifier sur `mention_a0`** : le réseau de chaleur n'est admis
+  que s'il est « efficace au sens de l'article L. 711-4 ». Le DPE ne porte pas
+  cette qualification et nous ne la présumons pas — un logement au réseau de
+  chaleur n'obtient donc jamais A0. À confirmer sur l'annexe 7 de l'arrêté du
+  15 septembre 2006, qui tabule les taux ENR des réseaux.
+- **Reste à implémenter dans `production_enr`** : `prod_enr_solaire_thermique`
+  (§1.2.4) et `prod_enr_rcfu` (§1.2.6) sortent à 0, faute des grandeurs
+  intermédiaires. La formule solaire est connue —
+  `Σ Bch × INT × Fch × Ich + Σ Becs × Fecs × Iecs`, avec le `Fch` du §18.4 que
+  nous tabulons déjà — mais `INT` et `Ich` ne transitent pas jusqu'ici ; le
+  RCU attend les taux de l'annexe 7 de 2006.
+- **Déjà fait, et à ne pas refaire** : l'éditeur gère les deux millésimes —
+  `DPEv2.7.xsd` est au registre, 2.7 est proposé en tête à la création, 2.6
+  reste disponible, et un test paramétré couvre les deux formats de bout en
+  bout. Le moteur, lui, **refuse explicitement** un générateur de type 172-184
+  ou 135-146 au lieu de le calculer avec un rendement implicite de 1 : sans ce
+  garde, le fichier produit était silencieusement faux et rien ne le signalait.
 - **Nos tables deviennent incomplètes** — règle d'or n° 2. Le millésime ajoute
   13 `enum_type_generateur_ch_id` (172 à 184) et 12
   `enum_type_generateur_ecs_id` (135 à 146) : PAC et CET à partir de 2027,

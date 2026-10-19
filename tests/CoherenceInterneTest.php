@@ -43,6 +43,13 @@ final class CoherenceInterneTest extends TestCase
         // Une entrée ici est un bloc de sortie qui se contredit lui-même, pas
         // un simple écart à la référence : elle appelle une TASK, pas une
         // tolérance.
+        //
+        // Deux installations de chauffage aux clés de répartition distinctes
+        // (0,7866 et 0,2134) : `EfConsoCalculator` retient la dernière clé lue
+        // et l'applique au total, quand `sortie_par_energie` applique la
+        // sienne à chaque installation. Voir TASK-K90.
+        '2601E0158771V.xml' => 'TASK-K90',
+        '2601E0304014C.xml' => 'TASK-K90',
     ];
 
     /** Préfixe de chaque bloc de sortie, par nom de bloc. */

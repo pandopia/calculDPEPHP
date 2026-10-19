@@ -95,6 +95,7 @@ final class DefaultDpeEngineFactory
         $pipeline->add(new \CalculDpePHP\Sortie\ConfortEteCalculator());
         $pipeline->add(new \CalculDpePHP\Sortie\CoutCalculator());
         $pipeline->add(new \CalculDpePHP\Sortie\SortieParEnergieAggregator());
+        $pipeline->add(new \CalculDpePHP\Sortie\ProductionEnrCalculator());
         $pipeline->add(new \CalculDpePHP\Collectif\DpeImmeubleCalculator());
         $pipeline->add(new \CalculDpePHP\Collectif\DpeAppartementCalculator());
         $pipeline->add(new \CalculDpePHP\Collectif\ChauffageMultiImmeubleCalculator());

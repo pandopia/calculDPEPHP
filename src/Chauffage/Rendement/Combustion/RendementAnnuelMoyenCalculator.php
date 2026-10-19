@@ -164,9 +164,14 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         // de tous les appartements visités face au GV d'un seul les confondrait.
         // Sinon le GV reste celui du bâtiment entier et la puissance installée
         // est le cumul de tous ses générateurs.
+        // Hors appartement généré, open3cl — citant le moteur de référence CSTB
+        // (`Calcul_batiment.cs`, CTchx) — pose `Cdimref += Pn × Rdim / (GV ×
+        // (Tcons − Tbase))` : le GV de l'immeuble entier, et `rdim` qui compte
+        // une installation individuelle autant de fois qu'elle représente de
+        // logements. Le Cdimref est unique pour tous les générateurs.
         $pnCumule   = $gvRameneAuLogementMoyen
             ? $this->puissanceDuGenerateurMoyen($node, $accessor, $context)
-            : $this->puissanceCombustionCumulee($accessor, $context, null);
+            : $this->puissanceCombustionPonderee($node, $accessor, $context);
 
         // Calcul QPx selon le type de chaudière
         $boilerCat = $this->boilerCategory($genId);
@@ -579,7 +584,7 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         }
 
         $modeApp = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
-        if ($modeApp !== null && in_array($modeApp, [6, 8, 10, 12], true)) {
+        if ($modeApp !== null && in_array($modeApp, [10, 12], true)) {
             $nblgt = $accessor->getIntOrNull('//caracteristique_generale/nombre_appartement');
             if ($nblgt !== null && $nblgt > 1) {
                 $share = \CalculDpePHP\Collectif\ChauffageInstallationMultiplicity::directShareOrNull($node, $accessor)
@@ -695,6 +700,47 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         }
 
         return $nombre > 0 ? $total / $nombre : $total;
+    }
+
+    /**
+     * Σ(Pn × rdim) des générateurs à combustion, sur le périmètre du GV.
+     *
+     * `rdim` ne joue que sur un DPE **immeuble** : la sortie y décrit tout le
+     * bâtiment, et une installation individuelle représentant un logement type
+     * compte autant de fois qu'elle est dimensionnée. Partout ailleurs la
+     * sortie porte déjà sur un seul logement et `rdim` vaut 1.
+     */
+    private function puissanceCombustionPonderee(
+        DOMElement $node,
+        NodeAccessor $accessor,
+        CalculationContext $context,
+    ): float {
+        $modeApp = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
+        $estImmeuble = $modeApp !== null && in_array($modeApp, [6, 7, 8, 9, 26, 27, 28, 29, 30], true);
+        if (!$estImmeuble) {
+            return $this->puissanceCombustionCumulee($accessor, $context, null);
+        }
+
+        $total = 0.0;
+        foreach ($context->document->getElementsByTagName('generateur_chauffage') as $gen) {
+            if (!$gen instanceof DOMElement) {
+                continue;
+            }
+            $genId = \CalculDpePHP\Chauffage\GenerateurChAlias::normalizeNode(
+                $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $gen),
+                $gen,
+            );
+            if ($genId === null || $genId < self::COMBUSTION_MIN || $genId > self::COMBUSTION_MAX) {
+                continue;
+            }
+            $install = $this->installationParente($gen);
+            $rdim = $install === null
+                ? 1.0
+                : max(1.0, $accessor->getFloatOrNull('./donnee_entree/rdim', $install) ?? 1.0);
+            $total += ($accessor->getFloatOrNull('./donnee_intermediaire/pn', $gen) ?? 0.0) * $rdim;
+        }
+
+        return $total;
     }
 
     /** Installation de chauffage à laquelle appartient le générateur. */
