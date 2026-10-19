@@ -44,6 +44,69 @@ final class DpeEngineTest extends TestCase
             XML;
     }
 
+    /**
+     * Document minimal portant un générateur du type donné.
+     *
+     * @param 'generateur_chauffage'|'generateur_ecs' $balise
+     */
+    private function xmlAvecGenerateur(string $balise, string $champ, int $type): string
+    {
+        $collection = $balise . '_collection';
+        $installation = $balise === 'generateur_chauffage' ? 'installation_chauffage' : 'installation_ecs';
+
+        return <<<XML
+            <?xml version="1.0" encoding="UTF-8"?>
+            <dpe>
+                <administratif><enum_modele_dpe_id>1</enum_modele_dpe_id></administratif>
+                <logement>
+                    <caracteristique_generale><surface_habitable_logement>80</surface_habitable_logement></caracteristique_generale>
+                    <{$installation}_collection><{$installation}>
+                        <{$collection}><{$balise}>
+                            <donnee_entree><{$champ}>{$type}</{$champ}></donnee_entree>
+                        </{$balise}></{$collection}>
+                    </{$installation}></{$installation}_collection>
+                </logement>
+            </dpe>
+            XML;
+    }
+
+    /**
+     * §Règle d'or n° 2 : le modèle 2.7 ajoute des technologies dont les
+     * caractéristiques ne sont pas digitalisées. Sans garde, le moteur ne
+     * crashe pas — il produit une consommation calculée avec un rendement de
+     * génération implicite de 1, sans rien signaler.
+     *
+     * @return iterable<string, array{string, string, int}>
+     */
+    public static function technologies27(): iterable
+    {
+        yield 'chaudière bois granulés à condensation après 2024' => ['generateur_chauffage', 'enum_type_generateur_ch_id', 177];
+        yield 'PAC air/eau à partir de 2027' => ['generateur_chauffage', 'enum_type_generateur_ch_id', 173];
+        yield 'CET sur air extérieur à partir de 2027' => ['generateur_ecs', 'enum_type_generateur_ecs_id', 136];
+        yield 'ballon à commande intelligente' => ['generateur_ecs', 'enum_type_generateur_ecs_id', 140];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('technologies27')]
+    public function testUneTechnologieDu27EstRefuseeAuLieuDEtreCalculeeAFaux(
+        string $balise,
+        string $champ,
+        int $type,
+    ): void {
+        $this->expectException(UnsupportedDpeModelException::class);
+        $this->expectExceptionMessage("de type $type : technologie introduite par le modèle DPE 2.7");
+
+        $this->engine()->calculate($this->xmlAvecGenerateur($balise, $champ, $type));
+    }
+
+    /** Les bornes du modèle 2.6 restent calculables. */
+    public function testLesBornesDu26RestentAcceptees(): void
+    {
+        $this->engine()->calculate($this->xmlAvecGenerateur('generateur_chauffage', 'enum_type_generateur_ch_id', 171));
+        $this->engine()->calculate($this->xmlAvecGenerateur('generateur_ecs', 'enum_type_generateur_ecs_id', 134));
+
+        $this->expectNotToPerformAssertions();
+    }
+
     public function testDpeNeufRt2012EstRefuse(): void
     {
         $this->expectException(UnsupportedDpeModelException::class);

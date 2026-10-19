@@ -7,6 +7,7 @@ namespace CalculDpePHP\Engine;
 use CalculDpePHP\Common\Period;
 use CalculDpePHP\Tables\TableRepository;
 use CalculDpePHP\Xml\NodeAccessor;
+use DOMElement;
 use CalculDpePHP\Xml\XmlReader;
 use CalculDpePHP\Xml\XmlWriter;
 use DOMDocument;
@@ -70,6 +71,17 @@ final class DpeEngine
      *
      * @throws UnsupportedDpeModelException
      */
+    /**
+     * Domaine des types de générateur que les tables couvrent, par balise :
+     * [champ, identifiant maximal, libellé d'usage].
+     *
+     * Les bornes sont celles du modèle 2.6 ; le 2.7 les dépasse.
+     */
+    private const GENERATEURS_CONNUS = [
+        'generateur_chauffage' => ['enum_type_generateur_ch_id', 171, 'de chauffage'],
+        'generateur_ecs'       => ['enum_type_generateur_ecs_id', 134, 'd\'ECS'],
+    ];
+
     private function assertCalculable(DOMDocument $document): void
     {
         $accessor = new NodeAccessor($document);
@@ -93,6 +105,51 @@ final class DpeEngine
                 ? 'structure <logement_neuf> détectée — DPE neuf (RT2012/RE2020) : non calculable par la méthode 3CL'
                 : 'balise <logement> absente : non calculable par la méthode 3CL';
             throw new UnsupportedDpeModelException($detail . '.');
+        }
+
+        $this->assertTechnologiesConnues($accessor, $document);
+    }
+
+    /**
+     * Refuse un générateur dont le type dépasse le domaine que les tables
+     * couvrent.
+     *
+     * Le modèle 2.7 du 16 octobre 2026 ajoute treize types de générateur de
+     * chauffage (172 à 184) et douze d'ECS (135 à 146) : pompes à chaleur et
+     * chauffe-eau thermodynamiques à partir de 2027, chaudières bois granulés
+     * après 2024, ballons à commande intelligente. Leurs caractéristiques
+     * viennent d'un arrêté que nous n'avons pas encore digitalisé.
+     *
+     * **Sans ce garde le moteur ne crashe pas : il fait pire.** Un générateur
+     * inconnu traverse les calculateurs de rendement sans que l'un d'eux
+     * s'applique, ressort sans `pn`, sans `rpn` et sans
+     * `rendement_generation`, et sa consommation est calculée avec un
+     * rendement implicite de 1. Le fichier produit est silencieusement faux,
+     * et rien ne le signale.
+     *
+     * @throws UnsupportedDpeModelException
+     */
+    private function assertTechnologiesConnues(NodeAccessor $accessor, DOMDocument $document): void
+    {
+        foreach (self::GENERATEURS_CONNUS as $balise => [$champ, $maximum, $usage]) {
+            foreach ($document->getElementsByTagName($balise) as $generateur) {
+                if (!$generateur instanceof DOMElement) {
+                    continue;
+                }
+                $type = $accessor->getIntOrNull('./donnee_entree/' . $champ, $generateur);
+                if ($type !== null && $type > $maximum) {
+                    throw new UnsupportedDpeModelException(sprintf(
+                        'générateur %s de type %d : technologie introduite par le modèle DPE 2.7, '
+                        . 'dont les caractéristiques ne sont pas encore digitalisées (le moteur '
+                        . 'couvre %s jusqu\'à %d). Calculer ce fichier produirait un rendement de '
+                        . 'génération implicite de 1 et une consommation fausse — voir TASK-K63.',
+                        $usage,
+                        $type,
+                        $champ,
+                        $maximum,
+                    ));
+                }
+            }
         }
     }
 

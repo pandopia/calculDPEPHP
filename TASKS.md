@@ -759,6 +759,12 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   attendues — `Cch_pac × (SCOP − 1)` pour la chaleur ambiante, par exemple —
   sont plausibles mais **ne sont pas sourcées**, et la règle d'or n° 1
   l'interdit.
+- **Déjà fait, et à ne pas refaire** : l'éditeur gère les deux millésimes —
+  `DPEv2.7.xsd` est au registre, 2.7 est proposé en tête à la création, 2.6
+  reste disponible, et un test paramétré couvre les deux formats de bout en
+  bout. Le moteur, lui, **refuse explicitement** un générateur de type 172-184
+  ou 135-146 au lieu de le calculer avec un rendement implicite de 1 : sans ce
+  garde, le fichier produit était silencieusement faux et rien ne le signalait.
 - **Nos tables deviennent incomplètes** — règle d'or n° 2. Le millésime ajoute
   13 `enum_type_generateur_ch_id` (172 à 184) et 12
   `enum_type_generateur_ecs_id` (135 à 146) : PAC et CET à partir de 2027,
