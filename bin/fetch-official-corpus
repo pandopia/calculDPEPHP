@@ -88,6 +88,21 @@ const BRANCHES = [
 
     // §18.4 — installation solaire couvrant chauffage et ECS
     ['branche' => 'solaire-chauffage-et-ecs',       'champ' => 'type_installation_solaire_n1', 'valeur' => 'Chauffage + ECS solaire'],
+
+    // §4 — les neuf derniers `enum_type_ventilation_id` que le corpus n'a
+    // jamais portés. Ce ne sont pas des branches de code mais des **lignes de
+    // table** — `tv_debits_ventilation`, `tv_q4pa_conv` : une ligne absente ne
+    // se voit pas tant que personne n'envoie le cas, puis elle crashe ou rend
+    // une valeur fausse en production. Règle d'or n° 2.
+    ['branche' => 'vmc-basse-pression-auto',        'champ' => 'type_ventilation', 'valeur' => 'VMC Basse pression Auto-réglable'],
+    ['branche' => 'vmc-basse-pression-hygro-a',     'champ' => 'type_ventilation', 'valeur' => 'VMC Basse pression Hygro A'],
+    ['branche' => 'vmc-df-individuelle-avant-2013', 'champ' => 'type_ventilation', 'valeur' => 'VMC DF individuelle avec échangeur avant 2013'],
+    ['branche' => 'vmc-df-sans-echangeur-av-2013',  'champ' => 'type_ventilation', 'valeur' => 'VMC DF sans échangeur avant 2013'],
+    ['branche' => 'hybride-avant-2001',             'champ' => 'type_ventilation', 'valeur' => 'Ventilation hybride avant  2001'],
+    ['branche' => 'hybride-2001-2012',              'champ' => 'type_ventilation', 'valeur' => 'Ventilation hybride de 2001 à 2012'],
+    ['branche' => 'hybride-hygro-avant-2001',       'champ' => 'type_ventilation', 'valeur' => 'Ventilation hybride avec entrées d\'air hygro avant  2001'],
+    ['branche' => 'puits-climatique-sans-ech-2013', 'champ' => 'type_ventilation', 'valeur' => 'Puits climatique sans échangeur à partir de 2013'],
+    ['branche' => 'puits-climatique-avec-ech-2013', 'champ' => 'type_ventilation', 'valeur' => 'Puits climatique avec échangeur à partir de 2013'],
 ];
 
 const REGIME_RANGE = [
@@ -95,7 +110,7 @@ const REGIME_RANGE = [
     'post_2026' => ['2026-01-01', '2026-12-31'],
 ];
 
-$options = getopt('h', ['build:', 'build-branches:', 'manifest:', 'per-stratum:', 'dry-run', 'help']);
+$options = getopt('h', ['build:', 'build-branches:', 'manifest:', 'per-stratum:', 'only:', 'dry-run', 'help']);
 
 if (isset($options['h']) || isset($options['help'])
     || (!isset($options['build']) && !isset($options['build-branches']) && !isset($options['manifest']))) {
@@ -115,6 +130,8 @@ if (isset($options['h']) || isset($options['help'])
                          ventilations, générateurs rares), N cas par branche
                          et par régime EP (défaut 2).
       --manifest=CHEMIN  Retélécharge les cas listés dans un manifeste existant.
+      --only=A,B,C       Restreint --build-branches à ces branches, pour
+                         compléter un jeu sans retélécharger les autres.
       --dry-run          Écrit le manifeste sans télécharger les XML.
 
     TXT);
@@ -123,6 +140,9 @@ if (isset($options['h']) || isset($options['help'])
 
 $projectRoot = dirname(__DIR__);
 $dryRun = isset($options['dry-run']);
+$seulement = isset($options['only'])
+    ? array_values(array_filter(array_map('trim', explode(',', (string) $options['only']))))
+    : [];
 
 if (isset($options['build-branches'])) {
     $corpus = (string) $options['build-branches'];
@@ -131,7 +151,7 @@ if (isset($options['build-branches'])) {
     $manifestPath = $corpusDir . '/metadata/manifest.json';
 
     fwrite(STDOUT, "Échantillonnage par branche du moteur…\n");
-    $manifest = buildBranchManifest($corpus, $perStratum);
+    $manifest = buildBranchManifest($corpus, $perStratum, $seulement);
 
     ensureDir(dirname($manifestPath));
     file_put_contents($manifestPath, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
@@ -290,12 +310,16 @@ function buildManifest(string $corpus, int $perStratum): array
  *
  * @return array<string, mixed>
  */
-function buildBranchManifest(string $corpus, int $perStratum): array
+function buildBranchManifest(string $corpus, int $perStratum, array $seulement = []): array
 {
     $cases = [];
     $seen = [];
 
     foreach (BRANCHES as $branche) {
+        if ($seulement !== [] && !in_array($branche['branche'], $seulement, true)) {
+            continue;
+        }
+
         $total = 0;
 
         foreach (REGIME_RANGE as $regime => [$from, $to]) {
@@ -480,7 +504,6 @@ function httpGet(string $url, array $headers): string
     $body = curl_exec($curl);
     $code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
     $error = curl_error($curl);
-    curl_close($curl);
 
     if ($body === false) {
         throw new RuntimeException('curl : ' . $error);
