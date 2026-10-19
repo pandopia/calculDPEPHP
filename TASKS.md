@@ -751,14 +751,24 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
     produite sur site en kWh et par source, puis son rapport à la
     consommation d'énergie finale totale — « la consommation d'énergie à
     considérer contient l'autoconsommation ». Aucun seuil n'est fixé.
-- **Bloquant pour coder** : les formules de 1.2.1, 1.2.2, 1.2.4 et 1.2.7 sont
-  des **images** dans la page Légifrance, remplacées par « Vous pouvez
-  consulter l'intégralité du texte avec ses images ». Elles ne sont que dans
-  l'extrait PDF du Journal officiel, que Légifrance refuse en téléchargement
-  direct (HTTP 403). Les récupérer avant d'écrire une ligne : les formes
-  attendues — `Cch_pac × (SCOP − 1)` pour la chaleur ambiante, par exemple —
-  sont plausibles mais **ne sont pas sourcées**, et la règle d'or n° 1
-  l'interdit.
+- **Déblocage** : l'arrêté est déposé dans `resources/textes/`
+  (JO n° 188 du 13 août 2026, texte 23). Les formules, images dans la page
+  HTML, y sont lisibles — `production_enr` et `mention_a0` sont **livrés**,
+  cf. `ProductionEnrCalculator`. Le « logigramme » d'attribution de A0 annoncé
+  par l'annexe 1 **ne figure pas dans l'extrait du JO** ; le texte précise
+  qu'il ne fait qu'« intégrer ces conditions », qui sont complètes, et c'est
+  d'elles que part l'implémentation.
+- **Reste à qualifier sur `mention_a0`** : le réseau de chaleur n'est admis
+  que s'il est « efficace au sens de l'article L. 711-4 ». Le DPE ne porte pas
+  cette qualification et nous ne la présumons pas — un logement au réseau de
+  chaleur n'obtient donc jamais A0. À confirmer sur l'annexe 7 de l'arrêté du
+  15 septembre 2006, qui tabule les taux ENR des réseaux.
+- **Reste à implémenter dans `production_enr`** : `prod_enr_solaire_thermique`
+  (§1.2.4) et `prod_enr_rcfu` (§1.2.6) sortent à 0, faute des grandeurs
+  intermédiaires. La formule solaire est connue —
+  `Σ Bch × INT × Fch × Ich + Σ Becs × Fecs × Iecs`, avec le `Fch` du §18.4 que
+  nous tabulons déjà — mais `INT` et `Ich` ne transitent pas jusqu'ici ; le
+  RCU attend les taux de l'annexe 7 de 2006.
 - **Déjà fait, et à ne pas refaire** : l'éditeur gère les deux millésimes —
   `DPEv2.7.xsd` est au registre, 2.7 est proposé en tête à la création, 2.6
   reste disponible, et un test paramétré couvre les deux formats de bout en
