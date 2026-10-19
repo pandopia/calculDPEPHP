@@ -54,16 +54,26 @@ final class MarkdownRenderer
         $out[] = sprintf('Écarts non numériques    : %s', number_format((float) $s[ComparisonStatus::MISMATCH], 0, ',', ' '));
         $out[] = '';
         $out[] = sprintf('Conformité               : %s %%', $s['conformity_percent'] === null ? 'n/a' : number_format((float) $s['conformity_percent'], 2, ',', ' '));
+        $out[] = sprintf('Avancement               : %s %%', $s['progress_percent'] === null ? 'n/a' : number_format((float) $s['progress_percent'], 2, ',', ' '));
         $out[] = '```';
         $out[] = '';
         if ((int) ($s['reference_suspect'] ?? 0) > 0) {
             $out[] = sprintf(
-                'Sur ces écarts, **%s sont imputables à la référence** et non au moteur : '
-                . 'le corpus n\'est pas la vérité réglementaire, ce sont les sorties d\'autres '
-                . 'logiciels. Les corriger nous éloignerait de la méthode. Plafond réellement '
-                . 'atteignable sur ce corpus : **%s %%**. Détail plus bas.',
+                '**Avancement : %s %%.** C\'est le chiffre de suivi : la part des valeurs '
+                . '**atteignables** qui sont conformes. Il vaut 100 %% quand tout ce qui '
+                . 'dépend du moteur est juste.',
+                $s['progress_percent'] === null ? 'n/a' : number_format((float) $s['progress_percent'], 2, ',', ' '),
+            );
+            $out[] = '';
+            $out[] = sprintf(
+                'Il se distingue de la conformité brute (%s %%) par un point : %s écarts sont '
+                . 'imputables à la **référence** et non au moteur — le corpus n\'est pas la '
+                . 'vérité réglementaire, ce sont les sorties d\'autres logiciels, et les '
+                . 'reproduire nous éloignerait de la méthode. Ces écarts sortent du '
+                . 'dénominateur de l\'avancement, jamais du décompte brut : la mesure ne se '
+                . 'maquille pas. Détail des imputations plus bas.',
+                $s['conformity_percent'] === null ? 'n/a' : number_format((float) $s['conformity_percent'], 2, ',', ' '),
                 number_format((float) $s['reference_suspect'], 0, ',', ' '),
-                $s['reachable_percent'] === null ? 'n/a' : number_format((float) $s['reachable_percent'], 2, ',', ' '),
             );
             $out[] = '';
         }

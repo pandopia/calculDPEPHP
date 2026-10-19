@@ -19,6 +19,36 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K88 — Balises manquantes et surnuméraires : presque tout est convention d'éditeur
+
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- Le rapport compte **335 balises manquantes** et **2 132 surnuméraires** à
+  côté de ses 13 212 écarts de valeur. Les deux postes semblent gros ; ils
+  sont presque entièrement hors de notre portée, et ce bloc existe pour que
+  personne ne les réinstruise.
+- **Surnuméraires : 2 007 sur 2 132 sont le bloc `confort_ete`** — six balises
+  sur environ 335 cas. Les références le publient vide, `ReferenceDefects` les
+  impute déjà sur la preuve du schéma. Le reste se disperse en quinze balises
+  à moins de quinze occurrences.
+- **Manquantes : 236 sur 335 sont les quatre `*_auxiliaire_distribution_fr`**,
+  sur 59 cas. Soixante références les publient, **toutes à 0,000**, et le XSD
+  les déclare `minOccurs="0"` : les omettre est donc conforme, et les publier
+  partout échangerait 236 manquantes contre environ 1 900 surnuméraires.
+  Aucun discriminant : la climatisation n'en explique que 7 sur 60, et le même
+  moteur `3cl_tribu_1.4.25.1` les publie 8 fois et les omet 96 fois.
+- **La ligne `sortie_par_energie` d'énergie 12** — « électricité d'origine
+  renouvelable utilisée dans le bâtiment » — n'existe que dans **une seule
+  référence sur 541**, `2601E0370414Y`, qui y porte l'autoconsommation
+  photovoltaïque avec un coût et des émissions nuls. Convention minoritaire :
+  l'ajouter créerait des surnuméraires sur les huit autres cas du corpus à
+  autoconsommation non nulle.
+- Les autres postes sont déjà tranchés ailleurs : `rendement_stockage` à 1
+  (TASK-K06), les rubriques de plancher haut (bloc archivé « une seule
+  rubrique »).
+- **Conclusion** : le gisement actionnable est dans les écarts de **valeur**,
+  pas dans la présence des balises. Rouvrir seulement si le XSD rend
+  `conso_auxiliaire_distribution_fr` obligatoire dans une version ultérieure.
+
 ### TASK-K83 — Pertes de stockage ECS récupérées : notre calcul est exact, la condition est indécidable
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne

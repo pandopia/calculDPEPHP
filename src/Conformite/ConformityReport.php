@@ -160,6 +160,17 @@ final class ConformityReport
             )
             : null;
 
+        // Avancement : la part du chemin **atteignable** qui est parcourue.
+        //
+        // La conformité brute ne peut pas atteindre 100 % sur ce corpus, parce
+        // qu'une partie des écarts vient des références elles-mêmes. Rapporter
+        // la mesure à son plafond donne l'indicateur qu'on attend d'un suivi
+        // d'avancement : 100 % y signifie « tout ce que ce corpus permet de
+        // démontrer est démontré », et le reste à faire se lit directement.
+        $comptesGlobaux = $summary[ComparisonStatus::EXACT] + $summary[ComparisonStatus::WITHIN]
+            + $summary[ComparisonStatus::OUT] + $summary[ComparisonStatus::MISSING]
+            + $summary[ComparisonStatus::EXTRA] + $summary[ComparisonStatus::MISMATCH];
+
         $summary['conformity_percent'] = $this->rate([
             ComparisonStatus::EXACT => $summary[ComparisonStatus::EXACT],
             ComparisonStatus::WITHIN => $summary[ComparisonStatus::WITHIN],
@@ -168,6 +179,22 @@ final class ConformityReport
             ComparisonStatus::EXTRA => $summary[ComparisonStatus::EXTRA],
             ComparisonStatus::MISMATCH => $summary[ComparisonStatus::MISMATCH],
         ]);
+
+        // Avancement : la part des valeurs **atteignables** qui sont conformes.
+        //
+        // Les écarts imputés à la référence sortent du dénominateur, pas du
+        // numérateur : ils ne sont ni réussis ni ratés, ils sont hors de notre
+        // portée. Ce taux tend donc vers 100 % quand tout ce qui dépend du
+        // moteur est juste, et se confond avec la conformité brute lorsque
+        // aucun écart n'est imputé.
+        $atteignables = $comptesGlobaux - (int) ($summary['reference_suspect'] ?? 0);
+        $summary['progress_percent'] = $atteignables > 0
+            ? round(
+                ($summary[ComparisonStatus::EXACT] + $summary[ComparisonStatus::WITHIN])
+                / $atteignables * 100,
+                2,
+            )
+            : null;
 
         arsort($unknownElements);
         uasort($byTag, static fn (array $a, array $b): int => $b['count'] <=> $a['count']);

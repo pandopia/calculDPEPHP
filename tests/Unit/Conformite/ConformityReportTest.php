@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 final class ConformityReportTest extends TestCase
 {
     /** @param array<string, int> $counts */
-    private function case(string $name, string $status, array $counts, array $deltas = [], array $meta = [], array $exact = []): array
+    private function case(string $name, string $status, array $counts, array $deltas = [], array $meta = [], array $exact = [], int $reference_suspect = 0): array
     {
         return [
             'name' => $name,
@@ -27,6 +27,7 @@ final class ConformityReportTest extends TestCase
             'deltas' => $deltas,
             'famille_exact' => $exact,
             'unknown_elements' => [],
+            'reference_suspect' => $reference_suspect,
             'duration_ms' => 1.0,
         ];
     }
@@ -48,6 +49,46 @@ final class ConformityReportTest extends TestCase
         self::assertSame(80.0, $data['summary']['conformity_percent']);
         self::assertSame(0, $data['summary']['cases_fully_conform']);
         self::assertSame(1, $data['summary']['cases_partially_conform']);
+    }
+
+    /**
+     * L'avancement rapporte la mesure au plafond que le corpus permet.
+     *
+     * La conformité brute ne peut pas atteindre 100 % tant qu'une partie des
+     * écarts vient des références ; celui-ci le peut, et c'est pourquoi il
+     * sert au suivi : 100 % y signifie « tout ce qui est démontrable est
+     * démontré ».
+     */
+    public function testAvancementRapporteLaMesureAuPlafondAtteignable(): void
+    {
+        $report = new ConformityReport('strict', 'now');
+        // 8 conformes sur 10, et l'un des deux écarts est imputé à la référence :
+        // mesure 80 %, plafond 90 %, donc 88,89 % du chemin atteignable.
+        $report->addCase($this->case('a.xml', 'ok', [
+            ComparisonStatus::EXACT => 6,
+            ComparisonStatus::WITHIN => 2,
+            ComparisonStatus::OUT => 2,
+        ], reference_suspect: 1));
+
+        $s = $report->toArray()['summary'];
+
+        self::assertSame(80.0, $s['conformity_percent']);
+        self::assertSame(90.0, $s['reachable_percent']);
+        self::assertSame(88.89, $s['progress_percent']);
+    }
+
+    /** Sans aucun défaut de référence, l'avancement se confond avec la mesure. */
+    public function testSansDefautDeReferenceLAvancementEgaleLaConformite(): void
+    {
+        $report = new ConformityReport('strict', 'now');
+        $report->addCase($this->case('a.xml', 'ok', [
+            ComparisonStatus::EXACT => 8,
+            ComparisonStatus::OUT => 2,
+        ]));
+
+        $s = $report->toArray()['summary'];
+
+        self::assertSame($s['conformity_percent'], $s['progress_percent']);
     }
 
     public function testCasSansEcartEstTotalementConforme(): void
