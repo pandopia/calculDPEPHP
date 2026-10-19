@@ -20,10 +20,19 @@ export const VERSION_TO_XSD: Record<string, string> = {
   '2.4': 'DPEv2.3.xsd', // V8.2.0 — 2024-05-20
   '2.5': 'DPEv2.4.xsd', // V9.1.1 — 2025-04-30
   '2.6': 'DPEv2.6.xsd', // V9.2.3 — 2026-03-31
+  '2.7': 'DPEv2.7.xsd', // V10.0.0 — 2026-10-16
 };
 
-/** Versions proposées à la création d'un dossier : seule la version en vigueur. */
-export const VERSIONS_CREATION = ['2.6'];
+/**
+ * Versions proposées à la création d'un dossier, la plus récente en tête.
+ *
+ * Deux millésimes y figurent le temps de la transition : 2.7 — changement du
+ * pef électrique, EPBD et nouvelles technologies — coexiste avec 2.6, que les
+ * dossiers ouverts avant sa publication continuent de porter. Les versions
+ * antérieures restent lisibles et modifiables, mais ne sont plus proposées à
+ * la création.
+ */
+export const VERSIONS_CREATION = ['2.7', '2.6'];
 export const VERSIONS_OBSOLETES = ['1', '1.1'];
 
 export class SchemaHandle {

@@ -374,6 +374,46 @@ describe('nouveau dossier', () => {
   });
 });
 
+describe('millésimes du modèle', () => {
+  /**
+   * 2.6 et 2.7 coexistent le temps de la transition : les dossiers ouverts
+   * avant la publication du 16 octobre 2026 continuent de porter 2.6, et
+   * l'éditeur doit créer, relire et valider les deux.
+   */
+  it.each(['2.6', '2.7'])('crée et reprend un dossier en version %s', async (version) => {
+    const schema = (await schemas.forVersion(version))!;
+    expect(schema.fileName).toBe(version === '2.7' ? 'DPEv2.7.xsd' : 'DPEv2.6.xsd');
+
+    const doc = buildSkeleton(schema, { version, methodeApplication: '1' });
+    const d = await Dossier.fromSkeleton(doc, `Maison ${version}`, schemas);
+
+    expect(d.format.enumVersionId).toBe(version);
+    expect(d.format.xsd).toBe(schema.fileName);
+    expect(d.format.niveauSupport).toBe('complet');
+
+    // Le squelette n'invente aucune valeur au-delà des trois obligatoires.
+    const balises = [...exportXml(d.working).matchAll(/<([a-z_0-9]+)>([^<]+)<\/\1>/g)].map((m) => m[1]).sort();
+    expect(balises).toEqual(['enum_methode_application_dpe_log_id', 'enum_modele_dpe_id', 'enum_version_id']);
+
+    // Et il se relit sans perte, millésime compris.
+    const repris = await Dossier.fromDraft(JSON.parse(JSON.stringify(d.toDraft())), schemas);
+    expect(repris.format.enumVersionId).toBe(version);
+    expect(exportXml(repris.working)).toBe(exportXml(d.working));
+  });
+
+  /** Le 2.7 apporte des technologies que le 2.6 ne déclare pas. */
+  it('expose les nouveaux générateurs du 2.7 et pas ceux du 2.6', async () => {
+    const v26 = (await schemas.forVersion('2.6'))!;
+    const v27 = (await schemas.forVersion('2.7'))!;
+
+    const generateurs = (h: typeof v26) =>
+      h.xsdText.includes('"177": "chaudière bois granulés à condensation après 2024"');
+
+    expect(generateurs(v27)).toBe(true);
+    expect(generateurs(v26)).toBe(false);
+  });
+});
+
 describe('éléments répétables génériques', () => {
   it('ajoute deux masques lointains et édite le second sans toucher au premier', async () => {
     const d = await open(MULTI);

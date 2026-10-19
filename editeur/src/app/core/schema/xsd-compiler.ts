@@ -5,7 +5,7 @@ const XS = 'http://www.w3.org/2001/XMLSchema';
 /**
  * Compile un XSD ADEME en arbre de définitions d'éléments.
  *
- * Constructions supportées — inventaire exhaustif des XSD DPEv1 à DPEv2.6 :
+ * Constructions supportées — inventaire exhaustif des XSD DPEv1 à DPEv2.7 :
  * xs:element (inline, type= nommé, ref=), xs:complexType (inline ou nommé),
  * xs:all, xs:sequence, xs:choice (imbriqué), xs:any (processContents="skip"),
  * xs:attribute, xs:simpleType/xs:restriction et ses facettes. Toute autre
