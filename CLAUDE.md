@@ -96,6 +96,24 @@ return [
 
 3. **Pas de mapping interne LICIEL** : certaines balises XML d'entrée portent des IDs `tv_*_id` qui résultent de tables internes au logiciel diagnostiqueur (LICIEL, etc.) plutôt que de la spec officielle. Quand l'indexation n'est pas définie par la spec elle-même, **calcule à partir des paramètres directs** disponibles ailleurs dans `<donnee_entree>` (enum_type_vitrage, enum_type_gaz_lame, vitrage_vir, etc.) plutôt que de faire un lookup `tv_*_id`. La table digitalisée doit alors être indexée par ces paramètres, pas par l'ID externe.
 
+## Pull requests : vérifier l'état avant d'en parler
+
+Une branche mergée **continue d'accepter des commits**, sans rien dire. Les
+pousser dessus ne les met pas dans `main` : ils restent invisibles jusqu'à ce
+qu'une nouvelle PR les porte. C'est arrivé trois fois sur ce dépôt, et chaque
+fois le travail a été annoncé comme livré alors qu'il ne l'était pas.
+
+**Avant d'écrire qu'un travail est « dans la PR », exécuter :**
+
+```bash
+git fetch -q origin && git log --oneline origin/main..HEAD
+```
+
+Si la liste n'est pas vide, ces commits **ne sont pas dans `main`**. Ouvrir une
+PR pour eux, sur une branche au nom décrivant leur contenu, avant d'annoncer
+quoi que ce soit. Ne jamais citer un numéro de PR de mémoire : le vérifier par
+`gh pr view <n> --json state,mergedAt`.
+
 ## Workflow multi-IA (TASKS.md)
 
 `TASKS.md` est une file d'attente concise, pas un historique. Pour limiter le
