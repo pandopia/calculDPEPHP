@@ -14,6 +14,49 @@ final class RendementAnnuelMoyenCalculatorTest extends TestCase
 {
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
 
+    /**
+     * §13.2.2.2 p.88 puis §13.2.4 p.92 : sans pertes fixes, le rapport
+     * QPx/Px est constant. Le résultat ne dépend ni de Pn ni de GV et ne
+     * requiert pas Rpint, absent de la table des radiateurs à gaz.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('radiateursGaz')]
+    public function testRadiateurGazUtiliseSaLoiDePertes(int $type, float $rpn, float $pn, float $gv): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<XML
+<logement><installation_chauffage_collection><installation_chauffage>
+  <generateur_chauffage_collection><generateur_chauffage>
+    <donnee_entree><enum_type_generateur_ch_id>$type</enum_type_generateur_ch_id>
+      <enum_type_energie_id>2</enum_type_energie_id><reference>radiateur</reference></donnee_entree>
+    <donnee_intermediaire><pn>$pn</pn><rpn>$rpn</rpn></donnee_intermediaire>
+  </generateur_chauffage></generateur_chauffage_collection>
+</installation_chauffage></installation_chauffage_collection></logement>
+XML);
+        $context = new CalculationContext($document, new TableRepository(self::PROJECT_ROOT . '/resources/tables'));
+        $context->set('chauffage.gv', $gv);
+
+        (new RendementAnnuelMoyenCalculator())->calculate(
+            $document->getElementsByTagName('generateur_chauffage')->item(0), $context,
+        );
+
+        $attendu = 1.11 / (1.0 + 1.04 * (1.11 / $rpn - 1.0));
+        $rendement = (float)$document->getElementsByTagName('rendement_generation')->item(0)?->textContent;
+        self::assertEqualsWithDelta($attendu, $rendement, 1e-12);
+        self::assertEqualsWithDelta($attendu, $context->get('chauffage.rendement_generation_depensier')['radiateur'], 1e-12);
+        self::assertLessThan($rpn, $rendement);
+    }
+
+    public static function radiateursGaz(): array
+    {
+        return [
+            'ancien moins de 5 kW' => [53, 0.70, 4000.0, 100.0],
+            'ancien au moins 5 kW' => [53, 0.73, 12595.7, 1000.0],
+            'ancien autre charge' => [53, 0.73, 19144.8, 50.0],
+            'recent moins de 5 kW' => [54, 0.80, 4000.0, 100.0],
+            'recent au moins 5 kW' => [54, 0.82, 6000.0, 200.0],
+        ];
+    }
+
     public function testComputesSeparateDepensierLoadProfileAt21Degrees(): void
     {
         $document = new DOMDocument();

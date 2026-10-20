@@ -111,8 +111,8 @@ final class CoutCalculator implements CalculatorInterface
         $energieFr  = 1;
 
         // Les postes auxiliaires et l'éclairage sont toujours électriques.
-        // La ventilation reste individuelle : la rattacher à l'abonnement
-        // d'immeuble dégrade nettement l'accord avec la référence.
+        // La ventilation relève de l'abonnement collectif lorsqu'elle est
+        // explicitement déclarée collective dans les données d'entrée.
         // §Annexe 7 : « Les frais annuels par type d'énergie et par usage sont
         // obtenus en multipliant la consommation d'énergie finale pour ce type
         // d'énergie et cet usage par le prix moyen du kWh. » Une installation
@@ -129,7 +129,7 @@ final class CoutCalculator implements CalculatorInterface
             'cout_auxiliaire_distribution_ch'          => [1, $ef['conso_auxiliaire_distribution_ch'], $chCollectif],
             'cout_auxiliaire_generation_ecs'           => [1, $ef['conso_auxiliaire_generation_ecs'], $ecsCollectif],
             'cout_auxiliaire_distribution_ecs'         => [1, $ef['conso_auxiliaire_distribution_ecs'], $ecsCollectif],
-            'cout_auxiliaire_ventilation'              => [1, $ef['conso_auxiliaire_ventilation'], false],
+            'cout_auxiliaire_ventilation'              => [1, $ef['conso_auxiliaire_ventilation'], $prix->ventilationCollective],
         ];
 
         // Le scénario dépensier est une autre consommation annuelle : il a donc
@@ -142,7 +142,7 @@ final class CoutCalculator implements CalculatorInterface
             'cout_auxiliaire_distribution_ch'          => [1, $ef['conso_auxiliaire_distribution_ch'], $chCollectif],
             'cout_auxiliaire_generation_ecs_depensier' => [1, $ef['conso_auxiliaire_generation_ecs_depensier'], $ecsCollectif],
             'cout_auxiliaire_distribution_ecs'         => [1, $ef['conso_auxiliaire_distribution_ecs'], $ecsCollectif],
-            'cout_auxiliaire_ventilation'              => [1, $ef['conso_auxiliaire_ventilation'], false],
+            'cout_auxiliaire_ventilation'              => [1, $ef['conso_auxiliaire_ventilation'], $prix->ventilationCollective],
         ];
 
         foreach ($partsCh as $energieId => $part) {

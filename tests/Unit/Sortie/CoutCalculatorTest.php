@@ -253,6 +253,25 @@ final class CoutCalculatorTest extends TestCase
         self::assertEqualsWithDelta(0.34721 * 500.0, $this->cout($doc, 'cout_ecs'), 1e-6);
     }
 
+    public function testVentilationCollectiveEstSepareeDansLesDeuxScenarios(): void
+    {
+        $doc = $this->build([
+            'conso_ch' => 1500, 'conso_ch_depensier' => 3000,
+            'conso_ecs' => 1000, 'conso_ecs_depensier' => 1000,
+            'conso_auxiliaire_ventilation' => 200,
+        ], date: '2026-01-05', methode: 10, shLogement: 50.0, shImmeuble: 1000.0);
+        $fragment = $doc->createDocumentFragment();
+        $fragment->appendXML('<ventilation_collection><ventilation><donnee_entree><description>VMC (collective)</description></donnee_entree></ventilation></ventilation_collection>');
+        $doc->getElementsByTagName('logement')->item(0)->appendChild($fragment);
+
+        $this->compute($doc);
+
+        $coutVentilation = (158.0 + 0.18949 * 4000.0) / 20.0;
+        self::assertEqualsWithDelta($coutVentilation, $this->cout($doc, 'cout_auxiliaire_ventilation'), self::TOL);
+        self::assertEqualsWithDelta(158.0 + 0.18949 * 2500.0 + $coutVentilation, $this->cout($doc, 'cout_5_usages'), self::TOL);
+        self::assertEqualsWithDelta(158.0 + 0.18949 * 4000.0, $this->cout($doc, 'cout_ch_depensier') + $this->cout($doc, 'cout_ecs_depensier'), self::TOL);
+    }
+
     private function marquerEcsCollective(DOMDocument $doc): void
     {
         $inst = $doc->getElementsByTagName('installation_ecs')->item(0);

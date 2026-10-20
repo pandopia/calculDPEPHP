@@ -319,35 +319,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   suit son `rendement_generation` de chaudière gaz (0,8141 contre 0,8342) —
   c'est TASK-K31, pas §9.8.
 
-### TASK-K71 — Froid : `apport_solaire_fr` à un facteur 1,057 constant
-
-- [ ] Owner: __ | Phase: K | Priorité: basse
-- **Ce qui est fait** : les deux colonnes `Nref` de l'altitude 400-800 m sont
-  reprises de §18.2.2, et `apport_interne_fr` devient exact — à douze chiffres
-  sur `2605E1578332M`. Les 1 728 valeurs de `tv_sollicitations_froid` et les
-  576 de `tv_textmoy_clim` sont désormais recoupées une à une avec l'annexe,
-  sans écart : **l'écart restant n'est pas dans les tables.**
-- **Ce qui reste** : `apport_solaire_fr` est en dessous de la référence d'un
-  facteur remarquablement stable — 1,0576, 1,0563, 1,0582 et 1,0570 sur
-  quatre fichiers indépendants, et 1,0910 sur un cinquième.
-- **La piste du mois de septembre est morte, ne pas la reprendre.** L'idée
-  était que la référence retienne les mois où l'annexe publie un `DH28` non
-  nul en regard d'un `Nref28` tiret (H1c 400-800 m en septembre, par exemple).
-  Mais `E_fr_28` y vaut **0** : inclure ce mois n'ajoute rien aux apports
-  solaires. Pour H1c à cette altitude, seuls les mois 6, 7 et 8 portent un
-  `E_fr_28` non nul, et nous les retenons tous les trois.
-- **Chercher donc dans `ssej`**, la surface sud équivalente mensuelle, et non
-  dans le choix des mois. `apport_solaire_ch` est pourtant exact sur ces mêmes
-  fichiers — mais il ne porte que sur les mois de chauffe. Regarder ce que
-  `sseMensuel` et `sseEtsMensuel` valent en juin, juillet et août, quand les
-  masques et les facteurs d'orientation d'été diffèrent de ceux d'hiver.
-- **Les trois cas où nous publions zéro ne sont pas un défaut.** Deux —
-  `2600E0015965G` et `2600E0020799E` — n'ont aucun bloc `<climatisation>` et
-  leur référence publie quand même un besoin de froid. Ils sont **seuls de
-  leur espèce** : sur les 541 cas, 506 sans climatisation publient un
-  `besoin_fr` nul comme nous, et deux ne le font pas. Le troisième,
-  `2600E0019751W`, attend 0,03. Ne rien changer pour 2 cas contre 506.
-
 ### TASK-K72 — `2605E1578332M` : un besoin de froid qui contredit ses propres apports
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
@@ -361,9 +332,9 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Son budget de non-régression est passé de 18 à 23 pour cette raison, et
   c'est le seul relâché de la campagne — les dix autres cas touchés ont vu le
   leur se resserrer. Le relâchement est volontaire et documenté ici.
-- À instruire avec TASK-K71 : si la saison retenue pour les apports solaires
-  explique les 5,39 % restants, ce cas se referme peut-être tout seul. Sinon,
-  c'est un candidat à `ReferenceDefects` — la preuve est interne au fichier
+- TASK-K71 est close dans `TASKS_DONE.md` : l'apport solaire publié ajoute
+  exactement `2,03 × Sse_mai`, absent de la table officielle. Ce cas reste
+  candidat à `ReferenceDefects` — la preuve est interne au fichier
   (ses apports publiés ne reproduisent pas son besoin publié) mais elle
   demande de rejouer §10.2, ce qui sort du cadre de l'outil.
 
@@ -397,43 +368,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   valeurs exactes la soutiennent. Reprendre par les entrées de ce bâtiment,
   ou conclure au défaut de référence si rien ne les distingue.
 
-### TASK-K76 — Rendement de génération d'un radiateur à gaz : 1,11, et la méthode ne le définit pas
-
-- [ ] Owner: __ | Phase: K | Priorité: moyenne
-- `tv_generateur_combustion` est désormais complète — 93 lignes sans trou — et
-  l'ID **76** manquait alors qu'il est au corpus : `2400E0669425G` et
-  `2400E0669495Y` déclarent un radiateur à gaz d'avant 2006, et nous sortions
-  sans `pn` ni `rpn` pour ce générateur. Les deux le publient maintenant
-  exactement (12 595,7 W et 19 144,8 W ; Rpn = 0,73).
-- **Mais leur `rendement_generation` sort à 1,11**, impossible pour une
-  combustion, contre 0,720139 attendu — la même valeur sur les deux fichiers,
-  donc fonction du seul Rpn et non de Pn.
-- **La cause est structurelle.** §13.2.2.2 p.88 donne aux radiateurs à gaz une
-  loi de pertes qui leur est propre — `QPx = 1,04 × (100 − RPn)/RPn × Pn × x` —
-  et **ne tabule ni Rpint ni QP0**, les deux grandeurs que l'interpolation de
-  `RendementAnnuelMoyenCalculator` consomme. La table leur écrit donc
-  `rpint = 0`, faute de quoi ce calculateur ne produit rien du tout, et c'est
-  ce zéro inventé qui donne 1,11. `qp0 = 0` est en revanche correct : la loi
-  ci-dessus s'annule à l'arrêt. §15.1 p.97 isole d'ailleurs les radiateurs gaz
-  dans sa propre table G/H.
-- **Trois sorties ont été mesurées, toutes moins bonnes que celle retenue**
-  (A/B isolé, 541 cas, 0 plantage, 89,1155 % de valeurs conformes au départ) :
-
-  | Variante | Conformes | Effet |
-  |---|---:|---|
-  | `rpint = 0` (retenue) | 89,1162 % | 6 balises manquantes résolues, `rendement_generation` à 1,11 |
-  | `rpint` non publié quand la méthode ne le tabule pas | 89,1143 % | `rendement_generation` manquant |
-  | idem, `qp0` explicitement à 0 | 89,1143 % | identique : c'est `rpint` qui commande |
-  | radiateurs exclus de `RendementAnnuelMoyenCalculator` | 89,1122 % | `rendement_generation` manquant sur les deux |
-
-  Le budget de `2400E0669425G` passe de 92 à 93 pour cette raison, et c'est le
-  seul relâchement : le fichier publie désormais deux balises justes de plus.
-- **Ce qu'il faut trouver** : la loi de Rg propre aux radiateurs à gaz.
-  0,720139 pour Rpn = 0,73 fait un rapport de 0,986492, et
-  `1/0,720139 − 1/0,73 = 0,018758` — à rapprocher de `1,04 × 27/73 = 0,384658`,
-  dont il vaut 4,876 %. Ne rien coder tant que la forme n'est pas sourcée :
-  §13.2.2.2 ne donne que QPx, et l'assemblage vers Rg est ailleurs.
-
 ### TASK-K67 — 2242E2979513I : conso_ch à +20 % une fois le facteur CO2 juste
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
@@ -453,6 +387,14 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 ### TASK-K85 — Cdimref : le périmètre du GV reste à trancher pour 25 générateurs
 
 - [ ] Owner: __ | Phase: K | Priorité: haute
+- **Attention à la compensation sur `2400E0669495Y`** : après correction
+  sourcée du radiateur gaz (K76), sa consommation devient 24 255,937 contre
+  24 256,463 attendus (0,0022 %), au lieu de 15 736,610. Les trois agrégats
+  gaz, auparavant dans la tolérance par compensation, s'écartent alors de
+  6,46 % (énergie/GES) et 6,15 % (coût). Le nombre d'écarts du cas reste 139.
+  Reprendre les autres générateurs en amont, ne pas restaurer Rg=1,11 pour
+  compenser leur surconsommation. Le radiateur corrigé a Rg=0,720139, comme
+  la référence ; cette régression locale d'agrégats n'est pas un défaut de QPx.
 - **Acquis, et livré** : quand §17.1.4.2 ramène le GV à l'appartement moyen,
   Cdimref se calcule sur la chaudière **moyenne**, pas sur le générateur
   courant. Les références donnent un Cdimref commun à tous les générateurs
@@ -517,98 +459,21 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   §17.2 précise la répartition d'une installation collective vers un
   appartement généré en chauffage mixte.
 
-### TASK-K87 — cfg 9 : la branche d'appoint bois sur-estimée de 24 %
+### TASK-K87 — cfg 9 : la référence applique à l'insert le rendement de la relève
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
-- `2601E0060401J` (47 écarts) porte une installation `cfg = 9` — chaudière en
-  relève de PAC **avec insert ou poêle en appoint** — à trois générateurs
-  répartis sur deux branches par `enum_lien_generateur_emetteur_id`.
-- **Les deux branches ne divergent pas de la même façon**, ce qui localise le
-  défaut : les deux générateurs de la branche 1 (types 7 et 106) sont à
-  ×1,0329 de la référence, le générateur de la branche 2 (type 43, insert) à
-  **×1,2412**. Un écart propre à une branche est un écart de **part**, pas de
-  rendement — ceux-ci sont identiques des deux côtés (0,97 et 0,75).
-- Part de la branche 2 : 0,4934 chez nous contre 0,4477 dans la référence.
-  Ni 0,25 ni 0,1, donc ce n'est pas un facteur §9.x lu tel quel ; et
-  reconstruire l'intermittence à rebours donne 1,067 pour notre branche 2,
-  une valeur impossible — le produit `part × INT` est donc mal réparti.
-- Commencer par vérifier ce que `ChaudiereReleve` attribue à chaque branche,
-  et avec quelle intermittence, plutôt que les rendements.
-
-### TASK-K89 — Les références tarifent la ventilation dans une autre assiette que le reste
-
-- [ ] Owner: __ | Phase: K | Priorité: haute
-- **35 cas ont leur `conso_ch` juste et leur `cout_ch` faux**, tous
-  sous-estimés de 1 à 9 %. Le défaut est donc dans la tarification, pas en
-  amont — et il est isolable au prix unitaire près.
-- Sur `2600E0281136D` (méthode 10, 24 appartements, installations toutes
-  **individuelles**), **toutes les consommations sont justes** et **tous les
-  coûts faux** :
-
-  | | Référence | Nous |
-  |---|---:|---:|
-  | `cout_ch` / `conso_ch` | 0,25335 | 0,24820 |
-  | `cout_ecs` / `conso_ecs` | 0,25335 | 0,24820 |
-  | `cout_auxiliaire_ventilation` / `conso` | **0,20950** | 0,24820 |
-
-- **Nous appliquons un prix unique, la référence en applique deux** : le même
-  au chauffage et à l'ECS, un plus bas de 15 % à la ventilation. Un prix plus
-  bas signifie une assiette plus large, donc un abonnement distinct — l'inverse
-  exact de notre convention, qui rattache la ventilation à l'abonnement
-  individuel.
-- **Mais ce n'est pas l'abonnement d'immeuble entier** : le rapport des
-  surfaces vaut ici 45, ce qui donnerait un prix bien plus bas que 0,2095. Il
-  manque le périmètre exact de cette seconde assiette.
-- `surface_ventile > surface_habitable_logement` ne sépare pas les deux
-  groupes : 35 % des 100 cas à `cout_auxiliaire_ventilation` faux l'ont, contre
-  26 % des 74 cas justes.
-- **Les deux assiettes sont résolues**, en inversant le barème du 1er juillet
-  2024 (électricité : 0,18954 + 158/C entre 1 000 et 2 500 kWh ; 0,19726 +
-  119/C entre 5 000 et 15 000) :
-  - 0,25335 €/kWh ⇒ assiette de **2 475 kWh**, soit exactement le total du
-    logement **moins** sa ventilation (2 691 − 216) ;
-  - 0,20950 €/kWh ⇒ assiette de **9 722 kWh**, soit la ventilation multipliée
-    par le rapport des surfaces (215,845 × 45,06 = 9 726).
-  La référence tarife donc bien la ventilation sur l'**abonnement
-  d'immeuble**, mécanisme que `PrixEnergie` sait déjà appliquer.
-- **Mais la règle n'est pas généralisable en l'état.** Trois variantes mesurées
-  en A/B isolé, 541 cas, 0 crash :
-  - ventilation toujours collective : **+1 018 écarts**, 55 cas améliorés
-    contre 299 dégradés ;
-  - collective si `surface_ventile > surface_habitable_logement` : **−25**,
-    mais 31 améliorés contre **30 dégradés** ;
-  - la même, restreinte aux DPE non-immeuble : identique au précédent, la
-    série `2400E03338xx` étant en méthode 11.
-  Le gain net est positif mais l'équilibre est trop fragile pour livrer une
-  règle inférée : il manque le critère qui sépare vraiment les deux groupes.
-- Chercher ce critère dans le bloc `ventilation` lui-même —
-  `enum_type_ventilation_id` collectif, présence d'un caisson commun — plutôt
-  que dans les surfaces.
-
-### TASK-K90 — `ef_conso` retient une seule clé de répartition pour toutes les installations
-
-- [ ] Owner: __ | Phase: K | Priorité: haute
-- `EfConsoCalculator::aggregateChauffage` accumule les consommations de toutes
-  les installations, puis multiplie le total par **la dernière**
-  `cle_repartition_ch` lue — la boucle écrase la précédente à chaque tour.
-- Sur `2601E0158771V` (méthode 2, deux installations de clés **0,7866** et
-  **0,2134**, qui somment à 1), `ef_conso` publie 49,087 là où
-  `sortie_par_energie` — qui applique la clé installation par installation —
-  publie 123,152. Soit le total brut de 230,02 ramené à la seule clé 0,2134.
-  Même défaut sur `2601E0304014C`, où l'écart atteint un facteur 14.
-- Les deux cas viennent du jeu `ademe-emetteurs-2026-10` : la configuration
-  n'existait pas dans le corpus avant lui.
-- **La correction évidente est fausse** : pondérer chaque installation par sa
-  propre clé a été mesuré en A/B isolé, 645 cas, 0 crash — **+411 écarts, 75
-  cas dégradés, aucun amélioré**. La raison est que les installations sans clé
-  déclarée se mêlent à celles qui en portent une : aujourd'hui la clé trouvée
-  s'applique à tout le monde, et c'est ce que la plupart des références
-  attendent.
-- Chercher d'abord ce que la référence fait quand **une partie seulement** des
-  installations déclare une clé, puis traiter le cas où elles somment à 1 —
-  qui est le seul où le défaut se voit.
-- Les deux fichiers sont les seules entrées de
-  `CoherenceInterneTest::DETTE_CONNUE`.
+- Associations d'émissions corrigées : chaque générateur suit désormais son
+  lien, avec somme des produits surfaciques de §9.1.3. A/B isolé 646 cas :
+  **−34 écarts**, quatre cas améliorés, aucun dégradé. Sur `2601E0060401J`,
+  PAC et relève deviennent conformes, 47 → 36 écarts.
+- Résidu isolé : l'insert publie Rg=0,75 mais sa consommation de référence
+  se reconstruit avec **Rg=0,97**, celui de la chaudière électrique voisine.
+  En partant du seul XML de référence : Bch=12 293,459, GV=349,298,
+  Hsp=3, Sh=263,51, I0=0,84, Re=0,95, Rd=1, Rr=0,8, §9.7 donne
+  4 796,907 kWh avec Rg=0,75 et **3 708,948** avec Rg=0,97, exactement
+  les 3 708,948 publiés. Ne pas remplacer le rendement de l'insert pour suivre
+  cette référence. Qualifier ce défaut sur les trois autres cas cfg 9 avant
+  une imputation générique ; ce n'est plus un problème de part de besoin.
 
 ### TASK-K84 — Réseau de chaleur multi-bâtiment : 0,75 ou 0,90, le corpus ne tranche plus
 

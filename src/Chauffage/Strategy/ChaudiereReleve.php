@@ -26,9 +26,10 @@ use DOMElement;
  *   2ème (chaudière relève)  : Cch2 = 0.20 × 0.75 × Bch × INT2 × Ich2 = 0.15 × Bch …
  *   3ème (insert/poêle)      : Cch3 = 0.25 × Bch × INT3 × Ich3
  *
- * @spec-section 9.7
- * @spec-pages   64-65
+ * @spec-section 9.1.3, 9.7
+ * @spec-pages   60, 64-65
  * @spec-source  resources/specsplitted/09-conso-chauffage/07-chaudiere-releve-pac-insert.md
+ * @spec-source  resources/specsplitted/09-conso-chauffage/01-installation-seule/03-multi-emissions.md
  * @xml-input    installation_chauffage.donnee_entree.{enum_cfg_installation_ch_id, rdim}
  * @xml-output   installation_chauffage.donnee_intermediaire.{besoin_ch, conso_ch}
  * @depends-on   \CalculDpePHP\Chauffage\BesoinChauffageCalculator
@@ -111,11 +112,12 @@ final class ChaudiereReleve implements CalculatorInterface
                 $rd = $this->weightedEmetteurFloat($accessor, $node, 'rendement_distribution') ?? 1.0;
                 $rr = $this->weightedEmetteurFloat($accessor, $node, 'rendement_regulation') ?? 1.0;
 
-                $int   = $i0 / (1.0 + 0.1 * ($g - 1.0));
-                $denom = max(1e-9, $rg * $re * $rd * $rr);
+                $facteurEmission = $this->facteurEmissionParLien($accessor, $node, $gen)
+                    ?? ($i0 / max(1e-9, $re * $rd * $rr));
+                $facteur = $facteurEmission / max(1e-9, $rg * (1.0 + 0.1 * ($g - 1.0)));
 
-                $genConso    = $factor * $besoin    * $int / $denom;
-                $genConsoDep = $factor * $besoinDep * $int / $denom;
+                $genConso    = $factor * $besoin    * $facteur;
+                $genConsoDep = $factor * $besoinDep * $facteur;
 
                 $totalConso    += $genConso;
                 $totalConsoDep += $genConsoDep;
@@ -132,6 +134,37 @@ final class ChaudiereReleve implements CalculatorInterface
         $accessor->setChildValue($di, 'besoin_ch_depensier', $besoinDep);
         $accessor->setChildValue($di, 'conso_ch',            $totalConso);
         $accessor->setChildValue($di, 'conso_ch_depensier',  $totalConsoDep);
+    }
+
+    /**
+     * §9.7 p.65 et §9.1.3 p.60 : chaque générateur consomme via les
+     * émissions auxquelles il est relié. Pour une branche à plusieurs
+     * émissions, sommer Sh_i/Sh_branche × I0_i/(Re_i × Rd_i × Rr_i).
+     * Le poêle d'appoint ne partage ni l'intermittence ni le réseau
+     * hydraulique des émissions desservies par la PAC et sa relève.
+     *
+     * @spec-formula F-9.7-emissions
+     */
+    private function facteurEmissionParLien(NodeAccessor $accessor, DOMElement $installation, DOMElement $generateur): ?float
+    {
+        $lien = $accessor->getIntOrNull('./donnee_entree/enum_lien_generateur_emetteur_id', $generateur);
+        if ($lien === null) {
+            return null;
+        }
+        $emetteurs = $this->groupByLien($accessor, $installation, 'emetteur_chauffage_collection', 'emetteur_chauffage')[$lien] ?? [];
+        $surfaceTotale = $somme = 0.0;
+        foreach ($emetteurs as $emetteur) {
+            $surface = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $emetteur) ?? 1.0;
+            $i0 = $accessor->getFloatOrNull('./donnee_intermediaire/i0', $emetteur) ?? 1.0;
+            $rendement = 1.0;
+            foreach (['rendement_emission', 'rendement_distribution', 'rendement_regulation'] as $champ) {
+                $rendement *= $accessor->getFloatOrNull('./donnee_intermediaire/' . $champ, $emetteur) ?? 1.0;
+            }
+            $surfaceTotale += $surface;
+            $somme += $surface * $i0 / max(1e-9, $rendement);
+        }
+
+        return $surfaceTotale > 0.0 ? $somme / $surfaceTotale : null;
     }
 
     /**

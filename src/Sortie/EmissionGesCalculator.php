@@ -122,9 +122,7 @@ final class EmissionGesCalculator implements CalculatorInterface
         // ── 2. Chauffage GES ─────────────────────────────────────────────────
         [$gesChTotal, $gesChDepTotal, $cleRepartitionCh] =
             $this->aggregateChGes($accessor, $node, $nbreAppt, $context);
-        if ($cleRepartitionCh >= 1.0) {
-            $cleRepartitionCh = GeneratedApartment::surfaceShare($node, $accessor) ?? $cleRepartitionCh;
-        }
+        $cleRepartitionCh = GeneratedApartment::heatingShare($node, $accessor, $cleRepartitionCh);
 
         $gesConsoChEf    = $isZone ? $gesChTotal * $cleRepartitionCh : $gesChTotal;
         // GES dépensier chauffage = GES conventionnel (même convention que l'EP :

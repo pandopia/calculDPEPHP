@@ -128,6 +128,22 @@ XML;
         );
     }
 
+    public function testCoutElectriqueSepareLaVentilationDeclareeCollective(): void
+    {
+        $doc = $this->buildDoc(1, 1, 1500.0, 1000.0, 0.0, 200.0);
+        $logement = $doc->documentElement;
+        $fragment = $doc->createDocumentFragment();
+        $fragment->appendXML('<caracteristique_generale><enum_methode_application_dpe_log_id>10</enum_methode_application_dpe_log_id><surface_habitable_logement>50</surface_habitable_logement><surface_habitable_immeuble>1000</surface_habitable_immeuble></caracteristique_generale>'
+            . '<ventilation_collection><ventilation><donnee_entree><description>VMC (collective)</description></donnee_entree></ventilation></ventilation_collection>');
+        $logement->appendChild($fragment);
+        $doc->getElementsByTagName('ef_conso')->item(0)->appendChild($doc->createElement('conso_auxiliaire_ventilation', '200'));
+
+        (new SortieParEnergieAggregator())->calculate($logement, $this->makeContext($doc));
+
+        $coutAttendu = 158.0 + 0.18949 * 2500.0 + (158.0 + 0.18949 * 4000.0) / 20.0;
+        self::assertEqualsWithDelta($coutAttendu, $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=1]/cout_5_usages')[0], self::TOL);
+    }
+
     /**
      * Gas GES : 10000 kWh * 0.227 = 2270 kgCO2e
      */

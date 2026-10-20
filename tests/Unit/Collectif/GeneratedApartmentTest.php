@@ -45,4 +45,29 @@ XML, $method));
             GeneratedApartment::surfaceShare($document->getElementsByTagName('logement')->item(0), $accessor),
         );
     }
+
+    /** §17.2 : seule la génération depuis un DPE immeuble utilise une clé immeuble → logement. */
+    #[DataProvider('methodesEtCles')]
+    public function testLaCleDeChauffageDependDuPerimetre(?int $methode, float $cle, float $attendu): void
+    {
+        $document = new DOMDocument();
+        $mode = $methode === null ? '' : '<enum_methode_application_dpe_log_id>' . $methode . '</enum_methode_application_dpe_log_id>';
+        $document->loadXML('<logement><caracteristique_generale>' . $mode
+            . '<surface_habitable_logement>50</surface_habitable_logement><surface_habitable_immeuble>1000</surface_habitable_immeuble>'
+            . '</caracteristique_generale></logement>');
+
+        self::assertSame($attendu, GeneratedApartment::heatingShare($document->documentElement, new NodeAccessor($document), $cle));
+    }
+
+    public static function methodesEtCles(): iterable
+    {
+        foreach ([1, 2, 3, 4, 5, 14, 18, 31, 32, 35, 36, 37] as $mode) {
+            yield 'calcul direct ' . $mode => [$mode, 0.2134016, 1.0];
+        }
+        foreach ([10, 11, 12, 13, 33, 34, 38, 39, 40] as $mode) {
+            yield 'genere avec cle ' . $mode => [$mode, 0.015, 0.015];
+            yield 'genere sans cle utile ' . $mode => [$mode, 1.0, 0.05];
+        }
+        yield 'document minimal sans methode' => [null, 0.2, 0.2];
+    }
 }
