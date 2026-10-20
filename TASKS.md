@@ -498,7 +498,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K89 — Les références tarifent la ventilation dans une autre assiette que le reste
 
-- [ ] Owner: __ | Phase: K | Priorité: haute
+- [~CDX] Owner: CDX | Phase: K | Priorité: haute
 - **35 cas ont leur `conso_ch` juste et leur `cout_ch` faux**, tous
   sous-estimés de 1 à 9 %. Le défaut est donc dans la tarification, pas en
   amont — et il est isolable au prix unitaire près.
