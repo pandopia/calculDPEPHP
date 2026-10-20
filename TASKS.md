@@ -496,56 +496,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   cette référence. Qualifier ce défaut sur les trois autres cas cfg 9 avant
   une imputation générique ; ce n'est plus un problème de part de besoin.
 
-### TASK-K89 — Les références tarifent la ventilation dans une autre assiette que le reste
-
-- [~CDX] Owner: CDX | Phase: K | Priorité: haute
-- **35 cas ont leur `conso_ch` juste et leur `cout_ch` faux**, tous
-  sous-estimés de 1 à 9 %. Le défaut est donc dans la tarification, pas en
-  amont — et il est isolable au prix unitaire près.
-- Sur `2600E0281136D` (méthode 10, 24 appartements, installations toutes
-  **individuelles**), **toutes les consommations sont justes** et **tous les
-  coûts faux** :
-
-  | | Référence | Nous |
-  |---|---:|---:|
-  | `cout_ch` / `conso_ch` | 0,25335 | 0,24820 |
-  | `cout_ecs` / `conso_ecs` | 0,25335 | 0,24820 |
-  | `cout_auxiliaire_ventilation` / `conso` | **0,20950** | 0,24820 |
-
-- **Nous appliquons un prix unique, la référence en applique deux** : le même
-  au chauffage et à l'ECS, un plus bas de 15 % à la ventilation. Un prix plus
-  bas signifie une assiette plus large, donc un abonnement distinct — l'inverse
-  exact de notre convention, qui rattache la ventilation à l'abonnement
-  individuel.
-- **Mais ce n'est pas l'abonnement d'immeuble entier** : le rapport des
-  surfaces vaut ici 45, ce qui donnerait un prix bien plus bas que 0,2095. Il
-  manque le périmètre exact de cette seconde assiette.
-- `surface_ventile > surface_habitable_logement` ne sépare pas les deux
-  groupes : 35 % des 100 cas à `cout_auxiliaire_ventilation` faux l'ont, contre
-  26 % des 74 cas justes.
-- **Les deux assiettes sont résolues**, en inversant le barème du 1er juillet
-  2024 (électricité : 0,18954 + 158/C entre 1 000 et 2 500 kWh ; 0,19726 +
-  119/C entre 5 000 et 15 000) :
-  - 0,25335 €/kWh ⇒ assiette de **2 475 kWh**, soit exactement le total du
-    logement **moins** sa ventilation (2 691 − 216) ;
-  - 0,20950 €/kWh ⇒ assiette de **9 722 kWh**, soit la ventilation multipliée
-    par le rapport des surfaces (215,845 × 45,06 = 9 726).
-  La référence tarife donc bien la ventilation sur l'**abonnement
-  d'immeuble**, mécanisme que `PrixEnergie` sait déjà appliquer.
-- **Mais la règle n'est pas généralisable en l'état.** Trois variantes mesurées
-  en A/B isolé, 541 cas, 0 crash :
-  - ventilation toujours collective : **+1 018 écarts**, 55 cas améliorés
-    contre 299 dégradés ;
-  - collective si `surface_ventile > surface_habitable_logement` : **−25**,
-    mais 31 améliorés contre **30 dégradés** ;
-  - la même, restreinte aux DPE non-immeuble : identique au précédent, la
-    série `2400E03338xx` étant en méthode 11.
-  Le gain net est positif mais l'équilibre est trop fragile pour livrer une
-  règle inférée : il manque le critère qui sépare vraiment les deux groupes.
-- Chercher ce critère dans le bloc `ventilation` lui-même —
-  `enum_type_ventilation_id` collectif, présence d'un caisson commun — plutôt
-  que dans les surfaces.
-
 ### TASK-K84 — Réseau de chaleur multi-bâtiment : 0,75 ou 0,90, le corpus ne tranche plus
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne

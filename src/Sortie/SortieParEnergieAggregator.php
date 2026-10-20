@@ -243,7 +243,7 @@ final class SortieParEnergieAggregator implements CalculatorInterface
                         'conso_auxiliaire_distribution_ch'  => $prix->chauffageCollectif,
                         'conso_auxiliaire_generation_ecs'   => $prix->ecsCollectif,
                         'conso_auxiliaire_distribution_ecs' => $prix->ecsCollectif,
-                        'conso_auxiliaire_ventilation'      => false,
+                        'conso_auxiliaire_ventilation'      => $prix->ventilationCollective,
                     ] as $poste => $collectif) {
                         $postesCout[$eId . '|' . $poste] = [$eId, $auxParPoste[$poste] * $facteur, $collectif];
                     }

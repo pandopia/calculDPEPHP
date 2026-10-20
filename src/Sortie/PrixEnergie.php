@@ -75,6 +75,7 @@ final class PrixEnergie
         private readonly float $facteurImmeuble,
         public readonly bool $chauffageCollectif,
         public readonly bool $ecsCollectif,
+        public readonly bool $ventilationCollective,
     ) {
     }
 
@@ -88,6 +89,7 @@ final class PrixEnergie
             self::facteurImmeuble($accessor, $logement, $estImmeuble),
             self::aUneInstallationCollective($accessor, $logement, 'installation_chauffage'),
             self::aUneInstallationCollective($accessor, $logement, 'installation_ecs'),
+            self::ventilationExplicitementCollective($accessor, $logement),
         );
     }
 
@@ -295,5 +297,28 @@ final class PrixEnergie
         }
 
         return false;
+    }
+
+    /**
+     * L'annexe tarifaire distingue les abonnements collectifs des individuels,
+     * y compris pour la ventilation (§17.2.1.2 p.113). Le schéma ADEME n'a pas
+     * d'enum de collectivité pour ce système ; certains exports portent cette
+     * déclaration explicite dans la description, sous la forme « (collective) ».
+     * Une clé surfacique ou une grande surface ne suffisent pas à la déduire.
+     * Sans cette déclaration, ou avec un ensemble mixte, conserver le repli
+     * individuel plutôt que d'attribuer à tout le poste un abonnement commun.
+     */
+    private static function ventilationExplicitementCollective(NodeAccessor $accessor, DOMElement $logement): bool
+    {
+        $trouvee = false;
+        foreach ($logement->getElementsByTagName('ventilation') as $ventilation) {
+            $description = $accessor->getStringOrNull('./donnee_entree/description', $ventilation) ?? '';
+            if (preg_match('/\(\s*collecti(?:f|ve)\s*\)/iu', $description) !== 1) {
+                return false;
+            }
+            $trouvee = true;
+        }
+
+        return $trouvee;
     }
 }
