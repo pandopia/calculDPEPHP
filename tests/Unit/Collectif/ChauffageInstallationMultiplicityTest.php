@@ -89,6 +89,23 @@ final class ChauffageInstallationMultiplicityTest extends TestCase
         ));
     }
 
+    /** Le convecteur bi-jonction hybride reste un appareil par logement. */
+    public function testConvecteurBijonctionHybrideSuitAppartementMoyen(): void
+    {
+        $document = $this->document(2837.0, 48.0, [[2837.0, 4, 4]]);
+        $installation = $document->getElementsByTagName('installation_chauffage')->item(0);
+        self::assertInstanceOf(\DOMElement::class, $installation);
+        $entree = $installation->getElementsByTagName('donnee_entree')->item(0);
+        self::assertInstanceOf(\DOMElement::class, $entree);
+        $entree->appendChild($document->createElement('enum_cfg_installation_ch_id', '11'));
+
+        self::assertEqualsWithDelta(
+            48.0,
+            ChauffageInstallationMultiplicity::sampledOrNull($installation, new NodeAccessor($document)),
+            1e-9,
+        );
+    }
+
     /** Sans immeuble décrit, la multiplicité n'est pas calculable. */
     public function testSansImmeubleDecrit(): void
     {

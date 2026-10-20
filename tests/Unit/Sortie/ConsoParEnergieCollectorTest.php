@@ -135,4 +135,22 @@ final class ConsoParEnergieCollectorTest extends TestCase
             1e-9,
         );
     }
+
+    /**
+     * §9.9 : le générateur unique d'un convecteur bi-jonction peut publier
+     * le seul circuit de base Cch1 ; son énergie porte néanmoins le total
+     * Cch1+Cch2 publié par l'installation.
+     */
+    public function testGenerateurUniquePorteLeTotalDeLInstallation(): void
+    {
+        $document = $this->document(0.1, 0.2);
+        $xpath = new \DOMXPath($document);
+        $generateur = $xpath->query('//installation_chauffage[1]//generateur_chauffage/donnee_intermediaire/conso_ch')->item(0);
+        self::assertNotNull($generateur);
+        $generateur->textContent = '600';
+
+        $collecte = $this->collecter($document);
+
+        self::assertEqualsWithDelta(100.0, $collecte['byEnergie'][2][0], 1e-9);
+    }
 }

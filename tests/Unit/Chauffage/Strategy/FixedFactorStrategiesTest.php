@@ -383,31 +383,31 @@ XML;
     }
 
     /**
-     * §9.9 p.66 : `Cch1 = 0,6 Bch INT1 Ich1` pour le circuit **collectif** qui
-     * assure la base, `Cch2 = 0,4 Bch INT2 Ich2` pour le circuit individuel
-     * d'appoint. Les deux INT ne sont pas le même : la base collective ne
-     * s'interrompt pas.
-     *
-     * Avec une intermittence de 0,5 sur l'appoint, la consommation vaut donc
-     * `Bch × (0,6 + 0,4 × 0,5)` et non `Bch × 0,5`.
-     *
-     * Les références le confirment : sur `2601E0208630M`,
-     * 0,6 × 4 869,27 × 1,1696 = 3 417,0 contre 3 415,95 publiés, soit
-     * INT1 = 1, et le total de 5 361,60 se reconstruit à 0,015 % près.
+     * §9.9 p.66 impose deux intermittences distinctes. Pour la base
+     * collective, la table §8 p.57 donne I0=1,03 (radiateur régulé, sans
+     * comptage ni équipement) ; l'appoint garde ici I0=0,5.
      */
-    public function testConvecteurBijonction_baseCollectiveSansIntermittence(): void
+    public function testConvecteurBijonctionAppliqueLesDeuxIntermittences(): void
     {
-        // Le montage donne un facteur G de 1, donc une intermittence d'appoint
-        // égale à i0 : la consommation vaut Bch × (0,6 + 0,4 × 0,5).
+        // Le montage donne G=1 : la consommation vaut
+        // Bch × (0,6 × 1,03 + 0,4 × 0,5).
         [$doc, $node] = $this->buildInstallation(11, 1, rg: 1.0, re: 1.0, rd: 1.0, rr: 1.0, i0: 0.5);
         (new ConvecteurBijonction())->calculate($node, $this->makeContext($doc, 1000.0));
 
-        $this->assertEqualsWithDelta(800.0, $this->consoCh($node), self::TOL);
+        $this->assertEqualsWithDelta(818.0, $this->consoCh($node), self::TOL);
+
+        $generateur = $node->getElementsByTagName('generateur_chauffage')->item(0);
+        self::assertInstanceOf(DOMElement::class, $generateur);
+        self::assertEqualsWithDelta(
+            618.0,
+            (float)$generateur->getElementsByTagName('conso_ch')->item(0)?->textContent,
+            self::TOL,
+        );
     }
 
     /**
      * Et sans cette distinction, l'intermittence s'appliquerait au tout :
-     * 500 au lieu de 800. Le test précédent échouerait en nommant cette
+     * 500 au lieu de 818. Le test précédent échouerait en nommant cette
      * valeur si la base redevenait intermittente.
      */
     public function testConvecteurBijonction_intermittenceNeSAppliquePasAuTout(): void
@@ -416,6 +416,54 @@ XML;
         (new ConvecteurBijonction())->calculate($node, $this->makeContext($doc, 1000.0));
 
         self::assertGreaterThan(500.0, $this->consoCh($node));
+    }
+
+    /**
+     * §17.1.2 et §17.1.4.2 p.107,110 : en calcul ZONE, le convecteur
+     * bi-jonction est calculé pour l'appartement moyen puis remultiplié par
+     * Nblgt_syst_i lors de l'agrégation. Le besoin publié reste celui de
+     * l'immeuble.
+     */
+    public function testConvecteurBijonctionZoneUtiliseAppartementMoyen(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<logement>
+  <caracteristique_generale>
+    <enum_methode_application_dpe_log_id>10</enum_methode_application_dpe_log_id>
+    <hsp>2.5</hsp><surface_habitable_immeuble>4800</surface_habitable_immeuble>
+    <nombre_appartement>48</nombre_appartement>
+  </caracteristique_generale>
+  <installation_chauffage_collection><installation_chauffage>
+    <donnee_entree>
+      <enum_cfg_installation_ch_id>11</enum_cfg_installation_ch_id>
+      <enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id>
+      <enum_type_installation_id>4</enum_type_installation_id>
+      <surface_chauffee>4800</surface_chauffee><ratio_virtualisation>1</ratio_virtualisation><rdim>1</rdim>
+    </donnee_entree>
+    <emetteur_chauffage_collection><emetteur_chauffage>
+      <donnee_entree><surface_chauffee>4800</surface_chauffee></donnee_entree>
+      <donnee_intermediaire><i0>0.86</i0><rendement_emission>1</rendement_emission><rendement_distribution>1</rendement_distribution><rendement_regulation>1</rendement_regulation></donnee_intermediaire>
+    </emetteur_chauffage></emetteur_chauffage_collection>
+    <generateur_chauffage_collection><generateur_chauffage><donnee_intermediaire><rendement_generation>1</rendement_generation></donnee_intermediaire></generateur_chauffage></generateur_chauffage_collection>
+  </installation_chauffage></installation_chauffage_collection>
+</logement>
+XML);
+        $installation = $document->getElementsByTagName('installation_chauffage')->item(0);
+        self::assertInstanceOf(DOMElement::class, $installation);
+        $context = $this->makeContext($document, 48000.0);
+        // G=1 : INT1=1,03 et INT2=0,86.
+        $context->set('chauffage.gv', 12000.0);
+
+        (new ConvecteurBijonction())->calculate($installation, $context);
+
+        self::assertEqualsWithDelta(48000.0, $this->besoinCh($installation), self::TOL);
+        self::assertEqualsWithDelta(962.0, $this->consoCh($installation), self::TOL);
+        self::assertEqualsWithDelta(
+            618.0,
+            (float)$installation->getElementsByTagName('generateur_chauffage')->item(0)?->getElementsByTagName('conso_ch')->item(0)?->textContent,
+            self::TOL,
+        );
     }
 
     /**

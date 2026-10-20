@@ -7,7 +7,6 @@ namespace CalculDpePHP\Sortie;
 use CalculDpePHP\Collectif\ChauffageInstallationMultiplicity;
 use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
 use CalculDpePHP\Collectif\GeneratedApartment;
-use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
@@ -107,9 +106,10 @@ final class ConsoParEnergieCollector
                 } elseif (!$isCh && $methode === 4 && $typeInstall === 1) {
                     $rdimEff = EcsInstallationMultiplicity::sampledOrNull($install, $accessor)
                         ?? ($nbreAppt * $ratioVirt / $sumEchantillon);
+                } elseif ($isCh && ($multiplicite = ChauffageInstallationMultiplicity::sampledOrNull($install, $accessor)) !== null) {
+                    $rdimEff = $multiplicite;
                 } elseif ($typeInstall === 1) {
-                    $rdimEff = ($isCh ? ChauffageInstallationMultiplicity::sampledOrNull($install, $accessor) : null)
-                        ?? ($nbreAppt * $ratioVirt / $sumEchantillon);
+                    $rdimEff = $nbreAppt * $ratioVirt / $sumEchantillon;
                 } else {
                     $rdimEff = $rdim;
                 }
@@ -127,11 +127,13 @@ final class ConsoParEnergieCollector
                     }
                 }
 
-                // Le format ADEME natif reprend le total de l'installation
-                // lorsqu'elle ne possède qu'un générateur. Cela évite les
-                // écarts de précision dus au rendement réécrit sur le générateur.
+                // Avec un seul générateur, son type d'énergie porte toute la
+                // consommation de l'installation. C'est notamment nécessaire
+                // au convecteur bi-jonction : le générateur ADEME publie Cch1
+                // (circuit de base), tandis que l'installation et ses sorties
+                // portent Cch1+Cch2 (§9.9).
                 $generators = $install->getElementsByTagName($genTag);
-                if (IntermediateEnergyUnit::isNativeAdeme($context->document) && $generators->length === 1) {
+                if ($generators->length === 1) {
                     $gen = $generators->item(0);
                     if ($gen instanceof DOMElement) {
                         $eId = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $gen) ?? 1;
