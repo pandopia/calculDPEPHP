@@ -482,7 +482,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K87 — cfg 9 : la branche d'appoint bois sur-estimée de 24 %
 
-- [ ] Owner: __ | Phase: K | Priorité: basse
+- [~CDX] Owner: CDX | Phase: K | Priorité: basse
 - `2601E0060401J` (47 écarts) porte une installation `cfg = 9` — chaudière en
   relève de PAC **avec insert ou poêle en appoint** — à trois générateurs
   répartis sur deux branches par `enum_lien_generateur_emetteur_id`.
