@@ -261,9 +261,10 @@ final class EfConsoCalculator implements CalculatorInterface
 
         if ($methode === 1) {
             $rdimEff = $rdim;
+        } elseif (($multiplicite = ChauffageInstallationMultiplicity::sampledOrNull($install, $accessor)) !== null) {
+            $rdimEff = $multiplicite;
         } elseif ($typeInstall === 1) {
-            $rdimEff = ChauffageInstallationMultiplicity::sampledOrNull($install, $accessor)
-                ?? ($nbreAppt * $ratioVirt / $sumEchantillon);
+            $rdimEff = $nbreAppt * $ratioVirt / $sumEchantillon;
         } else {
             $rdimEff = $rdim;
         }

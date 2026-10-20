@@ -9,7 +9,8 @@ use DOMElement;
 
 /**
  * Nombre de logements moyens représentés par une installation de chauffage
- * individuelle échantillonnée.
+ * individuelle échantillonnée, y compris le convecteur bi-jonction dont la
+ * base est collective mais dont chaque logement possède son appareil.
  *
  * §17.1.2 p.107 définit l'appartement « moyen » par Shmoy = Sh / Nblgt : sa
  * surface, et donc son besoin, **ne dépendent pas de l'installation**. §17.1.4.2
@@ -43,7 +44,9 @@ final class ChauffageInstallationMultiplicity
     {
         $methode = $accessor->getIntOrNull('./donnee_entree/enum_methode_calcul_conso_id', $installation) ?? 1;
         $type = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $installation) ?? 1;
-        if ($methode === 1 || $type !== 1) {
+        $configuration = $accessor->getIntOrNull('./donnee_entree/enum_cfg_installation_ch_id', $installation);
+        $estIndividuelleEchantillonnee = $type === 1 || ($type === 4 && $configuration === 11);
+        if ($methode === 1 || !$estIndividuelleEchantillonnee) {
             return null;
         }
 

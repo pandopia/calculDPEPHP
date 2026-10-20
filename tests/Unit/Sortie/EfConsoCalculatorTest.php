@@ -221,6 +221,46 @@ XML;
     }
 
     /**
+     * §17.1.4.2 : un convecteur bi-jonction ZONE est calculé pour
+     * l'appartement moyen, puis multiplié par le nombre de logements avant
+     * l'application de la clé immeuble → appartement.
+     */
+    public function testZoneConvecteurBijonctionRemultiplieAppartementMoyen(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML(<<<'XML'
+<logement>
+  <caracteristique_generale>
+    <surface_habitable_logement>100</surface_habitable_logement>
+    <surface_habitable_immeuble>4800</surface_habitable_immeuble>
+    <nombre_appartement>48</nombre_appartement>
+  </caracteristique_generale>
+  <installation_chauffage_collection><installation_chauffage>
+    <donnee_entree>
+      <enum_cfg_installation_ch_id>11</enum_cfg_installation_ch_id>
+      <enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id>
+      <enum_type_installation_id>4</enum_type_installation_id>
+      <surface_chauffee>4800</surface_chauffee><ratio_virtualisation>1</ratio_virtualisation>
+      <rdim>1</rdim><cle_repartition_ch>0.02</cle_repartition_ch>
+    </donnee_entree>
+    <donnee_intermediaire><conso_ch>1000</conso_ch><conso_ch_depensier>1200</conso_ch_depensier></donnee_intermediaire>
+  </installation_chauffage></installation_chauffage_collection>
+  <installation_ecs_collection/>
+</logement>
+XML);
+        $logement = $document->documentElement;
+        self::assertInstanceOf(\DOMElement::class, $logement);
+
+        (new EfConsoCalculator())->calculate($logement, $this->makeContext($document));
+
+        self::assertEqualsWithDelta(
+            960.0,
+            (float)$document->getElementsByTagName('ef_conso')->item(0)?->getElementsByTagName('conso_ch')->item(0)?->textContent,
+            self::TOL,
+        );
+    }
+
+    /**
      * Cas ZONE collectif : 1 installation, rdim=1, type=2, cle_repartition_ch=(62.86/1034.74).
      * building_total = 27615.05 × 1 = 27615.05
      * ef_conso.conso_ch = 27615.05 × (62.86/1034.74) = 1677.60

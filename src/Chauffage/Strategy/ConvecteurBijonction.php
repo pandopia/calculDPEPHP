@@ -10,6 +10,7 @@ use CalculDpePHP\Chauffage\Rendement\DistributionCalculator;
 use CalculDpePHP\Chauffage\Rendement\EmissionCalculator;
 use CalculDpePHP\Chauffage\Rendement\GenerationNonCombustionCalculator;
 use CalculDpePHP\Chauffage\Rendement\RegulationCalculator;
+use CalculDpePHP\Collectif\ChauffageInstallationMultiplicity;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -22,13 +23,16 @@ use DOMElement;
  *   1ère (circuit collectif base)        : Cch1 = 0.60 × Bch × INT1 × Ich1
  *   2ème (circuit individuel appoint)    : Cch2 = 0.40 × Bch × INT2 × Ich2
  *
- * @spec-section 9.9
- * @spec-pages   66
+ * @spec-section 8, 9.9, 17.1.2, 17.1.4.2
+ * @spec-pages   55-57, 66, 107, 110
  * @spec-source  resources/specsplitted/09-conso-chauffage/09-convecteur-bijonction.md
- * @xml-input    installation_chauffage.donnee_entree.{enum_cfg_installation_ch_id, rdim}
+ * @spec-source  resources/specsplitted/08-intermittence/00-calcul.md
+ * @spec-source  resources/specsplitted/17-collectif/01-immeuble-collectif.md
+ * @xml-input    installation_chauffage.donnee_entree.{enum_cfg_installation_ch_id, rdim,
+ *               enum_methode_calcul_conso_id, enum_type_installation_id, surface_chauffee}
  * @xml-output   installation_chauffage.donnee_intermediaire.{besoin_ch, conso_ch}
  * @depends-on   \CalculDpePHP\Chauffage\BesoinChauffageCalculator
- * @tables       (aucune)
+ * @tables       chauffage/tv_intermittence
  */
 final class ConvecteurBijonction implements CalculatorInterface
 {
@@ -71,7 +75,8 @@ final class ConvecteurBijonction implements CalculatorInterface
 
         $accessor      = new NodeAccessor($context->document);
         $rdim          = $accessor->getFloatOrNull('./donnee_entree/rdim', $node) ?? 1.0;
-        $rdimEffective = max(1e-9, $rdim);
+        $rdimEffective = ChauffageInstallationMultiplicity::sampledOrNull($node, $accessor) ?? $rdim;
+        $rdimEffective = max(1e-9, $rdimEffective);
         $besoin        = $bch / $rdimEffective;
         $besoinDep     = $bchDep / $rdimEffective;
 
@@ -81,29 +86,75 @@ final class ConvecteurBijonction implements CalculatorInterface
         // La coupure est entre deux circuits d'un seul appareil, pas entre
         // deux installations : leurs parts somment à 1.
         //
-        // Quand le fichier distingue les deux circuits par
-        // `enum_lien_generateur_emetteur_id`, chacun garde son propre
-        // rendement ; les quatre cas du corpus n'en décrivent qu'un, et
-        // l'installation reçoit alors le besoin entier.
-        if ($this->computeAndWriteParLien(self::FACTORS, $besoin, $besoinDep, $node, $context)) {
-            return;
-        }
+        $this->computeAndWriteCircuits($besoin, $besoinDep, $bch, $bchDep, $node, $context);
+    }
 
-        // §9.9 p.66 : `Cch1 = 0,6 Bch INT1 Ich1` pour le circuit **collectif**
-        // qui assure la base, `Cch2 = 0,4 Bch INT2 Ich2` pour le circuit
-        // individuel d'appoint. Les deux INT ne sont pas le même : la base
-        // collective ne s'interrompt pas, et les références le confirment —
-        // sur `2601E0208630M`, 0,6 × 4 869,27 × 1,1696 = 3 417,0 contre
-        // 3 415,95 publiés sur le générateur, soit INT1 = 1, et le total de
-        // 5 361,60 se reconstruit à 0,015 % près avec INT2 = notre
-        // intermittence. Quatre cas du corpus, tous à la même lecture.
-        $this->computeAndWrite(
-            $besoin,
-            $besoinDep,
-            $node,
-            $context,
-            partContinue: self::FACTORS[1],
-        );
+    /**
+     * §9.9 p.66 : Cch1 = 0,6 × Bch × INT1 × Ich1 et
+     * Cch2 = 0,4 × Bch × INT2 × Ich2.
+     *
+     * Le circuit de base est un chauffage collectif sans comptage individuel :
+     * la table §8 p.57 donne I0=1,03 pour un radiateur/convecteur régulé,
+     * sans équipement d'intermittence. L'appoint individuel conserve le I0
+     * calculé sur l'émetteur. Confondre les deux INT supprimait le terme
+     * collectif de la formule.
+     *
+     * @spec-formula F-9.9-a
+     */
+    private function computeAndWriteCircuits(
+        float $besoin,
+        float $besoinDep,
+        float $besoinPublie,
+        float $besoinPublieDep,
+        DOMElement $node,
+        CalculationContext $context,
+    ): void {
+        $accessor = new NodeAccessor($context->document);
+        $gv = (float)$context->get('chauffage.gv', 1.0);
+        $g = $gv / max(1e-9, $this->getHsp($accessor, $node) * $this->getShImmeuble($accessor, $node));
+        $diviseurInt = max(1e-9, 1.0 + 0.1 * ($g - 1.0));
+
+        $table = $context->tables->load('chauffage/tv_intermittence');
+        $i0Base = (float)$table['collectif_collectif']['central']['avec']['radiateur']['absent'][1];
+        $i0Appoint = $this->weightedEmetteurFloat($accessor, $node, 'i0') ?? 1.0;
+        $intBase = $i0Base / $diviseurInt;
+        $intAppoint = $i0Appoint / $diviseurInt;
+
+        $re = $this->weightedEmetteurFloat($accessor, $node, 'rendement_emission') ?? 1.0;
+        $rd = $this->weightedEmetteurFloat($accessor, $node, 'rendement_distribution') ?? 1.0;
+        $rr = $this->weightedEmetteurFloat($accessor, $node, 'rendement_regulation') ?? 1.0;
+        $rg = $this->weightedGenerateurFloat($accessor, $node, 'rendement_generation') ?? 1.0;
+        $denom = max(1e-9, $rg * $re * $rd * $rr);
+
+        $consoBase = self::FACTORS[1] * $besoin * $intBase / $denom;
+        $consoAppoint = self::FACTORS[2] * $besoin * $intAppoint / $denom;
+        $consoBaseDep = self::FACTORS[1] * $besoinDep * $intBase / $denom;
+        $consoAppointDep = self::FACTORS[2] * $besoinDep * $intAppoint / $denom;
+
+        $di = $accessor->ensureDonneeIntermediaire($node);
+        $accessor->setChildValue($di, 'besoin_ch', $besoinPublie);
+        $accessor->setChildValue($di, 'besoin_ch_depensier', $besoinPublieDep);
+        $accessor->setChildValue($di, 'conso_ch', $consoBase + $consoAppoint);
+        $accessor->setChildValue($di, 'conso_ch_depensier', $consoBaseDep + $consoAppointDep);
+
+        // Le générateur publié par le format ADEME décrit le circuit de
+        // base ; l'appoint est l'autre circuit du même convecteur (§9.9).
+        $collection = $this->getChildByTag($node, 'generateur_chauffage_collection');
+        $generateurs = [];
+        if ($collection !== null) {
+            foreach ($collection->childNodes as $generateur) {
+                if ($generateur instanceof DOMElement && $generateur->nodeName === 'generateur_chauffage') {
+                    $generateurs[] = $generateur;
+                }
+            }
+        }
+        $parGenerateur = max(1, count($generateurs));
+        foreach ($generateurs as $generateur) {
+            $genDi = $accessor->ensureDonneeIntermediaire($generateur);
+            $accessor->setChildValue($genDi, 'conso_ch', $consoBase / $parGenerateur);
+            $accessor->setChildValue($genDi, 'conso_ch_depensier', $consoBaseDep / $parGenerateur);
+            $this->publierPartDuBesoin($context, $generateur, self::FACTORS[1] / $parGenerateur);
+        }
     }
 
     private function cfgId(DOMElement $node): ?int
