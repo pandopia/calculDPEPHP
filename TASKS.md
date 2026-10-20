@@ -399,7 +399,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K76 — Rendement de génération d'un radiateur à gaz : 1,11, et la méthode ne le définit pas
 
-- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- [~CDX] Owner: CDX | Phase: K | Priorité: moyenne
 - `tv_generateur_combustion` est désormais complète — 93 lignes sans trou — et
   l'ID **76** manquait alors qu'il est au corpus : `2400E0669425G` et
   `2400E0669495Y` déclarent un radiateur à gaz d'avant 2006, et nous sortions
