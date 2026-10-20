@@ -31,8 +31,9 @@ use DOMElement;
  * Mise à l'échelle identique à {@see EfConsoCalculator} (§17) :
  *   BAT  : conso × rdimEff (rdim, ou nbApt × ratio_virt / Σéchantillon pour
  *          une installation individuelle d'un DPE ZONE) ;
- *   ZONE : le total est ensuite ramené au logement via `cle_repartition_ch`
- *          ou `cle_repartition_ecs`.
+ *   ZONE : le total est ensuite ramené au logement via `cle_repartition_ecs`
+ *          ou, pour un chauffage d'appartement généré, `cle_repartition_ch`.
+ *          Le chauffage d'un appartement décrit directement est déjà local.
  *
  * @spec-section 17
  * @spec-source  resources/specsplitted/17-collectif/02-appartement.md

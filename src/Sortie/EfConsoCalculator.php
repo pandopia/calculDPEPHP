@@ -17,7 +17,8 @@ use DOMElement;
  *
  * Agrégation BAT vs ZONE :
  *   BAT  : ef_conso.conso_ch = Σ(install.conso_ch × rdim)
- *   ZONE : ef_conso.conso_ch = building_total_conso_ch × cle_repartition_ch
+ *   ZONE générée : ef_conso.conso_ch = building_total_conso_ch × cle_repartition_ch
+ *   ZONE directe : aucune seconde clé de chauffage, le besoin est déjà local.
  *
  * cle_repartition_ch et cle_repartition_ecs sont des données d'entrée
  * pré-calculées par le logiciel diagnostiqueur (§17.2 p.112-119).
