@@ -69,11 +69,13 @@ final class ChaudiereReleveTest extends TestCase
     }
 
     /** Sans association exploitable, le repli sur les émissions de l'installation reste défini. */
-    public function testLienSansEmetteurUtiliseLeRepli(): void
+    #[DataProvider('liensSansEmissionExploitable')]
+    public function testLienSansEmetteurUtiliseLeRepli(string $lien, string $emetteurs): void
     {
         $document = new DOMDocument();
         $document->loadXML('<logement><installation_chauffage_collection><installation_chauffage>'
-            . '<generateur_chauffage_collection><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>43</enum_type_generateur_ch_id><enum_lien_generateur_emetteur_id>2</enum_lien_generateur_emetteur_id></donnee_entree>'
+            . $emetteurs
+            . '<generateur_chauffage_collection><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>43</enum_type_generateur_ch_id>' . $lien . '</donnee_entree>'
             . '<donnee_intermediaire><rendement_generation>0.75</rendement_generation></donnee_intermediaire></generateur_chauffage></generateur_chauffage_collection>'
             . '</installation_chauffage></installation_chauffage_collection></logement>');
         $context = new CalculationContext($document, new TableRepository(__DIR__ . '/../../../../resources/tables'));
@@ -83,5 +85,35 @@ final class ChaudiereReleveTest extends TestCase
         (new ChaudiereReleve())->calculate($document->getElementsByTagName('installation_chauffage')->item(0), $context);
 
         self::assertEqualsWithDelta(1000 * 0.25 / 0.75, (float)(new DOMXPath($document))->evaluate('string(//installation_chauffage/donnee_intermediaire/conso_ch)'), 1e-8);
+    }
+
+    public static function liensSansEmissionExploitable(): iterable
+    {
+        yield 'lien absent' => ['', ''];
+        yield 'lien sans emetteur' => ['<enum_lien_generateur_emetteur_id>2</enum_lien_generateur_emetteur_id>', ''];
+        yield 'surface nulle' => [
+            '<enum_lien_generateur_emetteur_id>2</enum_lien_generateur_emetteur_id>',
+            '<emetteur_chauffage_collection><emetteur_chauffage><donnee_entree><surface_chauffee>0</surface_chauffee><enum_lien_generateur_emetteur_id>2</enum_lien_generateur_emetteur_id></donnee_entree></emetteur_chauffage></emetteur_chauffage_collection>',
+        ];
+    }
+
+    public function testInstallationSansGenerateurPublieUneConsommationNulle(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML('<logement><installation_chauffage><donnee_entree><enum_cfg_installation_ch_id>9</enum_cfg_installation_ch_id></donnee_entree></installation_chauffage></logement>');
+        $context = new CalculationContext($document, new TableRepository(__DIR__ . '/../../../../resources/tables'));
+        $context->set('chauffage.besoin_ch', 1000.0);
+        $installation = $document->getElementsByTagName('installation_chauffage')->item(0);
+        self::assertInstanceOf(DOMElement::class, $installation);
+        $calculator = new ChaudiereReleve();
+        self::assertTrue($calculator->appliesTo($installation));
+        self::assertFalse($calculator->appliesTo($document->documentElement));
+        self::assertContains(\CalculDpePHP\Chauffage\BesoinChauffageCalculator::class, $calculator->dependencies());
+
+        $calculator->calculate($installation, $context);
+
+        $xpath = new DOMXPath($document);
+        self::assertSame('0', $xpath->evaluate('string(//installation_chauffage/donnee_intermediaire/conso_ch)'));
+        self::assertSame('1000', $xpath->evaluate('string(//installation_chauffage/donnee_intermediaire/besoin_ch)'));
     }
 }
