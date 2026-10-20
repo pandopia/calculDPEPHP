@@ -30,8 +30,9 @@ use DOMElement;
  *
  * GV_building : voir `resolveGvBuilding()`.
  *
- * @spec-section 13.2.3-13.2.4
- * @spec-pages   92
+ * @spec-section 13.2.2.2, 13.2.3-13.2.4
+ * @spec-pages   88, 92
+ * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/04-rendement-annuel-moyen.md
  * @xml-input    generateur_chauffage.donnee_intermediaire.{pn, rpn, rpint, qp0, pveilleuse, temp_fonc_100, temp_fonc_30}
  * @xml-input    generateur_chauffage.donnee_entree.{enum_type_energie_id, presence_regulation_combustion}
@@ -131,9 +132,14 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         $qp0    = $accessor->getFloatOrNull('./donnee_intermediaire/qp0',   $node);
         $pveil  = $accessor->getFloatOrNull('./donnee_intermediaire/pveilleuse', $node) ?? 0.0;
 
-        if ($pn === null || $rpn === null || $rpint === null || $qp0 === null) {
+        $estRadiateurGaz = in_array($genId, self::RADIATEUR_GAZ_IDS, true);
+        if ($pn === null || $rpn === null || (!$estRadiateurGaz && ($rpint === null || $qp0 === null))) {
             return; // données manquantes — table partielle
         }
+        // §13.2.2.2 : la loi QPx du radiateur ne dépend pas de Rpint et
+        // s'annule à l'arrêt. Ces données ne sont pas tabulées pour lui.
+        $rpint ??= 0.0;
+        $qp0 ??= 0.0;
 
         $tfonc100 = $accessor->getFloatOrNull('./donnee_intermediaire/temp_fonc_100', $node) ?? 70.0;
         $tfonc30  = $accessor->getFloatOrNull('./donnee_intermediaire/temp_fonc_30',  $node) ?? 52.5;
@@ -413,11 +419,26 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
         $qp0_kw = $qp0_pcs / 1000.0;
 
         return match ($boilerCat) {
+            'radiateur_gaz' => $this->qpxRadiateurGaz($rpn_pcs, $pn_kw, $tchDim),
             'condensation' => $this->qpxCondensation($rpn_pcs, $rpint_pcs, $tfonc100, $tfonc30, $qp0_kw, $pn_kw, $tchDim, $regulation),
             'bt'           => $this->qpxBt($rpn_pcs, $rpint_pcs, $tfonc100, $tfonc30, $qp0_kw, $pn_kw, $tchDim, $regulation),
             'point_50'     => $this->qpxPointA50PourCent($rpn_pcs, $rpint_pcs, $qp0_kw, $pn_kw, $tchDim),
             default        => $this->qpxStandard($rpn_pcs, $rpint_pcs, $tfonc100, $tfonc30, $qp0_kw, $pn_kw, $tchDim, $regulation),
         };
+    }
+
+    /**
+     * §13.2.2.2 p.88 : QPx = 1,04 × (100 − RPn) / RPn × Pn × x.
+     * RPn est ici une fraction sur PCS, comme pour les autres lois de pertes.
+     * Sans pertes fixes, §13.2.4 se réduit à
+     * Rg_PCI = k / (1 + 1,04 × (1 − RPn_PCS) / RPn_PCS),
+     * indépendamment du profil de charge et de la puissance nominale.
+     *
+     * @spec-formula F-13.2.2.2-QPx
+     */
+    private function qpxRadiateurGaz(float $rpnPcs, float $pnKw, float $charge): float
+    {
+        return 1.04 * (1.0 - $rpnPcs) / max(1e-9, $rpnPcs) * $pnKw * $charge;
     }
 
     /** QPx chaudière condensation — point w=15% (§13.2.1.5) */
@@ -539,6 +560,9 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
 
     private function boilerCategory(int $genId): string
     {
+        if (in_array($genId, self::RADIATEUR_GAZ_IDS, true)) {
+            return 'radiateur_gaz';
+        }
         if (in_array($genId, self::AIR_CHAUD_IDS, true) || in_array($genId, self::BOIS_IDS, true)) {
             return 'point_50';
         }

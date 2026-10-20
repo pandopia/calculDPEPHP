@@ -397,43 +397,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   valeurs exactes la soutiennent. Reprendre par les entrées de ce bâtiment,
   ou conclure au défaut de référence si rien ne les distingue.
 
-### TASK-K76 — Rendement de génération d'un radiateur à gaz : 1,11, et la méthode ne le définit pas
-
-- [~CDX] Owner: CDX | Phase: K | Priorité: moyenne
-- `tv_generateur_combustion` est désormais complète — 93 lignes sans trou — et
-  l'ID **76** manquait alors qu'il est au corpus : `2400E0669425G` et
-  `2400E0669495Y` déclarent un radiateur à gaz d'avant 2006, et nous sortions
-  sans `pn` ni `rpn` pour ce générateur. Les deux le publient maintenant
-  exactement (12 595,7 W et 19 144,8 W ; Rpn = 0,73).
-- **Mais leur `rendement_generation` sort à 1,11**, impossible pour une
-  combustion, contre 0,720139 attendu — la même valeur sur les deux fichiers,
-  donc fonction du seul Rpn et non de Pn.
-- **La cause est structurelle.** §13.2.2.2 p.88 donne aux radiateurs à gaz une
-  loi de pertes qui leur est propre — `QPx = 1,04 × (100 − RPn)/RPn × Pn × x` —
-  et **ne tabule ni Rpint ni QP0**, les deux grandeurs que l'interpolation de
-  `RendementAnnuelMoyenCalculator` consomme. La table leur écrit donc
-  `rpint = 0`, faute de quoi ce calculateur ne produit rien du tout, et c'est
-  ce zéro inventé qui donne 1,11. `qp0 = 0` est en revanche correct : la loi
-  ci-dessus s'annule à l'arrêt. §15.1 p.97 isole d'ailleurs les radiateurs gaz
-  dans sa propre table G/H.
-- **Trois sorties ont été mesurées, toutes moins bonnes que celle retenue**
-  (A/B isolé, 541 cas, 0 plantage, 89,1155 % de valeurs conformes au départ) :
-
-  | Variante | Conformes | Effet |
-  |---|---:|---|
-  | `rpint = 0` (retenue) | 89,1162 % | 6 balises manquantes résolues, `rendement_generation` à 1,11 |
-  | `rpint` non publié quand la méthode ne le tabule pas | 89,1143 % | `rendement_generation` manquant |
-  | idem, `qp0` explicitement à 0 | 89,1143 % | identique : c'est `rpint` qui commande |
-  | radiateurs exclus de `RendementAnnuelMoyenCalculator` | 89,1122 % | `rendement_generation` manquant sur les deux |
-
-  Le budget de `2400E0669425G` passe de 92 à 93 pour cette raison, et c'est le
-  seul relâchement : le fichier publie désormais deux balises justes de plus.
-- **Ce qu'il faut trouver** : la loi de Rg propre aux radiateurs à gaz.
-  0,720139 pour Rpn = 0,73 fait un rapport de 0,986492, et
-  `1/0,720139 − 1/0,73 = 0,018758` — à rapprocher de `1,04 × 27/73 = 0,384658`,
-  dont il vaut 4,876 %. Ne rien coder tant que la forme n'est pas sourcée :
-  §13.2.2.2 ne donne que QPx, et l'assemblage vers Rg est ailleurs.
-
 ### TASK-K67 — 2242E2979513I : conso_ch à +20 % une fois le facteur CO2 juste
 
 - [ ] Owner: __ | Phase: K | Priorité: basse

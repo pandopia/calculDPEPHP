@@ -50,13 +50,12 @@ declare(strict_types=1);
  * servir pour les 24 nouvelles. Chaque ligne reste par ailleurs tracée à son
  * paragraphe de la méthode, qui l'énonce aux mêmes valeurs.
  *
- * **`rpint` vaut 0 là où la méthode ne le tabule pas**, et c'est un défaut
- * connu de cette livraison : §13.2.2.2 ne donne aux radiateurs à gaz qu'un
+ * **`rpint` vaut 0 là où la méthode ne le tabule pas** :
+ * §13.2.2.2 ne donne aux radiateurs à gaz qu'un
  * Rpn, et §14.1.1 comme §14.1.3 n'énoncent pas de rendement à charge
- * intermédiaire pour les générateurs d'ECS seule. Le zéro est écrit parce que
- * `RendementAnnuelMoyenCalculator` en a besoin pour produire quoi que ce soit ;
- * il conduit sur les radiateurs à gaz à un `rendement_generation` de 1,11,
- * impossible pour une combustion. Voir TASK-K76.
+ * intermédiaire pour les générateurs d'ECS seule. Le radiateur à gaz utilise
+ * sa propre loi de pertes QPx, indépendante de ce champ ; son rendement
+ * annuel ne passe pas par l'interpolation des chaudières à 30 % de charge.
  *
  * `qp0` vaut en revanche **zéro à bon droit** pour les radiateurs : leurs
  * pertes suivent « QPx = 1,04 × (100 − RPn)/RPn × Pn × x » (§13.2.2.2), qui
