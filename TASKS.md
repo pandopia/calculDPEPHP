@@ -387,6 +387,14 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 ### TASK-K85 — Cdimref : le périmètre du GV reste à trancher pour 25 générateurs
 
 - [ ] Owner: __ | Phase: K | Priorité: haute
+- **Attention à la compensation sur `2400E0669495Y`** : après correction
+  sourcée du radiateur gaz (K76), sa consommation devient 24 255,937 contre
+  24 256,463 attendus (0,0022 %), au lieu de 15 736,610. Les trois agrégats
+  gaz, auparavant dans la tolérance par compensation, s'écartent alors de
+  6,46 % (énergie/GES) et 6,15 % (coût). Le nombre d'écarts du cas reste 139.
+  Reprendre les autres générateurs en amont, ne pas restaurer Rg=1,11 pour
+  compenser leur surconsommation. Le radiateur corrigé a Rg=0,720139, comme
+  la référence ; cette régression locale d'agrégats n'est pas un défaut de QPx.
 - **Acquis, et livré** : quand §17.1.4.2 ramène le GV à l'appartement moyen,
   Cdimref se calcule sur la chaudière **moyenne**, pas sur le générateur
   courant. Les références donnent un Cdimref commun à tous les générateurs
