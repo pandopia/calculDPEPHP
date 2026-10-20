@@ -319,35 +319,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   suit son `rendement_generation` de chaudière gaz (0,8141 contre 0,8342) —
   c'est TASK-K31, pas §9.8.
 
-### TASK-K71 — Froid : `apport_solaire_fr` à un facteur 1,057 constant
-
-- [~CDX] Owner: CDX | Phase: K | Priorité: basse
-- **Ce qui est fait** : les deux colonnes `Nref` de l'altitude 400-800 m sont
-  reprises de §18.2.2, et `apport_interne_fr` devient exact — à douze chiffres
-  sur `2605E1578332M`. Les 1 728 valeurs de `tv_sollicitations_froid` et les
-  576 de `tv_textmoy_clim` sont désormais recoupées une à une avec l'annexe,
-  sans écart : **l'écart restant n'est pas dans les tables.**
-- **Ce qui reste** : `apport_solaire_fr` est en dessous de la référence d'un
-  facteur remarquablement stable — 1,0576, 1,0563, 1,0582 et 1,0570 sur
-  quatre fichiers indépendants, et 1,0910 sur un cinquième.
-- **La piste du mois de septembre est morte, ne pas la reprendre.** L'idée
-  était que la référence retienne les mois où l'annexe publie un `DH28` non
-  nul en regard d'un `Nref28` tiret (H1c 400-800 m en septembre, par exemple).
-  Mais `E_fr_28` y vaut **0** : inclure ce mois n'ajoute rien aux apports
-  solaires. Pour H1c à cette altitude, seuls les mois 6, 7 et 8 portent un
-  `E_fr_28` non nul, et nous les retenons tous les trois.
-- **Chercher donc dans `ssej`**, la surface sud équivalente mensuelle, et non
-  dans le choix des mois. `apport_solaire_ch` est pourtant exact sur ces mêmes
-  fichiers — mais il ne porte que sur les mois de chauffe. Regarder ce que
-  `sseMensuel` et `sseEtsMensuel` valent en juin, juillet et août, quand les
-  masques et les facteurs d'orientation d'été diffèrent de ceux d'hiver.
-- **Les trois cas où nous publions zéro ne sont pas un défaut.** Deux —
-  `2600E0015965G` et `2600E0020799E` — n'ont aucun bloc `<climatisation>` et
-  leur référence publie quand même un besoin de froid. Ils sont **seuls de
-  leur espèce** : sur les 541 cas, 506 sans climatisation publient un
-  `besoin_fr` nul comme nous, et deux ne le font pas. Le troisième,
-  `2600E0019751W`, attend 0,03. Ne rien changer pour 2 cas contre 506.
-
 ### TASK-K72 — `2605E1578332M` : un besoin de froid qui contredit ses propres apports
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
@@ -361,9 +332,9 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Son budget de non-régression est passé de 18 à 23 pour cette raison, et
   c'est le seul relâché de la campagne — les dix autres cas touchés ont vu le
   leur se resserrer. Le relâchement est volontaire et documenté ici.
-- À instruire avec TASK-K71 : si la saison retenue pour les apports solaires
-  explique les 5,39 % restants, ce cas se referme peut-être tout seul. Sinon,
-  c'est un candidat à `ReferenceDefects` — la preuve est interne au fichier
+- TASK-K71 est close dans `TASKS_DONE.md` : l'apport solaire publié ajoute
+  exactement `2,03 × Sse_mai`, absent de la table officielle. Ce cas reste
+  candidat à `ReferenceDefects` — la preuve est interne au fichier
   (ses apports publiés ne reproduisent pas son besoin publié) mais elle
   demande de rejouer §10.2, ce qui sort du cadre de l'outil.
 

@@ -19,6 +19,32 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K71 — Froid H1c 400-800 m : la référence ajoute `2,03 × Sse_mai`
+
+- Enquête close sans changement de code, 20 octobre 2026, corpus 646 cas.
+  Les cinq références `2401E2888143P`, `2601E0370414Y`, `2601E0734445D`,
+  `2601E0869643B`, `2605E1578332M` sont en H1c à 400-800 m.
+- Recalculer les Sse mensuelles depuis leurs propres `Sw`, `Fe1`, `Fe2`
+  reproduit leur Sse annuelle. Leur apport solaire de froid vaut exactement
+  `Σ(Sse_j × E_fr28_j) + 2,03 × Sse_mai` : le quotient du résidu par
+  `Sse_mai` vaut respectivement 2,0300000000, 2,0299999989, 2,0300000000,
+  2,0299999811 et 2,0300000018. Ce n'est ni septembre ni un facteur global
+  de surface ; les décalages de mois de −2 à +2 ne reproduisent pas ces cas.
+- §18.2.2 p.130 publie pourtant un **tiret** en mai, H1c, 400-800 m,
+  consigne 28 °C. L'annexe consolidée téléchargée sur le site ministériel
+  est identique octet pour octet à `resources/spec.pdf`
+  (SHA256 `66ffacbb172d045d09bd652d0ada6450b2e5ae289b61ebb6303d78e76c3f4f5a`).
+  Contrôle visuel de la page effectué. Open3CL publie également zéro.
+- **Ne pas remplacer zéro par 2,03 sans source réglementaire.** Ce nombre
+  existe dans d'autres colonnes/consignes ; l'origine exacte de la valeur
+  utilisée par l'éditeur n'est pas établie. Rouvrir seulement sur publication
+  d'un corrigendum officiel applicable à cette cellule, ou d'une règle
+  sourcée expliquant son remplacement. Aucune tolérance ni imputation
+  automatique à `ReferenceDefects` n'a été ajoutée.
+- Les références sans climatisation `2600E0015965G` et `2600E0020799E`
+  restent isolées : 506 autres cas sans climatisation publiaient zéro sur
+  le corpus de 541. Ne pas fabriquer un besoin de froid pour les suivre.
+
 ### TASK-K88 — Balises manquantes et surnuméraires : presque tout est convention d'éditeur
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
