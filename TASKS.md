@@ -321,7 +321,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K71 — Froid : `apport_solaire_fr` à un facteur 1,057 constant
 
-- [ ] Owner: __ | Phase: K | Priorité: basse
+- [~CDX] Owner: CDX | Phase: K | Priorité: basse
 - **Ce qui est fait** : les deux colonnes `Nref` de l'altitude 400-800 m sont
   reprises de §18.2.2, et `apport_interne_fr` devient exact — à douze chiffres
   sur `2605E1578332M`. Les 1 728 valeurs de `tv_sollicitations_froid` et les
