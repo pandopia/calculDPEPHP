@@ -480,23 +480,21 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   §17.2 précise la répartition d'une installation collective vers un
   appartement généré en chauffage mixte.
 
-### TASK-K87 — cfg 9 : la branche d'appoint bois sur-estimée de 24 %
+### TASK-K87 — cfg 9 : la référence applique à l'insert le rendement de la relève
 
-- [~CDX] Owner: CDX | Phase: K | Priorité: basse
-- `2601E0060401J` (47 écarts) porte une installation `cfg = 9` — chaudière en
-  relève de PAC **avec insert ou poêle en appoint** — à trois générateurs
-  répartis sur deux branches par `enum_lien_generateur_emetteur_id`.
-- **Les deux branches ne divergent pas de la même façon**, ce qui localise le
-  défaut : les deux générateurs de la branche 1 (types 7 et 106) sont à
-  ×1,0329 de la référence, le générateur de la branche 2 (type 43, insert) à
-  **×1,2412**. Un écart propre à une branche est un écart de **part**, pas de
-  rendement — ceux-ci sont identiques des deux côtés (0,97 et 0,75).
-- Part de la branche 2 : 0,4934 chez nous contre 0,4477 dans la référence.
-  Ni 0,25 ni 0,1, donc ce n'est pas un facteur §9.x lu tel quel ; et
-  reconstruire l'intermittence à rebours donne 1,067 pour notre branche 2,
-  une valeur impossible — le produit `part × INT` est donc mal réparti.
-- Commencer par vérifier ce que `ChaudiereReleve` attribue à chaque branche,
-  et avec quelle intermittence, plutôt que les rendements.
+- [ ] Owner: __ | Phase: K | Priorité: basse
+- Associations d'émissions corrigées : chaque générateur suit désormais son
+  lien, avec somme des produits surfaciques de §9.1.3. A/B isolé 646 cas :
+  **−34 écarts**, quatre cas améliorés, aucun dégradé. Sur `2601E0060401J`,
+  PAC et relève deviennent conformes, 47 → 36 écarts.
+- Résidu isolé : l'insert publie Rg=0,75 mais sa consommation de référence
+  se reconstruit avec **Rg=0,97**, celui de la chaudière électrique voisine.
+  En partant du seul XML de référence : Bch=12 293,459, GV=349,298,
+  Hsp=3, Sh=263,51, I0=0,84, Re=0,95, Rd=1, Rr=0,8, §9.7 donne
+  4 796,907 kWh avec Rg=0,75 et **3 708,948** avec Rg=0,97, exactement
+  les 3 708,948 publiés. Ne pas remplacer le rendement de l'insert pour suivre
+  cette référence. Qualifier ce défaut sur les trois autres cas cfg 9 avant
+  une imputation générique ; ce n'est plus un problème de part de besoin.
 
 ### TASK-K89 — Les références tarifent la ventilation dans une autre assiette que le reste
 
