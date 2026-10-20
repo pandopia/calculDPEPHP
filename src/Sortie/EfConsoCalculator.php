@@ -79,9 +79,7 @@ final class EfConsoCalculator implements CalculatorInterface
         // ── 2. Chauffage ──────────────────────────────────────────────────────
         [$buildingConsoChTotal, $buildingConsoChDepTotal, $cleRepartitionCh] =
             $this->aggregateChauffage($accessor, $node, $nbreAppt, $shImmeuble);
-        if ($cleRepartitionCh >= 1.0) {
-            $cleRepartitionCh = GeneratedApartment::surfaceShare($node, $accessor) ?? $cleRepartitionCh;
-        }
+        $cleRepartitionCh = GeneratedApartment::heatingShare($node, $accessor, $cleRepartitionCh);
 
         $consoChEf    = $isZone ? $buildingConsoChTotal    * $cleRepartitionCh : $buildingConsoChTotal;
         $consoChDepEf = $isZone ? $buildingConsoChDepTotal * $cleRepartitionCh : $buildingConsoChDepTotal;

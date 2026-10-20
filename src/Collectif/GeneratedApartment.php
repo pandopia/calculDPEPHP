@@ -68,6 +68,25 @@ final class GeneratedApartment
             : null;
     }
 
+    /**
+     * §17.2.1 p.112-113 : les consommations d'un appartement décrit
+     * directement sont calculées depuis son propre besoin. Le XSD réserve
+     * cle_repartition_ch au « DPE appartement calculé à partir du DPE
+     * immeuble UNIQUEMENT » : la lui appliquer ferait un second prorata.
+     * Sans méthode déclarée, conserver la clé pour les documents minimaux.
+     */
+    public static function heatingShare(DOMElement $logement, NodeAccessor $accessor, float $declaredShare): float
+    {
+        $method = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $logement);
+        if ($method !== null && !in_array($method, self::METHODS, true)) {
+            return 1.0;
+        }
+
+        return $declaredShare >= 1.0
+            ? (self::surfaceShare($logement, $accessor) ?? $declaredShare)
+            : $declaredShare;
+    }
+
     private static function ancestor(DOMElement $node, string $name): ?DOMElement
     {
         $current = $node;

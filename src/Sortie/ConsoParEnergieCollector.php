@@ -120,8 +120,8 @@ final class ConsoParEnergieCollector
                 if ($isZone) {
                     $cle = $accessor->getFloatOrNull('./donnee_entree/' . $cleField, $install);
                     if ($cle !== null && $cle > 0.0) {
-                        if ($isCh && $cle >= 1.0) {
-                            $cle = GeneratedApartment::surfaceShare($logement, $accessor) ?? $cle;
+                        if ($isCh) {
+                            $cle = GeneratedApartment::heatingShare($logement, $accessor, $cle);
                         }
                         $scale *= $cle;
                     }

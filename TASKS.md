@@ -546,31 +546,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   `enum_type_ventilation_id` collectif, présence d'un caisson commun — plutôt
   que dans les surfaces.
 
-### TASK-K90 — `ef_conso` retient une seule clé de répartition pour toutes les installations
-
-- [~CDX] Owner: CDX | Phase: K | Priorité: haute
-- `EfConsoCalculator::aggregateChauffage` accumule les consommations de toutes
-  les installations, puis multiplie le total par **la dernière**
-  `cle_repartition_ch` lue — la boucle écrase la précédente à chaque tour.
-- Sur `2601E0158771V` (méthode 2, deux installations de clés **0,7866** et
-  **0,2134**, qui somment à 1), `ef_conso` publie 49,087 là où
-  `sortie_par_energie` — qui applique la clé installation par installation —
-  publie 123,152. Soit le total brut de 230,02 ramené à la seule clé 0,2134.
-  Même défaut sur `2601E0304014C`, où l'écart atteint un facteur 14.
-- Les deux cas viennent du jeu `ademe-emetteurs-2026-10` : la configuration
-  n'existait pas dans le corpus avant lui.
-- **La correction évidente est fausse** : pondérer chaque installation par sa
-  propre clé a été mesuré en A/B isolé, 645 cas, 0 crash — **+411 écarts, 75
-  cas dégradés, aucun amélioré**. La raison est que les installations sans clé
-  déclarée se mêlent à celles qui en portent une : aujourd'hui la clé trouvée
-  s'applique à tout le monde, et c'est ce que la plupart des références
-  attendent.
-- Chercher d'abord ce que la référence fait quand **une partie seulement** des
-  installations déclare une clé, puis traiter le cas où elles somment à 1 —
-  qui est le seul où le défaut se voit.
-- Les deux fichiers sont les seules entrées de
-  `CoherenceInterneTest::DETTE_CONNUE`.
-
 ### TASK-K84 — Réseau de chaleur multi-bâtiment : 0,75 ou 0,90, le corpus ne tranche plus
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne

@@ -30,28 +30,6 @@ final class CoherenceInterneTest extends TestCase
     /** Tolérance relative : les sorties sont arrondies, pas exactes au bit. */
     private const TOL = 0.005;
 
-    /**
-     * Cas dont l'incohérence est connue, instruite et en attente d'un correctif.
-     *
-     * Chacun porte son numéro de tâche : la liste est une dette déclarée, pas
-     * une exemption de confort. Un cas qui s'y ajouterait sans tâche est une
-     * régression déguisée.
-     *
-     * @var array<string, string>
-     */
-    private const DETTE_CONNUE = [
-        // Une entrée ici est un bloc de sortie qui se contredit lui-même, pas
-        // un simple écart à la référence : elle appelle une TASK, pas une
-        // tolérance.
-        //
-        // Deux installations de chauffage aux clés de répartition distinctes
-        // (0,7866 et 0,2134) : `EfConsoCalculator` retient la dernière clé lue
-        // et l'applique au total, quand `sortie_par_energie` applique la
-        // sienne à chaque installation. Voir TASK-K90.
-        '2601E0158771V.xml' => 'TASK-K90',
-        '2601E0304014C.xml' => 'TASK-K90',
-    ];
-
     /** Préfixe de chaque bloc de sortie, par nom de bloc. */
     private const BLOCS = [
         'ef_conso'     => 'conso',
@@ -70,10 +48,6 @@ final class CoherenceInterneTest extends TestCase
         // secondes, et un défaut de cohérence se niche dans une configuration
         // rare — la cascade de TASK-K80 n'apparaît que sur un fichier.
         foreach ($cases as $case) {
-            if (isset(self::DETTE_CONNUE[$case['name']])) {
-                continue;
-            }
-
             yield $case['corpus'] . '/' . $case['name'] => [$case['input']];
         }
     }
