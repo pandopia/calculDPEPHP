@@ -548,7 +548,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K90 — `ef_conso` retient une seule clé de répartition pour toutes les installations
 
-- [ ] Owner: __ | Phase: K | Priorité: haute
+- [~CDX] Owner: CDX | Phase: K | Priorité: haute
 - `EfConsoCalculator::aggregateChauffage` accumule les consommations de toutes
   les installations, puis multiplie le total par **la dernière**
   `cle_repartition_ch` lue — la boucle écrase la précédente à chaque tour.
