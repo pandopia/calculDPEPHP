@@ -44,6 +44,35 @@ final class AuxDistributionCalculatorTest extends TestCase
         return (float)$nodes->item(0)->textContent;
     }
 
+    #[DataProvider('perimetresEtOrdres')]
+    public function testChaqueCircuitConserveSaCle(?int $methode, bool $inverse, float $facteur): void
+    {
+        $installations = [];
+        foreach ([0.2, 0.3] as $cle) {
+            $installations[] = '<installation_chauffage><donnee_entree><surface_chauffee>1000</surface_chauffee><cle_repartition_ch>' . $cle . '</cle_repartition_ch></donnee_entree>'
+                . '<emetteur_chauffage_collection><emetteur_chauffage><donnee_entree><enum_type_emission_distribution_id>37</enum_type_emission_distribution_id></donnee_entree></emetteur_chauffage></emetteur_chauffage_collection></installation_chauffage>';
+        }
+        $mode = $methode === null ? '' : '<enum_methode_application_dpe_log_id>' . $methode . '</enum_methode_application_dpe_log_id>';
+        $document = new DOMDocument();
+        $document->loadXML('<logement><caracteristique_generale>' . $mode
+            . '<surface_habitable_logement>50</surface_habitable_logement><surface_habitable_immeuble>1000</surface_habitable_immeuble></caracteristique_generale>'
+            . '<installation_chauffage_collection>' . implode('', $inverse ? array_reverse($installations) : $installations) . '</installation_chauffage_collection></logement>');
+
+        // GV nul : chaque circulateur est au minimum réglementaire de 30 W.
+        (new AuxDistributionCalculator())->calculate($document->documentElement, $this->buildCtx($document));
+
+        self::assertEqualsWithDelta(30 * 5792 / 1000 * $facteur, $this->efValue($document, 'conso_auxiliaire_distribution_ch'), 1e-8);
+    }
+
+    public static function perimetresEtOrdres(): iterable
+    {
+        foreach ([false, true] as $inverse) {
+            yield 'genere ' . (int)$inverse => [10, $inverse, 0.5];
+            yield 'direct ' . (int)$inverse => [2, $inverse, 2.0];
+            yield 'minimal ' . (int)$inverse => [null, $inverse, 0.5];
+        }
+    }
+
     /**
      * Verify CH distribution against bat_post2026 reference:
      * expected conso_auxiliaire_distribution_ch ≈ 917.64 kWh
