@@ -113,6 +113,39 @@ XML;
         $this->assertEqualsWithDelta(225.0, $conso, self::TOL);
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('performancesSaisies')]
+    public function testLesPerformancesReellesPreserveesPrimentSurLeForfait(int $methode, ?float $eer, ?float $seer, float $attendu): void
+    {
+        [$doc, $node] = $this->buildLogementWithClimatisation(3);
+        $clim = $doc->getElementsByTagName('climatisation')->item(0);
+        $clim->getElementsByTagName('donnee_entree')->item(0)->appendChild($doc->createElement('enum_methode_saisie_carac_sys_id', (string)$methode));
+        $di = $doc->createElement('donnee_intermediaire');
+        foreach (['eer' => $eer, 'seer' => $seer] as $tag => $value) {
+            if ($value !== null) {
+                $di->appendChild($doc->createElement($tag, (string)$value));
+            }
+        }
+        $clim->appendChild($di);
+        \CalculDpePHP\Xml\OutputPurger::purge($doc);
+        $context = $this->makeContext($doc, ['froid.besoin_fr' => 1000.0, 'froid.besoin_fr_depensier' => 1200.0]);
+
+        (new ConsoFroidCalculator())->calculate($node, $context);
+
+        $xp = new \DOMXPath($doc);
+        self::assertEqualsWithDelta($attendu, (float)$xp->evaluate('string(//climatisation/donnee_intermediaire/eer)'), 1e-9);
+        self::assertEqualsWithDelta(900 / $attendu, (float)$xp->evaluate('string(//sortie/ef_conso/conso_fr)'), 1e-9);
+    }
+
+    public static function performancesSaisies(): iterable
+    {
+        yield 'EER saisi' => [8, 4.7, null, 4.7];
+        yield 'EER methode thermodynamique' => [6, 4.7, null, 4.7];
+        yield 'SEER converti une fois' => [8, null, 8.0, 7.6];
+        yield 'EER deja converti prioritaire' => [8, 7.6, 8.0, 7.6];
+        yield 'valeurs invalides repli' => [8, 0.0, -1.0, 6.365];
+        yield 'forfait purge ancien EER' => [1, 4.7, 8.0, 6.365];
+    }
+
     /**
      * tv_seer_id=3 (H1/H2, à partir 2015) : EER = 0.95 × 6.7 = 6.365.
      * Cfr = 0.9 × 1000 / 6.365 ≈ 141.4 kWh

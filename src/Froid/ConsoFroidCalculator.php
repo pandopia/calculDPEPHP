@@ -102,6 +102,24 @@ final class ConsoFroidCalculator implements CalculatorInterface
             }
         }
 
+        // §10.3 p.70 et XSD méthodes 6/8 : performances réelles justifiées,
+        // préservées par OutputPurger en donnee_intermediaire. Un EER déjà
+        // renseigné ne repasse pas par la conversion SEER → EER.
+        foreach ($node->getElementsByTagName('climatisation') as $clim) {
+            if (!$clim instanceof DOMElement || !in_array($accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $clim), [6, 8], true)) {
+                continue;
+            }
+            $eerSaisi = $accessor->getFloatOrNull('./donnee_intermediaire/eer', $clim);
+            if ($eerSaisi !== null && $eerSaisi > 0.0) {
+                return $eerSaisi;
+            }
+            $seerSaisi = $accessor->getFloatOrNull('./donnee_entree/seer', $clim)
+                ?? $accessor->getFloatOrNull('./donnee_intermediaire/seer', $clim);
+            if ($seerSaisi !== null && $seerSaisi > 0.0) {
+                return 0.95 * $seerSaisi;
+            }
+        }
+
         // Sinon: tv_seer_id explicit
         foreach ($node->getElementsByTagName('climatisation') as $clim) {
             if (!$clim instanceof DOMElement) {
