@@ -59,9 +59,14 @@ XML, $typeEmetteur, $genId));
         yield 'air/eau, radiateur bitube' => [7, 39, '2', 2.8];
         yield 'air/eau, plancher chauffant' => [7, 14, '2', 3.2];
         yield 'air/eau, plafond chauffant' => [7, 18, '2', 3.2];
+        yield 'air/eau, plancher a detente directe' => [7, 43, '2', 3.2];
+        yield 'air/eau, plafond a detente directe' => [7, 44, '2', 3.2];
+        yield 'geothermie, plancher a detente directe' => [16, 43, '2', 2.4];
+        yield 'geothermie, plafond a detente directe' => [17, 44, '7', 2.6];
         // Même PAC en zone H3 : 3,2 ou 3,8.
         yield 'air/eau en H3, radiateur' => [7, 39, '8', 3.2];
         yield 'air/eau en H3, plancher' => [7, 14, '8', 3.8];
+        yield 'air/eau en H3, plafond a detente directe' => [5, 44, '8', 3.1];
         // PAC air/air : colonne unique, l'émetteur ne change rien.
         yield 'air/air, plancher' => [3, 14, '2', 3.0];
         yield 'air/air, radiateur' => [3, 39, '2', 3.0];

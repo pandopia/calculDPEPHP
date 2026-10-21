@@ -87,9 +87,10 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
 
     /**
      * `enum_type_emission_distribution_id` des planchers et plafonds chauffants :
-     * 6-9 rayonnants électriques, 11-18 sur réseau d'eau chaude.
+     * 6-9 rayonnants électriques, 11-18 sur réseau d'eau chaude,
+     * 43-44 à détente directe (libellés physiques du XSD ADEME).
      */
-    private const EMETTEURS_PLANCHER_PLAFOND = [6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18];
+    private const EMETTEURS_PLANCHER_PLAFOND = [6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 43, 44];
 
     /** enum_zone_climatique_id valant H3 */
     private const ZONE_H3_ID = 8;
@@ -202,7 +203,9 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
      * « Autres » et « Planchers / Plafonds ». La colonne se déduit des
      * émetteurs de l'installation, `enum_type_emission_distribution_id` 6 à 9
      * (rayonnants électriques) et 11 à 18 (planchers et plafonds sur réseau
-     * d'eau chaude) désignant un plancher ou un plafond chauffant.
+     * d'eau chaude), 43 et 44 (plancher/plafond à détente directe) désignant
+     * un plancher ou un plafond chauffant. Le fluide de distribution ne
+     * change pas la nature de l'émission dans cette table.
      *
      * Le contexte garde la priorité quand un calculateur amont l'a renseigné.
      */
