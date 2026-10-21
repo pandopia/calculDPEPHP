@@ -1,7 +1,7 @@
 # Conformité du moteur — jeux de tests DPE 3CL
 
-_Généré le 2026-10-21T10:54:27+00:00 — profil de tolérance : `strict`_
-_Révision mesurée : `c0935c2`_
+_Généré le 2026-10-21T10:58:59+00:00 — profil de tolérance : `strict`_
+_Révision mesurée : `e580ea6`_
 
 Comparaison balise à balise de la totalité de `<donnee_intermediaire>` et
 `<sortie>` entre la sortie du moteur et la référence du cas. Aucune balise
