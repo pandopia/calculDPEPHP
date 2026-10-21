@@ -66,6 +66,9 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Sourcer le critère réglementaire du chauffage mixte (principal/appoint,
   surfaces desservies), puis rendre le choix indépendant de l'ordre et
   mesurer l'A/B sur les 646 cas. Ne pas inventer une règle de majorité.
+- Open3cl ne tranche pas à lui seul : `src/utils.js::isEffetJoule` utilise
+  une majorité surfacique ≥50 %, mais `features/engine/domain/contexte.builder.js`
+  considère la présence d'un seul émetteur Joule. Départager ces conventions.
 
 ### TASK-K92 — Dépendances de l'éditeur : traiter les alertes de sécurité
 
