@@ -22,8 +22,9 @@ use DOMElement;
  * @spec-section 13.2.1
  * @spec-pages   81-85
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/01-profil-charge.md
- * @xml-input    generateur_chauffage.donnee_entree.{enum_type_generateur_ch_id, presence_regulation_combustion}
- * @xml-input    emetteur_chauffage.donnee_entree.{enum_temp_distribution_ch_id, annee_installation_emetteur}
+ * @xml-input    generateur_chauffage.donnee_entree.{enum_type_generateur_ch_id, presence_regulation_combustion, enum_lien_generateur_emetteur_id, enum_methode_saisie_carac_sys_id, temp_fonc_100, temp_fonc_30}
+ * @xml-input    generateur_chauffage.donnee_intermediaire.{temp_fonc_100, temp_fonc_30} (saisies méthode 5)
+ * @xml-input    emetteur_chauffage.donnee_entree.{enum_type_emission_distribution_id, enum_temp_distribution_ch_id, enum_lien_generateur_emetteur_id, enum_periode_installation_emetteur_id, annee_installation_emetteur}
  * @xml-output   generateur_chauffage.donnee_intermediaire.{temp_fonc_100, temp_fonc_30}
  * @depends-on   \CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator
  * @tables       (aucune — tables inline §13.2.1.5 p.81-85)
@@ -214,10 +215,8 @@ final class ChaudiereProfilChargeCalculator implements CalculatorInterface
      * enum_temp_distribution_ch_id classait en basse un radiateur bitube posé
      * sur un réseau à moins de 65 °C, qui est un radiateur à chaleur douce.
      *
-     * « Si un système de génération alimente des réseaux de distribution de
-     * températures différentes, la température de fonctionnement est prise
-     * égale à la température maximale » : tous les émetteurs de l'installation
-     * sont donc parcourus et le maximum retenu.
+     * La ligne est propre à cet émetteur ; calculate() applique ensuite la
+     * règle du maximum aux seuls réseaux desservis par le générateur.
      */
     private function ligneDuReseau(DOMElement $emetteur, NodeAccessor $accessor): int
     {

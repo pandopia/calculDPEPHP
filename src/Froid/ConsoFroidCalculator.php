@@ -27,7 +27,8 @@ use DOMElement;
  * @spec-section 10.3
  * @spec-pages   69-70
  * @spec-source  resources/specsplitted/10-conso-froid/03-consommations.md
- * @xml-input    logement.climatisation_collection.climatisation.donnee_entree.{tv_seer_id, surface_refroidie}
+ * @xml-input    logement.climatisation_collection.climatisation.donnee_entree.{tv_seer_id, enum_periode_installation_fr_id, enum_methode_saisie_carac_sys_id, eer, seer, surface_clim, surface_refroidie, surface_habitable, cle_repartition_clim}
+ * @xml-input    logement.climatisation_collection.climatisation.donnee_intermediaire.{eer, seer} (performances saisies préservées selon la méthode)
  * @xml-output   logement.sortie.ef_conso.{conso_fr, conso_fr_depensier}
  * @xml-output   logement.climatisation_collection.climatisation.donnee_intermediaire.{eer, conso_fr, conso_fr_depensier}
  * @depends-on   \CalculDpePHP\Froid\BesoinAnnuelCalculator

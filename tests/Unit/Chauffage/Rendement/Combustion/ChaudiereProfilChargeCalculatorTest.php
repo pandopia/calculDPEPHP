@@ -268,6 +268,24 @@ XML);
         yield 'apres 2000' => [2001, ['60', '32']];
     }
 
+    public function testInstallationSansEmetteurConserveLeRepliRecent(): void
+    {
+        self::assertSame(['60', '32'], $this->tfonc([], periode: 1));
+    }
+
+    /** Les fragments sans installation doivent rester calculables. */
+    public function testFragmentSansInstallationUtiliseAnneeBatiment(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML('<logement><caracteristique_generale><annee_construction>1920</annee_construction></caracteristique_generale>'
+            . '<generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>97</enum_type_generateur_ch_id></donnee_entree></generateur_chauffage></logement>');
+        (new ChaudiereProfilChargeCalculator())->calculate($document->getElementsByTagName('generateur_chauffage')->item(0), new CalculationContext(
+            $document, new TableRepository(__DIR__ . '/../../../../../resources/tables'),
+        ));
+        self::assertSame('80', $document->getElementsByTagName('temp_fonc_100')->item(0)?->textContent);
+        self::assertSame('38', $document->getElementsByTagName('temp_fonc_30')->item(0)?->textContent);
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('temperaturesSaisies')]
     public function testLaMethodeCinqPreserveLesTemperaturesDocumentees(int $methode, ?float $cent, ?float $trente, array $attendu): void
     {

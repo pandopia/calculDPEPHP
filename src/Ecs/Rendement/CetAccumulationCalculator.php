@@ -21,7 +21,8 @@ use DOMElement;
  * @spec-section 14.2
  * @spec-pages   95
  * @spec-source  resources/specsplitted/14-rendement-ecs-generateurs/02-cet-accumulation.md
- * @xml-input    generateur_ecs.donnee_entree.enum_type_generateur_ecs_id
+ * @xml-input    generateur_ecs.donnee_entree.{enum_type_generateur_ecs_id, enum_periode_installation_ecs_thermo_id, enum_methode_saisie_carac_sys_id, cop}
+ * @xml-input    generateur_ecs.donnee_intermediaire.cop (saisie méthode 6)
  * @xml-output   generateur_ecs.donnee_intermediaire.cop
  * @depends-on   aucun
  * @tables       (aucune — valeurs directement de la spec p.95)

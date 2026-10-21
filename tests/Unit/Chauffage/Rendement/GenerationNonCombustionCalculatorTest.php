@@ -230,6 +230,17 @@ XML);
         yield 'valeur negative' => ['-2'];
     }
 
+    public function testLeContexteAmontPeutPreciserZoneEtEmission(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML('<generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>7</enum_type_generateur_ch_id></donnee_entree></generateur_chauffage>');
+        $context = new CalculationContext($document, new TableRepository(self::PROJECT_ROOT . '/resources/tables'), zoneClimatique: '2');
+        $context->set('logement.zone_climatique_id', 8);
+        $context->set('installation.emetteur_type', 'plancher_plafond');
+        (new GenerationNonCombustionCalculator())->calculate($document->documentElement, $context);
+        self::assertEqualsWithDelta(3.8, (float)$document->getElementsByTagName('scop')->item(0)?->textContent, 1e-9);
+    }
+
     /**
      * XSD : `scop` est publié « en remplacement du Rg pour les générateurs
      * thermodynamique », et `rendement_generation` vaut « pour tous les

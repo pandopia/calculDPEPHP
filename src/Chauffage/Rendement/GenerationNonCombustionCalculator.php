@@ -21,7 +21,7 @@ use DOMElement;
  * Pour la PAC : si scop est fourni dans donnee_entree, il est prioritaire.
  * Sinon, le SCOP par défaut est lu dans la table selon (type_pac, zone, emetteur_type).
  * L'emetteur_type (plancher/plafond ou autres) est lu depuis le contexte
- * (clé `installation.emetteur_type`, écrite par EmissionCalculator si besoin).
+ * (clé optionnelle `installation.emetteur_type`), sinon depuis les émetteurs XML.
  * En l'absence d'information : « autres » (SCOP le plus conservateur).
  *
  * Les générateurs à combustion (IDs 20-97, 113-116) sont ignorés ici
@@ -30,7 +30,9 @@ use DOMElement;
  * @spec-section 12.4
  * @spec-pages   76-78
  * @spec-source  resources/specsplitted/12-rendements-installations/04-generation-non-combustion.md
- * @xml-input    generateur_chauffage.donnee_entree.{enum_type_generateur_ch_id, scop}
+ * @xml-input    generateur_chauffage.donnee_entree.{enum_type_generateur_ch_id, enum_methode_saisie_carac_sys_id, scop}
+ * @xml-input    generateur_chauffage.donnee_intermediaire.scop (saisie méthode 6)
+ * @xml-input    emetteur_chauffage.donnee_entree.enum_type_emission_distribution_id
  * @xml-output   generateur_chauffage.donnee_intermediaire.{rendement_generation, scop}
  * @see          \CalculDpePHP\Chauffage\Rendement\RendementGenerateur
  * @depends-on   (aucun)

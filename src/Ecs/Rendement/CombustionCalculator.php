@@ -34,6 +34,7 @@ use DOMElement;
  * @spec-pages   93-95
  * @spec-source  resources/specsplitted/14-rendement-ecs-generateurs/01-combustion.md
  * @xml-input    generateur_ecs.donnee_entree.{enum_type_energie_id, enum_type_generateur_ecs_id, tv_generateur_combustion_id, enum_methode_saisie_carac_sys_id, pn, rpn, qp0, pveil}
+ * @xml-input    generateur_ecs.donnee_intermediaire.{pn, rpn, qp0, pveilleuse} (caractéristiques saisies préservées selon la méthode)
  * @xml-output   generateur_ecs.donnee_intermediaire.{pn, qp0, rpn, rendement_generation}
  * @depends-on   \CalculDpePHP\Ecs\BesoinEcsCalculator, \CalculDpePHP\Enveloppe\EnveloppeAggregator, \CalculDpePHP\Ventilation\VentilationAggregator
  * @tables       ecs/tv_generateur_combustion_ecs
