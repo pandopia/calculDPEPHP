@@ -180,7 +180,10 @@ final class AuxGenerationCalculator implements CalculatorInterface
             // avant de sommer, uniquement si le besoin vient de l'immeuble.
             // Une dernière clé ne peut pas répartir les autres installations.
             $cleDeclaree = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ch', $install);
-            $partLogement = $isZone && $cleDeclaree !== null && $cleDeclaree > 0.0
+            // La clé unitaire conserve ici le périmètre historique du besoin
+            // publié ; la reconstruction des clés manquantes en chauffage
+            // mixte est une question distincte (TASK-K86).
+            $partLogement = $isZone && $cleDeclaree !== null && $cleDeclaree > 0.0 && $cleDeclaree < 1.0
                 ? GeneratedApartment::heatingShare($logement, $accessor, $cleDeclaree)
                 : 1.0;
 

@@ -145,7 +145,7 @@ XML;
             yield 'genere ' . (int)$inverse => [10, $inverse, false, 16.8];
             yield 'direct ' . (int)$inverse => [2, $inverse, false, 63.0];
             yield 'minimal ' . (int)$inverse => [null, $inverse, false, 16.8];
-            yield 'genere part surfacique ' . (int)$inverse => [10, $inverse, true, 3.15];
+            yield 'cle unitaire conserve le besoin publie ' . (int)$inverse => [10, $inverse, true, 63.0];
         }
     }
 
