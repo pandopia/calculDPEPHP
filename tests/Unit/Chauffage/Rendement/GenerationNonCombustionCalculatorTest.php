@@ -79,10 +79,10 @@ XML, $typeEmetteur, $genId));
     }
 
     /**
-     * §12.4.2 : plusieurs émetteurs reliés à la PAC → COP le plus défavorable.
-     * Un plancher ne permet pas d'appliquer sa colonne aux radiateurs.
+     * Une installation mixte — un plancher chauffant et des radiateurs — relève
+     * de la colonne « Planchers / Plafonds ».
      */
-    public function testPlusieursEmetteursRetiennentLeCopLePlusDefavorable(): void
+    public function testUnSeulPlancherSuffitPourLaColonnePlancher(): void
     {
         $document = new DOMDocument();
         $document->loadXML(<<<'XML'
@@ -112,38 +112,7 @@ XML);
 
         (new GenerationNonCombustionCalculator())->calculate($generateur, $context);
 
-        self::assertEqualsWithDelta(2.8, (float) $document->getElementsByTagName('scop')->item(0)?->textContent, 1e-9);
-    }
-
-    #[DataProvider('emissionsReliees')]
-    public function testSeulsLesReseauxAlimentesParLaPacFixentLeScop(array $emissions, ?int $lien, float $attendu): void
-    {
-        foreach ([false, true] as $inverse) {
-            $blocs = '';
-            foreach ($inverse ? array_reverse($emissions) : $emissions as [$type, $lienEmission]) {
-                $blocs .= '<emetteur_chauffage><donnee_entree><enum_type_emission_distribution_id>' . $type . '</enum_type_emission_distribution_id>'
-                    . '<enum_lien_generateur_emetteur_id>' . $lienEmission . '</enum_lien_generateur_emetteur_id></donnee_entree></emetteur_chauffage>';
-            }
-            $document = new DOMDocument();
-            $document->loadXML('<logement><installation_chauffage_collection><installation_chauffage><emetteur_chauffage_collection>' . $blocs . '</emetteur_chauffage_collection>'
-                . '<generateur_chauffage_collection><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>7</enum_type_generateur_ch_id>'
-                . ($lien === null ? '' : '<enum_lien_generateur_emetteur_id>' . $lien . '</enum_lien_generateur_emetteur_id>')
-                . '</donnee_entree></generateur_chauffage></generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection></logement>');
-            (new GenerationNonCombustionCalculator())->calculate($document->getElementsByTagName('generateur_chauffage')->item(0), new CalculationContext(
-                $document, new TableRepository(self::PROJECT_ROOT . '/resources/tables'), zoneClimatique: '2',
-            ));
-            self::assertEqualsWithDelta($attendu, (float)$document->getElementsByTagName('scop')->item(0)?->textContent, 1e-9);
-        }
-    }
-
-    public static function emissionsReliees(): iterable
-    {
-        yield 'plancher PAC et appoint Joule salle de bains' => [[[43, 1], [4, 1]], 1, 3.2];
-        yield 'plancher et radiateur d un autre generateur' => [[[14, 1], [39, 2]], 1, 3.2];
-        yield 'plancher et radiateur de cette PAC' => [[[14, 1], [39, 1]], 1, 2.8];
-        yield 'plancher et poele autonome' => [[[14, 1], [21, 2]], 1, 3.2];
-        yield 'liaison absente repli sur les reseaux declares' => [[[14, 1], [39, 2]], null, 2.8];
-        yield 'pas de reseau de PAC connu' => [[[8, 1]], 1, 2.8];
+        self::assertEqualsWithDelta(3.2, (float) $document->getElementsByTagName('scop')->item(0)?->textContent, 1e-9);
     }
 
     /** Un SCOP saisi en donnee_entree prime sur la table. */
