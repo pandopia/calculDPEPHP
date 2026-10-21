@@ -54,6 +54,19 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase K — Conformité au corpus ADEME
 
+### TASK-K93 — Enveloppe mixte : colonne Joule dépendante de l'ordre XML
+
+- [ ] Owner: __ | Phase: K | Priorité: haute
+- Preuve du 21/10/2026 : inversion des seules collections d'installations et
+  générateurs CH, parois inchangées ; 14 des 85 cas à énergies de chauffage
+  mixtes changent leurs U. Exemple `2400E0023332N`, murs 7/8 : 1 → 0,8 ;
+  `2601E1280780A`, dix murs : 0,45 → 0,5.
+- Racine : `DpeEngine::buildContext()` prend `[1]` pour l'énergie et le type,
+  puis choisit la colonne forfaitaire Joule/autres (§3.2 p.12).
+- Sourcer le critère réglementaire du chauffage mixte (principal/appoint,
+  surfaces desservies), puis rendre le choix indépendant de l'ordre et
+  mesurer l'A/B sur les 646 cas. Ne pas inventer une règle de majorité.
+
 ### TASK-K92 — Dépendances de l'éditeur : traiter les alertes de sécurité
 
 - [ ] Owner: __ | Phase: K | Priorité: haute (hors moteur 3CL)
