@@ -54,6 +54,48 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase K — Conformité au corpus ADEME
 
+### TASK-K93 — Enveloppe mixte : colonne Joule dépendante de l'ordre XML
+
+- [ ] Owner: __ | Phase: K | Priorité: haute
+- Preuve du 21/10/2026 : inversion des seules collections d'installations et
+  générateurs CH, parois inchangées ; 14 des 85 cas à énergies de chauffage
+  mixtes changent leurs U. Exemple `2400E0023332N`, murs 7/8 : 1 → 0,8 ;
+  `2601E1280780A`, dix murs : 0,45 → 0,5.
+- Racine : `DpeEngine::buildContext()` prend `[1]` pour l'énergie et le type,
+  puis choisit la colonne forfaitaire Joule/autres (§3.2 p.12).
+- Sourcer le critère réglementaire du chauffage mixte (principal/appoint,
+  surfaces desservies), puis rendre le choix indépendant de l'ordre et
+  mesurer l'A/B sur les 646 cas. Ne pas inventer une règle de majorité.
+- Open3cl ne tranche pas à lui seul : `src/utils.js::isEffetJoule` utilise
+  une majorité surfacique ≥50 %, mais `features/engine/domain/contexte.builder.js`
+  considère la présence d'un seul émetteur Joule. Départager ces conventions.
+
+### TASK-K92 — Dépendances de l'éditeur : traiter les alertes de sécurité
+
+- [ ] Owner: __ | Phase: K | Priorité: haute (hors moteur 3CL)
+- Au push du 21/10/2026, GitHub signale 6 alertes ouvertes, toutes dans
+  `editeur/package-lock.json` : `tinypool` (2 critiques),
+  `@modelcontextprotocol/sdk` (haute), `@angular/common`, `vitest` et
+  `@vitest/mocker` (modérées). Détail : API Dependabot du dépôt, alertes 1–6.
+- Mettre à niveau les dépendances parentes sans `--force`, vérifier les
+  versions transitives réellement verrouillées, puis build + tests éditeur.
+  Cette PR de calcul ne modifie pas les dépendances et ne clôt aucune alerte.
+
+### TASK-K91 — PAC multi-émetteurs : COP défavorable et SCOP publié à départager
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- §12.4.2 impose le « COP le plus défavorable » pour Ich quand plusieurs
+  émetteurs sont reliés à la PAC. Le moteur retient actuellement la colonne
+  plancher dès qu'un plancher est présent ; les références semblent publier
+  le SCOP du premier émetteur (plancher en premier sur sept cas, radiateur
+  en premier sur `2601E0734445D`).
+- Variante minimum sur les réseaux reliés (appoints autonomes exclus), A/B
+  isolé 646 cas, 21/10/2026 : **17 321 → 17 423**, un cas gagne 1 écart,
+  sept en perdent 103. Retirée sans relever les budgets. Départager SCOP
+  sérialisé et COP réellement utilisé pour Ich depuis les seuls bilans de
+  référence, puis chercher une clarification de la règle ; ne pas refaire
+  cette variante globale sans élément nouveau.
+
 ### TASK-K58 — Doublage de mur : un éditeur minoritaire l'ignore dans umur0
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
@@ -384,9 +426,24 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Ses balises `emission_ges_ecs` et `ep_conso_ecs` sont publiées permutées avec
   leurs dépensières, et déjà imputées à ce titre. Ne pas les instruire.
 
-### TASK-K85 — Cdimref : le périmètre du GV reste à trancher pour 25 générateurs
+### TASK-K85 — Cdimref : isoler la puissance cumulée avant de toucher au GV
 
 - [ ] Owner: __ | Phase: K | Priorité: haute
+- **Requalification du 21/10, 646 cas** : le seul accord des paramètres du
+  générateur courant ne suffit pas. Sur `2400E0575636Z`, six Rg divergents
+  s'expliquent tous par une puissance cumulée implicite de **172 kW**, somme
+  des Pn de référence, contre **156 kW** calculés. La racine est le premier
+  générateur (40 kW publiés, 24 calculés), pas les six profils de charge.
+  Même phénomène sur `2457E3724590U` : 72 kW implicites/référence contre
+  64 kW calculés, à cause du générateur charbon voisin.
+- Après prise en compte de la pose explicitement « sur sol » dans la colonne
+  Pdim→Pn (A/B : −9 écarts, aucun cas globalement dégradé),
+  `2675E2540542G` conserve deux Rg impliquant un même
+  Cdimref ≈4,6298, mais le moteur trouve 5,8924 après correction des Pn.
+  La puissance moyenne implicite (16,5 kW) correspond exactement à
+  `24 × 488/976 + 18 × 244/976`, électrique exclu du numérateur mais pas
+  de la surface. Mesurer cette hypothèse de moyenne pondérée avant de la
+  généraliser : `2675E2152874Y` ne donne pas le même indice.
 - **Attention à la compensation sur `2400E0669495Y`** : après correction
   sourcée du radiateur gaz (K76), sa consommation devient 24 255,937 contre
   24 256,463 attendus (0,0022 %), au lieu de 15 736,610. Les trois agrégats
@@ -400,8 +457,9 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   courant. Les références donnent un Cdimref commun à tous les générateurs
   d'un même bâtiment — 2,6834 et 2,6848 sur `2513E2308028Z`, rapport 0,9995.
   Gain mesuré : −99 écarts.
-- **Reste 25 générateurs** dont `pn`, `rpn`, `rpint`, `qp0` et les températures
-  de fonctionnement sont **exacts** et le `rendement_generation` faux : 15 en
+- **Constat historique (541 cas), à ne plus lire comme un décompte actuel** :
+  25 générateurs avaient `pn`, `rpn`, `rpint`, `qp0` et les températures
+  de fonctionnement **exacts**, mais le `rendement_generation` faux : 15 en
   méthode 6, 5 en méthode 1, 2 en méthode 2, 2 en méthode 10, 1 en méthode 3.
   Les quinze de méthode 6 sont tous **sous-estimés**, de 2 à 11 %.
 - **Un Cdimref implicite reconstruit exactement.** Sur `2400E0669882V`

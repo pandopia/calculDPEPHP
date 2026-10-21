@@ -117,6 +117,38 @@ XML;
         $this->assertFalse($calc->appliesTo($doc2->documentElement));
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('perimetresEtOrdres')]
+    public function testLesClesPortentSurChaqueInstallation(?int $methode, bool $inverse, bool $cleParDefaut, float $attendu): void
+    {
+        $installations = [];
+        foreach ([[10000, 0.2], [20000, 0.3]] as [$besoin, $cle]) {
+            $cle = $cleParDefaut ? 1.0 : $cle;
+            $installations[] = '<installation_chauffage><donnee_entree><cle_repartition_ch>' . $cle . '</cle_repartition_ch></donnee_entree>'
+                . '<donnee_intermediaire><besoin_ch>' . $besoin . '</besoin_ch><besoin_ch_depensier>' . (2 * $besoin) . '</besoin_ch_depensier></donnee_intermediaire>'
+                . '<generateur_chauffage_collection><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>96</enum_type_generateur_ch_id><enum_type_energie_id>2</enum_type_energie_id></donnee_entree>'
+                . '<donnee_intermediaire><pn>40000</pn></donnee_intermediaire></generateur_chauffage></generateur_chauffage_collection></installation_chauffage>';
+        }
+        $mode = $methode === null ? '' : '<enum_methode_application_dpe_log_id>' . $methode . '</enum_methode_application_dpe_log_id>';
+        [$document, $logement, $context] = $this->buildDoc('<logement><caracteristique_generale>' . $mode
+            . '<surface_habitable_logement>50</surface_habitable_logement><surface_habitable_immeuble>1000</surface_habitable_immeuble></caracteristique_generale>'
+            . '<installation_chauffage_collection>' . implode('', $inverse ? array_reverse($installations) : $installations) . '</installation_chauffage_collection></logement>');
+
+        (new AuxGenerationCalculator())->calculate($logement, $context);
+
+        self::assertEqualsWithDelta($attendu, $this->efValue($document, 'conso_auxiliaire_generation_ch'), 1e-10);
+        self::assertEqualsWithDelta(3 * $attendu, $this->efValue($document, 'conso_auxiliaire_generation_ch_depensier'), 1e-10);
+    }
+
+    public static function perimetresEtOrdres(): iterable
+    {
+        foreach ([false, true] as $inverse) {
+            yield 'genere ' . (int)$inverse => [10, $inverse, false, 16.8];
+            yield 'direct ' . (int)$inverse => [2, $inverse, false, 63.0];
+            yield 'minimal ' . (int)$inverse => [null, $inverse, false, 16.8];
+            yield 'cle unitaire conserve le besoin publie ' . (int)$inverse => [10, $inverse, true, 63.0];
+        }
+    }
+
     public function testGasBoilerBatMode(): void
     {
         // bat_post2026 profile: Paux=84W, Pn=40kW, besoin_ch=21632.74, besoin_ecs=22349.06

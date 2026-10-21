@@ -21,7 +21,7 @@ use DOMElement;
  * Pour la PAC : si scop est fourni dans donnee_entree, il est prioritaire.
  * Sinon, le SCOP par défaut est lu dans la table selon (type_pac, zone, emetteur_type).
  * L'emetteur_type (plancher/plafond ou autres) est lu depuis le contexte
- * (clé `installation.emetteur_type`, écrite par EmissionCalculator si besoin).
+ * (clé optionnelle `installation.emetteur_type`), sinon depuis les émetteurs XML.
  * En l'absence d'information : « autres » (SCOP le plus conservateur).
  *
  * Les générateurs à combustion (IDs 20-97, 113-116) sont ignorés ici
@@ -30,7 +30,9 @@ use DOMElement;
  * @spec-section 12.4
  * @spec-pages   76-78
  * @spec-source  resources/specsplitted/12-rendements-installations/04-generation-non-combustion.md
- * @xml-input    generateur_chauffage.donnee_entree.{enum_type_generateur_ch_id, scop}
+ * @xml-input    generateur_chauffage.donnee_entree.{enum_type_generateur_ch_id, enum_methode_saisie_carac_sys_id, scop}
+ * @xml-input    generateur_chauffage.donnee_intermediaire.scop (saisie méthode 6)
+ * @xml-input    emetteur_chauffage.donnee_entree.enum_type_emission_distribution_id
  * @xml-output   generateur_chauffage.donnee_intermediaire.{rendement_generation, scop}
  * @see          \CalculDpePHP\Chauffage\Rendement\RendementGenerateur
  * @depends-on   (aucun)
@@ -87,9 +89,10 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
 
     /**
      * `enum_type_emission_distribution_id` des planchers et plafonds chauffants :
-     * 6-9 rayonnants électriques, 11-18 sur réseau d'eau chaude.
+     * 6-9 rayonnants électriques, 11-18 sur réseau d'eau chaude,
+     * 43-44 à détente directe (libellés physiques du XSD ADEME).
      */
-    private const EMETTEURS_PLANCHER_PLAFOND = [6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18];
+    private const EMETTEURS_PLANCHER_PLAFOND = [6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 43, 44];
 
     /** enum_zone_climatique_id valant H3 */
     private const ZONE_H3_ID = 8;
@@ -171,6 +174,14 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
         // technique catégorie 7 (chauffage), description "SCOP / COP: <valeur>".
         $methode = $accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node);
         if ($methode === 6) {
+            // §12.4.2 p.77 : un SCOP réel connu et justifié prime sur le
+            // forfait. Le XSD le sérialise en donnee_intermediaire ;
+            // OutputPurger préserve précisément cette saisie en méthode 6.
+            // La fiche technique globale peut décrire une autre PAC.
+            $scopSaisi = $accessor->getFloatOrNull('./donnee_intermediaire/scop', $node);
+            if ($scopSaisi !== null && $scopSaisi > 0.0) {
+                return $scopSaisi;
+            }
             $scopFiche = $this->readScopFromFicheTechnique($node, 7);
             if ($scopFiche !== null && $scopFiche > 0.0) {
                 return $scopFiche;
@@ -190,11 +201,13 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
     }
 
     /**
-     * §12.4.2 p.80 : le SCAP par défaut d'une PAC se lit sur deux colonnes,
+     * §12.4.2 p.77 : le SCOP par défaut d'une PAC se lit sur deux colonnes,
      * « Autres » et « Planchers / Plafonds ». La colonne se déduit des
      * émetteurs de l'installation, `enum_type_emission_distribution_id` 6 à 9
      * (rayonnants électriques) et 11 à 18 (planchers et plafonds sur réseau
-     * d'eau chaude) désignant un plancher ou un plafond chauffant.
+     * d'eau chaude), 43 et 44 (plancher/plafond à détente directe) désignant
+     * un plancher ou un plafond chauffant. Le fluide de distribution ne
+     * change pas la nature de l'émission dans cette table.
      *
      * Le contexte garde la priorité quand un calculateur amont l'a renseigné.
      */

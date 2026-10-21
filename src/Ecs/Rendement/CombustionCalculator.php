@@ -34,6 +34,7 @@ use DOMElement;
  * @spec-pages   93-95
  * @spec-source  resources/specsplitted/14-rendement-ecs-generateurs/01-combustion.md
  * @xml-input    generateur_ecs.donnee_entree.{enum_type_energie_id, enum_type_generateur_ecs_id, tv_generateur_combustion_id, enum_methode_saisie_carac_sys_id, pn, rpn, qp0, pveil}
+ * @xml-input    generateur_ecs.donnee_intermediaire.{pn, rpn, qp0, pveilleuse} (caractéristiques saisies préservées selon la méthode)
  * @xml-output   generateur_ecs.donnee_intermediaire.{pn, qp0, rpn, rendement_generation}
  * @depends-on   \CalculDpePHP\Ecs\BesoinEcsCalculator, \CalculDpePHP\Enveloppe\EnveloppeAggregator, \CalculDpePHP\Ventilation\VentilationAggregator
  * @tables       ecs/tv_generateur_combustion_ecs
@@ -117,7 +118,9 @@ final class CombustionCalculator implements CalculatorInterface
             $typeEcsId = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $node);
             // CET sur air ambiant/extérieur/extrait (1-9) et PAC double service (10-12) :
             // rendement déjà écrit par CetAccumulationCalculator — ne pas écraser.
-            if ($typeEcsId !== null && $typeEcsId >= 1 && $typeEcsId <= 12) {
+            // 82 « autre système thermodynamique électrique » est ramené
+            // à une PAC double service par CetAccumulationCalculator.
+            if ($typeEcsId === 82 || ($typeEcsId !== null && $typeEcsId >= 1 && $typeEcsId <= 12)) {
                 return;
             }
             // §12.4.1 p.76 distingue deux lignes électriques : « générateur à
@@ -228,7 +231,21 @@ final class CombustionCalculator implements CalculatorInterface
     ): array {
         // Valeurs saisies (méthodes 3/4/5 → utilise directement les champs saisis)
         if (in_array($methode, [3, 4, 5], true)) {
-            return $this->resolveFromSaisie($node, $accessor);
+            $carac = $this->resolveFromSaisie($node, $accessor);
+            // XSD méthode 3 : seuls Pn/Rpn/Rpint sont saisis ; QP0 reste
+            // forfaitaire (§13.2.2, §14.1). L'absence de QP0 saisi n'est pas
+            // une absence de pertes à l'arrêt.
+            if ($methode === 3) {
+                $forfait = $typeEcsId !== null && $typeEcsId !== 84
+                    ? $this->lookupByEcsTypeId($typeEcsId, $node, $accessor, $context)
+                    : null;
+                $tvId = $accessor->getIntOrNull('./donnee_entree/tv_generateur_combustion_id', $node);
+                if ($forfait === null && $tvId !== null) {
+                    $forfait = $this->lookupByCombustionId($tvId, $node, $accessor, $context);
+                }
+                $carac[2] = $forfait[2] ?? 0.0;
+            }
+            return $carac;
         }
 
         // Forfait : lookup par enum_type_generateur_ecs_id (priorité comme open3cl)
@@ -341,7 +358,7 @@ final class CombustionCalculator implements CalculatorInterface
         }
 
         if ($entry instanceof \Closure) {
-            $hasPnSaisie = $accessor->getFloatOrNull('./donnee_entree/pn', $node) !== null;
+            $hasPnSaisie = self::pnSaisie($node, $accessor) !== null;
             $ratioVirt   = $this->getRatioVirtEcs($node, $accessor);
             $pnW         = $this->computePnW($node, $accessor, $context, $ratioVirt);
             if (!$hasPnSaisie) {
@@ -404,10 +421,15 @@ final class CombustionCalculator implements CalculatorInterface
      */
     private function resolveFromSaisie(DOMElement $node, NodeAccessor $accessor): array
     {
-        $pn    = $accessor->getFloatOrNull('./donnee_entree/pn',    $node) ?? 0.0;
-        $rpn   = $accessor->getFloatOrNull('./donnee_entree/rpn',   $node) ?? 0.0;
-        $qp0   = $accessor->getFloatOrNull('./donnee_entree/qp0',   $node) ?? 0.0;
-        $pveil = $accessor->getFloatOrNull('./donnee_entree/pveil', $node) ?? 0.0;
+        $pn    = $accessor->getFloatOrNull('./donnee_entree/pn', $node)
+            ?? $accessor->getFloatOrNull('./donnee_intermediaire/pn', $node) ?? 0.0;
+        $rpn   = $accessor->getFloatOrNull('./donnee_entree/rpn', $node)
+            ?? $accessor->getFloatOrNull('./donnee_intermediaire/rpn', $node) ?? 0.0;
+        $qp0   = $accessor->getFloatOrNull('./donnee_entree/qp0', $node)
+            ?? $accessor->getFloatOrNull('./donnee_intermediaire/qp0', $node) ?? 0.0;
+        $pveil = $accessor->getFloatOrNull('./donnee_entree/pveil', $node)
+            ?? $accessor->getFloatOrNull('./donnee_entree/pveilleuse', $node)
+            ?? $accessor->getFloatOrNull('./donnee_intermediaire/pveilleuse', $node) ?? 0.0;
         return [$pn, $rpn, $qp0, $pveil];
     }
 

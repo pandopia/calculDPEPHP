@@ -15,7 +15,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * §12.4.2 p.80 : le SCOP par défaut d'une PAC se lit sur deux colonnes selon le
+ * §12.4.2 p.77 : le SCOP par défaut d'une PAC se lit sur deux colonnes selon le
  * type d'émetteur — « Autres » et « Planchers / Plafonds » — et sur la zone
  * climatique.
  */
@@ -59,9 +59,14 @@ XML, $typeEmetteur, $genId));
         yield 'air/eau, radiateur bitube' => [7, 39, '2', 2.8];
         yield 'air/eau, plancher chauffant' => [7, 14, '2', 3.2];
         yield 'air/eau, plafond chauffant' => [7, 18, '2', 3.2];
+        yield 'air/eau, plancher a detente directe' => [7, 43, '2', 3.2];
+        yield 'air/eau, plafond a detente directe' => [7, 44, '2', 3.2];
+        yield 'geothermie, plancher a detente directe' => [16, 43, '2', 2.4];
+        yield 'geothermie, plafond a detente directe' => [17, 44, '7', 2.6];
         // Même PAC en zone H3 : 3,2 ou 3,8.
         yield 'air/eau en H3, radiateur' => [7, 39, '8', 3.2];
         yield 'air/eau en H3, plancher' => [7, 14, '8', 3.8];
+        yield 'air/eau en H3, plafond a detente directe' => [5, 44, '8', 3.1];
         // PAC air/air : colonne unique, l'émetteur ne change rien.
         yield 'air/air, plancher' => [3, 14, '2', 3.0];
         yield 'air/air, radiateur' => [3, 39, '2', 3.0];
@@ -135,6 +140,105 @@ XML);
         (new GenerationNonCombustionCalculator())->calculate($generateur, $context);
 
         self::assertEqualsWithDelta(4.1, (float) $document->getElementsByTagName('scop')->item(1)?->textContent, 1e-9);
+    }
+
+    #[DataProvider('scopSaisis')]
+    public function testLeScopPreserveDuGenerateurPrimeSurUneFicheGlobale(int $methode, ?float $scop, ?float $scopEntree, float $attendu): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML('<dpe><logement><installation_chauffage_collection><installation_chauffage><generateur_chauffage_collection><generateur_chauffage><donnee_entree>'
+            . '<enum_type_generateur_ch_id>7</enum_type_generateur_ch_id><enum_methode_saisie_carac_sys_id>' . $methode . '</enum_methode_saisie_carac_sys_id>'
+            . ($scopEntree === null ? '' : '<scop>' . $scopEntree . '</scop>') . '</donnee_entree><donnee_intermediaire>'
+            . ($scop === null ? '' : '<scop>' . $scop . '</scop>') . '</donnee_intermediaire></generateur_chauffage></generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection></logement>'
+            . '<fiche_technique_collection><fiche_technique><enum_categorie_fiche_technique_id>7</enum_categorie_fiche_technique_id><sous_fiche_technique_collection>'
+            . '<sous_fiche_technique><description>SCOP / COP: 4,3</description><valeur>4,3</valeur></sous_fiche_technique>'
+            . '</sous_fiche_technique_collection></fiche_technique></fiche_technique_collection></dpe>');
+        \CalculDpePHP\Xml\OutputPurger::purge($document);
+        $generator = $document->getElementsByTagName('generateur_chauffage')->item(0);
+        $context = new CalculationContext($document, new TableRepository(self::PROJECT_ROOT . '/resources/tables'), zoneClimatique: '2');
+
+        (new GenerationNonCombustionCalculator())->calculate($generator, $context);
+
+        self::assertEqualsWithDelta($attendu, (new \DOMXPath($document))->evaluate('number(//generateur_chauffage/donnee_intermediaire/scop)'), 1e-9);
+    }
+
+    public static function scopSaisis(): iterable
+    {
+        yield 'saisie propre a cette PAC' => [6, 4.1, null, 4.1];
+        yield 'saisie en entree prioritaire' => [6, 4.1, 4.9, 4.9];
+        yield 'saisie absente repli fiche' => [6, null, null, 4.3];
+        yield 'saisie nulle repli fiche' => [6, 0.0, null, 4.3];
+        yield 'saisie negative repli fiche' => [6, -1.0, null, 4.3];
+        yield 'ancienne sortie forfaitaire purgee' => [1, 4.1, null, 2.8];
+    }
+
+    #[DataProvider('rendementsHorsPac')]
+    public function testLesAutresFamillesNePublientPasDeScop(?int $type, ?float $rendement): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML('<generateur_chauffage><donnee_entree>'
+            . ($type === null ? '' : '<enum_type_generateur_ch_id>' . $type . '</enum_type_generateur_ch_id>')
+            . '</donnee_entree></generateur_chauffage>');
+        $calculator = new GenerationNonCombustionCalculator();
+        $calculator->calculate($document->documentElement, new CalculationContext(
+            $document, new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        ));
+        self::assertSame(0, $document->getElementsByTagName('scop')->length);
+        $sortie = $document->getElementsByTagName('rendement_generation')->item(0);
+        if ($rendement === null) {
+            self::assertNull($sortie);
+        } else {
+            self::assertNotNull($sortie);
+            self::assertEqualsWithDelta($rendement, (float)$sortie->textContent, 1e-9);
+        }
+    }
+
+    public static function rendementsHorsPac(): iterable
+    {
+        foreach (range(98, 105) as $type) {
+            yield 'effet joule ' . $type => [$type, 1.0];
+        }
+        foreach ([106, 107, 108, 109, 110, 111, 112, 142, 171] as $type) {
+            yield 'chaudiere electrique ou reseau ' . $type => [$type, 0.97];
+        }
+        yield 'combustion traitee ailleurs' => [97, null];
+        yield 'type inconnu' => [999, null];
+        yield 'type absent' => [null, null];
+    }
+
+    #[DataProvider('fichesScopInvalides')]
+    public function testUneFicheIllisibleRetombeSurLeForfait(string $valeur): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML('<dpe><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>7</enum_type_generateur_ch_id>'
+            . '<enum_methode_saisie_carac_sys_id>6</enum_methode_saisie_carac_sys_id></donnee_entree></generateur_chauffage>'
+            . '<fiche_technique><enum_categorie_fiche_technique_id>7</enum_categorie_fiche_technique_id><sous_fiche_technique_collection>'
+            . '<sous_fiche_technique><description>SCOP</description><valeur>' . $valeur . '</valeur></sous_fiche_technique>'
+            . '</sous_fiche_technique_collection></fiche_technique></dpe>');
+        (new GenerationNonCombustionCalculator())->calculate(
+            $document->getElementsByTagName('generateur_chauffage')->item(0),
+            new CalculationContext($document, new TableRepository(self::PROJECT_ROOT . '/resources/tables')),
+        );
+        self::assertEqualsWithDelta(2.8, (float)$document->getElementsByTagName('scop')->item(0)?->textContent, 1e-9);
+    }
+
+    public static function fichesScopInvalides(): iterable
+    {
+        yield 'valeur vide' => [''];
+        yield 'valeur non numerique' => ['non disponible'];
+        yield 'valeur nulle' => ['0'];
+        yield 'valeur negative' => ['-2'];
+    }
+
+    public function testLeContexteAmontPeutPreciserZoneEtEmission(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML('<generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>7</enum_type_generateur_ch_id></donnee_entree></generateur_chauffage>');
+        $context = new CalculationContext($document, new TableRepository(self::PROJECT_ROOT . '/resources/tables'), zoneClimatique: '2');
+        $context->set('logement.zone_climatique_id', 8);
+        $context->set('installation.emetteur_type', 'plancher_plafond');
+        (new GenerationNonCombustionCalculator())->calculate($document->documentElement, $context);
+        self::assertEqualsWithDelta(3.8, (float)$document->getElementsByTagName('scop')->item(0)?->textContent, 1e-9);
     }
 
     /**

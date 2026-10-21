@@ -21,7 +21,8 @@ use DOMElement;
  * @spec-section 14.2
  * @spec-pages   95
  * @spec-source  resources/specsplitted/14-rendement-ecs-generateurs/02-cet-accumulation.md
- * @xml-input    generateur_ecs.donnee_entree.enum_type_generateur_ecs_id
+ * @xml-input    generateur_ecs.donnee_entree.{enum_type_generateur_ecs_id, enum_periode_installation_ecs_thermo_id, enum_methode_saisie_carac_sys_id, cop}
+ * @xml-input    generateur_ecs.donnee_intermediaire.cop (saisie méthode 6)
  * @xml-output   generateur_ecs.donnee_intermediaire.cop
  * @depends-on   aucun
  * @tables       (aucune — valeurs directement de la spec p.95)
@@ -92,6 +93,17 @@ final class CetAccumulationCalculator implements CalculatorInterface
         $zone  = CalculationContext::zoneGroupeFromId($context->zoneClimatique);
         $table = ($zone === 'H3') ? self::COP_H3 : self::COP_H1H2;
         $cop   = $table[$typeId];
+
+        // §14.2 et méthode de saisie 6 du XSD : une performance réelle
+        // justifiée n'est pas un résultat forfaitaire à recalculer. Le champ
+        // cop propre à ce CET est préservé par OutputPurger.
+        if ($accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node) === 6) {
+            $copSaisi = $accessor->getFloatOrNull('./donnee_entree/cop', $node)
+                ?? $accessor->getFloatOrNull('./donnee_intermediaire/cop', $node);
+            if ($copSaisi !== null && $copSaisi > 0.0) {
+                $cop = $copSaisi;
+            }
+        }
 
         // Le XSD définit `rendement_generation` comme « le rendement de
         // génération dans le cas où le rendement de stockage est séparé du

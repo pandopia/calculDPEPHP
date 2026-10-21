@@ -27,9 +27,10 @@ use DOMElement;
  * @spec-section 10.3
  * @spec-pages   69-70
  * @spec-source  resources/specsplitted/10-conso-froid/03-consommations.md
- * @xml-input    logement.climatisation_collection.climatisation.donnee_entree.{tv_seer_id, surface_refroidie}
+ * @xml-input    logement.climatisation_collection.climatisation.donnee_entree.{tv_seer_id, enum_periode_installation_fr_id, enum_methode_saisie_carac_sys_id, eer, seer, surface_clim, surface_refroidie, surface_habitable, cle_repartition_clim}
+ * @xml-input    logement.climatisation_collection.climatisation.donnee_intermediaire.{eer, seer} (performances saisies préservées selon la méthode)
  * @xml-output   logement.sortie.ef_conso.{conso_fr, conso_fr_depensier}
- * @xml-output   logement.sortie.apport_et_besoin.eer
+ * @xml-output   logement.climatisation_collection.climatisation.donnee_intermediaire.{eer, conso_fr, conso_fr_depensier}
  * @depends-on   \CalculDpePHP\Froid\BesoinAnnuelCalculator
  * @tables       froid/tv_seer
  */
@@ -64,9 +65,6 @@ final class ConsoFroidCalculator implements CalculatorInterface
             return;
         }
 
-        // ── EER depuis tv_seer_id ou SEER direct ──────────────────────────────
-        $eer = $this->resolveEer($node, $context, $accessor);
-
         // ── Surface refroidie vs surface habitable (logement ou immeuble) ─────
         $shLogement     = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node)
             ?? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $node)
@@ -78,11 +76,32 @@ final class ConsoFroidCalculator implements CalculatorInterface
         $shCalculation = GeneratedApartment::calculationSurface($node, $accessor, $shLogement) ?? $shLogement;
         $surfaceRatio   = $this->resolveRefroidieRatio($node, $accessor, $shCalculation);
 
-        // ── Cfr = 0,9 × Bfr / EER × ratio ────────────────────────────────────
-        $cfr    = ($eer > 0.0) ? self::INTERMITTENCE_FROID * $bfr    / $eer * $surfaceRatio : 0.0;
-        $cfrDep = ($eer > 0.0) ? self::INTERMITTENCE_FROID * $bfrDep / $eer * $surfaceRatio : 0.0;
-
-        $this->writeOutputs($accessor, $node, $cfr, $cfrDep, $eer);
+        // §10.3 : chaque installation conserve sa performance. Sommer les
+        // surfaces puis utiliser l'EER du premier climatiseur attribuerait
+        // sa performance aux autres et ferait dépendre le total de l'ordre XML.
+        $climatiseurs = [];
+        $surfaceTotale = 0.0;
+        foreach ($node->getElementsByTagName('climatisation') as $clim) {
+            if ($clim instanceof DOMElement) {
+                $surface = $this->surfaceClimatisee($clim, $accessor);
+                $climatiseurs[] = [$clim, $surface];
+                $surfaceTotale += $surface;
+            }
+        }
+        $details = [];
+        $cfr = $cfrDep = $inverseEer = 0.0;
+        foreach ($climatiseurs as [$clim, $surface]) {
+            $part = $surfaceTotale > 0.0 ? $surface / $surfaceTotale : 1.0 / count($climatiseurs);
+            $eerClim = $this->resolveEer($clim, $context, $accessor);
+            $conso = $eerClim > 0.0 ? self::INTERMITTENCE_FROID * $bfr * $surfaceRatio * $part / $eerClim : 0.0;
+            $consoDep = $eerClim > 0.0 ? self::INTERMITTENCE_FROID * $bfrDep * $surfaceRatio * $part / $eerClim : 0.0;
+            $details[$clim->getNodePath()] = ['eer' => $eerClim, 'conso' => $conso, 'conso_dep' => $consoDep];
+            $cfr += $conso;
+            $cfrDep += $consoDep;
+            $inverseEer += $eerClim > 0.0 ? $part / $eerClim : 0.0;
+        }
+        $eer = $inverseEer > 0.0 ? 1.0 / $inverseEer : 0.0;
+        $this->writeOutputs($accessor, $node, $cfr, $cfrDep, $eer, $details);
 
         $context->set('froid.conso_fr', $accessor->getFloatOrNull('./sortie/ef_conso/conso_fr', $node) ?? 0.0);
         $context->set('froid.conso_fr_depensier', $accessor->getFloatOrNull('./sortie/ef_conso/conso_fr_depensier', $node) ?? 0.0);
@@ -91,8 +110,11 @@ final class ConsoFroidCalculator implements CalculatorInterface
 
     private function resolveEer(DOMElement $node, CalculationContext $context, NodeAccessor $accessor): float
     {
+        $climatiseurs = $node->nodeName === 'climatisation'
+            ? [$node]
+            : iterator_to_array($node->getElementsByTagName('climatisation'));
         // Premier: cherche un EER saisi directement dans donnee_entree
-        foreach ($node->getElementsByTagName('climatisation') as $clim) {
+        foreach ($climatiseurs as $clim) {
             if (!$clim instanceof DOMElement) {
                 continue;
             }
@@ -102,8 +124,26 @@ final class ConsoFroidCalculator implements CalculatorInterface
             }
         }
 
+        // §10.3 p.70 et XSD méthodes 6/8 : performances réelles justifiées,
+        // préservées par OutputPurger en donnee_intermediaire. Un EER déjà
+        // renseigné ne repasse pas par la conversion SEER → EER.
+        foreach ($climatiseurs as $clim) {
+            if (!$clim instanceof DOMElement || !in_array($accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $clim), [6, 8], true)) {
+                continue;
+            }
+            $eerSaisi = $accessor->getFloatOrNull('./donnee_intermediaire/eer', $clim);
+            if ($eerSaisi !== null && $eerSaisi > 0.0) {
+                return $eerSaisi;
+            }
+            $seerSaisi = $accessor->getFloatOrNull('./donnee_entree/seer', $clim)
+                ?? $accessor->getFloatOrNull('./donnee_intermediaire/seer', $clim);
+            if ($seerSaisi !== null && $seerSaisi > 0.0) {
+                return 0.95 * $seerSaisi;
+            }
+        }
+
         // Sinon: tv_seer_id explicit
-        foreach ($node->getElementsByTagName('climatisation') as $clim) {
+        foreach ($climatiseurs as $clim) {
             if (!$clim instanceof DOMElement) {
                 continue;
             }
@@ -120,7 +160,7 @@ final class ConsoFroidCalculator implements CalculatorInterface
         // Open3cl tv.js seer : H1/H2 = zones 1-7, H3 = zone 8.
         $zoneId = $context->zoneClimatique !== null ? (int)$context->zoneClimatique : 1;
         $isH3   = $zoneId === 8;
-        foreach ($node->getElementsByTagName('climatisation') as $clim) {
+        foreach ($climatiseurs as $clim) {
             if (!$clim instanceof DOMElement) {
                 continue;
             }
@@ -148,10 +188,7 @@ final class ConsoFroidCalculator implements CalculatorInterface
             if (!$clim instanceof DOMElement) {
                 continue;
             }
-            $surf = $accessor->getFloatOrNull('./donnee_entree/surface_clim', $clim)
-                ?? $accessor->getFloatOrNull('./donnee_entree/surface_refroidie', $clim)
-                ?? $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $clim)
-                ?? 0.0;
+            $surf = $this->surfaceClimatisee($clim, $accessor);
             $surfTotal += $surf;
         }
         if ($surfTotal > 0.0 && $shLogement > 0.0) {
@@ -160,7 +197,8 @@ final class ConsoFroidCalculator implements CalculatorInterface
         return 1.0;
     }
 
-    private function writeOutputs(NodeAccessor $accessor, DOMElement $node, float $cfr, float $cfrDep, float $eer): void
+    /** @param array<string, array{eer: float, conso: float, conso_dep: float}> $details */
+    private function writeOutputs(NodeAccessor $accessor, DOMElement $node, float $cfr, float $cfrDep, float $eer, array $details = []): void
     {
         $sortie = $accessor->ensureSortie($node);
 
@@ -180,9 +218,7 @@ final class ConsoFroidCalculator implements CalculatorInterface
             if (!$clim instanceof DOMElement) {
                 continue;
             }
-            $surf = $accessor->getFloatOrNull('./donnee_entree/surface_clim', $clim)
-                ?? $accessor->getFloatOrNull('./donnee_entree/surface_refroidie', $clim)
-                ?? 0.0;
+            $surf = $this->surfaceClimatisee($clim, $accessor);
             $climNodes[] = [$clim, $surf];
             $totalSurfClim += $surf;
         }
@@ -191,12 +227,13 @@ final class ConsoFroidCalculator implements CalculatorInterface
         $allocatedDep = 0.0;
         foreach ($climNodes as [$clim, $surf]) {
             $part = ($totalSurfClim > 0.0) ? ($surf / $totalSurfClim) : (1.0 / max(1, count($climNodes)));
+            $detail = $details[$clim->getNodePath()] ?? ['eer' => $eer, 'conso' => $cfr * $part, 'conso_dep' => $cfrDep * $part];
             $di = $accessor->ensureDonneeIntermediaire($clim);
-            if ($eer > 0.0) {
-                $accessor->setChildValue($di, 'eer', $eer);
+            if ($detail['eer'] > 0.0) {
+                $accessor->setChildValue($di, 'eer', $detail['eer']);
             }
-            $accessor->setChildValue($di, 'conso_fr',           $cfr    * $part);
-            $accessor->setChildValue($di, 'conso_fr_depensier', $cfrDep * $part);
+            $accessor->setChildValue($di, 'conso_fr',           $detail['conso']);
+            $accessor->setChildValue($di, 'conso_fr_depensier', $detail['conso_dep']);
             // §17.2.2.4 p.118 : les intermédiaires restent à l'échelle de
             // l'installation immeuble ; seule la consommation attribuée au
             // logement est pondérée par Bfr_i / somme(Bfr_i).
@@ -207,13 +244,21 @@ final class ConsoFroidCalculator implements CalculatorInterface
                     throw new \RuntimeException('Clé de répartition du refroidissement absente ou invalide pour cet appartement généré (§17.2.2.4).');
                 }
             }
-            $allocated += $cfr * $part * $share;
-            $allocatedDep += $cfrDep * $part * $share;
+            $allocated += $detail['conso'] * $share;
+            $allocatedDep += $detail['conso_dep'] * $share;
         }
         if ($generated) {
             $accessor->setChildValue($efConso, 'conso_fr', $allocated);
             $accessor->setChildValue($efConso, 'conso_fr_depensier', $allocatedDep);
         }
+    }
+
+    private function surfaceClimatisee(DOMElement $clim, NodeAccessor $accessor): float
+    {
+        return max(0.0, $accessor->getFloatOrNull('./donnee_entree/surface_clim', $clim)
+            ?? $accessor->getFloatOrNull('./donnee_entree/surface_refroidie', $clim)
+            ?? $accessor->getFloatOrNull('./donnee_entree/surface_habitable', $clim)
+            ?? 0.0);
     }
 
     private function ensureChild(\DOMDocument $doc, DOMElement $parent, string $tag): DOMElement

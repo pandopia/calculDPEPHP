@@ -40,9 +40,10 @@ use DOMElement;
  *
  * Mode ZONE : résultat multiplié par cle_repartition_ch / cle_repartition_ecs.
  *
- * @spec-section 15.2
- * @spec-pages   98-102
+ * @spec-section 15.2, 17.2.2.2
+ * @spec-pages   98-102, 115-116
  * @spec-source  resources/specsplitted/15-auxiliaires/02-aux-distribution.md
+ * @spec-source  resources/specsplitted/17-collectif/02-appartement.md
  * @xml-input    installation_chauffage.donnee_entree.{surface_chauffee, nombre_niveau_installation_ch,
  *               cle_repartition_ch}
  *               installation_chauffage.emetteur_chauffage.donnee_entree.{enum_type_emission_distribution_id,
@@ -169,7 +170,7 @@ final class AuxDistributionCalculator implements CalculatorInterface
         $pnc = 1e-3 * $gvTotal * (20.0 - $tbase);
 
         // ── CH distribution ───────────────────────────────────────────────────
-        [$cauxDistCh, $cleRepCh] = $this->computeChDistribution($accessor, $node, $pnc, $nref);
+        [$cauxDistCh, $cleRepCh] = $this->computeChDistribution($accessor, $node, $pnc, $nref, $isZone);
 
         // ── ECS distribution ──────────────────────────────────────────────────
         [$cauxDistEcs, $cleRepEcs] = $this->computeEcsDistribution($accessor, $node, $context);
@@ -196,6 +197,7 @@ final class AuxDistributionCalculator implements CalculatorInterface
         DOMElement   $logement,
         float        $pnc,
         float        $nref,
+        bool         $isZone,
     ): array {
         $collection = $this->getChild($logement, 'installation_chauffage_collection');
         if ($collection === null) {
@@ -203,7 +205,6 @@ final class AuxDistributionCalculator implements CalculatorInterface
         }
 
         $totalCaux = 0.0;
-        $cle       = 1.0;
 
         // Surface habitable de référence pour Lem/shFactor (= bâtiment complet pour immeuble, sinon logement)
         $modeApp = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $logement);
@@ -297,24 +298,17 @@ final class AuxDistributionCalculator implements CalculatorInterface
             $inner     = ($shFactor > 0.0) ? ($deltaPnom * $qvem / $shFactor) : 0.0;
             $pcircem   = max(self::PCIRCEM_MIN, 6.44 * (($inner > 0.0) ? ($inner ** 0.676) : 0.0) * $shFactor);
 
-            $totalCaux += $pcircem * $nref * ($isIndividuelMultiplie ? $rdimInstall : 1.0) / 1000.0;
-
             $cleInst = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ch', $install);
-            if ($cleInst !== null && $cleInst > 0.0) {
-                // Une clé de 1 sur un appartement **généré** depuis l'immeuble
-                // ne décrit pas sa part : elle dit que l'installation n'a pas
-                // été répartie. C'est la part surfacique qui fait foi, comme
-                // pour `conso_ch` — sans quoi l'appartement porte les
-                // auxiliaires de tout le bâtiment, et `2313E3593866F` publie
-                // 7 792 kWh de circulateur pour 35 m².
-                if ($cleInst >= 1.0) {
-                    $cleInst = GeneratedApartment::surfaceShare($logement, $accessor) ?? $cleInst;
-                }
-                $cle = $cleInst;
-            }
+            // §17.2 : chaque circuit est ramené au logement avec sa clé,
+            // jamais avec celle du dernier circuit du fichier. Comme pour le
+            // chauffage, un appartement décrit directement est déjà local.
+            $partLogement = $isZone && $cleInst !== null && $cleInst > 0.0
+                ? GeneratedApartment::heatingShare($logement, $accessor, $cleInst)
+                : 1.0;
+            $totalCaux += $partLogement * $pcircem * $nref * ($isIndividuelMultiplie ? $rdimInstall : 1.0) / 1000.0;
         }
 
-        return [$totalCaux, $cle];
+        return [$totalCaux, 1.0];
     }
 
     /**

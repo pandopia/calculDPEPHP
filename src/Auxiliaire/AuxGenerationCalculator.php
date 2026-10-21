@@ -7,6 +7,7 @@ namespace CalculDpePHP\Auxiliaire;
 use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Collectif\EcsInstallationMultiplicity;
+use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
@@ -31,11 +32,13 @@ use DOMElement;
  *   CH  : Q_dep = Paux × (besoin_ch + besoin_ch_dep) / Pn
  *   ECS : Q_dep = Paux × besoin_ecs_dep / Pn
  *
- * Mode ZONE : le résultat est multiplié par cle_repartition_ch/ecs.
+ * Mode ZONE : chaque installation porte sa propre clé ; celle du chauffage
+ * est réservée aux appartements générés depuis le DPE immeuble (§17.2).
  *
- * @spec-section 15.1
- * @spec-pages   97-98
+ * @spec-section 15.1, 17.2.2.2
+ * @spec-pages   97-98, 115-116
  * @spec-source  resources/specsplitted/15-auxiliaires/01-aux-generation.md
+ * @spec-source  resources/specsplitted/17-collectif/02-appartement.md
  * @xml-input    installation_chauffage.generateur_chauffage.donnee_entree.{enum_type_energie_id,
  *               enum_type_generateur_ch_id, presence_ventouse, tv_generateur_combustion_id}
  *               installation_chauffage.generateur_chauffage.donnee_intermediaire.pn
@@ -165,8 +168,6 @@ final class AuxGenerationCalculator implements CalculatorInterface
 
         $totalQ    = 0.0;
         $totalQDep = 0.0;
-        $cle       = 1.0;
-
         foreach ($collection->childNodes as $install) {
             if (!$install instanceof DOMElement || $install->nodeName !== 'installation_chauffage') {
                 continue;
@@ -175,6 +176,16 @@ final class AuxGenerationCalculator implements CalculatorInterface
             $besoin    = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ch',           $install) ?? 0.0;
             $besoinDep = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ch_depensier', $install) ?? 0.0;
             $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation',       $install) ?? 1.0;
+            // §17.2 et XSD cle_repartition_ch : répartir chaque installation
+            // avant de sommer, uniquement si le besoin vient de l'immeuble.
+            // Une dernière clé ne peut pas répartir les autres installations.
+            $cleDeclaree = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ch', $install);
+            // La clé unitaire conserve ici le périmètre historique du besoin
+            // publié ; la reconstruction des clés manquantes en chauffage
+            // mixte est une question distincte (TASK-K86).
+            $partLogement = $isZone && $cleDeclaree !== null && $cleDeclaree > 0.0 && $cleDeclaree < 1.0
+                ? GeneratedApartment::heatingShare($logement, $accessor, $cleDeclaree)
+                : 1.0;
 
             // §15.1.1 : Bch_g est « le besoin annuel d'énergie assuré par le
             // générateur », réduit à « la part du besoin qu'il couvre ». Le
@@ -210,8 +221,8 @@ final class AuxGenerationCalculator implements CalculatorInterface
                 // de toute la cascade, dimensionne ses auxiliaires.
                 $parts = (array) $context->get(\CalculDpePHP\Chauffage\PartBesoinGenerateur::CLE_CONTEXTE, []);
                 $partBesoin = $parts[$gen->getNodePath()] ?? 1.0;
-                $besoinGen = $besoin * $partBesoin;
-                $besoinGenDep = $besoinDep * $partBesoin;
+                $besoinGen = $besoin * $partBesoin * $partLogement;
+                $besoinGenDep = $besoinDep * $partBesoin * $partLogement;
                 [$g, $h, $pnCapKw] = $this->getGHch($accessor, $gen);
 
                 if ($ratioVirt > 0.0 && $ratioVirt < 1.0) {
@@ -237,14 +248,9 @@ final class AuxGenerationCalculator implements CalculatorInterface
                     $totalQDep += $paux * ($besoinGen + $besoinGenDep) * $ratioSurface / $pn;
                 }
             }
-
-            $cleInst = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ch', $install);
-            if ($cleInst !== null && $cleInst > 0.0) {
-                $cle = $cleInst;
-            }
         }
 
-        return [$totalQ, $totalQDep, $cle];
+        return [$totalQ, $totalQDep, 1.0];
     }
 
     /**

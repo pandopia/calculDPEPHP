@@ -15,14 +15,16 @@ use DOMElement;
  * Ces températures dépendent du type de chaudière (condensation/BT/standard), du type
  * d'émetteur (basse/moyenne/haute température) et de l'année d'installation des émetteurs.
  *
- * Le type d'émetteur est lu depuis le premier emetteur_chauffage de l'installation
- * parente via XPath `../../emetteur_chauffage_collection/emetteur_chauffage`.
+ * Chaque réseau desservi est évalué avec son type et sa propre période ;
+ * les températures maximales sont retenues (§13.2.1.5). Le lien générateur /
+ * émetteur exclut les émissions d'un autre générateur de l'installation.
  *
  * @spec-section 13.2.1
  * @spec-pages   81-85
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/01-profil-charge.md
- * @xml-input    generateur_chauffage.donnee_entree.{enum_type_generateur_ch_id, presence_regulation_combustion}
- * @xml-input    emetteur_chauffage.donnee_entree.{enum_temp_distribution_ch_id, annee_installation_emetteur}
+ * @xml-input    generateur_chauffage.donnee_entree.{enum_type_generateur_ch_id, presence_regulation_combustion, enum_lien_generateur_emetteur_id, enum_methode_saisie_carac_sys_id, temp_fonc_100, temp_fonc_30}
+ * @xml-input    generateur_chauffage.donnee_intermediaire.{temp_fonc_100, temp_fonc_30} (saisies méthode 5)
+ * @xml-input    emetteur_chauffage.donnee_entree.{enum_type_emission_distribution_id, enum_temp_distribution_ch_id, enum_lien_generateur_emetteur_id, enum_periode_installation_emetteur_id, annee_installation_emetteur}
  * @xml-output   generateur_chauffage.donnee_intermediaire.{temp_fonc_100, temp_fonc_30}
  * @depends-on   \CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator
  * @tables       (aucune — tables inline §13.2.1.5 p.81-85)
@@ -142,13 +144,34 @@ final class ChaudiereProfilChargeCalculator implements CalculatorInterface
         // Type de chaudière
         $boilerType = $this->boilerType($genId);
 
-        // Ligne du tableau Tfonc, lue sur la nature des émetteurs desservis
-        $tempKey = $this->resolveLigneTfonc($node, $accessor);
+        $emetteurs = $this->emetteursDesservis($node, $accessor);
+        if ($emetteurs === []) {
+            [$tfonc100, $tfonc30] = $this->computeTemps(
+                $boilerType, $this->resolvePeriodeEmetteur($node, $accessor), 3, $regulation, $genId,
+            );
+        } else {
+            $tfonc100 = $tfonc30 = -INF;
+            foreach ($emetteurs as $emetteur) {
+                [$temperature100, $temperature30] = $this->computeTemps(
+                    $boilerType, $this->periodeDuReseau($emetteur, $accessor),
+                    $this->ligneDuReseau($emetteur, $accessor), $regulation, $genId,
+                );
+                $tfonc100 = max($tfonc100, $temperature100);
+                $tfonc30 = max($tfonc30, $temperature30);
+            }
+        }
 
-        // Période des émetteurs : on lit d'abord l'enum dédié, puis on retombe sur l'année
-        $periodeEm = $this->resolvePeriodeEmetteur($node, $accessor);
-
-        [$tfonc100, $tfonc30] = $this->computeTemps($boilerType, $periodeEm, $tempKey, $regulation, $genId);
+        // XSD méthode 5 : temp_fonc_100/temp_fonc_30 sont des
+        // caractéristiques saisies, préservées par OutputPurger. Les tables
+        // ne complètent que les champs manquants, sans écraser la saisie.
+        if ($accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node) === 5) {
+            $tfonc100 = $accessor->getFloatOrNull('./donnee_entree/temp_fonc_100', $node)
+                ?? $accessor->getFloatOrNull('./donnee_intermediaire/temp_fonc_100', $node)
+                ?? $tfonc100;
+            $tfonc30 = $accessor->getFloatOrNull('./donnee_entree/temp_fonc_30', $node)
+                ?? $accessor->getFloatOrNull('./donnee_intermediaire/temp_fonc_30', $node)
+                ?? $tfonc30;
+        }
 
         $di = $accessor->ensureDonneeIntermediaire($node);
         $accessor->setChildValue($di, 'temp_fonc_100', $tfonc100);
@@ -192,49 +215,66 @@ final class ChaudiereProfilChargeCalculator implements CalculatorInterface
      * enum_temp_distribution_ch_id classait en basse un radiateur bitube posé
      * sur un réseau à moins de 65 °C, qui est un radiateur à chaleur douce.
      *
-     * « Si un système de génération alimente des réseaux de distribution de
-     * températures différentes, la température de fonctionnement est prise
-     * égale à la température maximale » : tous les émetteurs de l'installation
-     * sont donc parcourus et le maximum retenu.
+     * La ligne est propre à cet émetteur ; calculate() applique ensuite la
+     * règle du maximum aux seuls réseaux desservis par le générateur.
      */
-    private function resolveLigneTfonc(DOMElement $node, NodeAccessor $accessor): int
+    private function ligneDuReseau(DOMElement $emetteur, NodeAccessor $accessor): int
     {
-        // Remonte : generateur → generateur_collection → installation_chauffage
-        $parent = $node->parentNode?->parentNode;
-        if (!$parent instanceof DOMElement) {
-            return 3;
+        $type = $accessor->getIntOrNull('./donnee_entree/enum_type_emission_distribution_id', $emetteur);
+        if ($type !== null) {
+            return match (true) {
+                in_array($type, self::EMETTEURS_BASSE, true)   => 2,
+                in_array($type, self::EMETTEURS_MOYENNE, true) => 3,
+                default => 4,
+            };
         }
 
-        $doc = $node->ownerDocument;
-        if ($doc === null) {
-            return 3;
-        }
-        $emetteurs = (new \DOMXPath($doc))
-            ->query('./emetteur_chauffage_collection/emetteur_chauffage', $parent);
-        if ($emetteurs === false || $emetteurs->length === 0) {
-            return 3;
-        }
+        return max(2, $accessor->getIntOrNull('./donnee_entree/enum_temp_distribution_ch_id', $emetteur) ?? 3);
+    }
 
-        $ligne = null;
-        foreach ($emetteurs as $emetteur) {
+    /**
+     * §13.2.1.5 p.81 : seuls les réseaux alimentés par ce système entrent
+     * dans son maximum. Sans association exploitable, conserver le repli sur
+     * l'installation entière plutôt que d'inventer une association.
+     *
+     * @return list<DOMElement>
+     */
+    private function emetteursDesservis(DOMElement $node, NodeAccessor $accessor): array
+    {
+        $installation = $node->parentNode?->parentNode;
+        if (!$installation instanceof DOMElement || $node->ownerDocument === null) {
+            return [];
+        }
+        $emetteurs = [];
+        $lies = [];
+        $lien = $accessor->getIntOrNull('./donnee_entree/enum_lien_generateur_emetteur_id', $node);
+        foreach ((new \DOMXPath($node->ownerDocument))->query('./emetteur_chauffage_collection/emetteur_chauffage', $installation) ?: [] as $emetteur) {
             if (!$emetteur instanceof DOMElement) {
                 continue;
             }
-            $type = $accessor->getIntOrNull('./donnee_entree/enum_type_emission_distribution_id', $emetteur);
-            if ($type !== null) {
-                $courante = match (true) {
-                    in_array($type, self::EMETTEURS_BASSE, true)   => 2,
-                    in_array($type, self::EMETTEURS_MOYENNE, true) => 3,
-                    default                                        => 4,
-                };
-            } else {
-                // Repli : enum_temp_distribution_ch_id (1=absent, 2=basse, 3=moyenne, 4=haute)
-                $courante = max(2, $accessor->getIntOrNull('./donnee_entree/enum_temp_distribution_ch_id', $emetteur) ?? 3);
+            $emetteurs[] = $emetteur;
+            if ($lien !== null && $lien === $accessor->getIntOrNull('./donnee_entree/enum_lien_generateur_emetteur_id', $emetteur)) {
+                $lies[] = $emetteur;
             }
-            $ligne = $ligne === null ? $courante : max($ligne, $courante);
         }
 
-        return $ligne ?? 3;
+        return $lies !== [] ? $lies : $emetteurs;
+    }
+
+    /** Période propre au réseau évalué, sans prendre celle d'un autre émetteur. */
+    private function periodeDuReseau(DOMElement $emetteur, NodeAccessor $accessor): string
+    {
+        $periode = $accessor->getIntOrNull('./donnee_entree/enum_periode_installation_emetteur_id', $emetteur);
+        if ($periode !== null) {
+            return match ($periode) {
+                1 => 'avant_1981',
+                2 => '1981_2000',
+                default => 'apres_2000',
+            };
+        }
+        $annee = $accessor->getIntOrNull('./donnee_entree/annee_installation_emetteur', $emetteur);
+
+        return $annee !== null ? $this->periodeEmetteur($annee) : 'apres_2000';
     }
 
     /**

@@ -102,6 +102,17 @@ final class PuissanceDimensionnementTest extends TestCase
         self::assertTrue(self::gen(89, '1', '2010'));
     }
 
+    public function testUneChaudiereRecenteDeclareeSurSolResteDansLaPremiereColonne(): void
+    {
+        foreach ([80, 82, 84, 90, 93, 97] as $type) {
+            self::assertFalse(self::gen($type, '0', '2020'));
+            self::assertTrue(self::gen($type, '1', '2020'));
+        }
+        $doc = new DOMDocument();
+        $doc->loadXML('<generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>57</enum_type_generateur_ecs_id><data_complementaires data-chaudiere-murale="0"/></donnee_entree></generateur_ecs>');
+        self::assertFalse(PuissanceDimensionnement::isChaudierePost2006($doc->documentElement));
+    }
+
     private static function gen(?int $typeId, ?string $murale, ?string $annee): bool
     {
         $doc = new DOMDocument();
