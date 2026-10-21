@@ -172,6 +172,64 @@ XML);
         yield 'ancienne sortie forfaitaire purgee' => [1, 4.1, null, 2.8];
     }
 
+    #[DataProvider('rendementsHorsPac')]
+    public function testLesAutresFamillesNePublientPasDeScop(?int $type, ?float $rendement): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML('<generateur_chauffage><donnee_entree>'
+            . ($type === null ? '' : '<enum_type_generateur_ch_id>' . $type . '</enum_type_generateur_ch_id>')
+            . '</donnee_entree></generateur_chauffage>');
+        $calculator = new GenerationNonCombustionCalculator();
+        $calculator->calculate($document->documentElement, new CalculationContext(
+            $document, new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
+        ));
+        self::assertSame(0, $document->getElementsByTagName('scop')->length);
+        $sortie = $document->getElementsByTagName('rendement_generation')->item(0);
+        if ($rendement === null) {
+            self::assertNull($sortie);
+        } else {
+            self::assertNotNull($sortie);
+            self::assertEqualsWithDelta($rendement, (float)$sortie->textContent, 1e-9);
+        }
+    }
+
+    public static function rendementsHorsPac(): iterable
+    {
+        foreach (range(98, 105) as $type) {
+            yield 'effet joule ' . $type => [$type, 1.0];
+        }
+        foreach ([106, 107, 108, 109, 110, 111, 112, 142, 171] as $type) {
+            yield 'chaudiere electrique ou reseau ' . $type => [$type, 0.97];
+        }
+        yield 'combustion traitee ailleurs' => [97, null];
+        yield 'type inconnu' => [999, null];
+        yield 'type absent' => [null, null];
+    }
+
+    #[DataProvider('fichesScopInvalides')]
+    public function testUneFicheIllisibleRetombeSurLeForfait(string $valeur): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML('<dpe><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>7</enum_type_generateur_ch_id>'
+            . '<enum_methode_saisie_carac_sys_id>6</enum_methode_saisie_carac_sys_id></donnee_entree></generateur_chauffage>'
+            . '<fiche_technique><enum_categorie_fiche_technique_id>7</enum_categorie_fiche_technique_id><sous_fiche_technique_collection>'
+            . '<sous_fiche_technique><description>SCOP</description><valeur>' . $valeur . '</valeur></sous_fiche_technique>'
+            . '</sous_fiche_technique_collection></fiche_technique></dpe>');
+        (new GenerationNonCombustionCalculator())->calculate(
+            $document->getElementsByTagName('generateur_chauffage')->item(0),
+            new CalculationContext($document, new TableRepository(self::PROJECT_ROOT . '/resources/tables')),
+        );
+        self::assertEqualsWithDelta(2.8, (float)$document->getElementsByTagName('scop')->item(0)?->textContent, 1e-9);
+    }
+
+    public static function fichesScopInvalides(): iterable
+    {
+        yield 'valeur vide' => [''];
+        yield 'valeur non numerique' => ['non disponible'];
+        yield 'valeur nulle' => ['0'];
+        yield 'valeur negative' => ['-2'];
+    }
+
     /**
      * XSD : `scop` est publié « en remplacement du Rg pour les générateurs
      * thermodynamique », et `rendement_generation` vaut « pour tous les

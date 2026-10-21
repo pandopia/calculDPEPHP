@@ -221,6 +221,53 @@ XML);
         self::assertSame(['70', '35'], $this->tfonc([[32, 2]], periode: 3));
     }
 
+    /** §13.2.1.5 p.81-85 : familles standard, BT et condensation gaz/fioul. */
+    #[\PHPUnit\Framework\Attributes\DataProvider('famillesEtPeriodes')]
+    public function testLesTablesDeChaqueFamille(int $type, int $periode, int $emetteur, array $attendu): void
+    {
+        self::assertSame($attendu, $this->tfonc([[$emetteur, null]], $periode, $type));
+    }
+
+    public static function famillesEtPeriodes(): iterable
+    {
+        yield 'standard ancien reseau ancien' => [85, 1, 39, ['80', '59']];
+        yield 'standard ancien reseau intermediaire' => [85, 2, 39, ['70', '56']];
+        yield 'standard ancien reseau recent' => [85, 3, 39, ['60', '53']];
+        yield 'standard recent reseau ancien' => [89, 1, 39, ['80', '55.5']];
+        yield 'standard recent reseau intermediaire' => [89, 2, 39, ['70', '52.5']];
+        yield 'standard recent reseau recent' => [89, 3, 39, ['60', '49.5']];
+        yield 'BT gaz plancher ancien' => [93, 1, 14, ['60', '42.5']];
+        yield 'BT gaz plancher intermediaire' => [93, 2, 14, ['35', '35']];
+        yield 'BT gaz plancher recent' => [93, 3, 14, ['35', '35']];
+        yield 'condensation fioul plancher ancien' => [83, 1, 14, ['60', '32']];
+        yield 'condensation fioul plancher recent' => [83, 3, 14, ['35', '24.5']];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('anneesEmetteurs')]
+    public function testAnneeDuReseauQuandLaPeriodeEstAbsente(int $annee, array $attendu): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML('<logement><installation_chauffage><emetteur_chauffage_collection><emetteur_chauffage><donnee_entree>'
+            . '<enum_type_emission_distribution_id>39</enum_type_emission_distribution_id><annee_installation_emetteur>' . $annee . '</annee_installation_emetteur>'
+            . '</donnee_entree></emetteur_chauffage></emetteur_chauffage_collection><generateur_chauffage_collection><generateur_chauffage><donnee_entree>'
+            . '<enum_type_generateur_ch_id>97</enum_type_generateur_ch_id></donnee_entree></generateur_chauffage></generateur_chauffage_collection></installation_chauffage></logement>');
+        (new ChaudiereProfilChargeCalculator())->calculate($document->getElementsByTagName('generateur_chauffage')->item(0), new CalculationContext(
+            $document, new TableRepository(__DIR__ . '/../../../../../resources/tables'),
+        ));
+        self::assertSame($attendu, [
+            $document->getElementsByTagName('temp_fonc_100')->item(0)?->textContent,
+            $document->getElementsByTagName('temp_fonc_30')->item(0)?->textContent,
+        ]);
+    }
+
+    public static function anneesEmetteurs(): iterable
+    {
+        yield 'avant 1981' => [1980, ['80', '38']];
+        yield 'borne 1981' => [1981, ['70', '35']];
+        yield 'borne 2000' => [2000, ['70', '35']];
+        yield 'apres 2000' => [2001, ['60', '32']];
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('temperaturesSaisies')]
     public function testLaMethodeCinqPreserveLesTemperaturesDocumentees(int $methode, ?float $cent, ?float $trente, array $attendu): void
     {
