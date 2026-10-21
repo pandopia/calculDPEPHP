@@ -275,6 +275,40 @@ XML;
         $this->assertEqualsWithDelta(0.943581, $rg, 0.0001);
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('saisiesEnIntermediaire')]
+    public function testLesCaracteristiquesSaisiesRespectentLeMasqueDeLaMethode(int $methode, float $qp0Attendu): void
+    {
+        [$doc, $node] = $this->buildCombustionGen(13, 10000.0, $methode);
+        $di = $doc->createElement('donnee_intermediaire');
+        foreach (['pn' => 40000, 'rpn' => 0.95, 'rpint' => 1.0, 'qp0' => 8] as $tag => $value) {
+            $di->appendChild($doc->createElement($tag, (string)$value));
+        }
+        $node->appendChild($di);
+        \CalculDpePHP\Xml\OutputPurger::purge($doc);
+        // Le besoin est une sortie de l'installation, recalculée en amont.
+        $installation = $doc->getElementsByTagName('installation_ecs')->item(0);
+        $besoin = $doc->createElement('donnee_intermediaire');
+        $besoin->appendChild($doc->createElement('besoin_ecs', '10000'));
+        $installation->appendChild($besoin);
+
+        (new CombustionCalculator())->calculate($node, $this->makeContext($doc));
+
+        $xp = new \DOMXPath($doc);
+        $rpnAttendu = $methode === 2 ? (91 + 3 * log10(40)) / 100 : 0.95;
+        self::assertEqualsWithDelta(40000.0, (float)$xp->evaluate('string(//generateur_ecs/donnee_intermediaire/pn)'), 1e-9);
+        self::assertEqualsWithDelta($rpnAttendu, (float)$xp->evaluate('string(//generateur_ecs/donnee_intermediaire/rpn)'), 1e-10);
+        self::assertEqualsWithDelta($qp0Attendu, (float)$xp->evaluate('string(//generateur_ecs/donnee_intermediaire/qp0)'), 1e-9);
+        self::assertEqualsWithDelta(1 / (1 / $rpnAttendu + 1790 * $qp0Attendu / 10000000), (float)$xp->evaluate('string(//generateur_ecs/donnee_intermediaire/rendement_generation)'), 1e-10);
+    }
+
+    public static function saisiesEnIntermediaire(): iterable
+    {
+        yield 'methode 2 seule Pn saisie' => [2, 200.0];
+        yield 'methode 3 QP0 reste forfaitaire' => [3, 200.0];
+        yield 'methode 4 QP0 est saisi' => [4, 8.0];
+        yield 'methode 5 QP0 est saisi' => [5, 8.0];
+    }
+
     /**
      * Rg < 1 toujours pour générateur combustion avec Becs fini.
      */

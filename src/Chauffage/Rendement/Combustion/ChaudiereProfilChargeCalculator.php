@@ -160,6 +160,18 @@ final class ChaudiereProfilChargeCalculator implements CalculatorInterface
             }
         }
 
+        // XSD méthode 5 : temp_fonc_100/temp_fonc_30 sont des
+        // caractéristiques saisies, préservées par OutputPurger. Les tables
+        // ne complètent que les champs manquants, sans écraser la saisie.
+        if ($accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node) === 5) {
+            $tfonc100 = $accessor->getFloatOrNull('./donnee_entree/temp_fonc_100', $node)
+                ?? $accessor->getFloatOrNull('./donnee_intermediaire/temp_fonc_100', $node)
+                ?? $tfonc100;
+            $tfonc30 = $accessor->getFloatOrNull('./donnee_entree/temp_fonc_30', $node)
+                ?? $accessor->getFloatOrNull('./donnee_intermediaire/temp_fonc_30', $node)
+                ?? $tfonc30;
+        }
+
         $di = $accessor->ensureDonneeIntermediaire($node);
         $accessor->setChildValue($di, 'temp_fonc_100', $tfonc100);
         $accessor->setChildValue($di, 'temp_fonc_30',  $tfonc30);

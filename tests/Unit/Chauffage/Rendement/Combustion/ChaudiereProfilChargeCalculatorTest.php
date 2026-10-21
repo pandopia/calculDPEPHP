@@ -220,4 +220,35 @@ XML);
     {
         self::assertSame(['70', '35'], $this->tfonc([[32, 2]], periode: 3));
     }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('temperaturesSaisies')]
+    public function testLaMethodeCinqPreserveLesTemperaturesDocumentees(int $methode, ?float $cent, ?float $trente, array $attendu): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML('<logement><installation_chauffage><emetteur_chauffage_collection><emetteur_chauffage><donnee_entree>'
+            . '<enum_type_emission_distribution_id>39</enum_type_emission_distribution_id><enum_periode_installation_emetteur_id>3</enum_periode_installation_emetteur_id>'
+            . '</donnee_entree></emetteur_chauffage></emetteur_chauffage_collection><generateur_chauffage_collection><generateur_chauffage><donnee_entree>'
+            . '<enum_type_generateur_ch_id>97</enum_type_generateur_ch_id><enum_methode_saisie_carac_sys_id>' . $methode . '</enum_methode_saisie_carac_sys_id></donnee_entree><donnee_intermediaire>'
+            . ($cent === null ? '' : '<temp_fonc_100>' . $cent . '</temp_fonc_100>')
+            . ($trente === null ? '' : '<temp_fonc_30>' . $trente . '</temp_fonc_30>')
+            . '</donnee_intermediaire></generateur_chauffage></generateur_chauffage_collection></installation_chauffage></logement>');
+        \CalculDpePHP\Xml\OutputPurger::purge($document);
+        (new ChaudiereProfilChargeCalculator())->calculate($document->getElementsByTagName('generateur_chauffage')->item(0), new CalculationContext(
+            $document, new TableRepository(__DIR__ . '/../../../../../resources/tables'),
+        ));
+        self::assertSame($attendu, [
+            $document->getElementsByTagName('temp_fonc_100')->item(0)?->textContent,
+            $document->getElementsByTagName('temp_fonc_30')->item(0)?->textContent,
+        ]);
+    }
+
+    public static function temperaturesSaisies(): iterable
+    {
+        yield 'deux temperatures saisies' => [5, 44.0, 29.0, ['44', '29']];
+        yield 'seul cent est saisi' => [5, 44.0, null, ['44', '32']];
+        yield 'seul trente est saisi' => [5, null, 29.0, ['60', '29']];
+        yield 'absence de saisie' => [5, null, null, ['60', '32']];
+        yield 'methode quatre ne saisit pas les temperatures' => [4, 44.0, 29.0, ['60', '32']];
+        yield 'forfaits purgent les anciennes temperatures' => [1, 44.0, 29.0, ['60', '32']];
+    }
 }
