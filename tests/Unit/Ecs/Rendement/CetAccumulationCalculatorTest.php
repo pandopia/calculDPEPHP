@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Ecs\Rendement;
 
 use CalculDpePHP\Ecs\Rendement\CetAccumulationCalculator;
+use CalculDpePHP\Ecs\Rendement\CombustionCalculator;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
