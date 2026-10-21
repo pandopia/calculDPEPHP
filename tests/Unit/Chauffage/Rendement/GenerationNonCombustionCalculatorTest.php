@@ -137,6 +137,36 @@ XML);
         self::assertEqualsWithDelta(4.1, (float) $document->getElementsByTagName('scop')->item(1)?->textContent, 1e-9);
     }
 
+    #[DataProvider('scopSaisis')]
+    public function testLeScopPreserveDuGenerateurPrimeSurUneFicheGlobale(int $methode, ?float $scop, ?float $scopEntree, float $attendu): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML('<dpe><logement><installation_chauffage_collection><installation_chauffage><generateur_chauffage_collection><generateur_chauffage><donnee_entree>'
+            . '<enum_type_generateur_ch_id>7</enum_type_generateur_ch_id><enum_methode_saisie_carac_sys_id>' . $methode . '</enum_methode_saisie_carac_sys_id>'
+            . ($scopEntree === null ? '' : '<scop>' . $scopEntree . '</scop>') . '</donnee_entree><donnee_intermediaire>'
+            . ($scop === null ? '' : '<scop>' . $scop . '</scop>') . '</donnee_intermediaire></generateur_chauffage></generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection></logement>'
+            . '<fiche_technique_collection><fiche_technique><enum_categorie_fiche_technique_id>7</enum_categorie_fiche_technique_id><sous_fiche_technique_collection>'
+            . '<sous_fiche_technique><description>SCOP / COP: 4,3</description><valeur>4,3</valeur></sous_fiche_technique>'
+            . '</sous_fiche_technique_collection></fiche_technique></fiche_technique_collection></dpe>');
+        \CalculDpePHP\Xml\OutputPurger::purge($document);
+        $generator = $document->getElementsByTagName('generateur_chauffage')->item(0);
+        $context = new CalculationContext($document, new TableRepository(self::PROJECT_ROOT . '/resources/tables'), zoneClimatique: '2');
+
+        (new GenerationNonCombustionCalculator())->calculate($generator, $context);
+
+        self::assertEqualsWithDelta($attendu, (new \DOMXPath($document))->evaluate('number(//generateur_chauffage/donnee_intermediaire/scop)'), 1e-9);
+    }
+
+    public static function scopSaisis(): iterable
+    {
+        yield 'saisie propre a cette PAC' => [6, 4.1, null, 4.1];
+        yield 'saisie en entree prioritaire' => [6, 4.1, 4.9, 4.9];
+        yield 'saisie absente repli fiche' => [6, null, null, 4.3];
+        yield 'saisie nulle repli fiche' => [6, 0.0, null, 4.3];
+        yield 'saisie negative repli fiche' => [6, -1.0, null, 4.3];
+        yield 'ancienne sortie forfaitaire purgee' => [1, 4.1, null, 2.8];
+    }
+
     /**
      * XSD : `scop` est publié « en remplacement du Rg pour les générateurs
      * thermodynamique », et `rendement_generation` vaut « pour tous les
