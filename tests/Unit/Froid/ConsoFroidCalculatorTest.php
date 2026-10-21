@@ -146,6 +146,45 @@ XML;
         yield 'forfait purge ancien EER' => [1, 4.7, 8.0, 6.365];
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('installationsDistinctes')]
+    public function testChaqueClimatiseurConserveSaPerformanceEtSaCle(float $surface, int $methode, float $totalAttendu): void
+    {
+        foreach ([false, true] as $inverse) {
+            $climatiseurs = [];
+            foreach ([['a', 6, 0.1], ['b', 3, 0.2]] as [$reference, $eer, $cle]) {
+                $climatiseurs[] = '<climatisation><donnee_entree><reference>' . $reference . '</reference><surface_clim>' . $surface . '</surface_clim>'
+                    . '<enum_methode_saisie_carac_sys_id>8</enum_methode_saisie_carac_sys_id><tv_seer_id>3</tv_seer_id><cle_repartition_clim>' . $cle . '</cle_repartition_clim></donnee_entree>'
+                    . '<donnee_intermediaire><eer>' . $eer . '</eer></donnee_intermediaire></climatisation>';
+            }
+            $doc = new DOMDocument();
+            $doc->loadXML('<logement><caracteristique_generale><surface_habitable_logement>100</surface_habitable_logement><surface_habitable_immeuble>1000</surface_habitable_immeuble>'
+                . '<enum_methode_application_dpe_log_id>' . $methode . '</enum_methode_application_dpe_log_id></caracteristique_generale><climatisation_collection>'
+                . implode('', $inverse ? array_reverse($climatiseurs) : $climatiseurs) . '</climatisation_collection></logement>');
+            $context = $this->makeContext($doc, ['froid.besoin_fr' => 1000.0, 'froid.besoin_fr_depensier' => 1200.0]);
+            foreach ([1, 2] as $execution) {
+                \CalculDpePHP\Xml\OutputPurger::purge($doc);
+                (new ConsoFroidCalculator())->calculate($doc->documentElement, $context);
+                $xp = new \DOMXPath($doc);
+                self::assertEqualsWithDelta(6.0, (float)$xp->evaluate('string(//climatisation[donnee_entree/reference="a"]/donnee_intermediaire/eer)'), 1e-9);
+                self::assertEqualsWithDelta(3.0, (float)$xp->evaluate('string(//climatisation[donnee_entree/reference="b"]/donnee_intermediaire/eer)'), 1e-9);
+                self::assertEqualsWithDelta($totalAttendu, (float)$xp->evaluate('string(//sortie/ef_conso/conso_fr)'), 1e-9);
+                self::assertEqualsWithDelta(1.2 * $totalAttendu, $context->get('froid.conso_fr_depensier'), 1e-9);
+                $a = (float)$xp->evaluate('string(//climatisation[donnee_entree/reference="a"]/donnee_intermediaire/conso_fr)');
+                $b = (float)$xp->evaluate('string(//climatisation[donnee_entree/reference="b"]/donnee_intermediaire/conso_fr)');
+                self::assertEqualsWithDelta(2 * $a, $b, 1e-9);
+            }
+        }
+    }
+
+    public static function installationsDistinctes(): iterable
+    {
+        yield 'deux surfaces partielles' => [25.0, 2, 112.5];
+        yield 'logement entier' => [50.0, 2, 225.0];
+        yield 'surface totale bornee au logement' => [100.0, 2, 225.0];
+        yield 'surfaces absentes repli egalitaire' => [0.0, 2, 225.0];
+        yield 'appartement genere cle propre a chaque clim' => [500.0, 13, 37.5];
+    }
+
     /**
      * tv_seer_id=3 (H1/H2, à partir 2015) : EER = 0.95 × 6.7 = 6.365.
      * Cfr = 0.9 × 1000 / 6.365 ≈ 141.4 kWh
