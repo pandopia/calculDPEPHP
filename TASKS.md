@@ -54,6 +54,21 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase K — Conformité au corpus ADEME
 
+### TASK-K91 — PAC multi-émetteurs : COP défavorable et SCOP publié à départager
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- §12.4.2 impose le « COP le plus défavorable » pour Ich quand plusieurs
+  émetteurs sont reliés à la PAC. Le moteur retient actuellement la colonne
+  plancher dès qu'un plancher est présent ; les références semblent publier
+  le SCOP du premier émetteur (plancher en premier sur sept cas, radiateur
+  en premier sur `2601E0734445D`).
+- Variante minimum sur les réseaux reliés (appoints autonomes exclus), A/B
+  isolé 646 cas, 21/10/2026 : **17 321 → 17 423**, un cas gagne 1 écart,
+  sept en perdent 103. Retirée sans relever les budgets. Départager SCOP
+  sérialisé et COP réellement utilisé pour Ich depuis les seuls bilans de
+  référence, puis chercher une clarification de la règle ; ne pas refaire
+  cette variante globale sans élément nouveau.
+
 ### TASK-K58 — Doublage de mur : un éditeur minoritaire l'ignore dans umur0
 
 - [ ] Owner: __ | Phase: K | Priorité: basse
