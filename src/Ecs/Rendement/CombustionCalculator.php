@@ -117,7 +117,9 @@ final class CombustionCalculator implements CalculatorInterface
             $typeEcsId = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $node);
             // CET sur air ambiant/extérieur/extrait (1-9) et PAC double service (10-12) :
             // rendement déjà écrit par CetAccumulationCalculator — ne pas écraser.
-            if ($typeEcsId !== null && $typeEcsId >= 1 && $typeEcsId <= 12) {
+            // 82 « autre système thermodynamique électrique » est ramené
+            // à une PAC double service par CetAccumulationCalculator.
+            if ($typeEcsId === 82 || ($typeEcsId !== null && $typeEcsId >= 1 && $typeEcsId <= 12)) {
                 return;
             }
             // §12.4.1 p.76 distingue deux lignes électriques : « générateur à

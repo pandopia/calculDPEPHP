@@ -128,4 +128,37 @@ XML;
         yield 'saisie invalide' => [6, 0.0, null, 2.3];
         yield 'forfait ne recopie pas un ancien resultat' => [1, 3.14, null, 2.3];
     }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('autresSystemesThermodynamiques')]
+    public function testLAliasThermodynamiqueNeDevientPasUnBallonJoule(int $type, ?int $periode, float $cop): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML('<logement><installation_ecs><donnee_intermediaire><besoin_ecs>1000</besoin_ecs><besoin_ecs_depensier>1200</besoin_ecs_depensier>'
+            . '<rendement_distribution>1</rendement_distribution></donnee_intermediaire><generateur_ecs_collection><generateur_ecs><donnee_entree>'
+            . '<enum_type_energie_id>1</enum_type_energie_id><enum_type_generateur_ecs_id>' . $type . '</enum_type_generateur_ecs_id><volume_stockage>200</volume_stockage>'
+            . ($periode === null ? '' : '<enum_periode_installation_ecs_thermo_id>' . $periode . '</enum_periode_installation_ecs_thermo_id>')
+            . '</donnee_entree></generateur_ecs></generateur_ecs_collection></installation_ecs></logement>');
+        $generator = $document->getElementsByTagName('generateur_ecs')->item(0);
+        $context = $this->makeContext($document);
+        (new \CalculDpePHP\Ecs\Rendement\StockageCalculator())->calculate($generator, $context);
+        (new CetAccumulationCalculator())->calculate($generator, $context);
+        (new CombustionCalculator())->calculate($generator, $context);
+        (new \CalculDpePHP\Ecs\ConsoEcsCalculator())->calculate($document->getElementsByTagName('installation_ecs')->item(0), $context);
+
+        $xp = new \DOMXPath($document);
+        self::assertEqualsWithDelta($cop, (float)$xp->evaluate('string(//generateur_ecs/donnee_intermediaire/cop)'), self::TOL);
+        self::assertEqualsWithDelta(1000 / $cop, (float)$xp->evaluate('string(//generateur_ecs/donnee_intermediaire/conso_ecs)'), self::TOL);
+        self::assertEqualsWithDelta(1200 / $cop, (float)$xp->evaluate('string(//generateur_ecs/donnee_intermediaire/conso_ecs_depensier)'), self::TOL);
+        self::assertSame(0, $generator->getElementsByTagName('rendement_generation')->length);
+        self::assertSame(0, $generator->getElementsByTagName('rendement_stockage')->length);
+    }
+
+    public static function autresSystemesThermodynamiques(): iterable
+    {
+        yield 'alias avant 2010' => [82, 1, 2.0];
+        yield 'alias 2010-2014' => [82, 2, 2.1];
+        yield 'alias apres 2015' => [82, 3, 2.3];
+        yield 'alias periode inconnue penalisee' => [82, null, 2.0];
+        yield 'PAC double service native' => [12, 3, 2.3];
+    }
 }
