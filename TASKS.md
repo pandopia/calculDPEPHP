@@ -409,9 +409,9 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   générateur (40 kW publiés, 24 calculés), pas les six profils de charge.
   Même phénomène sur `2457E3724590U` : 72 kW implicites/référence contre
   64 kW calculés, à cause du générateur charbon voisin.
-- **Correction livrée** : une pose explicitement « sur sol » prime sur le
-  millésime récent pour la colonne Pdim→Pn. A/B : −9 écarts, aucun cas
-  dégradé. Sur `2675E2540542G`, les deux Rg impliquent toujours un même
+- Après prise en compte de la pose explicitement « sur sol » dans la colonne
+  Pdim→Pn (A/B : −9 écarts, aucun cas globalement dégradé),
+  `2675E2540542G` conserve deux Rg impliquant un même
   Cdimref ≈4,6298, mais le moteur trouve 5,8924 après correction des Pn.
   La puissance moyenne implicite (16,5 kW) correspond exactement à
   `24 × 488/976 + 18 × 244/976`, électrique exclu du numérateur mais pas
@@ -432,7 +432,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   Gain mesuré : −99 écarts.
 - **Constat historique (541 cas), à ne plus lire comme un décompte actuel** :
   25 générateurs avaient `pn`, `rpn`, `rpint`, `qp0` et les températures
-  de fonctionnement sont **exacts** et le `rendement_generation` faux : 15 en
+  de fonctionnement **exacts**, mais le `rendement_generation` faux : 15 en
   méthode 6, 5 en méthode 1, 2 en méthode 2, 2 en méthode 10, 1 en méthode 3.
   Les quinze de méthode 6 sont tous **sous-estimés**, de 2 à 11 %.
 - **Un Cdimref implicite reconstruit exactement.** Sur `2400E0669882V`
