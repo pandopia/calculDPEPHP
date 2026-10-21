@@ -93,6 +93,17 @@ final class CetAccumulationCalculator implements CalculatorInterface
         $table = ($zone === 'H3') ? self::COP_H3 : self::COP_H1H2;
         $cop   = $table[$typeId];
 
+        // §14.2 et méthode de saisie 6 du XSD : une performance réelle
+        // justifiée n'est pas un résultat forfaitaire à recalculer. Le champ
+        // cop propre à ce CET est préservé par OutputPurger.
+        if ($accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node) === 6) {
+            $copSaisi = $accessor->getFloatOrNull('./donnee_entree/cop', $node)
+                ?? $accessor->getFloatOrNull('./donnee_intermediaire/cop', $node);
+            if ($copSaisi !== null && $copSaisi > 0.0) {
+                $cop = $copSaisi;
+            }
+        }
+
         // Le XSD définit `rendement_generation` comme « le rendement de
         // génération dans le cas où le rendement de stockage est séparé du
         // rendement de génération », et `cop` comme « le COP du chauffe-eau

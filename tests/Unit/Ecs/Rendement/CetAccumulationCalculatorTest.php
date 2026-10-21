@@ -97,4 +97,35 @@ XML;
         (new CetAccumulationCalculator())->calculate($node, $this->makeContext($doc));
         $this->assertNull($doc->getElementsByTagName('cop')->item(0));
     }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('copSaisis')]
+    public function testLeCopSaisiEstPreserveSansRecopierUneAncienneSortie(int $methode, ?float $cop, ?float $copEntree, float $attendu): void
+    {
+        [$doc, $node] = $this->buildNode(12);
+        $de = $node->getElementsByTagName('donnee_entree')->item(0);
+        $de->appendChild($doc->createElement('enum_methode_saisie_carac_sys_id', (string)$methode));
+        if ($copEntree !== null) {
+            $de->appendChild($doc->createElement('cop', (string)$copEntree));
+        }
+        $di = $doc->createElement('donnee_intermediaire');
+        if ($cop !== null) {
+            $di->appendChild($doc->createElement('cop', (string)$cop));
+        }
+        $node->appendChild($di);
+        \CalculDpePHP\Xml\OutputPurger::purge($doc);
+
+        (new CetAccumulationCalculator())->calculate($node, $this->makeContext($doc));
+
+        self::assertEqualsWithDelta($attendu, (float)(new \DOMXPath($doc))->evaluate('string(//generateur_ecs/donnee_intermediaire/cop)'), self::TOL);
+        self::assertSame(0, $node->getElementsByTagName('rendement_generation')->length);
+    }
+
+    public static function copSaisis(): iterable
+    {
+        yield 'COP saisi propre au CET' => [6, 3.14, null, 3.14];
+        yield 'entree prioritaire' => [6, 3.14, 3.5, 3.5];
+        yield 'saisie absente' => [6, null, null, 2.3];
+        yield 'saisie invalide' => [6, 0.0, null, 2.3];
+        yield 'forfait ne recopie pas un ancien resultat' => [1, 3.14, null, 2.3];
+    }
 }
