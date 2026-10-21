@@ -87,7 +87,9 @@ final class PuissanceDimensionnement
      * Vrai lorsque la chaudière relève de la colonne 2 de la table §13.2.2.4,
      * « chaudières murales installées à partir de 2006 ».
      *
-     * Deux signaux, l'un suffisant à l'autre :
+     * Une déclaration explicite « sur sol » exclut la colonne 2, quelle que
+     * soit l'année : le tableau range toutes les chaudières sur sol dans sa
+     * première colonne. À défaut, deux signaux de millésime sont exploités :
      *
      *  - `enum_type_generateur_{ch,ecs}_id` quand le libellé XSD situe déjà
      *    l'installation après 2015 : c'est la donnée native de la spec, elle
@@ -103,6 +105,14 @@ final class PuissanceDimensionnement
             return false;
         }
         $xpath = new DOMXPath($doc);
+
+        $dc = $xpath->query('./donnee_entree/data_complementaires', $genNode)?->item(0);
+        // §13.2.2.4 p.92 : « avant 2005 OU chaudières sur sol ». L'enum
+        // récent établit une date, pas une pose murale ; il ne doit pas
+        // écraser la déclaration physique contraire lorsqu'elle existe.
+        if ($dc instanceof DOMElement && $dc->getAttribute('data-chaudiere-murale') === '0') {
+            return false;
+        }
 
         foreach ([
             'enum_type_generateur_ch_id'  => self::CH_VINTAGE_POST_2006,
