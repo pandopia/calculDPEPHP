@@ -386,7 +386,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K85 — Cdimref : le périmètre du GV reste à trancher pour 25 générateurs
 
-- [ ] Owner: __ | Phase: K | Priorité: haute
+- [~CDX] Owner: CDX | Phase: K | Priorité: haute
 - **Attention à la compensation sur `2400E0669495Y`** : après correction
   sourcée du radiateur gaz (K76), sa consommation devient 24 255,937 contre
   24 256,463 attendus (0,0022 %), au lieu de 15 736,610. Les trois agrégats
