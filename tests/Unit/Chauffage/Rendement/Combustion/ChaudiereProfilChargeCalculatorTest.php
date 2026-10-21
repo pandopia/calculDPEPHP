@@ -81,6 +81,40 @@ XML);
         self::assertSame(['70', '35'], $this->tfonc([[14, 2], [33, 2], [32, 4]], periode: 3));
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('reseauxDesservis')]
+    public function testMaximumDesTemperaturesDesSeulsReseauxDesservis(array $emetteurs, ?int $lien, int $typeGenerateur, array $attendu): void
+    {
+        foreach ([false, true] as $inverse) {
+            $blocs = '';
+            foreach ($inverse ? array_reverse($emetteurs) : $emetteurs as [$type, $periode, $lienEmetteur]) {
+                $blocs .= '<emetteur_chauffage><donnee_entree><enum_type_emission_distribution_id>' . $type . '</enum_type_emission_distribution_id>'
+                    . '<enum_periode_installation_emetteur_id>' . $periode . '</enum_periode_installation_emetteur_id>'
+                    . '<enum_lien_generateur_emetteur_id>' . $lienEmetteur . '</enum_lien_generateur_emetteur_id></donnee_entree></emetteur_chauffage>';
+            }
+            $document = new DOMDocument();
+            $document->loadXML('<logement><installation_chauffage><emetteur_chauffage_collection>' . $blocs . '</emetteur_chauffage_collection>'
+                . '<generateur_chauffage_collection><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>' . $typeGenerateur . '</enum_type_generateur_ch_id>'
+                . ($lien === null ? '' : '<enum_lien_generateur_emetteur_id>' . $lien . '</enum_lien_generateur_emetteur_id>')
+                . '</donnee_entree></generateur_chauffage></generateur_chauffage_collection></installation_chauffage></logement>');
+            (new ChaudiereProfilChargeCalculator())->calculate($document->getElementsByTagName('generateur_chauffage')->item(0), new CalculationContext(
+                $document, new TableRepository(__DIR__ . '/../../../../../resources/tables'),
+            ));
+            self::assertSame($attendu, [
+                $document->getElementsByTagName('temp_fonc_100')->item(0)?->textContent,
+                $document->getElementsByTagName('temp_fonc_30')->item(0)?->textContent,
+            ]);
+        }
+    }
+
+    public static function reseauxDesservis(): iterable
+    {
+        yield 'le poele ne chauffe pas le reseau de la chaudiere' => [[[31, 3, 1], [21, 3, 2]], 1, 97, ['60', '32']];
+        yield 'chaque emetteur garde sa periode condensation' => [[[14, 3, 1], [31, 1, 1], [21, 3, 2]], 1, 97, ['80', '38']];
+        yield 'chaque emetteur garde sa periode basse temperature' => [[[14, 3, 1], [31, 1, 1], [21, 3, 2]], 1, 81, ['80', '48.5']];
+        yield 'pas de lien conserve le maximum global' => [[[31, 3, 1], [21, 3, 2]], null, 97, ['70', '35']];
+        yield 'lien inexploitable conserve le maximum global' => [[[31, 3, 1], [21, 3, 2]], 3, 97, ['70', '35']];
+    }
+
     /** Sans type d'émission, la température déclarée sert de repli. */
     public function testFallsBackToDeclaredDistributionTemperature(): void
     {
