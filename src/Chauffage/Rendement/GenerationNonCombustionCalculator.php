@@ -28,7 +28,7 @@ use DOMElement;
  * — leur Rg est produit par RendementAnnuelMoyenCalculator.
  *
  * @spec-section 12.4
- * @spec-pages   76-78, 80
+ * @spec-pages   76-78
  * @spec-source  resources/specsplitted/12-rendements-installations/04-generation-non-combustion.md
  * @xml-input    generateur_chauffage.donnee_entree.{enum_type_generateur_ch_id, scop}
  * @xml-output   generateur_chauffage.donnee_intermediaire.{rendement_generation, scop}
@@ -172,7 +172,7 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
         // technique catégorie 7 (chauffage), description "SCOP / COP: <valeur>".
         $methode = $accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node);
         if ($methode === 6) {
-            // §12.4.2 p.80 : un SCOP réel connu et justifié prime sur le
+            // §12.4.2 p.77 : un SCOP réel connu et justifié prime sur le
             // forfait. Le XSD le sérialise en donnee_intermediaire ;
             // OutputPurger préserve précisément cette saisie en méthode 6.
             // La fiche technique globale peut décrire une autre PAC.
@@ -199,7 +199,7 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
     }
 
     /**
-     * §12.4.2 p.80 : le SCAP par défaut d'une PAC se lit sur deux colonnes,
+     * §12.4.2 p.77 : le SCOP par défaut d'une PAC se lit sur deux colonnes,
      * « Autres » et « Planchers / Plafonds ». La colonne se déduit des
      * émetteurs de l'installation, `enum_type_emission_distribution_id` 6 à 9
      * (rayonnants électriques) et 11 à 18 (planchers et plafonds sur réseau

@@ -15,7 +15,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * §12.4.2 p.80 : le SCOP par défaut d'une PAC se lit sur deux colonnes selon le
+ * §12.4.2 p.77 : le SCOP par défaut d'une PAC se lit sur deux colonnes selon le
  * type d'émetteur — « Autres » et « Planchers / Plafonds » — et sur la zone
  * climatique.
  */
