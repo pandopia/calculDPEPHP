@@ -75,7 +75,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K92 — Dépendances de l'éditeur : traiter les alertes de sécurité
 
-- [ ] Owner: __ | Phase: K | Priorité: haute (hors moteur 3CL)
+- [~CB] Owner: CB | Phase: K | Priorité: haute (hors moteur 3CL)
 - Au push du 21/10/2026, GitHub signale 6 alertes ouvertes, toutes dans
   `editeur/package-lock.json` : `tinypool` (2 critiques),
   `@modelcontextprotocol/sdk` (haute), `@angular/common`, `vitest` et
