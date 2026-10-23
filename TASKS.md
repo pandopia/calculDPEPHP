@@ -429,69 +429,23 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Ses balises `emission_ges_ecs` et `ep_conso_ecs` sont publiées permutées avec
   leurs dépensières, et déjà imputées à ce titre. Ne pas les instruire.
 
-### TASK-K85 — Cdimref : isoler la puissance cumulée avant de toucher au GV
+### TASK-K85 — Puissances nominales amont encore divergentes
 
-- [~CB] Owner: CB | Phase: K | Priorité: haute
-- **Requalification du 21/10, 646 cas** : le seul accord des paramètres du
-  générateur courant ne suffit pas. Sur `2400E0575636Z`, six Rg divergents
-  s'expliquent tous par une puissance cumulée implicite de **172 kW**, somme
-  des Pn de référence, contre **156 kW** calculés. La racine est le premier
-  générateur (40 kW publiés, 24 calculés), pas les six profils de charge.
-  Même phénomène sur `2457E3724590U` : 72 kW implicites/référence contre
-  64 kW calculés, à cause du générateur charbon voisin.
-- Après prise en compte de la pose explicitement « sur sol » dans la colonne
-  Pdim→Pn (A/B : −9 écarts, aucun cas globalement dégradé),
-  `2675E2540542G` conserve deux Rg impliquant un même
-  Cdimref ≈4,6298, mais le moteur trouve 5,8924 après correction des Pn.
-  La puissance moyenne implicite (16,5 kW) correspond exactement à
-  `24 × 488/976 + 18 × 244/976`, électrique exclu du numérateur mais pas
-  de la surface. Mesurer cette hypothèse de moyenne pondérée avant de la
-  généraliser : `2675E2152874Y` ne donne pas le même indice.
-- **Attention à la compensation sur `2400E0669495Y`** : après correction
-  sourcée du radiateur gaz (K76), sa consommation devient 24 255,937 contre
-  24 256,463 attendus (0,0022 %), au lieu de 15 736,610. Les trois agrégats
-  gaz, auparavant dans la tolérance par compensation, s'écartent alors de
-  6,46 % (énergie/GES) et 6,15 % (coût). Le nombre d'écarts du cas reste 139.
-  Reprendre les autres générateurs en amont, ne pas restaurer Rg=1,11 pour
-  compenser leur surconsommation. Le radiateur corrigé a Rg=0,720139, comme
-  la référence ; cette régression locale d'agrégats n'est pas un défaut de QPx.
-- **Acquis, et livré** : quand §17.1.4.2 ramène le GV à l'appartement moyen,
-  Cdimref se calcule sur la chaudière **moyenne**, pas sur le générateur
-  courant. Les références donnent un Cdimref commun à tous les générateurs
-  d'un même bâtiment — 2,6834 et 2,6848 sur `2513E2308028Z`, rapport 0,9995.
-  Gain mesuré : −99 écarts.
-- **Constat historique (541 cas), à ne plus lire comme un décompte actuel** :
-  25 générateurs avaient `pn`, `rpn`, `rpint`, `qp0` et les températures
-  de fonctionnement **exacts**, mais le `rendement_generation` faux : 15 en
-  méthode 6, 5 en méthode 1, 2 en méthode 2, 2 en méthode 10, 1 en méthode 3.
-  Les quinze de méthode 6 sont tous **sous-estimés**, de 2 à 11 %.
-- **Un Cdimref implicite reconstruit exactement.** Sur `2400E0669882V`
-  (méthode 6, 8 appartements, 6 installations individuelles, GV 1 047,603,
-  zone 2 altitude 1 donc Tbase −9,5), la résolution à rebours du rendement
-  publié donne **1,6077** pour sa chaudière à condensation. Or
-  48 000 / (1 047,603 × 28,5) = **1,608** : la référence utilise le **GV
-  complet et la puissance totale**, sans rien ramener. Exact à 0,02 %.
-- **Mais la règle ne peut pas être généralisée.** Ne plus ramener le GV pour
-  les méthodes 6 et 8 — les immeubles, par opposition aux appartements
-  générés 10 et 12 — a été mesuré en A/B isolé, 541 cas, 0 crash :
-  **+2 075 écarts**, 3 cas améliorés contre 82 dégradés, dont douze passant
-  de 10 à 37-39 écarts. Le cas témoin, lui, gagne 29 écarts (53 → 24).
-- Ce qui distingue `2400E0669882V` des autres méthode 6 reste à trouver. Deux
-  observations à creuser : seules **2 de ses 6 installations** portent un
-  générateur à combustion (les autres sont électriques, type 99), et ses
-  installations ne couvrent donc pas tous les logements. Les pistes
-  « diviseur = nombre de systèmes » et « part des logements équipés » ont été
-  calculées à la main et ne reproduisent pas 1,6077.
-- Méthode qui marche, à reprendre : résoudre le Cdimref à rebours depuis le
-  rendement publié, puis le comparer aux combinaisons (GV complet, GV/nblgt,
-  GV/nb systèmes) × (Pn générateur, Pn totale, Pn moyenne).
-- **Ce qui ne marchera pas** : chercher un facteur commun dans les ratios. Ils
-  sont dispersés de 0,914 à 1,005, sans aucune valeur ronde, et se concentrent
-  sur quelques fichiers — `2400E0575636Z` en porte six à lui seul,
-  `2600E0035103I` quatre. Les gains de cette campagne sont tous venus de
-  **rapports exacts** (0,9995 pour le Cdimref commun, 0,75 pour la surface de
-  module, 0,9072 répété pour la bi-jonction) ; leur absence ici signale des
-  résidus de second ordre, pas une formule manquante.
+- [ ] Owner: __ | Phase: K | Priorité: haute
+- Reprendre les Pn avant Cdimref : sur `2400E0575636Z`, la somme implicite
+  requise par six Rg est 172 kW (somme publiée), contre 156 kW calculés.
+  La racine est le premier générateur (40 kW contre 24), pas les six profils.
+  Le fichier décrit 7 systèmes pour 6 logements : départager la surface
+  desservie, la multiplicité et le dimensionnement de §17.1.2/17.1.4.2,
+  sans remplacer globalement GV/Nblgt par une autre échelle.
+- `2457E3724590U` : 72 kW implicites contre 64, mais le voisin charbon
+  déclare « avant 1978 » et publie aussi des rendements incompatibles avec
+  cette ligne de §13.2.2.3. Ne pas corriger notre chaudière gaz pour
+  compenser ces caractéristiques de référence.
+- Méthode : inverser Rg en Cdimref, vérifier d'abord toutes les Pn de la
+  zone (pas seulement celle du générateur courant), puis isoler le premier
+  intermédiaire divergent. Les variantes GV déjà écartées sont conservées
+  dans TASKS_DONE.md ; ne pas les rejouer sans donnée nouvelle.
 
 ### TASK-K86 — Appartements générés de méthode 33/34 : une clé de répartition que rien ne publie
 

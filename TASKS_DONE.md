@@ -19,6 +19,19 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K85 — Variantes de périmètre GV déjà écartées
+
+- Conserver ces chiffres historiques, sans les présenter comme des mesures
+  du corpus actuel : abandonner la réduction du GV pour les modes 6/8 a coûté
+  **+2 075 écarts sur 541 cas**, 3 cas améliorés contre 82 dégradés, malgré
+  un gain local de 29 sur `2400E0669882V`. Pas de généralisation possible.
+- Le diviseur « nombre de systèmes » non borné par Nblgt a coûté **+537
+  écarts sur 23 cas**. La borne protège le périmètre de l'appartement moyen.
+- Un Rg juste ne prouve pas que chaque Pn de la zone est juste : des erreurs
+  se compensent. La suite actionnable sur les Pn amont demeure en K85.
+- Réouverture de ces variantes uniquement sur clarification du périmètre
+  réglementaire ou nouvelle donnée d'entrée départageant ces cas.
+
 ### TASK-K93 — Variantes globales de colonne Joule écartées (23/10/2026)
 
 - A/B en mémoire, même arbre `70ca91e`, 646 cas, profil strict, aucun fichier
