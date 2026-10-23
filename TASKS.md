@@ -56,7 +56,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K93 — Enveloppe mixte : colonne Joule dépendante de l'ordre XML
 
-- [~CB] Owner: CB | Phase: K | Priorité: haute
+- [ ] Owner: __ | Phase: K | Priorité: haute
 - Preuve du 21/10/2026 : inversion des seules collections d'installations et
   générateurs CH, parois inchangées ; 14 des 85 cas à énergies de chauffage
   mixtes changent leurs U. Exemple `2400E0023332N`, murs 7/8 : 1 → 0,8 ;
@@ -69,6 +69,9 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Open3cl ne tranche pas à lui seul : `src/utils.js::isEffetJoule` utilise
   une majorité surfacique ≥50 %, mais `features/engine/domain/contexte.builder.js`
   considère la présence d'un seul émetteur Joule. Départager ces conventions.
+- Variantes instruites le 23/10 : toutes dégradent les 646 cas (+53 à +204
+  écarts) ; chiffres dans `TASKS_DONE.md`. Reprendre sur clarification du
+  chauffage mixte ou données explicites, pas en choisissant une majorité arbitraire.
 
 ### TASK-K92 — Dépendances de l'éditeur : traiter les alertes de sécurité
 

@@ -19,6 +19,20 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K93 — Variantes globales de colonne Joule écartées (23/10/2026)
+
+- A/B en mémoire, même arbre `70ca91e`, 646 cas, profil strict, aucun fichier
+  `src/` modifié. La réplication sans variante reproduit exactement le rapport
+  officiel : 17 247 hors tolérance, 626 manquantes, 2 230 supplémentaires.
+- Dès qu'un générateur Joule existe : **17 451**, soit +204 ; même résultat
+  en ne considérant que les générateurs liés à la génération principale.
+- Joule seulement si tous les générateurs connus sont Joule : **17 347** (+100).
+- Majorité surfacique ≥50 %, convention de `open3cl/src/utils.js` : **17 300** (+53).
+- Le bug d'ordre est réel, mais ni §3.2 p.12 ni les guides publics consultés
+  n'établissent un seuil de majorité pour ce calcul. Rien n'est codé ni aucun
+  budget relevé. La suite actionnable demeure dans TASKS.md ; ne pas refaire
+  ces quatre variantes sans une donnée ou clarification réglementaire nouvelle.
+
 ### TASK-K71 — Froid H1c 400-800 m : la référence ajoute `2,03 × Sse_mai`
 
 - Enquête close sans changement de code, 20 octobre 2026, corpus 646 cas.
