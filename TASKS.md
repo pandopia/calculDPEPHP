@@ -431,7 +431,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K85 — Cdimref : isoler la puissance cumulée avant de toucher au GV
 
-- [ ] Owner: __ | Phase: K | Priorité: haute
+- [~CB] Owner: CB | Phase: K | Priorité: haute
 - **Requalification du 21/10, 646 cas** : le seul accord des paramètres du
   générateur courant ne suffit pas. Sur `2400E0575636Z`, six Rg divergents
   s'expliquent tous par une puissance cumulée implicite de **172 kW**, somme
