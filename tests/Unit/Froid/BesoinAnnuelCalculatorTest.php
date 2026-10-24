@@ -171,7 +171,6 @@ XML;
     {
         $calc = new BesoinAnnuelCalculator();
         $ref  = new \ReflectionMethod($calc, 'computeFut');
-        $ref->setAccessible(true);
 
         // a = 1 + t/15. With t = 0 → a = 1. fut(Rbth=1, a=1) = 1/(1+1) = 0.5
         $result = $ref->invoke($calc, 1.0, 1.0);
@@ -185,7 +184,6 @@ XML;
     {
         $calc = new BesoinAnnuelCalculator();
         $ref  = new \ReflectionMethod($calc, 'computeFut');
-        $ref->setAccessible(true);
 
         // Rbth = 2, a = 1: fut = (1 - 2^-1)/(1 - 2^-2) = 0.5/0.75 = 0.667
         $result = $ref->invoke($calc, 2.0, 1.0);
@@ -199,7 +197,6 @@ XML;
     {
         $calc = new BesoinAnnuelCalculator();
         $ref  = new \ReflectionMethod($calc, 'besoinMensuel');
-        $ref->setAccessible(true);
 
         $result = $ref->invoke($calc, 1000.0, 500.0, 0.0, 1.5);
         $this->assertEqualsWithDelta(0.0, $result, 1e-9);
@@ -214,7 +211,6 @@ XML;
     {
         $calc = new BesoinAnnuelCalculator();
         $ref  = new \ReflectionMethod($calc, 'besoinMensuel');
-        $ref->setAccessible(true);
 
         $result = $ref->invoke($calc, 1_000_000.0, 100.0, 100.0, 1.5);
         $this->assertGreaterThan(0.0, $result);
