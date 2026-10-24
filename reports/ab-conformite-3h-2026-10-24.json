@@ -1,0 +1,369 @@
+{
+    "description": "Session de trois heures : A/B strict sur les mêmes 710 cas, même juge, moteur et tables de départ contre les corrections finales. Les 16 nouveaux cas sont présents aux deux passages.",
+    "session_started_at_utc": "2026-10-24T13:23:13Z",
+    "requested_minimum_end_at_utc": "2026-10-24T16:23:13Z",
+    "base_engine_revision": "123f13a975fa82c150cae191d6dac03d4bc85843",
+    "implementation_revision": "802d40429d85a1a50f8c7e277567d6b48c2ea35f",
+    "before_revision": {
+        "head": "802d404",
+        "dirty": ""
+    },
+    "after_revision": {
+        "head": "802d404",
+        "dirty": ""
+    },
+    "tolerance_profile": "strict",
+    "corpus": {
+        "cases": 710,
+        "initial_cases": 694,
+        "added_this_session": 16,
+        "by_corpus": {
+            "ademe-2026-09": 120,
+            "ademe-branches-2026-10": 76,
+            "ademe-ecs-autonome-2026-10": 16,
+            "ademe-ecs-bois-hybride-2026-10": 8,
+            "ademe-emetteurs-2026-10": 68,
+            "ademe-observatoire-local": 346,
+            "ademe-puissances-2026-10": 24,
+            "ademe-pv-collectif-2026-10": 16,
+            "ademe-ventilations-2026-10": 36
+        },
+        "input_and_expected_pairs_sha256": "856c31976bf47a8fe5fa064d5138e936b0d1685fa9894b3b29d656166fe71164"
+    },
+    "fixed_judge": {
+        "files_sha256": {
+            "bin/official-test-report": "39f7954b17e6bd63333bb0c9fe3877999f300710ca5abbc5eb25345dccb0fff5",
+            "resources/ademe_DPE.xsd": "d8a154288442ea9c321756a24fa71b21e0aba78eb7d2c45924f35f43eb79500d",
+            "src/Conformite/CaseComparator.php": "d33b8ce1f58d49e1d7e8cc556a2b9a7ce43245d63a8d3c3069e20b95fc755a3c",
+            "src/Conformite/ComparisonStatus.php": "2751e59346efa6a5eb32ba3cae0bc9c0c0521a7610894a2ffc274d157f53b691",
+            "src/Conformite/ConformityReport.php": "c3adbf7fc0bc2a04ce682e6da8f7b9b74846f1bfc126ada16df4469e4eb2c26b",
+            "src/Conformite/CorpusLocator.php": "e469c17dea3c000355c43c65800d796056699198cb9248cbb332ae7914b0accf",
+            "src/Conformite/MarkdownRenderer.php": "08e8ac0d540e5a028cd16cc7a06b624a352797d5beef49ebbd647e2e4205c0d9",
+            "src/Conformite/ReferenceDefects.php": "f965f3de414d47b0aea846d85b8cf7341c44f678dab8857404efcf6e44f88901",
+            "src/Conformite/TagFamily.php": "f0f8b2e75620fbb601d05d045c80d6da3e6e4429fccc9f49bf446173af5e0beb",
+            "src/Conformite/ToleranceProfile.php": "8e1bb81df86758131d20751e9292235c6b1deab142c7919d1de45c2979a5d958",
+            "src/Conformite/ValueExtractor.php": "7a6d8c402a2e7213c1d5529e3c8f34bed4c9fb19e09c62a5dacdf89877abe787",
+            "src/Conformite/XsdVocabulary.php": "30b24135a4534cd07595f77f59814ad151946de165f532e8e08f5c5de8777c2d",
+            "tests/tolerances.php": "e7f806f9a2bcad559992e02310dab5298090dcd4f8b403f4e3e1cdf79d3f3732"
+        },
+        "note": "Juge identique aux deux passages ; aucune tolérance élargie ni balise exclue."
+    },
+    "engine_and_tables": {
+        "before_tree_sha256": "db5f3f0bb9425bdecd7337bf8e27fa333e2619f6ddadf5d5f917bdb870af8a87",
+        "after_tree_sha256": "8171ab84e8a0d51a1e50ba36e2cd5d76b23fa957541782e3b4e1d6d011e2ed89",
+        "changed_files_sha256": {
+            "resources/tables/chauffage/tv_generateur_combustion.php": {
+                "before": "49b4b0de1e101c98d91ee0e8b76a98547520c8d935545a487c0b4818aeb10d4b",
+                "after": "5a158f0e9a8024d464c33ef07bfe26090f8d8b2e601614334f85f9b0d8cfab2c"
+            },
+            "resources/tables/chauffage/tv_intermittence_comptage.php": {
+                "before": "77b34b702753a5f22cdbf552e31cfd3865b8fafbba02c6ffa52239b08a76d127",
+                "after": "16cce7ac30a88c0c17528ced325ab51ef822c3f83b4f6ed7a52893d4e7269fda"
+            },
+            "resources/tables/chauffage/tv_intermittence_predictive.php": {
+                "before": null,
+                "after": "16738bac9c23fc5a27211498a4a0e6ce4afbb9d2ffdadf265f657ddabfe33603"
+            },
+            "resources/tables/chauffage/tv_scop_2027.php": {
+                "before": null,
+                "after": "410086276f728ac5ac0fd4a0703f78e52166a774873fb72b6465a42ebde54059"
+            },
+            "resources/tables/ecs/tv_cop_2027.php": {
+                "before": null,
+                "after": "f817ccfa51482bd5dcd4b877914062b1e9ddf715f093089ff5ce5c5a04118d79"
+            },
+            "resources/tables/ecs/tv_facteur_couverture_solaire_2027.php": {
+                "before": null,
+                "after": "d2cad6f0634301a872494bf13b50163c1753aa7b076e1c63a611915d8c644445"
+            },
+            "resources/tables/ecs/tv_generateur_combustion_ecs.php": {
+                "before": "610c53ed8c40dc530d041690b0560481a246162e7b531de8c5fff14cd44edf63",
+                "after": "a31b851addd0f6ed47393b254fbc7411e9faa519e8b6d2a81c893d47d4010802"
+            },
+            "resources/tables/ventilation/tv_debits_ventilation.php": {
+                "before": "8faef717230e881c271128fe91ffa6a3b2d41901589520fb3cf616dd2ac6d525",
+                "after": "feb7a51201bc7666a996daa1e1646a4a02544a4738d68e34af89d788c09280e0"
+            },
+            "src/Auxiliaire/AuxGenerationCalculator.php": {
+                "before": "f823bef3a930432b716670e9e49e35c41403ac047b7043b95f6b41d79a45daf3",
+                "after": "92de6ddec01d02648463294b549d0ce749670e23b79dfffb99c9e90038e07c41"
+            },
+            "src/Chauffage/GenerateurChAlias.php": {
+                "before": "b3f072b86ebb4169bd5f06ed884bec2f340539464b59f9a32b0a86498c3f5b22",
+                "after": "95bc5de294c98deecf5d08d6d47f3583beac2609769fbd161ccab6c318944643"
+            },
+            "src/Chauffage/Rendement/Combustion/BandePuissanceCombustion.php": {
+                "before": "4c503577220612e101a78b571f41830e226110d823ab05133600c64d0ff18300",
+                "after": "f6f5520c2b95b63aac10b74484f92240ecbf996f99d5659c0f9f7ed65f7b7d39"
+            },
+            "src/Chauffage/Rendement/Combustion/ChaudiereDefautCalculator.php": {
+                "before": "dc0ec673cf47a8493307999c128703b7b39662e908abac8ebdabf1ebf5d73b29",
+                "after": "5fa512bc16ace56e9f5f09a59a03d7d712a94284ec3379f0abf34482dd889b5e"
+            },
+            "src/Chauffage/Rendement/GenerationNonCombustionCalculator.php": {
+                "before": "67002da7bf8d2e987c967c4110be9bdb753bfdf4621b883520f8fcb5b3483003",
+                "after": "dc6fae5e04a241800cab872fcd039bca04679aaa048e90cd5b1b9a49a050a3aa"
+            },
+            "src/Chauffage/Strategy/ChaudiereReleve.php": {
+                "before": "0fba54fc1c219535077f55555c9990e1831de78b2fbacefadae84a233cfde984",
+                "after": "8aface2b90f22a91fde6f21e85e54bd28fa8ae54118c648276473a3541c4605b"
+            },
+            "src/Chauffage/Strategy/InstallationClassique.php": {
+                "before": "0ced76bdee8086f3d2a9c681799afc7118ef3840ce685ef18b34b5ba5277129f",
+                "after": "b69b95a276bb6405ce72b960a3094c6d7f93973018958183db5ab77b44cb7f4b"
+            },
+            "src/Chauffage/Strategy/MultiGenerateurs.php": {
+                "before": "f324aff757bd733d6c66581bdeb2cecac3da75a0372746fdf148c70c8d1d63c2",
+                "after": "37ba0e029631ed48c1a81ed7a5523d2e26b423dcbfc2146966fa09fa0cb2816e"
+            },
+            "src/Ecs/FacteurCouvertureSolaireEcsCalculator.php": {
+                "before": "5a2889cafdddda302d137fe33f8b2fffc269ac29bdf3ba7360e16adea65e145a",
+                "after": "91cfd0031d4cbd5a4e0c08c572f857efe03768729df61f0353247fdf571739b0"
+            },
+            "src/Ecs/Rendement/CetAccumulationCalculator.php": {
+                "before": "9e2546052908eca2ba78f179c7531bbfa724afca0424c154bcee8748b8be7d15",
+                "after": "893c4087aef2006b216571ab0d26fde13d24cbb468cd7cccb381add70474a8ec"
+            },
+            "src/Ecs/Rendement/CombustionCalculator.php": {
+                "before": "514cd33468e2d27184a96c40b4edbcd95d06c691f001a278eef8cca7940f982e",
+                "after": "67a9029f75643d655ce5b19443ed9a9b1bb868597b82a1f6d602bd7b1b12e1f6"
+            },
+            "src/Ecs/Rendement/StockageCalculator.php": {
+                "before": "870758bc85cd2c0049757d38c494d23abc28978d80c08800add03d8dad0960e9",
+                "after": "29bce1549a8e002d0000c1ae42b0a94ef8c0da53ba1e9457074b97165dc42597"
+            },
+            "src/Engine/DpeEngine.php": {
+                "before": "db90c53941fb3964f3fd1b858787bfab84b905668ccfa919b3d564ac61eb2143",
+                "after": "0db2e11f42d93bf07c0b25104e02acdfc28f840b8a542d17750d110bd89a7d32"
+            },
+            "src/Enveloppe/BaieVitree/SwCalculator.php": {
+                "before": "3469590893073d6e7adcc755adf48e2b299d70ef6eb7335a8d8c75332f4b1717",
+                "after": "d9026f411d4e88683713acad73429658ccd60aa547f4fd5c0defadefa26e3c00"
+            },
+            "src/Enveloppe/BaieVitree/UgCalculator.php": {
+                "before": "4c54d5d89fdbd704128ca1b164a3a0d936af26edbfc7be1088e1cd289f91e506",
+                "after": "85c383c5ad5ce441c9cdd7c6cb15e53df021fbb2020c4e8db02b2a197b28dbed"
+            },
+            "src/Enveloppe/BaieVitree/UwCalculator.php": {
+                "before": "31dde8a75a2308b012a459bf1ad5f18754d31a9113a1ea2809569bf7ec8d8633",
+                "after": "06ffeba201692c3028398a95f1f284832b884ce7a278ec1f829e9993ea6f11df"
+            },
+            "src/Intermittence/IntermittenceCalculator.php": {
+                "before": "959e0359d4da17112a5d17ec2ef01f304972e74376d562437080d3124bed340c",
+                "after": "1ea462d432d3a64ffe95cbfedb6854be54335c60d71e848ccc426bb97e006879"
+            },
+            "src/Sortie/ProductionEnrCalculator.php": {
+                "before": "4d5a9540d5bb567edaab7290b9d2304741b34588c737101468764525c71ef263",
+                "after": "fa5089fd51343ec23bab0dcb85ccc167bd7d15c5522be57362257a624c885865"
+            },
+            "src/Ventilation/PventMoyCalculator.php": {
+                "before": "d8892e23f4618204a35affe54d6115b747ed412deb8fc7d3275add7b12d89af1",
+                "after": "43a75b3bc18424d5bcdedaad3478df716e36dc6a77cca0c72694f392de259842"
+            }
+        }
+    },
+    "summary_before": {
+        "cases_total": 710,
+        "cases_run": 710,
+        "cases_crashed": 0,
+        "cases_fully_conform": 1,
+        "cases_partially_conform": 709,
+        "values_compared": 222015,
+        "reference_suspect": 5571,
+        "exact": 166667,
+        "within_tolerance": 32623,
+        "out_of_tolerance": 19395,
+        "missing": 753,
+        "extra": 2522,
+        "string_mismatch": 55,
+        "reachable_percent": 92.27,
+        "conformity_percent": 89.76,
+        "progress_percent": 92.07
+    },
+    "summary_after": {
+        "cases_total": 710,
+        "cases_run": 710,
+        "cases_crashed": 0,
+        "cases_fully_conform": 1,
+        "cases_partially_conform": 709,
+        "values_compared": 222015,
+        "reference_suspect": 5569,
+        "exact": 166700,
+        "within_tolerance": 32694,
+        "out_of_tolerance": 19307,
+        "missing": 738,
+        "extra": 2522,
+        "string_mismatch": 54,
+        "reachable_percent": 92.32,
+        "conformity_percent": 89.81,
+        "progress_percent": 92.12
+    },
+    "counts_delta": {
+        "out_of_tolerance": -88,
+        "missing": -15,
+        "extra": 0,
+        "string_mismatch": -1
+    },
+    "raw_failing_values_gain": 104,
+    "improved_cases": 11,
+    "degraded_raw_cases": 4,
+    "case_raw_failure_changes": {
+        "2601E1275837X.xml": -56,
+        "2606E0023430P.xml": -19,
+        "2559E3129090B.xml": -16,
+        "2621E2542699D.xml": -4,
+        "2694E0924828D.xml": -4,
+        "2691E2041339T.xml": -3,
+        "2525E2806033M.xml": -2,
+        "2678E2102330B.xml": -2,
+        "2691E2041325F.xml": -2,
+        "2670E1524562X.xml": -1,
+        "2690E0761556H.xml": -1,
+        "2691E2041329J.xml": 1,
+        "2691E2041336Q.xml": 1,
+        "2563E3941359I.xml": 2,
+        "2687E2488430K.xml": 2
+    },
+    "resolved_values": 121,
+    "new_failing_values_count": 17,
+    "budgets": {
+        "raised_existing": [],
+        "tightened_existing": {
+            "2601E1275837X.xml": [
+                84,
+                28
+            ],
+            "2606E0023430P.xml": [
+                113,
+                94
+            ]
+        },
+        "initialized_new": {
+            "2525E2806033M.xml": 27,
+            "2559E3129090B.xml": 60,
+            "2563E3941359I.xml": 27,
+            "2583E3761311E.xml": 44,
+            "2621E2542699D.xml": 51,
+            "2642E2229445S.xml": 29,
+            "2670E1524562X.xml": 65,
+            "2673E2221221P.xml": 47,
+            "2678E2102330B.xml": 71,
+            "2687E2488430K.xml": 50,
+            "2690E0761556H.xml": 69,
+            "2691E2041325F.xml": 52,
+            "2691E2041329J.xml": 54,
+            "2691E2041336Q.xml": 54,
+            "2691E2041339T.xml": 52,
+            "2694E0924828D.xml": 26
+        },
+        "new_cases_with_higher_motor_failure_count": {
+            "2563E3941359I.xml": {
+                "before_motor_failures": 25,
+                "after_motor_failures": 27,
+                "initialized_budget": 27
+            },
+            "2687E2488430K.xml": {
+                "before_motor_failures": 48,
+                "after_motor_failures": 50,
+                "initialized_budget": 50
+            },
+            "2691E2041329J.xml": {
+                "before_motor_failures": 53,
+                "after_motor_failures": 54,
+                "initialized_budget": 54
+            },
+            "2691E2041336Q.xml": {
+                "before_motor_failures": 53,
+                "after_motor_failures": 54,
+                "initialized_budget": 54
+            }
+        },
+        "all_current_budgets_respected": true,
+        "note": "Quatre nouveaux cas bois se dégradent légèrement. Leurs budgets sont initialisés après correction, jamais substitués à un budget préexistant. Résidus documentés dans TASK-K06."
+    },
+    "structural_unknown_elements_before": 0,
+    "structural_unknown_elements_after": 0,
+    "model_27": {
+        "new_ch_types_covered": [
+            172,
+            173,
+            174,
+            175,
+            176,
+            177,
+            178,
+            179,
+            180,
+            181,
+            182,
+            183,
+            184
+        ],
+        "new_ecs_types_covered": [
+            135,
+            136,
+            137,
+            138,
+            139,
+            144,
+            145,
+            146
+        ],
+        "remaining_generator_types": [
+            140,
+            141,
+            142,
+            143
+        ],
+        "generic_ecs_type_82_since_2027": "COP propre justifié en méthode 6 obligatoire, aucun forfait générique inventé",
+        "predictive_intermittence_rows": 40,
+        "solar_ecs_rows": 16,
+        "live_ademe_query": "version_dpe:2.7",
+        "live_ademe_total_on_2026_10_24": 0,
+        "validation": "Scénarios synthétiques idempotents ; sous-blocs techniques validés avec les déclarations exactes du XSD complet 2.7. Pas de prétention de validation administrative complète du donneur synthétique."
+    },
+    "source_workbook": {
+        "url": "https://gitlab.com/observatoire-dpe/observatoire-dpe/-/blob/05aabba7/modele_donnee/valeur_tables.xlsx",
+        "sha256": "50d1189e0df8b47aad006a3e525564ae33fab041c3f389d7b407c99fa5546c81",
+        "noncondensing_pellet_correction_revision": "52792fb9e79e52390ded7d4527a7f7a962fd5ccc",
+        "correction_workbook_same_sha256": true
+    },
+    "documentation": {
+        "digitalized_sections": [
+            "8",
+            "12.4",
+            "13.2.2",
+            "14.2",
+            "18.4"
+        ],
+        "pdf_visual_check": true,
+        "independent_review_done": false,
+        "intermittence_coefficients_cross_checked": 188,
+        "intermittence_coefficient_mismatches": 0,
+        "truncated_pdf_cells_preserved": true
+    },
+    "dependency_audit": {
+        "composer_advisories": 0,
+        "composer_abandoned_packages": 0,
+        "npm_vulnerabilities_total": 0,
+        "scope": "Dépendances verrouillées, développement inclus, sans installation ni modification des paquets.",
+        "lockfiles_sha256": {
+            "composer.lock": "2214e729992c4b5e8eed50984be607d1689e9a03b628c8ad1a9019abafc95a62",
+            "editeur/package-lock.json": "21ca0d62ca411c26fd1d93227145b4675d2e35377c7c7ef4907921cd3ccdd05d"
+        }
+    },
+    "phpunit": {
+        "tests": 6419,
+        "assertions": 20832,
+        "failures": 0,
+        "deprecations": 0,
+        "warnings": 0,
+        "strict_flags": [
+            "fail-on-deprecation",
+            "fail-on-warning"
+        ],
+        "covered_lines": 10702,
+        "executable_lines": 11622,
+        "line_coverage_percent": 92.08
+    }
+}
