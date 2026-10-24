@@ -27,6 +27,8 @@ use RuntimeException;
  * @spec-source resources/specsplitted/03-enveloppe-deperditions/03-parois-vitrees-portes/02-uw/00-calcul.md
  * @xml-input  baie_vitree.donnee_entree.{enum_type_baie_id, enum_type_materiaux_menuiserie_id, uw_saisi, uw_1, uw_2, double_fenetre}
  * @xml-output baie_vitree.donnee_intermediaire.uw
+ * @xml-input  baie_vitree.baie_vitree_double_fenetre.donnee_entree (caractéristiques de la seconde fenêtre)
+ * @xml-output baie_vitree.baie_vitree_double_fenetre.donnee_intermediaire.uw
  * @depends-on \CalculDpePHP\Enveloppe\BaieVitree\UgCalculator
  * @tables tv_uw, tv_ug.special_uw
  */
@@ -44,7 +46,10 @@ final class UwCalculator implements CalculatorInterface
 
     public function appliesTo(DOMElement $node): bool
     {
-        return $node->nodeName === 'baie_vitree';
+        return $node->nodeName === 'baie_vitree'
+            || ($node->nodeName === 'baie_vitree_double_fenetre'
+                && !in_array($node->getAttributeNS('http://www.w3.org/2001/XMLSchema-instance', 'nil'), ['true', '1'], true)
+                && $node->getElementsByTagName('donnee_entree')->length > 0);
     }
 
     public function calculate(DOMElement $node, CalculationContext $context): void
@@ -73,6 +78,14 @@ final class UwCalculator implements CalculatorInterface
         if ($accessor->getIntOrNull('./double_fenetre', $entree) === 1) {
             $u1 = $this->singleWindowUw($entree, $intermediaire, $accessor, $context);
             $u2 = $accessor->getFloatOrNull('./uw_2', $entree);
+            if ($u2 === null) {
+                // Le XSD ADEME caractérise aussi la seconde fenêtre dans
+                // son propre sous-bloc. Ug y est déjà calculé par dépendance.
+                $second = (new \DOMXPath($context->document))->query('../baie_vitree_double_fenetre/donnee_entree', $entree)?->item(0);
+                if ($second instanceof DOMElement && $second->parentNode instanceof DOMElement) {
+                    $u2 = $this->resolveUw($second, $accessor->ensureDonneeIntermediaire($second->parentNode), $accessor, $context);
+                }
+            }
             return $this->doubleWindowUw($u1, $u2);
         }
 

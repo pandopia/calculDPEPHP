@@ -54,6 +54,18 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase K — Conformité au corpus ADEME
 
+### TASK-K98 — Activer `sw_saisi` sur les fenêtres simples
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- Le XSD donne la valeur solaire justifiée dans `sw_saisi`, encore ignorée
+  sur les fenêtres simples. Elle est lue sur les doubles fenêtres et leur
+  sous-bloc secondaire. Ne pas généraliser en relevant un budget existant.
+- A/B isolé sur 710 cas (24/10/2026) : −5 écarts sur 2401E2888143P,
+  +5 sur 2401E3066953X, bilan brut nul. Ce dernier porte bien Sw=0,41
+  justifié et publié ; les nouveaux écarts sont en aval, face à des murs
+  dont le doublage déclaré est ignoré dans Umur0 (racine K58). Qualifier
+  cette compensation avant activation globale ; aucune tolérance modifiée.
+
 ### TASK-K97 — Unités et total de production PV des sorties historiques
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne

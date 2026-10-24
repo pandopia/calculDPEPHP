@@ -72,4 +72,10 @@ final class SwCalculatorTest extends TestCase
             self::assertSame(0.4, $this->compute('<enum_type_baie_id>' . $type . '</enum_type_baie_id>'));
         }
     }
+
+    public function testLeFacteurJustifieDuComplexeCompletNestPasMultiplieDeNouveau(): void
+    {
+        self::assertSame(0.36, $this->compute('<double_fenetre>1</double_fenetre><sw_saisi>0.36</sw_saisi><sw_1>0.5</sw_1><sw_2>0.5</sw_2>'));
+        self::assertSame(0.0, $this->compute('<double_fenetre>1</double_fenetre><sw_saisi>0</sw_saisi><sw_1>0.5</sw_1><sw_2>0.5</sw_2>'));
+    }
 }
