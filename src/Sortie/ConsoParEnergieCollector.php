@@ -124,6 +124,8 @@ final class ConsoParEnergieCollector
                     if ($cle !== null && $cle > 0.0) {
                         if ($isCh) {
                             $cle = GeneratedApartment::heatingShare($logement, $accessor, $cle);
+                        } else {
+                            $cle = GeneratedApartment::hotWaterShare($logement, $accessor, $cle);
                         }
                         $scale *= $cle;
                     }

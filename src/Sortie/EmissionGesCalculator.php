@@ -122,7 +122,6 @@ final class EmissionGesCalculator implements CalculatorInterface
         // ── 2. Chauffage GES ─────────────────────────────────────────────────
         [$gesChTotal, $gesChDepTotal, $cleRepartitionCh] =
             $this->aggregateChGes($accessor, $node, $nbreAppt, $context);
-        $cleRepartitionCh = GeneratedApartment::heatingShare($node, $accessor, $cleRepartitionCh);
 
         $gesConsoChEf    = $isZone ? $gesChTotal * $cleRepartitionCh : $gesChTotal;
         // GES dépensier chauffage = GES conventionnel (même convention que l'EP :
@@ -260,7 +259,7 @@ final class EmissionGesCalculator implements CalculatorInterface
 
         $totalGes    = 0.0;
         $totalGesDep = 0.0;
-        $cleRepartition = 1.0;
+        $isZone = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement) !== null;
 
         foreach ($collection->childNodes as $install) {
             if (!$install instanceof DOMElement || $install->nodeName !== 'installation_chauffage') {
@@ -273,16 +272,13 @@ final class EmissionGesCalculator implements CalculatorInterface
 
             $gesFact = $this->facteurGesPondereParGenerateur($accessor, $install, $conso, $context);
 
-            $totalGes    += $conso    * $rdimEff * $gesFact;
-            $totalGesDep += $consoDep * $rdimEff * $gesFact;
-
             $cle = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ch', $install);
-            if ($cle !== null && $cle > 0.0) {
-                $cleRepartition = $cle;
-            }
+            $part = $isZone ? GeneratedApartment::heatingShare($logement, $accessor, $cle !== null && $cle > 0.0 ? $cle : 1.0) : 1.0;
+            $totalGes    += $conso    * $rdimEff * $gesFact * $part;
+            $totalGesDep += $consoDep * $rdimEff * $gesFact * $part;
         }
 
-        return [$totalGes, $totalGesDep, $cleRepartition];
+        return [$totalGes, $totalGesDep, 1.0];
     }
 
     /**
@@ -309,7 +305,7 @@ final class EmissionGesCalculator implements CalculatorInterface
 
         $totalGes    = 0.0;
         $totalGesDep = 0.0;
-        $cleRepartition = 1.0;
+        $isZone = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement) !== null;
 
         foreach ($collection->childNodes as $install) {
             if (!$install instanceof DOMElement || $install->nodeName !== 'installation_ecs') {
@@ -334,16 +330,13 @@ final class EmissionGesCalculator implements CalculatorInterface
                 $installGesDep += $consoDep * $gesFact;
             }
 
-            $totalGes    += $installGes    * $rdimEff;
-            $totalGesDep += $installGesDep * $rdimEff;
-
             $cle = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
-            if ($cle !== null && $cle > 0.0) {
-                $cleRepartition = $cle;
-            }
+            $part = $isZone && $cle !== null && $cle > 0.0 ? GeneratedApartment::hotWaterShare($logement, $accessor, $cle) : 1.0;
+            $totalGes    += $installGes    * $rdimEff * $part;
+            $totalGesDep += $installGesDep * $rdimEff * $part;
         }
 
-        return [$totalGes, $totalGesDep, $cleRepartition];
+        return [$totalGes, $totalGesDep, 1.0];
     }
 
     /**

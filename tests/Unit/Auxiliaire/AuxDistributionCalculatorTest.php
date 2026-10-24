@@ -549,7 +549,7 @@ XML;
         $this->assertEqualsWithDelta(0.0, $val, 1e-9);
     }
 
-    public function testZoneModeScalesResult(): void
+    public function testAppartementGenereScalesResult(): void
     {
         // Zone mode: surface_habitable_logement present → isZone = true
         // cle_repartition_ecs = 0.056227 → result × 0.056227
@@ -562,7 +562,7 @@ XML;
 <?xml version="1.0"?>
 <logement>
   <caracteristique_generale>
-    <enum_methode_application_dpe_log_id>5</enum_methode_application_dpe_log_id>
+    <enum_methode_application_dpe_log_id>11</enum_methode_application_dpe_log_id>
     <surface_habitable_logement>62.86</surface_habitable_logement>
     <surface_habitable_immeuble>1034.74</surface_habitable_immeuble>
   </caracteristique_generale>
@@ -594,6 +594,7 @@ XML;
 
         (new AuxDistributionCalculator())->calculate($doc->documentElement, $ctx);
 
+        // Clé réservée par le XSD à l'appartement généré, pas au mode direct 5.
         // Building-level ≈ 200.24 kWh × cle_repartition_ecs = 200.24 × 0.056227 ≈ 11.26
         // Expected from verif: 11.491 kWh (also ~2% higher)
         $this->assertEqualsWithDelta(11.26, $this->efValue($doc, 'conso_auxiliaire_distribution_ecs'), 0.2);
@@ -900,6 +901,31 @@ XML);
             $this->efValue($doc, 'conso_auxiliaire_distribution_ecs'),
             1e-6,
         );
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('plusieursReseauxEcs')]
+    public function testLesTraceursEcsPortentLeursClesPropres(?int $mode, bool $inverse): void
+    {
+        $installations = [];
+        foreach ([[1000, 0.2], [2000, 0.3]] as [$besoin, $cle]) {
+            $installations[] = '<installation_ecs><donnee_entree><enum_type_installation_id>2</enum_type_installation_id><enum_bouclage_reseau_ecs_id>3</enum_bouclage_reseau_ecs_id><cle_repartition_ecs>' . $cle . '</cle_repartition_ecs></donnee_entree><donnee_intermediaire><besoin_ecs>' . $besoin . '</besoin_ecs></donnee_intermediaire></installation_ecs>';
+        }
+        $modeXml = $mode === null ? '' : '<enum_methode_application_dpe_log_id>' . $mode . '</enum_methode_application_dpe_log_id>';
+        $surface = $mode === 6 ? '' : '<surface_habitable_logement>50</surface_habitable_logement>';
+        $doc = new DOMDocument();
+        $doc->loadXML('<dpe version="2"><logement><caracteristique_generale>' . $modeXml . $surface . '</caracteristique_generale><installation_ecs_collection>' . implode('', $inverse ? array_reverse($installations) : $installations) . '</installation_ecs_collection></logement></dpe>');
+        (new AuxDistributionCalculator())->calculate($doc->getElementsByTagName('logement')->item(0), $this->buildCtx($doc));
+        $expected = $mode === null || $mode === 10 ? 0.14 * (1000 * 0.2 + 2000 * 0.3) : 0.14 * 3000;
+        self::assertEqualsWithDelta($expected, $this->efValue($doc, 'conso_auxiliaire_distribution_ecs'), 1e-10);
+    }
+
+    public static function plusieursReseauxEcs(): iterable
+    {
+        foreach ([null, 5, 6, 10] as $mode) {
+            foreach ([false, true] as $inverse) {
+                yield ($mode ?? 'minimal') . ' ordre ' . (int)$inverse => [$mode, $inverse];
+            }
+        }
     }
 
     /** Un réseau non bouclé et sans traceur n'appelle aucun auxiliaire. */

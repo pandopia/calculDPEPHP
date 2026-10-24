@@ -235,7 +235,8 @@ final class EfConsoCalculator implements CalculatorInterface
             $cle = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
             // §17.2.2.3 p.117 : même règle pour l'ECS, jamais la dernière
             // clé rencontrée appliquée à la somme du bâtiment.
-            $part = $isZone && $cle !== null && $cle > 0.0 ? $cle : 1.0;
+            $part = $isZone && $cle !== null && $cle > 0.0
+                ? GeneratedApartment::hotWaterShare($logement, $accessor, $cle) : 1.0;
             $totalConso    += $installConso    * $rdimEff * $part;
             $totalConsoDep += $installConsoDep * $rdimEff * $part;
         }

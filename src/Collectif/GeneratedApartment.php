@@ -87,6 +87,20 @@ final class GeneratedApartment
             : $declaredShare;
     }
 
+    /**
+     * §17.2.2.3 p.117 et XSD cle_repartition_ecs : clé immeuble → logement,
+     * uniquement pour l'appartement généré. L'ECS d'un appartement décrit
+     * directement est déjà calculée sur son besoin propre. Contrairement au
+     * chauffage, une clé ECS unitaire ne se remplace pas par Sh_log/Sh_imm :
+     * cette clé porte sur les besoins d'ECS, pas sur les surfaces.
+     */
+    public static function hotWaterShare(DOMElement $logement, NodeAccessor $accessor, float $declaredShare): float
+    {
+        $method = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $logement);
+
+        return $method !== null && !in_array($method, self::METHODS, true) ? 1.0 : $declaredShare;
+    }
+
     private static function ancestor(DOMElement $node, string $name): ?DOMElement
     {
         $current = $node;

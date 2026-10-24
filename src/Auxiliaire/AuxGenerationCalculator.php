@@ -309,7 +309,8 @@ final class AuxGenerationCalculator implements CalculatorInterface
             // §17.2.2.3 p.117 : la clé porte sur l'installation qui produit
             // ce besoin, pas sur la somme de toutes les installations ECS.
             $cleDeclaree = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
-            $partLogement = $isZone && $cleDeclaree !== null && $cleDeclaree > 0.0 ? $cleDeclaree : 1.0;
+            $partLogement = $isZone && $cleDeclaree !== null && $cleDeclaree > 0.0
+                ? GeneratedApartment::hotWaterShare($logement, $accessor, $cleDeclaree) : 1.0;
             $rdim = $this->ecsInstallationMultiplicity($accessor, $install) * $partLogement;
 
             foreach ($install->getElementsByTagName('generateur_ecs') as $gen) {

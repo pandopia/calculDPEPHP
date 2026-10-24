@@ -423,7 +423,7 @@ final class AuxDistributionCalculator implements CalculatorInterface
         }
 
         $totalCaux = 0.0;
-        $cle       = 1.0;
+        $isZone = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement) !== null;
 
         // DPE appartement autonome (modes 2-4, 31-32, 35-37) : la conso d'aux de
         // distribution ECS collective est portée par l'immeuble — LICIEL ne la
@@ -465,13 +465,14 @@ final class AuxDistributionCalculator implements CalculatorInterface
                 continue;
             }
 
-            if ($bouclage === self::BOUCLAGE_TRACEUR) {
-                $totalCaux += $this->consommationDuTraceur($accessor, $install);
+            // §17.2.2.5 p.118 : chaque réseau conserve sa clé ECS ; celle
+            // du dernier ne répartit pas les auxiliaires des autres réseaux.
+            $cleDeclaree = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
+            $partLogement = $isZone && $cleDeclaree !== null && $cleDeclaree > 0.0
+                ? GeneratedApartment::hotWaterShare($logement, $accessor, $cleDeclaree) : 1.0;
 
-                $cleTrac = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
-                if ($cleTrac !== null && $cleTrac > 0.0) {
-                    $cle = $cleTrac;
-                }
+            if ($bouclage === self::BOUCLAGE_TRACEUR) {
+                $totalCaux += $this->consommationDuTraceur($accessor, $install) * $partLogement;
                 continue;
             }
 
@@ -502,15 +503,10 @@ final class AuxDistributionCalculator implements CalculatorInterface
             $deltaPb = 0.2 * $lb + 10.0;
 
             $qcirb = $this->computeBouclageAnnuel($becsCalc, $shCalc, $deltaPb, $isolated);
-            $totalCaux += $qcirb * ($isVirtualized ? $ratioVirt : 1.0) / 1000.0;
-
-            $cleInst = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
-            if ($cleInst !== null && $cleInst > 0.0) {
-                $cle = $cleInst;
-            }
+            $totalCaux += $qcirb * ($isVirtualized ? $ratioVirt : 1.0) / 1000.0 * $partLogement;
         }
 
-        return [$totalCaux, $cle];
+        return [$totalCaux, 1.0];
     }
 
     /**

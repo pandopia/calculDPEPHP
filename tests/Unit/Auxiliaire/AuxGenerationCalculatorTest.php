@@ -150,7 +150,7 @@ XML;
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('ecsClesEtOrdres')]
-    public function testChaqueInstallationEcsConserveSaCle(bool $inverse, bool $zone): void
+    public function testChaqueInstallationEcsConserveSaCle(bool $inverse, bool $zone, ?int $mode = null): void
     {
         $installations = [];
         foreach ([[1000, 0.2], [2000, 0.3]] as [$besoin, $cle]) {
@@ -160,19 +160,22 @@ XML;
                 . '<donnee_intermediaire><pn>20000</pn></donnee_intermediaire></generateur_ecs></generateur_ecs_collection></installation_ecs>';
         }
         $surfaceLogement = $zone ? '<surface_habitable_logement>50</surface_habitable_logement>' : '';
-        [$doc, $logement, $context] = $this->buildDoc('<logement><caracteristique_generale>' . $surfaceLogement . '<surface_habitable_immeuble>1000</surface_habitable_immeuble></caracteristique_generale><installation_ecs_collection>'
+        $modeXml = $mode === null ? '' : '<enum_methode_application_dpe_log_id>' . $mode . '</enum_methode_application_dpe_log_id>';
+        [$doc, $logement, $context] = $this->buildDoc('<logement><caracteristique_generale>' . $modeXml . $surfaceLogement . '<surface_habitable_immeuble>1000</surface_habitable_immeuble></caracteristique_generale><installation_ecs_collection>'
             . implode('', $inverse ? array_reverse($installations) : $installations) . '</installation_ecs_collection></logement>');
 
         (new AuxGenerationCalculator())->calculate($logement, $context);
 
         // Paux = 20 + 1,6 × 20 = 52 W. Les clés ne sont jamais globales.
-        $expected = 52 / 20000 * ($zone ? 1000 * 0.2 + 2000 * 0.3 : 3000);
+        $expected = 52 / 20000 * ($zone && $mode !== 2 ? 1000 * 0.2 + 2000 * 0.3 : 3000);
         self::assertEqualsWithDelta($expected, $this->efValue($doc, 'conso_auxiliaire_generation_ecs'), 1e-12);
         self::assertEqualsWithDelta(2 * $expected, $this->efValue($doc, 'conso_auxiliaire_generation_ecs_depensier'), 1e-12);
     }
 
     public static function ecsClesEtOrdres(): iterable
     {
+        yield 'appartement direct, pas de seconde cle' => [false, true, 2];
+        yield 'appartement genere, cle par installation' => [false, true, 10];
         foreach ([false, true] as $inverse) {
             foreach ([false, true] as $zone) {
                 yield 'ordre ' . (int)$inverse . ' zone ' . (int)$zone => [$inverse, $zone];
