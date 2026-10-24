@@ -19,7 +19,7 @@ use DOMElement;
  * Chauffe-eau gaz instantané (§14.1.1) :
  *   Rg = 1 / (1/Rpn + 1790×QP0/Becs + 6970×Pveil/Becs)
  *
- * Chaudière gaz/fioul/bois mixte (§14.1.2) :
+ * Chaudière gaz/fioul/bois (§14.1.2), ballon intégré compris :
  *   Rg = 1 / (1/Rpn + (1790×QP0 + Qgw) / Becs + 6970×0.5×Pveil / Becs)
  *   (Qgw ≈ 0 pour ECS seul)
  *
@@ -33,6 +33,7 @@ use DOMElement;
  * @spec-section 14.1
  * @spec-pages   93-95
  * @spec-source  resources/specsplitted/14-rendement-ecs-generateurs/01-combustion.md
+ * @spec-source  resources/ademe_DPE.xsd (rendement_generation_stockage : stockage intégré à la production)
  * @xml-input    generateur_ecs.donnee_entree.{enum_type_energie_id, enum_type_generateur_ecs_id, tv_generateur_combustion_id, enum_methode_saisie_carac_sys_id, pn, rpn, qp0, pveil}
  * @xml-input    generateur_ecs.donnee_intermediaire.{pn, rpn, qp0, pveilleuse} (caractéristiques saisies préservées selon la méthode)
  * @xml-output   generateur_ecs.donnee_intermediaire.{pn, qp0, rpn, rendement_generation}
@@ -156,7 +157,13 @@ final class CombustionCalculator implements CalculatorInterface
         $mixteCarac = $this->getMixteChauffageCarac($node, $accessor);
         $isMixedBoiler = $mixteCarac !== null;
         $qgw = (float) $context->get(StockageCalculator::qgwKey($node), 0.0);
-        $usesCombinedYield = $isMixedBoiler && $qgw > 0.0;
+        // Le XSD distingue le ballon intégré (type 3) du ballon indépendant
+        // (type 2). Une chaudière ECS seule peut parfaitement avoir un ballon
+        // intégré : l'absence d'association à un générateur CH ne transforme
+        // pas ses pertes en un rendement séparé. §14.1.2 p.94 et XSD Rg×Rs.
+        $stockageIntegre = $accessor->getIntOrNull('./donnee_entree/enum_type_stockage_ecs_id', $node) === 3;
+        $usesCombinedYield = ($isMixedBoiler || $stockageIntegre) && $qgw > 0.0
+            && !in_array($typeEcsId, self::TYPE_CHAUFFE_EAU_GAZ, true);
         if ($mixteCarac !== null) {
             [$pn, $rpn, $qp0, $pveil] = $mixteCarac;
         } else {
@@ -213,7 +220,7 @@ final class CombustionCalculator implements CalculatorInterface
                  */
                 $rg = 1.0 / (
                     1.0 / $rpn
-                    + (self::H_ECS * $qp0 + ($isMixedBoiler ? $qgw : 0.0)) / $becsWh
+                    + (self::H_ECS * $qp0 + ($usesCombinedYield ? $qgw : 0.0)) / $becsWh
                     + self::H_VEIL * 0.5 * $pveilActif / $becsWh
                 );
             }

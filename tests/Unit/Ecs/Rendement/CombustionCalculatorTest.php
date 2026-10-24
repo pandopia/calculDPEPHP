@@ -19,6 +19,92 @@ final class CombustionCalculatorTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
     private const TOL = 0.0001;
 
+    public static function chaudieresAvecBallonIntegre(): iterable
+    {
+        // Familles gaz, fioul, bois, charbon, GPL et modèle 2.7.
+        foreach ([15 => 4, 34 => 5, 39 => 3, 49 => 2, 57 => 2, 85 => 11,
+            95 => 13, 125 => 5, 139 => 5, 144 => 5, 145 => 5, 146 => 5] as $type => $energie) {
+            foreach (['2', '0.1.0'] as $format) {
+                foreach ([2, 3] as $usage) {
+                    yield "$type, $format, usage $usage" => [$type, $energie, $format, $usage];
+                }
+            }
+        }
+    }
+
+    /**
+     * §14.1.2 p.94 et documentation XSD de rendement_generation_stockage :
+     * le ballon intégré est porté par Rg×Rs, même sans générateur CH associé.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('chaudieresAvecBallonIntegre')]
+    public function testBallonIntegreSansReferenceChauffagePorteLeRendementCombine(
+        int $type, int $energie, string $format, int $usage,
+    ): void {
+        $besoin = $format === '0.1.0' ? 1000000 : 1000;
+        $depensier = $format === '0.1.0' ? 1500000 : 1500;
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<XML
+<dpe version="$format"><logement><installation_ecs>
+  <donnee_intermediaire><besoin_ecs>$besoin</besoin_ecs><besoin_ecs_depensier>$depensier</besoin_ecs_depensier>
+    <rendement_distribution>0.87</rendement_distribution></donnee_intermediaire>
+  <generateur_ecs_collection><generateur_ecs>
+    <donnee_entree><enum_type_generateur_ecs_id>$type</enum_type_generateur_ecs_id><enum_type_energie_id>$energie</enum_type_energie_id>
+      <enum_usage_generateur_id>$usage</enum_usage_generateur_id><enum_methode_saisie_carac_sys_id>4</enum_methode_saisie_carac_sys_id>
+      <enum_type_stockage_ecs_id>3</enum_type_stockage_ecs_id><volume_stockage>100</volume_stockage>
+    </donnee_entree>
+    <donnee_intermediaire><pn>10000</pn><rpn>0.9</rpn><qp0>100</qp0><pveilleuse>0</pveilleuse>
+      <rendement_stockage>0.8</rendement_stockage><rendement_generation>0.1</rendement_generation></donnee_intermediaire>
+  </generateur_ecs></generateur_ecs_collection>
+</installation_ecs></logement></dpe>
+XML);
+        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        $ctx = $this->makeContext($doc);
+        $ctx->set(StockageCalculator::qgwKey($gen), 200000.0);
+        (new CombustionCalculator())->calculate($gen, $ctx);
+        $xp = new \DOMXPath($doc);
+        $rgs = 1 / (1 / 0.9 + (1790 * 100 + 200000) / 1000000);
+        self::assertEqualsWithDelta($rgs, $xp->evaluate('number(./donnee_intermediaire/rendement_generation_stockage)', $gen), 1e-12);
+        self::assertSame(0, $gen->getElementsByTagName('rendement_generation')->length);
+        self::assertSame(0, $gen->getElementsByTagName('rendement_stockage')->length);
+
+        (new \CalculDpePHP\Ecs\ConsoEcsCalculator())->calculate($doc->getElementsByTagName('installation_ecs')->item(0), $ctx);
+        self::assertEqualsWithDelta(1000 / (0.87 * $rgs), $xp->evaluate('number(./donnee_intermediaire/conso_ecs)', $gen), 1e-9);
+        $rgsDep = 1 / (1 / 0.9 + (1790 * 100 + 200000) / 1500000);
+        self::assertEqualsWithDelta(1500 / (0.87 * $rgsDep), $xp->evaluate('number(./donnee_intermediaire/conso_ecs_depensier)', $gen), 1e-9);
+    }
+
+    public function testUnBallonIndependantEcsSeulConserveSonRendementSepare(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML('<logement><installation_ecs><donnee_intermediaire><besoin_ecs>1000</besoin_ecs></donnee_intermediaire>'
+            . '<generateur_ecs><donnee_entree><enum_type_energie_id>5</enum_type_energie_id><enum_type_generateur_ecs_id>34</enum_type_generateur_ecs_id>'
+            . '<enum_methode_saisie_carac_sys_id>4</enum_methode_saisie_carac_sys_id><enum_type_stockage_ecs_id>2</enum_type_stockage_ecs_id></donnee_entree>'
+            . '<donnee_intermediaire><pn>10000</pn><rpn>0.9</rpn><qp0>100</qp0><rendement_stockage>0.8</rendement_stockage></donnee_intermediaire></generateur_ecs></installation_ecs></logement>');
+        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        $ctx = $this->makeContext($doc);
+        $ctx->set(StockageCalculator::qgwKey($gen), 200000.0);
+        (new CombustionCalculator())->calculate($gen, $ctx);
+        $xp = new \DOMXPath($doc);
+        self::assertEqualsWithDelta(1 / (1 / 0.9 + 1790 * 100 / 1000000), $xp->evaluate('number(./donnee_intermediaire/rendement_generation)', $gen), 1e-12);
+        self::assertSame('0.8', $gen->getElementsByTagName('rendement_stockage')->item(0)->textContent);
+        self::assertSame(0, $gen->getElementsByTagName('rendement_generation_stockage')->length);
+    }
+
+    public function testLeChauffeEauGazInstantaneGardeSaFormuleDistincte(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML('<logement><installation_ecs><donnee_intermediaire><besoin_ecs>1000</besoin_ecs></donnee_intermediaire>'
+            . '<generateur_ecs><donnee_entree><enum_type_energie_id>2</enum_type_energie_id><enum_type_generateur_ecs_id>63</enum_type_generateur_ecs_id>'
+            . '<enum_methode_saisie_carac_sys_id>4</enum_methode_saisie_carac_sys_id><enum_type_stockage_ecs_id>3</enum_type_stockage_ecs_id></donnee_entree>'
+            . '<donnee_intermediaire><pn>10000</pn><rpn>0.9</rpn><qp0>100</qp0><pveilleuse>0</pveilleuse></donnee_intermediaire></generateur_ecs></installation_ecs></logement>');
+        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        $ctx = $this->makeContext($doc);
+        $ctx->set(StockageCalculator::qgwKey($gen), 200000.0);
+        (new CombustionCalculator())->calculate($gen, $ctx);
+        self::assertEqualsWithDelta(1 / (1 / 0.9 + 1790 * 100 / 1000000), (float)$gen->getElementsByTagName('rendement_generation')->item(0)->textContent, 1e-12);
+        self::assertSame(0, $gen->getElementsByTagName('rendement_generation_stockage')->length);
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('pertesArretBois')]
     public function testLesPertesArretBoisNeSontPasSupprimees(int $type, float $pnKw, float $qp0): void
     {
