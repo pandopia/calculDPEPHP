@@ -3,60 +3,50 @@
 declare(strict_types=1);
 
 /**
- * Coefficients de transparence T des espaces tampons solarisés — §6.3 p.50-52.
+ * Transparence T des espaces tampons solarisés — §6.3 p.51–52.
  *
- * Indexé par tv_coef_transparence_ets_id (1-21).
- * Combinaisons : 4 types menuiserie × 5 types vitrage + polycarbonate (21 entrées).
- *
- * Menuiseries :
- *   Bois/Bois métal     → ids 1-5
- *   PVC                 → ids 6-10
- *   Métal avec rupture  → ids 11-15
- *   Métal               → ids 16-20
- *   Polycarbonate       → id 21
- *
- * Vitrages (par menuiserie) :
- *   +0 : simple vitrage
- *   +1 : double vitrage
- *   +2 : double vitrage peu émissif
- *   +3 : triple vitrage
- *   +4 : triple vitrage peu émissif
+ * Valeurs physiques relues dans le PDF. Index public ADEME : feuille
+ * coef_transparence_ets A2:G22 du classeur officiel, et non ordre du PDF.
+ * La ligne polycarbonate vient en premier (ID 1), avant les quatre familles
+ * de cinq vitrages. Aucun paramètre vitrage/menuiserie direct n'est présent
+ * dans donnee_entree de l'ETS : son ID est celui de cette table publiée.
+ * Il ne s'agit pas d'une correspondance interne à un diagnostiqueur.
  *
  * @spec-section 6.3
- * @spec-pages   50-51
- * @spec-source  resources/specsplitted/06-apports-gratuits/03-espaces-tampons-solarises.md
- * @generated-on 2026-04-29
- * @status verified-spec — valeurs lues p.50-51 table "Menuiserie/Type de Vitrage/Transparence T"
+ * @spec-pages 51-52
+ * @spec-source resources/specsplitted/06-apports-gratuits/03-espaces-tampons-solarises.md
+ * @spec-source https://gitlab.com/observatoire-dpe/observatoire-dpe/-/blob/52792fb9e79e52390ded7d4527a7f7a962fd5ccc/modele_donnee/valeur_tables.xlsx (coef_transparence_ets A2:G22)
+ * @generated-on 2026-10-25
+ * @status verified-spec — 21 valeurs et toutes les correspondances publiques ADEME
  */
 return [
-    // ── Bois / Bois métal ────────────────────────────────────────────────────
-    1  => 0.62, // simple vitrage
-    2  => 0.55, // double vitrage
-    3  => 0.48, // double vitrage peu émissif
-    4  => 0.49, // triple vitrage
-    5  => 0.44, // triple vitrage peu émissif
+    1 => 0.40, // Polycarbonate — p.52, classeur ligne 2
 
-    // ── PVC ──────────────────────────────────────────────────────────────────
-    6  => 0.50, // simple vitrage
-    7  => 0.45, // double vitrage
-    8  => 0.39, // double vitrage peu émissif
-    9  => 0.40, // triple vitrage
-    10 => 0.36, // triple vitrage peu émissif
+    // Bois / Bois-métal — p.51, classeur lignes 3–7
+    2 => 0.62, // simple
+    3 => 0.55, // double
+    4 => 0.48, // double peu émissif
+    5 => 0.49, // triple
+    6 => 0.44, // triple peu émissif
 
-    // ── Métal avec rupture de pont thermique ─────────────────────────────────
-    11 => 0.63, // simple vitrage
-    12 => 0.56, // double vitrage
-    13 => 0.48, // double vitrage peu émissif
-    14 => 0.50, // triple vitrage
-    15 => 0.45, // triple vitrage peu émissif
+    // PVC — p.51–52, classeur lignes 8–12
+    7 => 0.50,
+    8 => 0.45,
+    9 => 0.39,
+    10 => 0.40,
+    11 => 0.36,
 
-    // ── Métal ────────────────────────────────────────────────────────────────
-    16 => 0.64, // simple vitrage
-    17 => 0.58, // double vitrage
-    18 => 0.50, // double vitrage peu émissif
-    19 => 0.52, // triple vitrage
-    20 => 0.47, // triple vitrage peu émissif
+    // Métal avec rupture — p.52, classeur lignes 13–17
+    12 => 0.63,
+    13 => 0.56,
+    14 => 0.48,
+    15 => 0.50,
+    16 => 0.45,
 
-    // ── Polycarbonate ────────────────────────────────────────────────────────
-    21 => 0.40, // §6.3 p.51 "Pour les parois en polycarbonate, on prendra T = 0,4"
+    // Métal sans rupture — p.52, classeur lignes 18–22
+    17 => 0.64,
+    18 => 0.58,
+    19 => 0.50,
+    20 => 0.52,
+    21 => 0.47,
 ];
