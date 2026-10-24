@@ -560,7 +560,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K63 — Modèle DPE 2.7 : technologies et ENR restant à couvrir
 
-- [~CB] Owner: CB | Phase: K | Priorité: haute
+- [ ] Owner: __ | Phase: K | Priorité: haute
 - Sources : `editeur/public/schemas/DPEv2.7.xsd` (V10.0.0, ADEME du
   16/10/2026) et `resources/textes/arrete-2026-06-11-epbd.pdf`
   (JO du 13/08/2026, texte 23, entrée en vigueur au 01/01/2027).
@@ -580,8 +580,13 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   (`scf_saisi` → `scf`), `couverture_pac_hybride_saisi`.
   Chercher les textes des évolutions 2026 de la méthode 3CL, pas un mapping
   depuis un exemple.
-- **ENR réseau** : `prod_enr_rcfu` reste à 0. Il faut les taux ENR/récupération
-  de l'annexe 7 de l'arrêté du 15/09/2006 ; ne pas les déduire du facteur CO₂.
+- **ENR réseau** : `prod_enr_rcfu` reste à 0. Les taux ENR/récupération sont
+  désormais extraits exhaustivement du classeur ADEME (six éditions, 5 643
+  lignes, source figée et SHA-256 dans `reference/tv_reseau_chaleur_enr`).
+  `ReseauChaleurFactorResolver::resolveRenewableShare()` distingue zéro,
+  absence et taux invalide, sans déduire le taux du CO₂ ni réutiliser un ancien
+  taux pour un réseau retiré. Reste à brancher les consommations CH/ECS/froid
+  au bon périmètre et au bon régime, avec propagation des taux indisponibles.
   Qualifier aussi l'efficacité du réseau pour `mention_a0` (L.711-4).
   Un réseau absent de l'annexe 7 n'est pas efficace par défaut (annexe 2 §1.1
   du nouvel arrêté). Identifiants 2.7 : `[0-9]{4}C` et `[0-9]{4}F`.
