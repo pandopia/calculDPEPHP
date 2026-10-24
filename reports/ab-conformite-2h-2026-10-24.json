@@ -579,6 +579,14 @@
         "higher_case_budgets": 4,
         "decision": "Non activé ; mesures et condition de réouverture dans TASKS_DONE.md / TASK-K06."
     },
+    "dependency_audit": {
+        "checked_at_utc": "2026-10-24T11:50:37Z",
+        "scope": "Fichiers verrouillés, dépendances de développement incluses ; aucune installation ni modification des paquets.",
+        "npm_vulnerabilities_total": 0,
+        "composer_advisories": 0,
+        "composer_abandoned_packages": 0,
+        "note": "Le message GitHub au push porte sur la branche main ; ces résultats portent sur la branche de PR."
+    },
     "phpunit": {
         "tests": 4460,
         "assertions": 16918,
