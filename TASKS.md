@@ -78,7 +78,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K94 — Volume d'intermittence des maisons multi-installations
 
-- [~CB] Owner: CB | Phase: K | Priorité: moyenne
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
 - Le repli de `StrategieComputeTrait::getShImmeuble()` utilise la surface
   d'installation quand Sh_immeuble est absente, face au GV du logement entier.
   Le périmètre appartement est corrigé ; reste celui des maisons.
@@ -86,6 +86,12 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   670 cas, mais dépasse quatre budgets de maison (+1, +1, +1, +2).
   Départager ces écarts d'aval avant généralisation ; mesures et cas dans
   TASKS_DONE.md. Ne pas relever les budgets pour activer cette variante.
+- Racines d'aval identifiées : 2400E0856203A garde des Pn et un facteur CO2
+  multi-bâtiment divergents (son I0 de maison sur réseau est corrigé) ;
+  2401E0473146C ignore trois masques lointains et diffère en QP0 ;
+  2601E1280780A diffère d'abord en Uph ; 2611E1951763L en ponts thermiques.
+  Les deux coûts électriques bougent parce que le prix moyen dépend du
+  panier chauffage : ne pas corriger ECS/ventilation pour compenser l'amont.
 
 ### TASK-K93 — Enveloppe mixte : colonne Joule dépendante de l'ordre XML
 

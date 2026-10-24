@@ -13,10 +13,12 @@ use DOMElement;
  * Coefficient d'intermittence I0 par émetteur — §8 p.55-57.
  *
  * Formule : INT = I0 / (1 + 0.1 × (G - 1))   avec G = GV / (Hsp × Sh).
- * Seul I0 est calculé ici ; le facteur G/INT est appliqué dans BesoinChauffage.
+ * Seul I0 est calculé ici ; le facteur G/INT est appliqué par les stratégies CH.
  *
  * Détermine le type de bâtiment à partir de `enum_methode_application_dpe_log_id` :
  *   1, 14, 18, 25 → 'maison'
+ *   Une maison raccordée à un réseau collectif reste une maison avec
+ *   chauffage individuel central (§8 p.56), pas un immeuble collectif.
  *   IDs "collectif collectif" détectés via enum_equipement_intermittence_id ∈ {6,7}
  *   tous les autres → 'collectif_individuel'
  *
@@ -81,7 +83,17 @@ final class IntermittenceCalculator implements CalculatorInterface
         $emetteurId    = $accessor->getIntOrNull('./enum_type_emission_distribution_id', $de);
 
         $batimentType  = $this->batimentType($node, $context, $equipementId, $accessor);
-        $chauffageType = $chauffageId === 1 ? 'divise' : 'central';
+        $installation = $node->parentNode?->parentNode;
+        $typeInstallation = $installation instanceof DOMElement
+            ? $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $installation)
+            : null;
+        // §8 p.56 : le raccordement d'une maison à un réseau collectif est
+        // traité comme un chauffage individuel central, même si la saisie
+        // de l'émetteur le décrit comme divisé.
+        $chauffageType = $batimentType === 'maison'
+            && in_array($typeInstallation, self::INSTALLATION_COLLECTIVE_IDS, true)
+            ? 'central'
+            : ($chauffageId === 1 ? 'divise' : 'central');
         $regulation    = $regulationId === 2 ? 'avec' : 'sans';
         $emetteur      = $this->emetteurCategory($emetteurId);
         $inertieKey    = $this->inertieKey($context->get('inertie.classe_id', 1));
@@ -141,6 +153,16 @@ final class IntermittenceCalculator implements CalculatorInterface
         NodeAccessor $accessor,
     ): string
     {
+        $methodeId = $context->get('logement.methode_application_dpe_log_id');
+        if ($methodeId === null) {
+            $methodeId = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
+            $context->set('logement.methode_application_dpe_log_id', $methodeId);
+        }
+        // §8 p.56 : une fourniture collective ne change pas le type de bâti.
+        if (in_array($methodeId, self::MAISON_IDS, true)) {
+            return 'maison';
+        }
+
         // §8 p.57 : la table « immeuble collectif / chauffage collectif » est
         // déterminée par l'installation commune, même lorsque l'équipement
         // d'intermittence est codé « absent » (ID 1) dans l'export ADEME.
@@ -164,14 +186,7 @@ final class IntermittenceCalculator implements CalculatorInterface
             return 'collectif_collectif';
         }
 
-        $methodeId = $context->get('logement.methode_application_dpe_log_id');
-        if ($methodeId === null) {
-            $accessor = new NodeAccessor($context->document);
-            $methodeId = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
-            $context->set('logement.methode_application_dpe_log_id', $methodeId);
-        }
-
-        return in_array($methodeId, self::MAISON_IDS, true) ? 'maison' : 'collectif_individuel';
+        return 'collectif_individuel';
     }
 
     private function emetteurCategory(?int $id): string
