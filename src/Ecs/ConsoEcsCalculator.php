@@ -142,7 +142,7 @@ final class ConsoEcsCalculator implements CalculatorInterface
         $rdimSolaire = max(1.0, $accessor->getFloatOrNull('./donnee_entree/rdim', $node) ?? 1.0);
         \CalculDpePHP\Common\ProductionSolaireThermique::publier($context, $node, $productionSolaire * $rdimSolaire);
 
-        $this->ecrireProductionSolaire($accessor, $node, $instDi, $totalConso, $xmlPerKwh);
+        $this->ecrireProductionSolaire($accessor, $node, $instDi, $productionSolaire * $rdimSolaire, $xmlPerKwh);
     }
 
     /**
@@ -152,7 +152,12 @@ final class ConsoEcsCalculator implements CalculatorInterface
      * `Cecs = Becs × (1 − Fecs) / (Rd Rs Rg)`. La part solaire se lit donc à
      * la même échelle que la consommation publiée :
      *
-     *     Prod = Cecs × Fecs / (1 − Fecs) × rdim
+     *     Prod = Becs × Fecs / (Rd Rs Rg) × rdim
+     *          = Cecs × Fecs / (1 − Fecs) × rdim, seulement si Fecs < 1
+     *
+     * La forme directe, déjà calculée dans la boucle des générateurs et dans
+     * le bilan ENR (arrêté du 11/06/2026, annexe 10 §1.2.4 p.7), reste définie
+     * à Fecs=1 : l'appoint est nul mais la production solaire est positive.
      *
      * `rdim` porte la multiplicité de l'installation, et c'est ce que le XSD
      * demande : « Dans le cas d'un DPE immeuble ou d'un DPE appartement à
@@ -176,18 +181,22 @@ final class ConsoEcsCalculator implements CalculatorInterface
         NodeAccessor $accessor,
         DOMElement $node,
         DOMElement $instDi,
-        float $consoEcs,
+        float $productionKwh,
         float $xmlPerKwh,
     ): void {
         $fecs = $accessor->getFloatOrNull('./donnee_intermediaire/fecs', $node);
-        if ($fecs === null || $fecs <= 0.0 || $fecs >= 1.0 || $consoEcs <= 0.0) {
+        if ($fecs === null || $fecs <= 0.0 || $fecs > 1.0 || $productionKwh <= 0.0) {
+            // Un recalcul direct du Calculator, sans purge globale, ne doit
+            // pas conserver une ancienne production après retrait du solaire.
+            foreach (iterator_to_array($instDi->childNodes) as $child) {
+                if ($child instanceof DOMElement && $child->nodeName === 'production_ecs_solaire') {
+                    $instDi->removeChild($child);
+                }
+            }
             return;
         }
 
-        $rdim = $accessor->getFloatOrNull('./donnee_entree/rdim', $node) ?? 1.0;
-        $production = $consoEcs * $fecs / (1.0 - $fecs) * max(1.0, $rdim);
-
-        $accessor->setChildValue($instDi, 'production_ecs_solaire', $production * 1000.0 / $xmlPerKwh);
+        $accessor->setChildValue($instDi, 'production_ecs_solaire', $productionKwh * 1000.0 / $xmlPerKwh);
     }
 
     /**

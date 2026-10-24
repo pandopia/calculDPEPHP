@@ -296,8 +296,45 @@ XML;
         $calc->calculate($inst, $ctx);
         self::assertEqualsWithDelta(0.0, (float)$doc->getElementsByTagName('conso_ecs')->item(0)->textContent, 1e-9);
         self::assertEqualsWithDelta(1250.0, \CalculDpePHP\Common\ProductionSolaireThermique::total($ctx), 1e-9);
+        self::assertEqualsWithDelta(1250000.0, (float)$di->getElementsByTagName('production_ecs_solaire')->item(0)->textContent, 1e-6);
         $di->removeChild($fecs);
         $calc->calculate($inst, $ctx);
         self::assertSame(0.0, \CalculDpePHP\Common\ProductionSolaireThermique::total($ctx), 'le contexte ne conserve pas la production précédente');
+        self::assertSame(0, $di->getElementsByTagName('production_ecs_solaire')->length, 'le XML ne conserve pas non plus la production précédente');
+    }
+
+    public static function couverturesSolaires(): iterable
+    {
+        foreach (['2', '0.1.0'] as $format) {
+            foreach ([1, 17] as $rdim) {
+                foreach ([0.4, 0.99999999, 1.0] as $fecs) {
+                    yield "$format, rdim $rdim, Fecs $fecs" => [$format, $rdim, $fecs];
+                }
+            }
+        }
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('couverturesSolaires')]
+    public function testProductionSolaireXmlEtContexteConcordentAuxLimites(string $format, int $rdim, float $fecs): void
+    {
+        $xmlPerKwh = $format === '0.1.0' ? 1000 : 1;
+        [$doc, $inst] = $this->buildInstallation(1000.0 * $xmlPerKwh, 1200.0 * $xmlPerKwh, 0.8, 0.9, 0.75);
+        $logement = $doc->documentElement;
+        $doc->removeChild($logement);
+        $root = $doc->appendChild($doc->createElement('dpe'));
+        $root->setAttribute('version', $format);
+        $root->appendChild($logement);
+        $de = $inst->insertBefore($doc->createElement('donnee_entree'), $inst->firstChild);
+        $de->appendChild($doc->createElement('rdim', (string)$rdim));
+        $di = $inst->getElementsByTagName('donnee_intermediaire')->item(0);
+        $di->appendChild($doc->createElement('fecs', (string)$fecs));
+        $context = $this->makeContext($doc);
+        (new ConsoEcsCalculator())->calculate($inst, $context);
+        $expectedKwh = 1000 * $fecs / (0.8 * 0.9 * 0.75) * $rdim;
+        self::assertEqualsWithDelta($expectedKwh, \CalculDpePHP\Common\ProductionSolaireThermique::total($context), 1e-8);
+        self::assertEqualsWithDelta($expectedKwh * 1000 / $xmlPerKwh,
+            (float)$di->getElementsByTagName('production_ecs_solaire')->item(0)->textContent, 1e-6);
+        self::assertEqualsWithDelta(1000 * (1 - $fecs) / (0.8 * 0.9 * 0.75),
+            (float)$di->getElementsByTagName('conso_ecs')->item(0)->textContent, 1e-9);
     }
 }
