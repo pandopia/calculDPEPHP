@@ -309,7 +309,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K06 — Écarts résiduels de génération ECS
 
-- [ ] Owner: __ | Phase: K | Estimation: 4h | Priorité: moyenne
+- [~CDX] Owner: CDX | Phase: K | Estimation: 4h | Priorité: moyenne
 - Remonter d'abord aux caractéristiques amont (Pn, Rpn, QP0) : suites K85
   et K95 ; variantes déjà instruites dans les archives K31/K56. Les verdicts
   COP et sérialisation sont dans TASKS_DONE.md, pas à réinstruire.
