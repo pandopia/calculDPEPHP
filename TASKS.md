@@ -15,8 +15,8 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-A01 — Digitalisation des `specsplitted` : ce qui reste vraiment
 
-- [~CB] Owner: CB  | Phase: A  | Estimation: variable  | Itératif
-- **Le retard est apparent, pas réel.** 100 des 103 fichiers de
+- [ ] Owner: __  | Phase: A  | Estimation: variable  | Itératif
+- **Le retard est apparent, pas réel.** 95 des 103 fichiers de
   `resources/specsplitted/` portent encore `status: "verbatim"`, mais la
   couverture du moteur, elle, est complète : les **119 sections du sommaire**
   sont toutes revendiquées par au moins un `@spec-section`, et **142 des 147
@@ -41,6 +41,11 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   `pdftotext` à rétablir, puis `status` → `digitalized` et relecture par un
   second agent → `reviewed`. Le moteur n'en dépend pas : il est tracé au PDF
   directement. C'est de la relisibilité, à traiter section par section.
+- §8, §12.4, §13.2.2, §14.2 et §18.4 sont digitalisés et contrôlés
+  visuellement sur le PDF (24/10/2026), avec séparation des extensions ADEME
+  2.7 et signalement des cellules tronquées du PDF. Les 188 coefficients
+  d'intermittence concordent aussi avec le classeur ADEME. Leur relecture
+  indépendante reste à faire avant de les passer en `reviewed`.
 - Priorité de relecture suggérée, là où une coquille d'extraction coûterait le
   plus cher : §18.2-18.3 (sollicitations, déjà deux défauts d'annexe trouvés),
   §13.2.2 (valeurs par défaut des chaudières, trois régimes d'arrondi en
@@ -661,7 +666,8 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Conserver/lire `flexibilite_reseau`, `chauffage_duree_vie_restante`,
   `clim_duree_vie_restante`. Vérifier sur texte daté le futur pef électrique
   avant d'ajouter un régime à `Common\\Period`.
-- Aucun cas 2.7 au corpus actuel : tests synthétiques sourcés et validation
+- Aucun cas 2.7 au corpus actuel (API ADEME `version_dpe:2.7`, zéro résultat
+  le 24/10/2026) : tests synthétiques sourcés et validation
   XSD obligatoires, puis acquisition ADEME dès publication. Toute évolution
   doit garder un A/B isolé sans dégrader les versions antérieures.
 

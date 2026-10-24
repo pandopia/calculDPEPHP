@@ -1,106 +1,91 @@
 ---
 section_id: "12.4"
 title: "Rendement de génération hors combustion (effet Joule, PAC)"
-spec_pages: [76-78]
-xml_outputs: ["rendement_generation", "scop", "seer"]
-tables: ["tv_scop_id", "tv_seer_id"]
+spec_pages: [76, 77, 78]
+xml_outputs: ["rendement_generation", "scop"]
+tables: ["tv_rendement_generation_id", "tv_scop_id"]
 depends_on: ["12"]
-status: "verbatim"
+status: "digitalized"
 ---
 
-# §12.4 — Rendement de génération hors combustion (effet Joule, PAC)
+# §12.4 — Rendement de génération des générateurs autres qu'à combustion
 
-> Source : `resources/spec.pdf` p.76-78
-> Extraction verbatim via `pdftotext -layout`. À digitaliser : tables en pipe-markdown, formules en LaTeX.
+> Source : resources/spec.pdf, p.76–78, annexe 1 d'octobre 2021.
+> Tables et formule relues visuellement sur le PDF le 24/10/2026.
+> Transcription mise en forme ; relecture indépendante encore à effectuer.
 
-## Texte verbatim
+## §12.4.1 — Générateurs à effet Joule et réseaux de chaleur (p.76–77)
 
-```
-12.4 Rendement de génération des générateurs autres qu’à combustion
-12.4.1 Générateurs à effet joule et réseaux de chaleur
-                                                 Type de générateur          Rg
-                                          Générateur à effet joule direct     1
-                                          Chaudières électriques            0,97
-                                          Réseau de chaleur                 0,97
+| Type de générateur | $R_g$ |
+|---|---:|
+| Générateur à effet Joule direct | 1 |
+| Chaudière électrique | 0,97 |
+| Réseau de chaleur | 0,97 |
 
-Un chauffe-eau électrique instantané est assimilé à un ballon électrique au niveau du modèle mais sans les pertes de
+Un chauffe-eau électrique instantané est assimilé à un ballon électrique,
+mais sans pertes de stockage.
+
+Une chaudière électrique mixte (chauffage et ECS) est modélisée comme une
+chaudière électrique et un ballon électrique, selon la présence ou non de
 stockage.
 
-La modélisation pour les chaudières électriques mixtes (chauffage et ECS) est identique à celle d'une chaudière
-électrique et d'un ballon électrique selon qu'il y ait stockage ou pas.
+## §12.4.2 — Pompes à chaleur (p.77–78)
 
-12.4.2 Pompe à Chaleur
-Les performances des PAC sont définies par leur SCOP qui dépend de leur type et de la zone climatique.
+Le SCOP dépend du type de PAC et de la zone climatique. La performance réelle
+connue et justifiée peut être saisie directement ; à défaut, les valeurs
+annuelles tabulées ci-dessous sont utilisables.
 
-Le SCOP réel de la PAC peut être saisi directement quand il est connu et justifié. A défaut de disposer des perfomances
-réelles des PAC, les valeurs par défaut tabulées ci-dessous sont utilisables.
+### Zones H1 et H2 — PAC sur eau (p.77)
 
-                                                              Zone H1 et H2
-       Type de PAC
-                         Type d’émetteur        Avant 2008*       2008-2014        2015-2016      A partir de 2017
-                             Autres                 2,2               2,4             2,6                2,8
-       PAC Air/Eau
-                       Planchers / Plafonds         2,4               2,6             2,9                3,2
-                              Autres                2,2               2,4             2,7                3
-       PAC Eau/Eau
-                       Planchers / Plafonds         2,4               2,6              3                 3,3
-          PAC Eau             Autres                2,2               2,4             2,7                3
-       glycolée/Eau    Planchers / Plafonds         2,4               2,6              3                 3,3
-                              Autres                2,2               2,4             2,7                3
-   PAC Géothermie
-                       Planchers / Plafonds         2,4               2,6              3                 3,3
+| Type de PAC | Type d'émetteur | Avant 2008* | 2008–2014 | 2015–2016 | À partir de 2017 |
+|---|---|---:|---:|---:|---:|
+| Air/Eau | Autres | 2,2 | 2,4 | 2,6 | 2,8 |
+| Air/Eau | Planchers / Plafonds | 2,4 | 2,6 | 2,9 | 3,2 |
+| Eau/Eau | Autres | 2,2 | 2,4 | 2,7 | 3 |
+| Eau/Eau | Planchers / Plafonds | 2,4 | 2,6 | 3 | 3,3 |
+| Eau glycolée/Eau | Autres | 2,2 | 2,4 | 2,7 | 3 |
+| Eau glycolée/Eau | Planchers / Plafonds | 2,4 | 2,6 | 3 | 3,3 |
+| Géothermie | Autres | 2,2 | 2,4 | 2,7 | 3 |
+| Géothermie | Planchers / Plafonds | 2,4 | 2,6 | 3 | 3,3 |
 
+### Zone H3 — PAC sur eau (p.77)
 
+| Type de PAC | Type d'émetteur | Avant 2008* | 2008–2014 | 2015–2016 | À partir de 2017 |
+|---|---|---:|---:|---:|---:|
+| Air/Eau | Autres | 2,5 | 2,8 | 3 | 3,2 |
+| Air/Eau | Planchers / Plafonds | 2,9 | 3,1 | 3,5 | 3,8 |
+| Eau/Eau | Autres | 2,5 | 2,8 | 3,1 | 3,5 |
+| Eau/Eau | Planchers / Plafonds | 2,9 | 3,1 | 3,6 | 4 |
+| Eau glycolée/Eau | Autres | 2,5 | 2,8 | 3,1 | 3,5 |
+| Eau glycolée/Eau | Planchers / Plafonds | 2,9 | 3,1 | 3,6 | 4 |
+| Géothermie | Autres | 2,5 | 2,8 | 3,1 | 3,5 |
+| Géothermie | Planchers / Plafonds | 2,9 | 3,1 | 3,6 | 4 |
 
-                                                                Zone H3
-       Type de PAC
-                          Type d’émetteur        Avant 2008*      2008-2014       2015-2016       A partir de 2017
-                              Autres                 2,5              2,8              3                 3,2
-       PAC Air/Eau
-                        Planchers / Plafonds          2,9             3,1             3,5                3,8
-                               Autres                 2,5             2,8             3,1                3,5
-       PAC Eau/Eau
-                        Planchers / Plafonds          2,9             3,1             3,6                4
-          PAC Eau              Autres                 2,5             2,8             3,1                3,5
-       glycolée/Eau     Planchers / Plafonds          2,9             3,1             3,6                4
-                               Autres                 2,5             2,8             3,1                3,5
-   PAC Géothermie
-                        Planchers / Plafonds          2,9             3,1             3,6                4
+### PAC Air/Air (p.77)
 
+| Zone | Avant 2008* | 2008–2014 | À partir de 2015 |
+|---|---:|---:|---:|
+| H1 et H2 | 2,2 | 2,3 | 3 |
+| H3 | 2,4 | 2,6 | 3,3 |
 
+*Pour les colonnes « Avant 2008 », le PDF précise « COP ».*
 
-                                                    Zone H1 et H2
-                           Type de PAC         Avant 2008*    2008-2014       A partir de 2015
-                           PAC Air/Air             2,2            2,3                 3
+### Inverse du rendement de l'installation (p.78)
 
+$$
+I_{\mathrm{ch}} = \frac{1}{SCOP \times R_e \times R_d \times R_r}
+$$
 
+Si plusieurs émetteurs sont reliés à la PAC, le COP le plus défavorable est
+retenu pour le calcul de $I_{\mathrm{ch}}$.
 
-                                                       Zone H3
-                           Type de PAC         Avant 2008*    2008-2014       A partir de 2015
-                           PAC Air/Air             2,4           2,6                 3,3
-*COP
+## Repères d'implémentation — hors transcription réglementaire
 
-L’inverse du rendement de l’installation s’exprimera alors comme :
-
-                                                           1
-                                            𝐼𝑐ℎ = (                    )
-                                                   𝑆𝐶𝑂𝑃 ∗ 𝑅𝑒 ∗ 𝑅𝑑 ∗ 𝑅𝑟
-
-Dans le cas où plusieurs émetteurs sont reliés à la PAC, le COP le plus défavorable sera pris pour le calcul d’Ich.
-```
-
-## TODO digitalisation
-
-### Tables à transcrire en pipe-markdown
-- [ ] `tv_scop_id`
-- [ ] `tv_seer_id`
-
-### Balises XML produites par cette section
-- `rendement_generation`
-- `scop`
-- `seer`
-
-### Reformatages requis
-- [ ] Reformater les formules en LaTeX (`$$ … $$` ou `$`)
-- [ ] Vérifier les indices et exposants (texte verbatim peut perdre la mise en forme)
-- [ ] Référencer les annexes citées (§18.x)
+- Les rendements d'émission, de distribution et de régulation sont définis
+  respectivement aux §12.1, §12.2 et §12.3.
+- Le SEER concerne le refroidissement : il ne figure pas dans cette section.
+- La transcription de la règle multi-émetteurs ne clôt pas TASK-K91 :
+  les variantes de sélection déjà mesurées restent documentées dans TASKS.md.
+- Les extensions ADEME du modèle 2.7 sont datées séparément dans
+  resources/tables/chauffage/tv_scop_2027.php ; elles ne remplacent pas
+  rétroactivement les valeurs du PDF de 2021.
