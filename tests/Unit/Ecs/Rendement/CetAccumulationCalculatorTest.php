@@ -185,6 +185,10 @@ XML;
         yield 'entree prioritaire' => [6, 3.14, 3.5, 3.5];
         yield 'saisie absente' => [6, null, null, 2.3];
         yield 'saisie invalide' => [6, 0.0, null, 2.3];
+        yield 'COP nul thermique' => [6, 1.0, null, 2.3];
+        yield 'COP sous borne XSD' => [6, .8, null, 2.3];
+        yield 'COP hors borne XSD' => [6, 8.001, null, 2.3];
+        yield 'borne haute XSD incluse' => [6, 8.0, null, 8.0];
         yield 'forfait ne recopie pas un ancien resultat' => [1, 3.14, null, 2.3];
     }
 
@@ -219,5 +223,38 @@ XML;
         yield 'alias apres 2015' => [82, 3, 2.3];
         yield 'alias periode inconnue penalisee' => [82, null, 2.0];
         yield 'PAC double service native' => [12, 3, 2.3];
+    }
+
+    public function testLeThermodynamiqueGazUtiliseSonCopJustifieSansRendementDeChaudiereNiStockageEnDouble(): void
+    {
+        $document = new DOMDocument();
+        $document->loadXML('<logement><installation_ecs><donnee_intermediaire><besoin_ecs>1000</besoin_ecs><besoin_ecs_depensier>1200</besoin_ecs_depensier><rendement_distribution>0.8</rendement_distribution></donnee_intermediaire>'
+            . '<generateur_ecs_collection><generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>83</enum_type_generateur_ecs_id><enum_type_energie_id>2</enum_type_energie_id>'
+            . '<enum_methode_saisie_carac_sys_id>6</enum_methode_saisie_carac_sys_id><volume_stockage>200</volume_stockage><enum_type_stockage_ecs_id>3</enum_type_stockage_ecs_id></donnee_entree>'
+            . '<donnee_intermediaire><cop>1.5</cop></donnee_intermediaire></generateur_ecs></generateur_ecs_collection></installation_ecs></logement>');
+        \CalculDpePHP\Xml\OutputPurger::purge($document);
+        // Le besoin est un résultat amont, pas une donnée préservée.
+        $accessor = new \CalculDpePHP\Xml\NodeAccessor($document);
+        $installation = $document->getElementsByTagName('installation_ecs')->item(0);
+        $di = $accessor->ensureDonneeIntermediaire($installation);
+        foreach (['besoin_ecs' => 1000, 'besoin_ecs_depensier' => 1200, 'rendement_distribution' => .8] as $tag => $value) { $accessor->setChildValue($di, $tag, $value); }
+        $generator = $document->getElementsByTagName('generateur_ecs')->item(0);
+        $context = $this->makeContext($document);
+        (new \CalculDpePHP\Ecs\Rendement\StockageCalculator())->calculate($generator, $context);
+        (new CetAccumulationCalculator())->calculate($generator, $context);
+        (new CombustionCalculator())->calculate($generator, $context);
+        (new \CalculDpePHP\Ecs\ConsoEcsCalculator())->calculate($installation, $context);
+        self::assertSame(1.5, $accessor->getFloatOrNull('./donnee_intermediaire/cop', $generator));
+        self::assertEqualsWithDelta(1000 / (.8 * 1.5), $accessor->getFloatOrNull('./donnee_intermediaire/conso_ecs', $generator), 1e-9);
+        self::assertEqualsWithDelta(1200 / (.8 * 1.5), $accessor->getFloatOrNull('./donnee_intermediaire/conso_ecs_depensier', $generator), 1e-9);
+        foreach (['rendement_generation', 'rendement_stockage', 'rendement_generation_stockage', 'pn', 'rpn', 'qp0'] as $tag) { self::assertSame(0, $generator->getElementsByTagName($tag)->length, $tag); }
+    }
+
+    public function testLeThermodynamiqueGazSansCopJustifieNestPasAssimileAUnForfaitElectrique(): void
+    {
+        [$document, $node] = $this->buildNode(83);
+        $this->expectException(\CalculDpePHP\Engine\UnsupportedDpeModelException::class);
+        $this->expectExceptionMessage('COP');
+        (new CetAccumulationCalculator())->calculate($node, $this->makeContext($document));
     }
 }

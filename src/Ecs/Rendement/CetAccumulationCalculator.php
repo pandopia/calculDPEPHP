@@ -15,6 +15,8 @@ use DOMElement;
  * Le COP dépend du type d'installation (air ambiant/extérieur, air extrait, PAC double service)
  * et de la zone climatique (H1/H2 vs H3). Le COP inclut déjà le rendement de
  * stockage (XSD), il tient donc lieu de rendement de génération et de stockage.
+ * Le type générique gaz 83 exige un COP propre justifié : aucun forfait
+ * de la table électrique ne peut lui être attribué.
  *
  * Formula spec : Iecs = 1 / (Rd × COP)
  *
@@ -74,6 +76,19 @@ final class CetAccumulationCalculator implements CalculatorInterface
         $accessor = new NodeAccessor($context->document);
         $typeId   = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $node);
 
+        if ($typeId === 83) {
+            // XSD : « autre système thermodynamique gaz ». §14.2 p.95
+            // permet la performance propre ; aucune des lignes forfaitaires
+            // ne caractérise cette famille générique. Son COP annuel inclut
+            // le stockage comme celui des autres équipements thermodynamiques.
+            $cop = self::justifiedCop($node, $accessor);
+            if ($cop === null) {
+                throw new \CalculDpePHP\Engine\UnsupportedDpeModelException('Thermodynamique gaz ECS 83 : COP propre connu et justifié requis en méthode 6, aucun forfait défini pour cette famille.');
+            }
+            $accessor->setChildValue($accessor->ensureDonneeIntermediaire($node), 'cop', $cop);
+            return;
+        }
+
         // « Autre système thermodynamique électrique » (82) → PAC double service
         // selon la période d'installation (open3cl 13.2_generateur_pac.js).
         if ($typeId === 82) {
@@ -132,6 +147,8 @@ final class CetAccumulationCalculator implements CalculatorInterface
         if ($accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node) !== 6) { return null; }
         $cop = $accessor->getFloatOrNull('./donnee_entree/cop', $node)
             ?? $accessor->getFloatOrNull('./donnee_intermediaire/cop', $node);
-        return $cop !== null && is_finite($cop) && $cop > 0.0 ? $cop : null;
+        // La déclaration XSD de cop impose 1 < COP ≤ 8 ; le texte de sa
+        // documentation « 0–20 » ne prime pas sur les facettes exécutables.
+        return $cop !== null && is_finite($cop) && $cop > 1.0 && $cop <= 8.0 ? $cop : null;
     }
 }

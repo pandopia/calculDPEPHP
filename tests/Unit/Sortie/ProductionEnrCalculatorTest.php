@@ -155,6 +155,14 @@ final class ProductionEnrCalculatorTest extends TestCase
         return $sortie?->getElementsByTagName($balise)->item(0)?->textContent;
     }
 
+    public function testLeCetGazProduitDeLaChaleurCapteeSansOuvrirLaMentionA0(): void
+    {
+        $sortie = $this->sortie('2.7', '<ecs><installation_ecs_collection><installation_ecs><generateur_ecs_collection><generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>83</enum_type_generateur_ecs_id><enum_type_energie_id>2</enum_type_energie_id></donnee_entree><donnee_intermediaire><cop>1.5</cop><conso_ecs>100</conso_ecs></donnee_intermediaire></generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection></ecs>');
+
+        self::assertEqualsWithDelta(50.0, (float) $this->valeur($sortie, 'prod_enr_chaleur_ambiante_cet'), 1e-9);
+        self::assertSame('0', $this->valeur($sortie, 'mention_a0'));
+    }
+
     /** Tous les IDs CH du XSD, y compris ceux qui ne sont PAS des PAC. */
     public static function typesGenerateurChDuSchema(): iterable
     {
@@ -201,7 +209,7 @@ final class ProductionEnrCalculatorTest extends TestCase
         foreach (range($minimum, $maximum) as $type) {
             $libelle = $libelles[$type];
             yield "$type : $libelle" => [$type, str_starts_with($libelle, 'cet ') || str_starts_with($libelle, 'pac double service')
-                || $libelle === 'autre système thermodynamique électrique'];
+                || in_array($libelle, ['autre système thermodynamique électrique', 'autre système thermodynamique gaz'], true)];
         }
     }
 

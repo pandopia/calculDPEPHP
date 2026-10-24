@@ -43,6 +43,29 @@ final class DpeEngineTest extends TestCase
         );
     }
 
+    public function testLeThermodynamiqueGazEcsExigeUnePerformanceReelleAvantPurge(): void
+    {
+        foreach ([1, 6] as $method) {
+            foreach ([null, 0.0, -1.0, .8, 1.0, 1.5, 8.0, 8.001] as $cop) {
+                $value = $cop === null ? '' : '<cop>' . $cop . '</cop>';
+                $document = new \DOMDocument();
+                $document->loadXML('<dpe><logement><generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>83</enum_type_generateur_ecs_id>'
+                    . '<enum_methode_saisie_carac_sys_id>' . $method . '</enum_methode_saisie_carac_sys_id></donnee_entree><donnee_intermediaire>' . $value
+                    . '</donnee_intermediaire></generateur_ecs><sortie><temoin>123</temoin></sortie></logement></dpe>');
+                $before = $document->saveXML();
+                try {
+                    $this->engine()->calculateDocument($document);
+                    self::assertSame(6, $method);
+                    self::assertTrue($cop > 1 && $cop <= 8);
+                } catch (UnsupportedDpeModelException $exception) {
+                    self::assertTrue($method !== 6 || $cop === null || $cop <= 1 || $cop > 8);
+                    self::assertSame($before, $document->saveXML());
+                    self::assertStringContainsString('COP', $exception->getMessage());
+                }
+            }
+        }
+    }
+
     private function xmlNeuf(int $modeleId): string
     {
         return <<<XML

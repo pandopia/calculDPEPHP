@@ -96,8 +96,8 @@ final class ProductionEnrCalculator implements CalculatorInterface
     /** Parties PAC hybrides du XSD CH, anciennes et modèle 2.7. */
     private const PAC_HYBRIDES = [143, 145, 146, 147, 162, 163, 164, 165, 166, 167, 168, 169, 170, 178, 179, 180, 181];
 
-    /** CET et PAC double service (partie ECS), libellés du XSD 2.7. */
-    private const THERMODYNAMIQUES_ECS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 82, 135, 136, 137, 138];
+    /** CET et PAC double service (partie ECS), électriques ou gaz, §1.2.2 et XSD 2.7. */
+    private const THERMODYNAMIQUES_ECS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 82, 83, 135, 136, 137, 138];
 
     /**
      * `enum_type_energie_id` compatibles avec la mention A0.
