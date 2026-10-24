@@ -12,11 +12,11 @@ use DOMElement;
 /**
  * Rendement de génération hors combustion (§12.4 p.76-78).
  *
- * Couvre trois catégories :
+ * Couvre quatre catégories :
  *   1. Effet joule direct (IDs 98-105)  → Rg = 1.0
  *   2. Chaudière électrique (ID 106)    → Rg = 0.97
  *   3. Réseau de chaleur (IDs 107-112)  → Rg = 0.97
- *   4. PAC (IDs 1-19)                   → Rg = SCOP (table §12.4.2)
+ *   4. PAC (IDs 1-19, 172-176 et hybrides) → Rg = SCOP (table §12.4.2 / ADEME 2.7)
  *
  * Pour la PAC : si scop est fourni dans donnee_entree, il est prioritaire.
  * Sinon, le SCOP par défaut est lu dans la table selon (type_pac, zone, emetteur_type).
@@ -33,10 +33,11 @@ use DOMElement;
  * @xml-input    generateur_chauffage.donnee_entree.{enum_type_generateur_ch_id, enum_methode_saisie_carac_sys_id, scop}
  * @xml-input    generateur_chauffage.donnee_intermediaire.scop (saisie méthode 6)
  * @xml-input    emetteur_chauffage.donnee_entree.enum_type_emission_distribution_id
+ * @xml-input    administratif.enum_version_id (classification des émetteurs du modèle 2.7)
  * @xml-output   generateur_chauffage.donnee_intermediaire.{rendement_generation, scop}
  * @see          \CalculDpePHP\Chauffage\Rendement\RendementGenerateur
  * @depends-on   (aucun)
- * @tables       (aucune — valeurs SCOP intégrées d'après §12.4.2)
+ * @tables       chauffage/tv_scop_2027 (extension ADEME 2.7 ; anciens SCOP : §12.4.2)
  */
 final class GenerationNonCombustionCalculator implements CalculatorInterface
 {
@@ -53,6 +54,12 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
 
     /** IDs PAC (1-19) — SCOP en fonction de la zone et du type */
     private const PAC_RANGE = [1, 19];
+
+    /** PAC depuis 2027 et parties PAC hybrides — enums XSD 2.7. */
+    private const PAC_2027 = [172, 173, 174, 175, 176, 178, 179, 180, 181];
+
+    /** Colonne favorable explicite de la feuille ADEME scop, lignes 92-107. */
+    private const EMETTEURS_PAC_2027 = [11, 12, 13, 14, 15, 16, 17, 18, 41, 46, 47, 48, 49];
 
     /**
      * SCOP par défaut §12.4.2.
@@ -132,12 +139,14 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
         }
 
         // PAC hybride partie PAC (143, 145-147, 162-170) → SCOP de la PAC équivalente
+        $typeOriginal = $genId;
+        $recent = in_array($typeOriginal, self::PAC_2027, true);
         $genId = \CalculDpePHP\Chauffage\GenerateurChAlias::isHybridePac($genId)
             ? \CalculDpePHP\Chauffage\GenerateurChAlias::normalize($genId)
             : $genId;
 
-        if ($genId >= self::PAC_RANGE[0] && $genId <= self::PAC_RANGE[1]) {
-            $scop = $this->resolvePacScop($node, $accessor, $context, $genId);
+        if ($recent || ($genId >= self::PAC_RANGE[0] && $genId <= self::PAC_RANGE[1])) {
+            $scop = $this->resolvePacScop($node, $accessor, $context, $recent ? $typeOriginal : $genId);
             $di   = $accessor->ensureDonneeIntermediaire($node);
             // XSD : `scop` est publié « en remplacement du Rg pour les
             // générateurs thermodynamique », et `rendement_generation` vaut
@@ -188,14 +197,19 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
             }
         }
 
-        $row       = self::SCOP_TABLE[$genId] ?? null;
+        $recent = in_array($genId, self::PAC_2027, true);
+        $row = $recent
+            ? ($context->tables->load('chauffage/tv_scop_2027')[$genId] ?? null)
+            : (self::SCOP_TABLE[$genId] ?? null);
         if ($row === null) {
             return 2.2;
         }
 
         $zoneId    = $this->resolveZone($context, $accessor);
         $zoneKey   = ($zoneId === self::ZONE_H3_ID) ? 'h3' : 'h1h2';
-        $emType    = $this->typeEmetteur($node, $accessor, $context);
+        $version = $accessor->getStringOrNull('//administratif/enum_version_id');
+        $classification27 = $recent || ($version !== null && version_compare($version, '2.7', '>='));
+        $emType = $this->typeEmetteur($node, $accessor, $context, $classification27);
 
         return (float)($row[$zoneKey][$emType] ?? $row[$zoneKey]['autres'] ?? 2.2);
     }
@@ -209,12 +223,15 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
      * un plancher ou un plafond chauffant. Le fluide de distribution ne
      * change pas la nature de l'émission dans cette table.
      *
+     * Le modèle 2.7 suit la liste ADEME de la feuille scop : 11-18, 41,
+     * 46-49. Les anciens modèles conservent leurs colonnes historiques.
      * Le contexte garde la priorité quand un calculateur amont l'a renseigné.
      */
     private function typeEmetteur(
         DOMElement $node,
         NodeAccessor $accessor,
         CalculationContext $context,
+        bool $classification27 = false,
     ): string {
         $depuisContexte = $context->get('installation.emetteur_type');
         if (is_string($depuisContexte) && $depuisContexte !== '') {
@@ -230,7 +247,7 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
                 continue;
             }
             $type = $accessor->getIntOrNull('./donnee_entree/enum_type_emission_distribution_id', $emetteur);
-            if ($type !== null && in_array($type, self::EMETTEURS_PLANCHER_PLAFOND, true)) {
+            if ($type !== null && in_array($type, $classification27 ? self::EMETTEURS_PAC_2027 : self::EMETTEURS_PLANCHER_PLAFOND, true)) {
                 return 'plancher_plafond';
             }
         }

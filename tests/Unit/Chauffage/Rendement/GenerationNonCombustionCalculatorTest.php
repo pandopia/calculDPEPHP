@@ -23,7 +23,52 @@ final class GenerationNonCombustionCalculatorTest extends TestCase
 {
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
 
-    private function calcule(int $genId, int $typeEmetteur, string $zone): float
+    #[DataProvider('scopDepuis2027')]
+    public function testLesPacDepuis2027SuiventLeurTableEtLeurEmission(int $type, int $emetteur, string $zone, float $expected): void
+    {
+        self::assertEqualsWithDelta($expected, $this->calcule($type, $emetteur, $zone), 1e-12);
+    }
+
+    public static function scopDepuis2027(): iterable
+    {
+        // ADEME 05aabba7, scop A90:J107, valeurs indépendantes du PHP.
+        $rows = [
+            172 => [[3.2, 3.2], [3.4, 3.4]],
+            173 => [[2.9, 3.4], [3.4, 4.2]],
+            174 => [[3.1, 3.5], [3.7, 4.4]],
+            175 => [[3.1, 3.5], [3.7, 4.4]],
+            176 => [[3.1, 3.5], [3.7, 4.4]],
+            178 => [[2.9, 3.4], [3.4, 4.2]],
+            179 => [[3.1, 3.5], [3.7, 4.4]],
+            180 => [[3.1, 3.5], [3.7, 4.4]],
+            181 => [[3.1, 3.5], [3.7, 4.4]],
+        ];
+        $basseTemperature = [11, 12, 13, 14, 15, 16, 17, 18, 41, 46, 47, 48, 49];
+        foreach ($rows as $type => [$h1h2, $h3]) {
+            foreach ([1, 7, 8] as $zone) {
+                foreach ([0, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 39, 41, 43, 44, 46, 47, 48, 49] as $emetteur) {
+                    $values = $zone === 8 ? $h3 : $h1h2;
+                    yield "$type, zone $zone, émission $emetteur" => [$type, $emetteur, (string)$zone, $values[(int)in_array($emetteur, $basseTemperature, true)]];
+                }
+            }
+        }
+    }
+
+    public function testUnScopJustifieRecentPrimeEtResteLisibleCommeRendement(): void
+    {
+        foreach ([172, 173, 174, 175, 176, 178, 179, 180, 181] as $type) {
+            $doc = new DOMDocument();
+            $doc->loadXML('<logement><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>' . $type . '</enum_type_generateur_ch_id><enum_methode_saisie_carac_sys_id>6</enum_methode_saisie_carac_sys_id></donnee_entree><donnee_intermediaire><scop>5.1</scop></donnee_intermediaire></generateur_chauffage></logement>');
+            $gen = $doc->getElementsByTagName('generateur_chauffage')->item(0);
+            $context = new CalculationContext($doc, new TableRepository(self::PROJECT_ROOT . '/resources/tables'), zoneClimatique: '1');
+            (new GenerationNonCombustionCalculator())->calculate($gen, $context);
+            self::assertSame('5.1', $doc->getElementsByTagName('scop')->item(0)?->textContent);
+            self::assertSame(0, $doc->getElementsByTagName('rendement_generation')->length);
+            self::assertSame(5.1, RendementGenerateur::lire(new NodeAccessor($doc), $gen));
+        }
+    }
+
+    private function calcule(int $genId, int $typeEmetteur, string $zone, ?string $version = null): float
     {
         $document = new DOMDocument();
         $document->loadXML(sprintf(<<<'XML'
@@ -39,6 +84,17 @@ final class GenerationNonCombustionCalculatorTest extends TestCase
 </logement>
 XML, $typeEmetteur, $genId));
 
+        if ($version !== null) {
+            $logement = $document->documentElement;
+            $document->removeChild($logement);
+            $dpe = $document->createElement('dpe');
+            $document->appendChild($dpe);
+            $admin = $document->createElement('administratif');
+            $admin->appendChild($document->createElement('enum_version_id', $version));
+            $dpe->appendChild($admin);
+            $dpe->appendChild($logement);
+        }
+
         $context = new CalculationContext(
             document: $document,
             tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'),
@@ -50,6 +106,18 @@ XML, $typeEmetteur, $genId));
         (new GenerationNonCombustionCalculator())->calculate($generateur, $context);
 
         return (float) $document->getElementsByTagName('scop')->item(0)?->textContent;
+    }
+
+    public function testLaClassificationDesEmetteursDu27NeModifiePasLesAnciensModeles(): void
+    {
+        foreach ([41, 46, 47, 48, 49] as $emetteur) {
+            self::assertEqualsWithDelta(3.2, $this->calcule(7, $emetteur, '1', '2.7'), 1e-12);
+            self::assertEqualsWithDelta(2.8, $this->calcule(7, $emetteur, '1', '2.6'), 1e-12);
+        }
+        foreach ([6, 7, 8, 9, 43, 44] as $emetteur) {
+            self::assertEqualsWithDelta(2.8, $this->calcule(7, $emetteur, '1', '2.7'), 1e-12);
+            self::assertEqualsWithDelta(3.2, $this->calcule(7, $emetteur, '1', '2.6'), 1e-12);
+        }
     }
 
     /** @return iterable<string, array{int, int, string, float}> */

@@ -18,6 +18,7 @@ namespace CalculDpePHP\Chauffage;
  * @spec-section 12.4, 13.2.2
  * @spec-pages   78-80, 86-92
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
+ * @spec-source  editeur/public/schemas/DPEv2.7.xsd
  * @tables       chauffage/tv_generateur_combustion (groupes d'enums par ligne)
  */
 final class GenerateurChAlias
@@ -46,6 +47,12 @@ final class GenerateurChAlias
         162 => 9,  163 => 10, 164 => 11,             // eau/eau
         165 => 13, 166 => 14, 167 => 15,             // eau glycolée/eau
         168 => 17, 169 => 18, 170 => 19,             // géothermique
+
+        // Familles des PAC >=2027, d'après les libellés XSD 2.7. Ces alias
+        // servent à leur classification, PAS au choix du SCOP : celui-ci
+        // conserve l'enum original et sa table dédiée tv_scop_2027.
+        172 => 3, 173 => 7, 174 => 11, 175 => 15, 176 => 19,
+        178 => 7, 179 => 11, 180 => 15, 181 => 19,
 
         // PAC hybride : partie chaudière (groupes 96|138|148|160, 97|139|149|161, …)
         144 => 96,                                    // générique (supprimé de l'XSD)
@@ -203,7 +210,8 @@ final class GenerateurChAlias
      */
     public static function isHybride(?int $genId): bool
     {
-        return $genId !== null && $genId >= 143 && $genId <= 170;
+        return $genId !== null && (($genId >= 143 && $genId <= 170)
+            || in_array($genId, [178, 179, 180, 181], true));
     }
 
     /**
@@ -212,7 +220,7 @@ final class GenerateurChAlias
     public static function isHybridePac(?int $genId): bool
     {
         return $genId !== null
-            && in_array($genId, [143, 145, 146, 147, 162, 163, 164, 165, 166, 167, 168, 169, 170], true);
+            && in_array($genId, [143, 145, 146, 147, 162, 163, 164, 165, 166, 167, 168, 169, 170, 178, 179, 180, 181], true);
     }
 
     /**

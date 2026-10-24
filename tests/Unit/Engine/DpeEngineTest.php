@@ -188,6 +188,30 @@ final class DpeEngineTest extends TestCase
         }
     }
 
+    public function testLesNeufNouvellesPacChauffageSontAccepteesDansLeModele27(): void
+    {
+        foreach ([172, 173, 174, 175, 176, 178, 179, 180, 181] as $type) {
+            $xml = $this->xmlAvecGenerateur('generateur_chauffage', 'enum_type_generateur_ch_id', $type);
+            $xml = str_replace('<enum_modele_dpe_id>1</enum_modele_dpe_id>', '<enum_modele_dpe_id>1</enum_modele_dpe_id><enum_version_id>2.7</enum_version_id>', $xml);
+            $result = $this->engine()->calculate($xml);
+            self::assertSame((string)$type, $result->getElementsByTagName('enum_type_generateur_ch_id')->item(0)?->textContent);
+        }
+    }
+
+    public function testLesChaudieresBois27NonCouvertesRestentRefusees(): void
+    {
+        foreach ([177, 182, 183, 184] as $type) {
+            $xml = $this->xmlAvecGenerateur('generateur_chauffage', 'enum_type_generateur_ch_id', $type);
+            $xml = str_replace('<enum_modele_dpe_id>1</enum_modele_dpe_id>', '<enum_modele_dpe_id>1</enum_modele_dpe_id><enum_version_id>2.7</enum_version_id>', $xml);
+            try {
+                $this->engine()->calculate($xml);
+                self::fail("Chaudière $type non couverte.");
+            } catch (UnsupportedDpeModelException $exception) {
+                self::assertStringContainsString("de type $type", $exception->getMessage());
+            }
+        }
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('technologies27')]
     public function testUneTechnologieDu27EstRefuseeAuLieuDEtreCalculeeAFaux(
         string $balise,
