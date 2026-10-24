@@ -96,4 +96,41 @@ XML, $mode, $typeId, $surface, $post2012));
             1e-9,
         );
     }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('puissancesJustifiees')]
+    public function testLaPuissanceSaisiePrimeSurLeForfait(int $method, float $power): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML('<dpe><administratif><enum_version_id>2.7</enum_version_id></administratif><logement><ventilation_collection><ventilation><donnee_entree>'
+            . '<enum_methode_saisie_pvent_moy_id>' . $method . '</enum_methode_saisie_pvent_moy_id>'
+            . '</donnee_entree><donnee_intermediaire><pvent_moy>' . $power . '</pvent_moy></donnee_intermediaire></ventilation></ventilation_collection></logement></dpe>');
+        \CalculDpePHP\Xml\OutputPurger::purge($doc);
+        (new PventMoyCalculator())->calculate($doc->getElementsByTagName('ventilation')->item(0), new CalculationContext($doc, new TableRepository(self::PROJECT_ROOT . '/resources/tables')));
+        self::assertSame(1, $doc->getElementsByTagName('pvent_moy')->length);
+        self::assertEqualsWithDelta($power, (float)$doc->getElementsByTagName('pvent_moy')->item(0)->textContent, 1e-12);
+    }
+
+    public static function puissancesJustifiees(): iterable
+    {
+        foreach ([2, 3] as $method) {
+            foreach ([0.0, 34.25, 125.75] as $power) { yield "$method/$power" => [$method, $power]; }
+        }
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('puissancesInvalides')]
+    public function testUnePuissanceDeclareeJustifieeMaisInexploitableNestPasRemplaceeParUnForfait(string $value): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML('<dpe><administratif><enum_version_id>2.7</enum_version_id></administratif><logement><ventilation><donnee_entree>'
+            . '<enum_methode_saisie_pvent_moy_id>2</enum_methode_saisie_pvent_moy_id><enum_type_ventilation_id>6</enum_type_ventilation_id><surface_ventile>100</surface_ventile>'
+            . '</donnee_entree><donnee_intermediaire>' . $value . '</donnee_intermediaire></ventilation></logement></dpe>');
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('puissance moyenne de ventilation justifiée');
+        (new PventMoyCalculator())->calculate($doc->getElementsByTagName('ventilation')->item(0), new CalculationContext($doc, new TableRepository(self::PROJECT_ROOT . '/resources/tables')));
+    }
+
+    public static function puissancesInvalides(): iterable
+    {
+        foreach (['', '<pvent_moy/>', '<pvent_moy>-1</pvent_moy>', '<pvent_moy>INF</pvent_moy>', '<pvent_moy>NaN</pvent_moy>', '<pvent_moy>1e309</pvent_moy>'] as $i => $value) { yield (string)$i => [$value]; }
+    }
 }

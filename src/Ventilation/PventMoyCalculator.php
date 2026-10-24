@@ -30,7 +30,10 @@ use RuntimeException;
  * @spec-section 5
  * @spec-pages 41-42
  * @spec-source resources/specsplitted/05-auxiliaires-ventilation/00-calcul.md
+ * @spec-source editeur/public/schemas/DPEv2.7.xsd (puissance justifiée en méthodes 2/3)
  * @xml-input  ventilation.donnee_entree.{enum_type_ventilation_id, surface_ventile}
+ * @xml-input  ventilation.donnee_entree.enum_methode_saisie_pvent_moy_id (modèle 2.7)
+ * @xml-input  ventilation.donnee_intermediaire.pvent_moy (saisie préservée en méthodes 2/3)
  * @xml-input  ancestor::logement.caracteristique_generale.enum_methode_application_dpe_log_id
  * @xml-output ventilation.donnee_intermediaire.pvent_moy
  * @depends-on aucun
@@ -59,6 +62,20 @@ final class PventMoyCalculator implements CalculatorInterface
         $entree = $node->getElementsByTagName('donnee_entree')->item(0);
         if (!$entree instanceof DOMElement) {
             throw new RuntimeException('ventilation sans <donnee_entree>.');
+        }
+
+        $version = $accessor->getStringOrNull('/dpe/administratif/enum_version_id');
+        $method = $accessor->getIntOrNull('./enum_methode_saisie_pvent_moy_id', $entree);
+        if ($version !== null && version_compare($version, '2.7', '>=') && in_array($method, [2, 3], true)) {
+            // XSD 2.7 : « puissance [...] soit saisie soit calculée ».
+            // Cette valeur en W est la puissance moyenne de l'installation,
+            // pas un coefficient surfacique à remultiplier par Sh ou Qvarep.
+            $power = $accessor->getFloatOrNull('./donnee_intermediaire/pvent_moy', $node);
+            if ($power === null || !is_finite($power) || $power < 0.0) {
+                throw new RuntimeException('La puissance moyenne de ventilation justifiée est absente ou invalide (XSD ADEME 2.7, méthodes 2/3).');
+            }
+            $accessor->setChildValue($accessor->ensureDonneeIntermediaire($node), 'pvent_moy', $power);
+            return;
         }
 
         $typeId = $accessor->getIntOrNull('./enum_type_ventilation_id', $entree);

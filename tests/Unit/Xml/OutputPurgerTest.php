@@ -119,4 +119,30 @@ final class OutputPurgerTest extends TestCase
 
         $this->assertSame(0, $doc->getElementsByTagName('donnee_intermediaire')->length);
     }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('saisiesVentilation')]
+    public function testLaPuissanceVentilationJustifieeEstUneEntreeDuModele27(?string $version, ?int $methode, bool $preserve): void
+    {
+        $doc = new DOMDocument();
+        $model = $version === null ? '' : '<enum_version_id>' . $version . '</enum_version_id>';
+        $method = $methode === null ? '' : '<enum_methode_saisie_pvent_moy_id>' . $methode . '</enum_methode_saisie_pvent_moy_id>';
+        $doc->loadXML('<dpe><administratif>' . $model . '</administratif><logement><ventilation_collection><ventilation><donnee_entree>' . $method
+            . '</donnee_entree><donnee_intermediaire><pvent_moy>0</pvent_moy><q4pa_conv>1.7</q4pa_conv><hvent>12</hvent><conso_auxiliaire_ventilation>100</conso_auxiliaire_ventilation></donnee_intermediaire>'
+            . '</ventilation></ventilation_collection></logement></dpe>');
+        OutputPurger::purge($doc);
+        self::assertSame($preserve ? 1 : 0, $doc->getElementsByTagName('pvent_moy')->length);
+        if ($preserve) { self::assertSame('0', $doc->getElementsByTagName('pvent_moy')->item(0)->textContent); }
+        foreach (['q4pa_conv', 'hvent', 'conso_auxiliaire_ventilation'] as $tag) { self::assertSame(0, $doc->getElementsByTagName($tag)->length); }
+        OutputPurger::purge($doc);
+        self::assertSame($preserve ? 1 : 0, $doc->getElementsByTagName('pvent_moy')->length);
+    }
+
+    public static function saisiesVentilation(): iterable
+    {
+        foreach ([null, '1', '2.6', '2.7'] as $version) {
+            foreach ([null, 1, 2, 3] as $method) {
+                yield ($version ?? 'absent') . '/' . ($method ?? 'absent') => [$version, $method, $version === '2.7' && in_array($method, [2, 3], true)];
+            }
+        }
+    }
 }
