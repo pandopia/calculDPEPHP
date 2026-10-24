@@ -13,8 +13,9 @@ namespace CalculDpePHP\Conformite;
  * XML réellement publiés par l'observatoire — les fichiers de référence
  * eux-mêmes échouent, faute de `numero_dpe` par exemple.
  *
- * Le contrôle porte donc sur les **chemins**. Le schéma les donne
- * explicitement dans ses `<xs:appinfo source="…">`, ce qui permet de repérer
+ * Le contrôle porte donc sur les **chemins**. La hiérarchie des déclarations
+ * `xs:element` prime sur les `<xs:appinfo source="…">` parfois périmées
+ * (seconde fenêtre déplacée dans les XSD ADEME récents), ce qui permet de repérer
  * non seulement une balise inventée, mais aussi une balise réelle écrite au
  * mauvais endroit — cas que le contrôle par nom laissait passer (voir
  * TASK-K14 : `enum_classe_inertie_id` écrit en `donnee_intermediaire` du
@@ -45,15 +46,51 @@ final class XsdVocabulary
 
         $paths = [];
         if (is_file($xsdPath)) {
-            $content = (string) file_get_contents($xsdPath);
-            if (preg_match_all('/<xs:appinfo\s+source="([^"]+)"/', $content, $m) > 0) {
-                foreach ($m[1] as $path) {
+            $schema = new \DOMDocument();
+            $previous = libxml_use_internal_errors(true);
+            try {
+                $loaded = $schema->load($xsdPath, LIBXML_NONET);
+            } finally {
+                libxml_clear_errors();
+                libxml_use_internal_errors($previous);
+            }
+            if ($loaded) {
+                $xpath = new \DOMXPath($schema);
+                $xpath->registerNamespace('xs', 'http://www.w3.org/2001/XMLSchema');
+                foreach ($xpath->query('//xs:appinfo[@source]') as $annotation) {
+                    $path = self::declaredPath($annotation) ?? $annotation->getAttribute('source');
                     $paths[$path] = true;
                 }
             }
         }
 
         return self::$cache[$xsdPath] = $paths;
+    }
+
+    /**
+     * Chemin réel d'une déclaration locale sous la racine DPE.
+     *
+     * Les annotations des éléments globaux réutilisés (administratif,
+     * adresses…) restent le repli : leur parent ne donne pas le chemin de
+     * chaque référence. Les sorties calculées sont déclarées localement.
+     */
+    private static function declaredPath(\DOMElement $annotation): ?string
+    {
+        $declaration = $annotation->parentNode?->parentNode;
+        if (!$declaration instanceof \DOMElement
+            || $declaration->namespaceURI !== 'http://www.w3.org/2001/XMLSchema'
+            || $declaration->localName !== 'element'
+            || !$declaration->hasAttribute('name')) {
+            return null;
+        }
+        $names = [];
+        for ($cursor = $declaration; $cursor instanceof \DOMElement; $cursor = $cursor->parentNode) {
+            if ($cursor->namespaceURI === 'http://www.w3.org/2001/XMLSchema'
+                && $cursor->localName === 'element' && $cursor->hasAttribute('name')) {
+                array_unshift($names, $cursor->getAttribute('name'));
+            }
+        }
+        return ($names[0] ?? null) === 'dpe' ? implode('/', $names) : null;
     }
 
     /**
