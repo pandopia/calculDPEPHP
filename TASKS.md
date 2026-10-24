@@ -573,7 +573,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K63 — Modèle DPE 2.7 : technologies et ENR restant à couvrir
 
-- [~CB] Owner: CB | Phase: K | Priorité: haute
+- [ ] Owner: __ | Phase: K | Priorité: haute
 - Sources : `editeur/public/schemas/DPEv2.7.xsd` (V10.0.0, ADEME du
   16/10/2026) et `resources/textes/arrete-2026-06-11-epbd.pdf`
   (JO du 13/08/2026, texte 23, entrée en vigueur au 01/01/2027).
@@ -593,6 +593,16 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   (`scf_saisi` → `scf`), `couverture_pac_hybride_saisi`.
   Chercher les textes des évolutions 2026 de la méthode 3CL, pas un mapping
   depuis un exemple.
+- **Froid** : les lignes SEER 7–8 sont couvertes (classeur officiel 05aabba7),
+  avec sélection 2.7 pour les installations depuis 2015 et maintien des
+  valeurs historiques 3/6. Le froid au gaz (type 21), le réseau urbain (23)
+  et toute énergie explicite autre que l'électricité du réseau sont refusés
+  avant purge : implémenter leurs conversions EP/GES/coûts et leur ligne
+  énergétique avant de lever ce garde. Un EER seul ne suffit pas.
+- **Aération 2.7** : la feuille `debits_ventilation` ajoute `qvaerat_conv` et
+  déplace le débit d'ouverture des fenêtres (type 1) hors de `qvarep_conv`.
+  Sourcer la nouvelle répartition ventilation/aération et ses sorties ; ne
+  pas écraser les valeurs historiques pour les anciens modèles.
 - **ENR réseau** : `prod_enr_rcfu` reste à 0. Les taux ENR/récupération sont
   désormais extraits exhaustivement du classeur ADEME (six éditions, 5 643
   lignes, source figée et SHA-256 dans `reference/tv_reseau_chaleur_enr`).

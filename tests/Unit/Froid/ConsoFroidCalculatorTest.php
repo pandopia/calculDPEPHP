@@ -18,6 +18,71 @@ final class ConsoFroidCalculatorTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../..';
     private const TOL = 0.01;
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('forfaitsParVersion')]
+    public function testForfaitSeerVersionne(?string $version, int $zone, ?int $periode, ?int $tableId, float $eer): void
+    {
+        [$doc, $node] = $this->buildLogementWithClimatisation($tableId);
+        if ($version !== null) {
+            $administratif = $doc->createElement('administratif');
+            $administratif->appendChild($doc->createElement('enum_version_id', $version));
+            $node->appendChild($administratif);
+        }
+        if ($periode !== null) {
+            $doc->getElementsByTagName('donnee_entree')->item(0)->appendChild($doc->createElement('enum_periode_installation_fr_id', (string)$periode));
+        }
+        $context = new CalculationContext(document: $doc, tables: new TableRepository(self::PROJECT_ROOT . '/resources/tables'), zoneClimatique: (string)$zone);
+        $context->set('froid.besoin_fr', 1000.0);
+        $context->set('froid.besoin_fr_depensier', 1200.0);
+        (new ConsoFroidCalculator())->calculate($node, $context);
+        $xp = new \DOMXPath($doc);
+        self::assertEqualsWithDelta($eer, (float)$xp->evaluate('string(//climatisation/donnee_intermediaire/eer)'), 1e-9);
+        self::assertEqualsWithDelta(900 / $eer, (float)$xp->evaluate('string(//sortie/ef_conso/conso_fr)'), 1e-9);
+    }
+
+    public static function forfaitsParVersion(): iterable
+    {
+        // Feuille ADEME « seer », édition 05aabba7 (16/10/2026) :
+        // lignes historiques 1–6 conservées, nouvelles lignes 7–8 pour 2.7.
+        foreach ([null, '2.6', '2.7'] as $version) {
+            foreach (range(1, 8) as $zone) {
+                foreach ([1, 2, 3] as $periode) {
+                    $recent = $version === '2.7' ? ($zone === 8 ? 6.365 : 7.125) : ($zone === 8 ? 7.125 : 6.365);
+                    $eer = $periode === 3 ? $recent : ($zone === 8 ? [1 => 3.25, 2 => 5.415][$periode] : [1 => 3.6, 2 => 6.175][$periode]);
+                    yield ($version ?? 'absent') . "/$zone/$periode" => [$version, $zone, $periode, null, $eer];
+                }
+            }
+        }
+        foreach ([1 => 3.6, 2 => 6.175, 3 => 6.365, 4 => 3.25, 5 => 5.415, 6 => 7.125, 7 => 7.125, 8 => 6.365] as $id => $eer) {
+            yield "table explicite $id" => ['2.7', 1, null, $id, $eer];
+        }
+    }
+
+    public function testToutesLesLignesSeerDuXsd27SontCalculablesEtLeurEerEstValide(): void
+    {
+        $schema = new DOMDocument();
+        $schema->load(self::PROJECT_ROOT . '/editeur/public/schemas/DPEv2.7.xsd');
+        $xp = new \DOMXPath($schema);
+        $declaration = $xp->query('(//xs:element[@name="tv_seer_id"])[1]')->item(0);
+        $eerDeclaration = $xp->query('(//xs:element[@name="climatisation"]//xs:element[@name="donnee_intermediaire"]//xs:element[@name="eer"])[1]')->item(0);
+        foreach ($xp->query('.//xs:enumeration', $declaration) as $enumeration) {
+            $id = (int)$enumeration->getAttribute('value');
+            [$doc, $node] = $this->buildLogementWithClimatisation($id);
+            $context = $this->makeContext($doc, ['froid.besoin_fr' => 1000.0]);
+            (new ConsoFroidCalculator())->calculate($node, $context);
+            foreach ([$doc->getElementsByTagName('tv_seer_id')->item(0), $doc->getElementsByTagName('eer')->item(0)] as $valeur) {
+                $isole = new DOMDocument();
+                $racine = $isole->createElementNS('http://www.w3.org/2001/XMLSchema', 'xs:schema');
+                $isole->appendChild($racine);
+                $element = $isole->importNode($valeur->nodeName === 'eer' ? $eerDeclaration : $declaration, true);
+                $element->removeAttribute('minOccurs');
+                $racine->appendChild($element);
+                $resultat = new DOMDocument();
+                $resultat->appendChild($resultat->importNode($valeur, true));
+                self::assertTrue($resultat->schemaValidateSource($isole->saveXML()), "Ligne SEER $id : {$valeur->nodeName}");
+            }
+        }
+    }
+
     private function buildLogementWithClimatisation(?int $seerIdent = null, ?float $eerDirect = null, ?float $surfaceRefroidie = null): array
     {
         $deXml = '<donnee_entree>';

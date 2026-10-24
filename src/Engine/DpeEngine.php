@@ -109,6 +109,33 @@ final class DpeEngine
 
         $this->assertTechnologiesConnues($accessor, $document);
         $this->assertOptionsConnues($accessor, $document);
+        $this->assertFroidElectrique($accessor, $document);
+    }
+
+    /**
+     * EP, GES, coûts et ventilation par énergie du froid ne couvrent pour
+     * l'instant que l'électricité du réseau. XSD 2.6/2.7 : le type 21 est un
+     * système thermodynamique gaz ; le modèle 2.7 ajoute le réseau de froid 23.
+     * Une performance EER valide ne rend pas leurs conversions électriques.
+     * L'énergie absente/nil conserve le fonctionnement électrique historique.
+     *
+     * @spec-source editeur/public/schemas/DPEv2.7.xsd
+     * @throws UnsupportedDpeModelException
+     */
+    private function assertFroidElectrique(NodeAccessor $accessor, DOMDocument $document): void
+    {
+        foreach ($document->getElementsByTagName('climatisation') as $climatisation) {
+            $type = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_fr_id', $climatisation);
+            $energie = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $climatisation);
+            if ($type === 21 || ($type !== null && $type > 22) || ($energie !== null && $energie !== 1)) {
+                throw new UnsupportedDpeModelException(sprintf(
+                    'refroidissement non couvert (enum_type_generateur_fr_id=%s, enum_type_energie_id=%s) : '
+                    . 'seul le froid électrique du réseau est implémenté pour les conversions EP/GES/coûts. '
+                    . 'Le fichier est refusé avant purge — voir TASK-K63.',
+                    $type ?? 'absent', $energie ?? 'absent',
+                ));
+            }
+        }
     }
 
     /**

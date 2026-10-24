@@ -44,6 +44,46 @@ final class DpeEngineTest extends TestCase
             XML;
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('froidsNonCouverts')]
+    public function testFroidNonElectriqueRefuseAvantPurge(?int $type, ?int $energie): void
+    {
+        $doc = new \DOMDocument();
+        $doc->loadXML('<dpe><logement><climatisation><donnee_entree>'
+            . ($type === null ? '' : '<enum_type_generateur_fr_id>' . $type . '</enum_type_generateur_fr_id>')
+            . ($energie === null ? '' : '<enum_type_energie_id>' . $energie . '</enum_type_energie_id>')
+            . '</donnee_entree></climatisation><sortie><a_conserver>123</a_conserver></sortie></logement></dpe>');
+        $before = $doc->saveXML();
+        try {
+            $this->engine()->calculateDocument($doc);
+            self::fail('Le froid non électrique ne doit pas être compté comme électricité du réseau.');
+        } catch (UnsupportedDpeModelException $exception) {
+            self::assertStringContainsString('refroidissement', $exception->getMessage());
+            self::assertSame($before, $doc->saveXML());
+        }
+    }
+
+    public static function froidsNonCouverts(): iterable
+    {
+        yield 'gaz sans énergie explicite' => [21, null];
+        yield 'gaz avec énergie contradictoire' => [21, 1];
+        yield 'réseau de froid sans énergie' => [23, null];
+        foreach (range(2, 15) as $energie) {
+            yield "énergie explicite $energie" => [null, $energie];
+        }
+    }
+
+    public function testFroidElectriqueHistoriqueAccepte(): void
+    {
+        foreach ([null, 1, 20, 22] as $type) {
+            foreach (['', '<enum_type_energie_id>1</enum_type_energie_id>', '<enum_type_energie_id xsi:nil="true"/>'] as $energie) {
+                $this->engine()->calculate('<dpe xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><logement><climatisation><donnee_entree>'
+                    . ($type === null ? '' : '<enum_type_generateur_fr_id>' . $type . '</enum_type_generateur_fr_id>')
+                    . $energie . '</donnee_entree></climatisation></logement></dpe>');
+            }
+        }
+        $this->expectNotToPerformAssertions();
+    }
+
     /**
      * Document minimal portant un générateur du type donné.
      *

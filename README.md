@@ -40,7 +40,9 @@ php bin/calcul-dpe /chemin/vers/input.xml [/chemin/vers/output.xml]
 Le modèle DPE 2.7 est pris en charge **partiellement**. Les nouveaux types de
 générateurs et les options dont le calcul n'est pas encore implémenté (MTA,
 régulation prédictive, solaire ECS seule, récupération sur eaux grises,
-commande intelligente et couverture hybride saisie) lèvent
+commande intelligente et couverture hybride saisie), ainsi que les systèmes
+de refroidissement autres que le froid électrique du réseau (gaz, réseau de froid urbain,
+autre énergie explicitement renseignée), lèvent
 `UnsupportedDpeModelException` avant toute purge du XML. Un fichier accepté
 ne constitue donc pas une certification de conformité 2.7 complète ; les
 travaux restants sont décrits dans `TASKS.md` (K63).

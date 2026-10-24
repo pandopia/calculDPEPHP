@@ -33,6 +33,7 @@ use DOMElement;
  * @xml-output   logement.climatisation_collection.climatisation.donnee_intermediaire.{eer, conso_fr, conso_fr_depensier}
  * @depends-on   \CalculDpePHP\Froid\BesoinAnnuelCalculator
  * @tables       froid/tv_seer
+ * @xml-input    administratif.enum_version_id (sélection des lignes ADEME 2.7)
  */
 final class ConsoFroidCalculator implements CalculatorInterface
 {
@@ -160,6 +161,8 @@ final class ConsoFroidCalculator implements CalculatorInterface
         // Open3cl tv.js seer : H1/H2 = zones 1-7, H3 = zone 8.
         $zoneId = $context->zoneClimatique !== null ? (int)$context->zoneClimatique : 1;
         $isH3   = $zoneId === 8;
+        $version = $accessor->getStringOrNull('//administratif/enum_version_id');
+        $modele27 = $version !== null && version_compare($version, '2.7', '>=');
         foreach ($climatiseurs as $clim) {
             if (!$clim instanceof DOMElement) {
                 continue;
@@ -169,7 +172,9 @@ final class ConsoFroidCalculator implements CalculatorInterface
                 continue;
             }
             // tv_seer_id : 1-3 (H1/H2 × periodes 1/2/3), 4-6 (H3 × periodes 1/2/3)
-            $seerId = $isH3 ? (3 + $periodId) : $periodId;
+            // Feuille officielle ADEME « seer », révision 05aabba7 :
+            // lignes 7–8 réservées au modèle 2.7, historiques 3–6 conservées.
+            $seerId = $modele27 && $periodId === 3 ? ($isH3 ? 8 : 7) : ($isH3 ? (3 + $periodId) : $periodId);
             $tvSeer = $context->tables->load('froid/tv_seer');
             if (isset($tvSeer[$seerId])) {
                 return (float)$tvSeer[$seerId]['eer'];
