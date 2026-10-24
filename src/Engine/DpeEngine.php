@@ -108,6 +108,44 @@ final class DpeEngine
         }
 
         $this->assertTechnologiesConnues($accessor, $document);
+        $this->assertOptionsConnues($accessor, $document);
+    }
+
+    /**
+     * Domaine des options dont les calculateurs implémentent la méthode.
+     *
+     * @spec-source editeur/public/schemas/DPEv2.7.xsd
+     * Les appinfo des champs ci-dessous introduisent solaire ECS seule (5),
+     * MTA (4), régulation prédictive (8), période thermo 2027 (4), RCEG et
+     * deux coefficients saisis. Leur simple présence ne suffit pas à rendre
+     * leur calcul disponible. Refuser avant purge, comme les générateurs.
+     * Un maximum null signifie qu'aucune valeur saisie n'est encore traitée.
+     *
+     * @throws UnsupportedDpeModelException
+     */
+    private function assertOptionsConnues(NodeAccessor $accessor, DOMDocument $document): void
+    {
+        $options = [
+            ['installation_ecs', 'enum_type_installation_solaire_id', 4],
+            ['installation_ecs', 'enum_bouclage_reseau_ecs_id', 3],
+            ['emetteur_chauffage', 'enum_equipement_intermittence_id', 7],
+            ['generateur_ecs', 'enum_periode_installation_ecs_thermo_id', 3],
+            ['installation_ecs', 'presence_rceg', 0],
+            ['generateur_ecs', 'scf_saisi', null],
+            ['installation_chauffage', 'couverture_pac_hybride_saisi', null],
+        ];
+        foreach ($options as [$balise, $champ, $maximum]) {
+            foreach ($document->getElementsByTagName($balise) as $equipement) {
+                $valeur = $accessor->getFloatOrNull('./donnee_entree/' . $champ, $equipement);
+                if ($valeur !== null && ($maximum === null || $valeur > $maximum)) {
+                    throw new UnsupportedDpeModelException(sprintf(
+                        '%s/%s=%s : option du modèle DPE 2.7 non encore implémentée — voir TASK-K63. '
+                        . 'Le fichier est refusé avant purge plutôt que de calculer en ignorant cette option.',
+                        $balise, $champ, $valeur,
+                    ));
+                }
+            }
+        }
     }
 
     /**

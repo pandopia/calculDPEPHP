@@ -98,6 +98,48 @@ final class DpeEngineTest extends TestCase
         $this->engine()->calculate($this->xmlAvecGenerateur($balise, $champ, $type));
     }
 
+    /** Options introduites par les appinfo du XSD 2.7, encore sans calcul. */
+    public static function options27NonCouvertes(): iterable
+    {
+        yield 'solaire ECS seule' => ['installation_ecs', 'enum_type_installation_solaire_id', '5'];
+        yield 'module thermique appartement' => ['installation_ecs', 'enum_bouclage_reseau_ecs_id', '4'];
+        yield 'régulation prédictive' => ['emetteur_chauffage', 'enum_equipement_intermittence_id', '8'];
+        yield 'CET installé en 2027' => ['generateur_ecs', 'enum_periode_installation_ecs_thermo_id', '4'];
+        yield 'récupération eaux grises' => ['installation_ecs', 'presence_rceg', '1'];
+        yield 'commande intelligente' => ['generateur_ecs', 'scf_saisi', '0.9'];
+        yield 'commande intelligente zéro explicite' => ['generateur_ecs', 'scf_saisi', '0'];
+        yield 'couverture hybride saisie' => ['installation_chauffage', 'couverture_pac_hybride_saisi', '0.75'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('options27NonCouvertes')]
+    public function testOption27NonCouverteRefuseeAvantToutePurge(string $balise, string $champ, string $valeur): void
+    {
+        $document = new \DOMDocument();
+        $document->loadXML('<dpe><administratif><enum_version_id>2.7</enum_version_id></administratif><logement>'
+            . '<' . $balise . '><donnee_entree><' . $champ . '>' . $valeur . '</' . $champ . '></donnee_entree></' . $balise . '>'
+            . '<sortie><valeur_a_conserver>123</valeur_a_conserver></sortie></logement></dpe>');
+        $before = $document->saveXML();
+        try {
+            $this->engine()->calculateDocument($document);
+            self::fail('Une option non implémentée ne doit pas être silencieusement ignorée.');
+        } catch (UnsupportedDpeModelException $exception) {
+            self::assertStringContainsString($champ, $exception->getMessage());
+            self::assertSame($before, $document->saveXML());
+        }
+    }
+
+    public function testOptionsAbsentesNilEtAnciennesRestentCalculables(): void
+    {
+        $this->engine()->calculate('<dpe xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><logement>'
+            . '<installation_ecs><donnee_entree><presence_rceg>0</presence_rceg><enum_type_installation_solaire_id>4</enum_type_installation_solaire_id><enum_bouclage_reseau_ecs_id>3</enum_bouclage_reseau_ecs_id></donnee_entree></installation_ecs>'
+            . '<generateur_ecs><donnee_entree><scf_saisi xsi:nil="true"/><enum_periode_installation_ecs_thermo_id>3</enum_periode_installation_ecs_thermo_id></donnee_entree></generateur_ecs>'
+            . '<installation_chauffage><donnee_entree><couverture_pac_hybride_saisi xsi:nil="true"/></donnee_entree></installation_chauffage>'
+            . '<emetteur_chauffage><donnee_entree><enum_equipement_intermittence_id>7</enum_equipement_intermittence_id></donnee_entree></emetteur_chauffage>'
+            . '<autre><donnee_entree><presence_rceg>1</presence_rceg></donnee_entree></autre>'
+            . '</logement></dpe>');
+        $this->expectNotToPerformAssertions();
+    }
+
     /** Les bornes du modèle 2.6 restent calculables. */
     public function testLesBornesDu26RestentAcceptees(): void
     {
