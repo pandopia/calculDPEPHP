@@ -158,6 +158,47 @@ XML;
 
         $conso = (float)$doc->getElementsByTagName('conso_fr')->item(0)->textContent;
         $this->assertEqualsWithDelta(0.0, $conso, self::TOL);
+        self::assertEqualsWithDelta(6.365, (float)(new \DOMXPath($doc))->evaluate('string(//climatisation/donnee_intermediaire/eer)'), 1e-12);
+        self::assertSame(0.0, $ctx->get('froid.conso_fr'));
+        self::assertSame(0.0, $ctx->get('froid.conso_fr_depensier'));
+    }
+
+    public function testUnBesoinNulNeSupprimePasLaPerformancePropreDeChaqueClimatiseur(): void
+    {
+        [$doc, $node] = $this->buildLogementWithClimatisation(null, 4.0);
+        $first = $doc->getElementsByTagName('climatisation')->item(0);
+        $second = $first->cloneNode(true);
+        $second->getElementsByTagName('eer')->item(0)->textContent = '5.0';
+        $first->parentNode->appendChild($second);
+        $context = $this->makeContext($doc, ['froid.besoin_fr' => 0.0, 'froid.besoin_fr_depensier' => 0.0]);
+        // Une relance ne doit pas laisser les consommations de la précédente.
+        $context->set('froid.conso_fr', 100.0);
+        $context->set('froid.conso_fr_depensier', 150.0);
+        (new ConsoFroidCalculator())->calculate($node, $context);
+        $xp = new \DOMXPath($doc);
+        foreach ([1 => 4.0, 2 => 5.0] as $index => $expected) {
+            self::assertEqualsWithDelta($expected, (float)$xp->evaluate('string(//climatisation[' . $index . ']/donnee_intermediaire/eer)'), 1e-12);
+            foreach (['conso_fr', 'conso_fr_depensier'] as $tag) {
+                self::assertSame(1.0, $xp->evaluate('count(//climatisation[' . $index . ']/donnee_intermediaire/' . $tag . ')'));
+                self::assertSame(0.0, (float)$xp->evaluate('string(//climatisation[' . $index . ']/donnee_intermediaire/' . $tag . ')'));
+            }
+        }
+        self::assertSame(0.0, $context->get('froid.conso_fr'));
+        self::assertSame(0.0, $context->get('froid.conso_fr_depensier'));
+        self::assertEqualsWithDelta(1 / (.5 / 4 + .5 / 5), $context->get('froid.eer'), 1e-12);
+    }
+
+    public function testLeZeroDuLogementGenerePublieLEerSansInventerDeCleDeRepartition(): void
+    {
+        [$doc, $node] = $this->buildLogementWithClimatisation(1);
+        $general = $doc->getElementsByTagName('caracteristique_generale')->item(0);
+        $general->appendChild($doc->createElement('enum_methode_application_dpe_log_id', '3'));
+        $context = $this->makeContext($doc, ['froid.besoin_fr' => 0.0, 'froid.besoin_fr_depensier' => 0.0]);
+        (new ConsoFroidCalculator())->calculate($node, $context);
+        $xp = new \DOMXPath($doc);
+        self::assertEqualsWithDelta(3.6, (float)$xp->evaluate('string(//climatisation/donnee_intermediaire/eer)'), 1e-12);
+        self::assertSame(0.0, (float)$xp->evaluate('string(//sortie/ef_conso/conso_fr)'));
+        self::assertSame(0.0, $xp->evaluate('count(//cle_repartition_clim)'));
     }
 
     /**
@@ -209,6 +250,45 @@ XML;
         yield 'EER deja converti prioritaire' => [8, 7.6, 8.0, 7.6];
         yield 'valeurs invalides repli' => [8, 0.0, -1.0, 6.365];
         yield 'forfait purge ancien EER' => [1, 4.7, 8.0, 6.365];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('performancesSaisies')]
+    public function testUnBesoinNulConserveLesPerformancesJustifiees(int $methode, ?float $eer, ?float $seer, float $attendu): void
+    {
+        [$doc, $node] = $this->buildLogementWithClimatisation(3);
+        $clim = $doc->getElementsByTagName('climatisation')->item(0);
+        $clim->getElementsByTagName('donnee_entree')->item(0)->appendChild($doc->createElement('enum_methode_saisie_carac_sys_id', (string)$methode));
+        $di = $doc->createElement('donnee_intermediaire');
+        foreach (['eer' => $eer, 'seer' => $seer] as $tag => $value) {
+            if ($value !== null) { $di->appendChild($doc->createElement($tag, (string)$value)); }
+        }
+        $clim->appendChild($di);
+        \CalculDpePHP\Xml\OutputPurger::purge($doc);
+        $context = $this->makeContext($doc, ['froid.besoin_fr' => 0.0, 'froid.besoin_fr_depensier' => 0.0]);
+        (new ConsoFroidCalculator())->calculate($node, $context);
+        $xp = new \DOMXPath($doc);
+        self::assertEqualsWithDelta($attendu, (float)$xp->evaluate('string(//climatisation/donnee_intermediaire/eer)'), 1e-12);
+        self::assertSame(0.0, $context->get('froid.conso_fr'));
+    }
+
+    public function testLIntermediaireDeFroidANulRespecteLaDeclarationXsdComplete(): void
+    {
+        [$doc, $node] = $this->buildLogementWithClimatisation(3);
+        $context = $this->makeContext($doc);
+        (new ConsoFroidCalculator())->calculate($node, $context);
+        $di = $doc->getElementsByTagName('climatisation')->item(0)->getElementsByTagName('donnee_intermediaire')->item(0);
+        // BesoinAnnuelCalculator publie le besoin en amont du pipeline ;
+        // le besoin dépensier reste interne (pas de déclaration XML).
+        $di->appendChild($doc->createElement('besoin_fr', '0'));
+        $schema = new DOMDocument();
+        $schema->load(self::PROJECT_ROOT . '/editeur/public/schemas/DPEv2.6.xsd');
+        $xs = new \DOMXPath($schema);
+        $declaration = $xs->query('(//xs:element[@name="climatisation"]//xs:element[@name="donnee_intermediaire"])[1]')->item(0)->cloneNode(true);
+        $declaration->removeAttribute('minOccurs');
+        $schema->documentElement->appendChild($declaration);
+        $single = new DOMDocument();
+        $single->appendChild($single->importNode($di, true));
+        self::assertTrue($single->schemaValidateSource($schema->saveXML()));
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('installationsDistinctes')]

@@ -58,13 +58,13 @@ final class ConsoFroidCalculator implements CalculatorInterface
     {
         $accessor = new NodeAccessor($context->document);
 
-        $bfr    = (float)$context->get('froid.besoin_fr',          0.0);
-        $bfrDep = (float)$context->get('froid.besoin_fr_depensier', 0.0);
+        $bfr    = max(0.0, (float)$context->get('froid.besoin_fr',          0.0));
+        $bfrDep = max(0.0, (float)$context->get('froid.besoin_fr_depensier', 0.0));
 
-        if ($bfr <= 0.0 && $bfrDep <= 0.0) {
-            $this->writeOutputs($accessor, $node, 0.0, 0.0, 0.0);
-            return;
-        }
+        // §10.3 p.69–70 : EER décrit l'équipement, indépendamment de Bfr.
+        // Même à besoin nul, le XSD impose cet intermédiaire strictement
+        // positif sur chaque climatiseur ; seule sa consommation vaut zéro.
+        // Passer par l'écriture commune remet également le contexte à zéro.
 
         // ── Surface refroidie vs surface habitable (logement ou immeuble) ─────
         $shLogement     = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $node)
