@@ -236,7 +236,7 @@ final class DpeEngineTest extends TestCase
     /** Options introduites par les appinfo du XSD 2.7, encore sans calcul. */
     public static function options27NonCouvertes(): iterable
     {
-        yield 'solaire ECS seule' => ['installation_ecs', 'enum_type_installation_solaire_id', '5'];
+        yield 'solaire inconnu' => ['installation_ecs', 'enum_type_installation_solaire_id', '6'];
         yield 'module thermique appartement' => ['installation_ecs', 'enum_bouclage_reseau_ecs_id', '4'];
         yield 'régulation prédictive' => ['emetteur_chauffage', 'enum_equipement_intermittence_id', '8'];
         yield 'CET installé en 2027' => ['generateur_ecs', 'enum_periode_installation_ecs_thermo_id', '4'];
@@ -244,6 +244,25 @@ final class DpeEngineTest extends TestCase
         yield 'commande intelligente' => ['generateur_ecs', 'scf_saisi', '0.9'];
         yield 'commande intelligente zéro explicite' => ['generateur_ecs', 'scf_saisi', '0'];
         yield 'couverture hybride saisie' => ['installation_chauffage', 'couverture_pac_hybride_saisi', '0.75'];
+    }
+
+    public function testLesModalitesSolairesSontVersionneesEtLesAnciensTypesRestentIntacts(): void
+    {
+        foreach (['2.6', '2.7'] as $version) {
+            foreach ([2, 3, 5] as $type) {
+                $doc = new \DOMDocument();
+                $doc->loadXML('<dpe><administratif><enum_version_id>' . $version . '</enum_version_id></administratif><logement><installation_ecs><donnee_entree><enum_type_installation_solaire_id>' . $type . '</enum_type_installation_solaire_id></donnee_entree></installation_ecs><sortie><temoin>123</temoin></sortie></logement></dpe>');
+                $before = $doc->saveXML();
+                $accept = $version === '2.7' ? $type === 5 : $type !== 5;
+                try {
+                    $this->engine()->calculateDocument($doc);
+                    self::assertTrue($accept, "$version solaire $type");
+                } catch (UnsupportedDpeModelException $exception) {
+                    self::assertFalse($accept, "$version solaire $type");
+                    self::assertSame($before, $doc->saveXML());
+                }
+            }
+        }
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('options27NonCouvertes')]

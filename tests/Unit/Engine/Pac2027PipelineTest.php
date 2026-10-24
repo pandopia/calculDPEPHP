@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
 final class Pac2027PipelineTest extends TestCase
 {
     #[DataProvider('typesRecents')]
-    public function testLeParcoursCompletConsommeLesPerformancesRecentes(int $type, float $expectedScop, int $boilerType = 149, bool $predictive = false): void
+    public function testLeParcoursCompletConsommeLesPerformancesRecentes(int $type, float $expectedScop, int $boilerType = 149, bool $predictive = false, bool $solar = false): void
     {
         $root = dirname(__DIR__, 3);
         $doc = new DOMDocument();
@@ -58,6 +58,11 @@ final class Pac2027PipelineTest extends TestCase
             $this->set($entry, 'volume_stockage', '200');
             $this->set($entry, 'enum_type_stockage_ecs_id', '3');
         }
+        if ($solar) {
+            foreach ($xp->query('//installation_ecs/donnee_entree') as $entry) {
+                $this->set($entry, 'enum_type_installation_solaire_id', '5');
+            }
+        }
         foreach ($xp->query('//generateur_chauffage/donnee_entree') as $entry) {
             $this->set($entry, 'chauffage_duree_vie_restante', '20'); // saisie fictive du scénario
         }
@@ -84,6 +89,10 @@ final class Pac2027PipelineTest extends TestCase
         if ($predictive) {
             self::assertEqualsWithDelta(0.98, $xr->evaluate('number((//emetteur_chauffage)[1]/donnee_intermediaire/i0)'), 1e-12);
         }
+        if ($solar) {
+            self::assertEqualsWithDelta(0.38, $xr->evaluate('number((//installation_ecs)[1]/donnee_intermediaire/fecs)'), 1e-12);
+            self::assertGreaterThan(0, $xr->evaluate('number(//prod_enr_solaire_thermique)'));
+        }
         self::assertSame([], XsdVocabulary::unknownElements((new ValueExtractor())->extract($result), $root . '/editeur/public/schemas/DPEv2.7.xsd'));
         $this->validateTechnologyBlocks($result, $root . '/editeur/public/schemas/DPEv2.7.xsd');
         self::assertSame(CalculDpePHP::calculate($result->saveXML()), CalculDpePHP::calculate($doc->saveXML()));
@@ -96,6 +105,7 @@ final class Pac2027PipelineTest extends TestCase
         }
         yield 'PAC et chaudière granulés condensation récentes' => [178, 3.4, 182];
         yield 'PAC récente avec régulation prédictive' => [173, 3.4, 149, true];
+        yield 'PAC récente et ECS solaire 2.7' => [173, 3.4, 149, false, true];
     }
 
     private function set(DOMElement $entry, string $name, string $value): void
@@ -114,13 +124,13 @@ final class Pac2027PipelineTest extends TestCase
         $schema = new DOMDocument();
         $schema->load($path);
         $xs = new DOMXPath($schema);
-        foreach (['generateur_chauffage', 'generateur_ecs', 'emetteur_chauffage', 'production_enr'] as $name) {
+        foreach (['generateur_chauffage', 'generateur_ecs', 'emetteur_chauffage', 'installation_ecs', 'production_enr'] as $name) {
             $declaration = $xs->query('(//xs:element[@name="' . $name . '"])[1]')->item(0)->cloneNode(true);
             $declaration->removeAttribute('minOccurs');
             $declaration->removeAttribute('maxOccurs');
             $schema->documentElement->appendChild($declaration);
         }
-        foreach (['generateur_chauffage', 'generateur_ecs', 'emetteur_chauffage', 'production_enr'] as $name) {
+        foreach (['generateur_chauffage', 'generateur_ecs', 'emetteur_chauffage', 'installation_ecs', 'production_enr'] as $name) {
             foreach ($result->getElementsByTagName($name) as $node) {
                 $single = new DOMDocument();
                 $single->appendChild($single->importNode($node, true));

@@ -180,6 +180,13 @@ final class DpeEngine
         foreach ($options as [$balise, $champ, $maximum]) {
             foreach ($document->getElementsByTagName($balise) as $equipement) {
                 $valeur = $accessor->getFloatOrNull('./donnee_entree/' . $champ, $equipement);
+                if ($balise === 'installation_ecs' && $champ === 'enum_type_installation_solaire_id'
+                    && $version !== null && version_compare($version, '2.7', '>=')) {
+                    if ($valeur === 5.0) { continue; }
+                    if (in_array($valeur, [2.0, 3.0], true)) {
+                        throw new UnsupportedDpeModelException('enum_type_installation_solaire_id=2/3 ne sont plus permis dans le XSD DPE 2.7 ; utiliser la modalité ECS solaire seule 5.');
+                    }
+                }
                 if ($balise === 'emetteur_chauffage' && $champ === 'enum_equipement_intermittence_id'
                     && $valeur === 8.0 && $version !== null && version_compare($version, '2.7', '>=')) {
                     \CalculDpePHP\Intermittence\IntermittenceCalculator::assertPredictiveInput($equipement, $accessor);
