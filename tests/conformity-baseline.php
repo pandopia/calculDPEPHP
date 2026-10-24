@@ -17,6 +17,14 @@
  * @generated-by bin/official-test-report --write-baseline
  */
 return [
+    '2413E1019555H.xml'                          => 61,
+    '2469E2496824M.xml'                          => 49,
+    '2491E0411392K.xml'                          => 48,
+    '2511E2519899U.xml'                          => 60,
+    '2526E2524702C.xml'                          => 47,
+    '2567E0370289Q.xml'                          => 44,
+    '2632E1524057A.xml'                          => 51,
+    '2669E2598817J.xml'                          => 79,
     '2113E0368523M.xml'                            => 133,
     '2206E1733496F.xml'                            => 46,
     '2230E1068756F.xml'                            => 45,

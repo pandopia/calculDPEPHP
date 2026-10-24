@@ -11,7 +11,7 @@
  * Le résolveur refuse génériquement les taux hors [0,1], sans les corriger.
  *
  * @spec-section Annexe 7 de l'arrêté du 15 septembre 2006 ; annexe 2 §1.2.6 de l'arrêté du 11 juin 2026
- * @spec-pages 7 (JO du 13 août 2026, texte 23)
+ * @spec-pages 7
  * @spec-source https://gitlab.com/observatoire-dpe/observatoire-dpe/-/blob/05aabba7/modele_donnee/valeur_tables.xlsx
  * @spec-source feuilles reseau_chaleur_2020 à reseau_chaleur_2025, colonne taux_enr
  * @source-sha256 50d1189e0df8b47aad006a3e525564ae33fab041c3f389d7b407c99fa5546c81
