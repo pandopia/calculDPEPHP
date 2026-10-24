@@ -19,6 +19,28 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K67 — Besoin ancien incompatible avec ses propres apports (24/10/2026)
+
+- `2242E2979513I`, modèle 2.2 du 06/04/2022 : ni erreur d'échelle ni
+  rendement de réseau à corriger. Le fichier est bien à l'immeuble (mode 26,
+  5 180 m²) ; Rg et tous les rendements d'émission/distribution/régulation
+  concordent. Le premier écart est Bch : 97 539,920 contre 117 543,045 kWh.
+- GV, Sse, Nadeq et apports annuels sont reproduits. Mais la référence
+  publie F=0,639, GV=5 439,117 W/K, zone H1c <400 m (ΣDH19=57 673 °Ch),
+  5 836,298 kWh de pertes récupérées, zéro stockage/génération récupéré.
+  §6.1 et §9.1.1 imposent
+  `Σ max(0, GV×DHj×(1−Fj)/1000−Lrecj) ≥ GV×ΣDH×(1−F) /1000−ΣLrec`.
+  Même en majorant F à **0,640**, cette borne vaut **107 092,172 kWh**,
+  supérieure de 9 552,252 à son Bch. Il faudrait au moins F=0,670451.
+- La pondération annuelle de Fj par GV×DHj est aussi celle d'open3cl
+  (`9_besoin_ch.js`, lignes 198–206). La référence recopie en outre 0,639
+  dans le scénario dépensier malgré les DH21 et besoins différents.
+- Aucun moteur modifié, aucune nouvelle imputation ni exclusion : les
+  compteurs bruts restent inchangés. Ne pas abaisser artificiellement le
+  besoin pour reproduire ce fichier. Rouvrir sur export corrigé ou donnée
+  mensuelle/clarification de la sémantique du F publié permettant de lever
+  cette contradiction.
+
 ### TASK-K94 — Variante globale de volume G non retenue (24/10/2026)
 
 - A/B isolé sur l'arbre `3868d54`, même corpus 670 cas et un fichier `src/`

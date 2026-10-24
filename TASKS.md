@@ -402,22 +402,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   valeurs exactes la soutiennent. Reprendre par les entrées de ce bâtiment,
   ou conclure au défaut de référence si rien ne les distingue.
 
-### TASK-K67 — 2242E2979513I : conso_ch à +20 % une fois le facteur CO2 juste
-
-- [~CB] Owner: CB | Phase: K | Priorité: basse
-- Le facteur d'émission de ce DPE est désormais exact — ses trois lignes
-  `sortie_par_energie` donnent 0,109000 à six décimales, et nous l'appliquons
-  (cf. le bloc TASK-K65 de `TASKS_DONE.md`). Sa branche ECS en devient juste au
-  millième : 22 459,878 calculés contre 22 459,880 publiés.
-- **Ce qui reste est en amont, sur la consommation de chauffage** : 160 558 kWh
-  calculés contre 133 765 publiés, soit +20,0 %. Le besoin, les rendements et
-  l'échelle sont à reprendre dans cet ordre, pas les agrégats d'aval.
-- Le fichier est un DPE du 6 avril 2022 au modèle 2.2 — le plus ancien du
-  corpus. Vérifier d'abord si son échelle (immeuble ou logement) est celle que
-  nous lui prêtons : c'est le suspect habituel d'un écart de +20 % franc.
-- Ses balises `emission_ges_ecs` et `ep_conso_ecs` sont publiées permutées avec
-  leurs dépensières, et déjà imputées à ce titre. Ne pas les instruire.
-
 ### TASK-K85 — Puissances nominales amont encore divergentes
 
 - [ ] Owner: __ | Phase: K | Priorité: haute
