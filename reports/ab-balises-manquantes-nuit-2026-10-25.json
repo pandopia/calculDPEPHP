@@ -1,0 +1,556 @@
+{
+    "description": "Session nocturne de sept heures, point de mesure reproductible. Même corpus et juge aux deux passages ; seuls moteur et tables sont remplacés par ceux du commit de départ.",
+    "session_started_at_utc": "2026-10-24T21:37:44Z",
+    "session_deadline_utc": "2026-10-25T04:37:44Z",
+    "session_status": "in_progress",
+    "measured_at_utc": "2026-10-24T23:03:20+00:00",
+    "base_engine_revision": "147e5383e48e5f696728cec777fbeeee892e4337",
+    "before_revision": {
+        "head": "63c806e",
+        "dirty": ""
+    },
+    "after_revision": {
+        "head": "63c806e",
+        "dirty": ""
+    },
+    "control_method": "Autoload des classes src exportées depuis le commit de départ, Conformite exclu pour garder le juge courant ; seul TableRepository est redirigé vers les tables du même commit. Aucune substitution de valeur calculée ou référence.",
+    "tolerance_profile": "strict",
+    "corpus": {
+        "cases": 750,
+        "new_cases_initialized": 40,
+        "by_corpus": {
+            "ademe-2026-09": 120,
+            "ademe-branches-2026-10": 76,
+            "ademe-combustion-rare-2026-10": 36,
+            "ademe-ecs-autonome-2026-10": 16,
+            "ademe-ecs-bois-hybride-2026-10": 8,
+            "ademe-emetteurs-2026-10": 68,
+            "ademe-froid-zero-2026-10": 4,
+            "ademe-puissances-2026-10": 24,
+            "ademe-pv-collectif-2026-10": 16,
+            "ademe-ventilations-2026-10": 36,
+            "ademe-observatoire-local": 346
+        },
+        "pairs_sha256": "e839423d918ffcad89e284c6e05c03417f7ed9a0776b26265dba583c06d9769e"
+    },
+    "fixed_judge_sha256": {
+        "bin/official-test-report": "39f7954b17e6bd63333bb0c9fe3877999f300710ca5abbc5eb25345dccb0fff5",
+        "resources/ademe_DPE.xsd": "d8a154288442ea9c321756a24fa71b21e0aba78eb7d2c45924f35f43eb79500d",
+        "src/Conformite/CaseComparator.php": "d33b8ce1f58d49e1d7e8cc556a2b9a7ce43245d63a8d3c3069e20b95fc755a3c",
+        "src/Conformite/ComparisonStatus.php": "2751e59346efa6a5eb32ba3cae0bc9c0c0521a7610894a2ffc274d157f53b691",
+        "src/Conformite/ConformityReport.php": "c3adbf7fc0bc2a04ce682e6da8f7b9b74846f1bfc126ada16df4469e4eb2c26b",
+        "src/Conformite/CorpusLocator.php": "e469c17dea3c000355c43c65800d796056699198cb9248cbb332ae7914b0accf",
+        "src/Conformite/MarkdownRenderer.php": "08e8ac0d540e5a028cd16cc7a06b624a352797d5beef49ebbd647e2e4205c0d9",
+        "src/Conformite/OutputSchemaValidator.php": "a05a651ef0d3f365df5263f989aa03d08fa2e8ffd3cba57cdcf79308a0b3a7a4",
+        "src/Conformite/ReferenceDefects.php": "f965f3de414d47b0aea846d85b8cf7341c44f678dab8857404efcf6e44f88901",
+        "src/Conformite/TagFamily.php": "f0f8b2e75620fbb601d05d045c80d6da3e6e4429fccc9f49bf446173af5e0beb",
+        "src/Conformite/ToleranceProfile.php": "8e1bb81df86758131d20751e9292235c6b1deab142c7919d1de45c2979a5d958",
+        "src/Conformite/ValueExtractor.php": "4f88b79f7b6e578c717cce048e8afe23f8e5d9ef7d263cda12efe158e6ed8f02",
+        "src/Conformite/XsdVocabulary.php": "246ab82e56249adfcdb9dbd063c345857396de736d4e600b79cf113edd34c50f",
+        "tests/tolerances.php": "e7f806f9a2bcad559992e02310dab5298090dcd4f8b403f4e3e1cdf79d3f3732"
+    },
+    "engine_and_tables": {
+        "before_tree_sha256": "c07129950cc8553e799493e5a000d0e1167852c9b48361d735904ae8ff1661b0",
+        "after_tree_sha256": "22c2f170f9863f5c8d9729b1261d784326c7b84e2e066e71e87fcdb22d997264",
+        "changed_files": {
+            "resources/tables/apports/tv_coef_transparence_ets.php": {
+                "before": "9df55c947d6b354887d8707c74e819340bd97321fa29b73c888c2c80d1584450",
+                "after": "eedf1ad3667bc0b44c98f68eac9a376350fa9a14bf69f35af1ce7b9ea0596d8b"
+            },
+            "src/Apport/EspaceTamponSolariseCalculator.php": {
+                "before": "3063cea0bf25565b713beb42ecd3a8777e016d65e452b25cced96e00ecbb3f7e",
+                "after": "46aba3c8bd075deed20b8f76b79d654e11234c4ef5b4d76a5bca0e00516885fb"
+            },
+            "src/Chauffage/GenerateurChAlias.php": {
+                "before": "95bc5de294c98deecf5d08d6d47f3583beac2609769fbd161ccab6c318944643",
+                "after": "c18991bc52a367eb3fc42c45f70cfc7613aa7fb906cdee9eca2dc7916c56dea5"
+            },
+            "src/Chauffage/Rendement/Combustion/BandePuissanceCombustion.php": {
+                "before": "f6f5520c2b95b63aac10b74484f92240ecbf996f99d5659c0f9f7ed65f7b7d39",
+                "after": "daea563ffcf2af3ee1cfeeb9775604b0f9b4a8cfbc92573089352eb8209045ac"
+            },
+            "src/Chauffage/Rendement/Combustion/ChaudiereDefautCalculator.php": {
+                "before": "5fa512bc16ace56e9f5f09a59a03d7d712a94284ec3379f0abf34482dd889b5e",
+                "after": "e5b1745f889a200ec37c9cae04130a2aeb2ca32f46b1612d589e3a7694d80c2b"
+            },
+            "src/Ecs/Rendement/CetAccumulationCalculator.php": {
+                "before": "893c4087aef2006b216571ab0d26fde13d24cbb468cd7cccb381add70474a8ec",
+                "after": "fd61ba143aabfc944632d564e66cb515f6e0a6b773ac6706678ed68af3382138"
+            },
+            "src/Ecs/Rendement/CombustionCalculator.php": {
+                "before": "12f4fd36f62e07c7afd64aa3c5a01227e22f86987c5c13bb41dc5b5fd8559ed8",
+                "after": "3bccea83954650f6b989057ef7458666ac5adc1ae9d45abf2fb0b86160c78629"
+            },
+            "src/Ecs/Rendement/StockageCalculator.php": {
+                "before": "29bce1549a8e002d0000c1ae42b0a94ef8c0da53ba1e9457074b97165dc42597",
+                "after": "cb1634dfead7d4712b5bbcdc1d18a64c041014f28e852dcf8ec72734924602e3"
+            },
+            "src/Engine/DpeEngine.php": {
+                "before": "0db2e11f42d93bf07c0b25104e02acdfc28f840b8a542d17750d110bd89a7d32",
+                "after": "b61626711d2457224b4f2ebde05cd2c71bc8674465fe20e4888dc0aef2ae0be8"
+            },
+            "src/Froid/ConsoFroidCalculator.php": {
+                "before": "92201e4792360ce1bd179c31aea80a7a494a60954c511ffc961cce636a12fd0b",
+                "after": "1314beee9e5f02e9d351f7fdbe2f1e65f5945a1fa85a09f6b37bf18efc09ac05"
+            },
+            "src/Sortie/ProductionEnrCalculator.php": {
+                "before": "fa5089fd51343ec23bab0dcb85ccc167bd7d15c5522be57362257a624c885865",
+                "after": "dbdccc0b477a94be2130969aaa84627e546ceb3faf392c934b5aed3838df56c7"
+            },
+            "src/Ventilation/PventMoyCalculator.php": {
+                "before": "43a75b3bc18424d5bcdedaad3478df716e36dc6a77cca0c72694f392de259842",
+                "after": "6a2a3156dfe9ee988e1b500d86d3517711c3348c06833fe47c084cb84842db79"
+            },
+            "src/Xml/NodeAccessor.php": {
+                "before": "34da6545f0773d1c99c334cde3e8edfd48e8b92c9ef0ad33a35bc038c7cb7d75",
+                "after": "eb3ece18443e19cee3f2f7bdc474a39c0f73d2b618e95a2693481861e44853aa"
+            },
+            "src/Xml/OutputPurger.php": {
+                "before": "9f242989cb5f8497dc48e574ad78f49ddc5bfbdac507d52bcce29ba766de0511",
+                "after": "95bf9ee391c94d927ee0ffedba6b2ced16efdf7854623bf4b299310bc8762e2a"
+            }
+        }
+    },
+    "summary_before": {
+        "cases_total": 750,
+        "cases_run": 750,
+        "cases_crashed": 0,
+        "cases_fully_conform": 1,
+        "cases_partially_conform": 749,
+        "values_compared": 234611,
+        "reference_suspect": 5632,
+        "exact": 176656,
+        "within_tolerance": 34145,
+        "out_of_tolerance": 20526,
+        "missing": 717,
+        "extra": 2512,
+        "string_mismatch": 55,
+        "reachable_percent": 92.25,
+        "conformity_percent": 89.85,
+        "progress_percent": 92.06
+    },
+    "summary_after": {
+        "cases_total": 750,
+        "cases_run": 750,
+        "cases_crashed": 0,
+        "cases_fully_conform": 1,
+        "cases_partially_conform": 749,
+        "values_compared": 234575,
+        "reference_suspect": 5632,
+        "exact": 176677,
+        "within_tolerance": 34355,
+        "out_of_tolerance": 20297,
+        "missing": 715,
+        "extra": 2476,
+        "string_mismatch": 55,
+        "reachable_percent": 92.36,
+        "conformity_percent": 89.96,
+        "progress_percent": 92.18
+    },
+    "improved_cases": 33,
+    "degraded_cases": 0,
+    "case_raw_changes": {
+        "2401E1001044W.xml": -44,
+        "2401E1915065N.xml": -44,
+        "2401E0227671T.xml": -43,
+        "2602E2598066X.xml": -40,
+        "2401E0490195V.xml": -32,
+        "2638E2668211E.xml": -8,
+        "2601E2643956W.xml": -6,
+        "2401E1972706M.xml": -5,
+        "2659E2659921D.xml": -4,
+        "2659E2663785T.xml": -4,
+        "2400E0669425G.xml": -2,
+        "2400E0669495Y.xml": -2,
+        "2610E2659421A.xml": -2,
+        "2610E2660394L.xml": -2,
+        "2613E2666229Z.xml": -2,
+        "2613E2666586S.xml": -2,
+        "2638E2667365Q.xml": -2,
+        "2638E2668105C.xml": -2,
+        "2650E2663816P.xml": -2,
+        "2659E2665965P.xml": -2,
+        "2669E2666516E.xml": -2,
+        "2693E2660103L.xml": -2,
+        "2507E4042850R.xml": -2,
+        "2401E3572732Y.xml": -2,
+        "2401E0166251L.xml": -1,
+        "2663E2668177V.xml": -1,
+        "2401E3420520Q.xml": -1,
+        "2404E0408572P.xml": -1,
+        "2606E1681800B.xml": -1,
+        "2613E1786955T.xml": -1,
+        "2507E4042846N.xml": -1,
+        "2507E4042848P.xml": -1,
+        "2457E3724590U.xml": -1
+    },
+    "higher_motor_budgets": [],
+    "resolved_values": 274,
+    "new_failing_values": {
+        "2601E2643956W.xml:dpe/logement/sortie/emission_ges/emission_ges_5_usages_m2": {
+            "path": "dpe/logement/sortie/emission_ges/emission_ges_5_usages_m2",
+            "tag": "emission_ges_5_usages_m2",
+            "famille": "GES",
+            "expected": "35",
+            "actual": "36",
+            "delta_abs": 1,
+            "delta_percent": 2.857142857142857,
+            "note": null,
+            "status": "out_of_tolerance"
+        },
+        "2602E2598066X.xml:dpe/logement/sortie/emission_ges/emission_ges_5_usages_m2": {
+            "path": "dpe/logement/sortie/emission_ges/emission_ges_5_usages_m2",
+            "tag": "emission_ges_5_usages_m2",
+            "famille": "GES",
+            "expected": "57.77",
+            "actual": "57",
+            "delta_abs": 0.7700000000000031,
+            "delta_percent": 1.332871732733258,
+            "note": null,
+            "status": "out_of_tolerance"
+        },
+        "2401E1001044W.xml:dpe/logement/sortie/cout/cout_auxiliaire_distribution_ch": {
+            "path": "dpe/logement/sortie/cout/cout_auxiliaire_distribution_ch",
+            "tag": "cout_auxiliaire_distribution_ch",
+            "famille": "Auxiliaires",
+            "expected": "218",
+            "actual": "218.30398014983",
+            "delta_abs": 0.30398014983001076,
+            "delta_percent": 0.1394404357018398,
+            "note": null,
+            "status": "out_of_tolerance"
+        },
+        "2401E1001044W.xml:dpe/logement/sortie/emission_ges/emission_ges_5_usages_m2": {
+            "path": "dpe/logement/sortie/emission_ges/emission_ges_5_usages_m2",
+            "tag": "emission_ges_5_usages_m2",
+            "famille": "GES",
+            "expected": "62.85",
+            "actual": "62",
+            "delta_abs": 0.8500000000000014,
+            "delta_percent": 1.3524264120922855,
+            "note": null,
+            "status": "out_of_tolerance"
+        },
+        "2603E0846919D.xml:dpe/logement/sortie/cout/cout_eclairage": {
+            "path": "dpe/logement/sortie/cout/cout_eclairage",
+            "tag": "cout_eclairage",
+            "famille": "Coûts",
+            "expected": "37",
+            "actual": "37.056390286879",
+            "delta_abs": 0.05639028687900094,
+            "delta_percent": 0.1524061807540566,
+            "note": null,
+            "status": "out_of_tolerance"
+        },
+        "2507E4042850R.xml:dpe/logement/sortie/apport_et_besoin/fraction_apport_gratuit_depensier_ch": {
+            "path": "dpe/logement/sortie/apport_et_besoin/fraction_apport_gratuit_depensier_ch",
+            "tag": "fraction_apport_gratuit_depensier_ch",
+            "famille": "Apports",
+            "expected": "0.320",
+            "actual": "0.32032851342818",
+            "delta_abs": 0.0003285134281799662,
+            "delta_percent": 0.10266044630623944,
+            "note": null,
+            "status": "out_of_tolerance"
+        },
+        "2401E0227671T.xml:dpe/logement/sortie/emission_ges/emission_ges_5_usages_m2": {
+            "path": "dpe/logement/sortie/emission_ges/emission_ges_5_usages_m2",
+            "tag": "emission_ges_5_usages_m2",
+            "famille": "GES",
+            "expected": "27",
+            "actual": "26",
+            "delta_abs": 1,
+            "delta_percent": 3.7037037037037033,
+            "note": null,
+            "status": "out_of_tolerance"
+        }
+    },
+    "gains_note": "Manques réellement restitués, différences numériques et suppressions de balises inapplicables restent séparés. Les nouveaux écarts demeurent comptés, sans exclusion ou élargissement de tolérance.",
+    "budgets": {
+        "existing_lowered": {
+            "2400E0669425G.xml": {
+                "before": 88,
+                "after": 86
+            },
+            "2400E0669495Y.xml": {
+                "before": 121,
+                "after": 119
+            },
+            "2401E0166251L.xml": {
+                "before": 78,
+                "after": 77
+            },
+            "2401E0227671T.xml": {
+                "before": 64,
+                "after": 21
+            },
+            "2401E0490195V.xml": {
+                "before": 72,
+                "after": 40
+            },
+            "2401E1001044W.xml": {
+                "before": 69,
+                "after": 25
+            },
+            "2401E1915065N.xml": {
+                "before": 68,
+                "after": 24
+            },
+            "2401E1972706M.xml": {
+                "before": 58,
+                "after": 53
+            },
+            "2401E3420520Q.xml": {
+                "before": 49,
+                "after": 48
+            },
+            "2401E3572732Y.xml": {
+                "before": 41,
+                "after": 39
+            },
+            "2404E0408572P.xml": {
+                "before": 53,
+                "after": 52
+            },
+            "2457E3724590U.xml": {
+                "before": 63,
+                "after": 62
+            },
+            "2507E4042846N.xml": {
+                "before": 89,
+                "after": 88
+            },
+            "2507E4042848P.xml": {
+                "before": 87,
+                "after": 86
+            },
+            "2507E4042850R.xml": {
+                "before": 113,
+                "after": 111
+            }
+        },
+        "existing_raised": 0,
+        "new_initialized": {
+            "2606E1681800B.xml": 5,
+            "2613E1786955T.xml": 5,
+            "2633E2567188M.xml": 13,
+            "2683E2144886A.xml": 7,
+            "2601E2643956W.xml": 50,
+            "2601E2666757V.xml": 50,
+            "2602E2598066X.xml": 15,
+            "2605E2654977X.xml": 45,
+            "2607E2661603V.xml": 28,
+            "2610E2659421A.xml": 46,
+            "2610E2660394L.xml": 39,
+            "2611E2664481R.xml": 29,
+            "2613E2590753B.xml": 4,
+            "2613E2590894M.xml": 6,
+            "2613E2666229Z.xml": 26,
+            "2613E2666586S.xml": 23,
+            "2614E2599572H.xml": 3,
+            "2614E2628369W.xml": 3,
+            "2621E2596032K.xml": 5,
+            "2637E2665944Y.xml": 31,
+            "2638E2667365Q.xml": 4,
+            "2638E2668105C.xml": 36,
+            "2638E2668211E.xml": 29,
+            "2643E2657283B.xml": 55,
+            "2643E2666181H.xml": 43,
+            "2650E2663816P.xml": 57,
+            "2656E2661240T.xml": 48,
+            "2659E2659921D.xml": 52,
+            "2659E2663785T.xml": 29,
+            "2659E2665965P.xml": 24,
+            "2662E2622764D.xml": 3,
+            "2663E2668177V.xml": 29,
+            "2669E2571001N.xml": 53,
+            "2669E2571041B.xml": 53,
+            "2669E2666516E.xml": 3,
+            "2674E2641151U.xml": 27,
+            "2674E2646897U.xml": 9,
+            "2685E2664703B.xml": 49,
+            "2691E2664770W.xml": 88,
+            "2693E2660103L.xml": 66
+        }
+    },
+    "phpunit": {
+        "tests": 7474,
+        "assertions": 24102,
+        "failures": 0,
+        "warnings_or_deprecations": 0,
+        "covered_lines": 10967,
+        "executable_lines": 11872,
+        "coverage_percent": 92.38
+    },
+    "idempotence": {
+        "cases": 750,
+        "before_and_after_details_identical": true,
+        "existing_byte_differences": 5,
+        "differences": {
+            "2606E0021556N.xml": {
+                "changed_computed_values": {
+                    "dpe/logement/installation_chauffage_collection/installation_chauffage/generateur_chauffage_collection/generateur_chauffage[1]/donnee_intermediaire/qp0": [
+                        "5.7424519650655",
+                        "5.7424519650654"
+                    ],
+                    "dpe/logement/installation_ecs_collection/installation_ecs/generateur_ecs_collection/generateur_ecs/donnee_intermediaire/qp0": [
+                        "5.7424519650655",
+                        "5.7424519650654"
+                    ]
+                },
+                "format_only": false
+            },
+            "2606E0147011S.xml": {
+                "changed_computed_values": {
+                    "dpe/logement/installation_chauffage_collection/installation_chauffage/generateur_chauffage_collection/generateur_chauffage/donnee_intermediaire/qp0": [
+                        "7.4147307692308",
+                        "7.4147307692307"
+                    ],
+                    "dpe/logement/installation_ecs_collection/installation_ecs/generateur_ecs_collection/generateur_ecs/donnee_intermediaire/qp0": [
+                        "7.4147307692308",
+                        "7.4147307692307"
+                    ]
+                },
+                "format_only": false
+            },
+            "2612E2658562B.xml": {
+                "changed_computed_values": {
+                    "dpe/logement/installation_chauffage_collection/installation_chauffage[1]/donnee_intermediaire/conso_ch": [
+                        "5242.2035210285",
+                        "5242.2035210286"
+                    ],
+                    "dpe/logement/installation_chauffage_collection/installation_chauffage[1]/donnee_intermediaire/conso_ch_depensier": [
+                        "6669.2914163473",
+                        "6669.2914163474"
+                    ],
+                    "dpe/logement/installation_chauffage_collection/installation_chauffage[1]/generateur_chauffage_collection/generateur_chauffage/donnee_intermediaire/conso_ch": [
+                        "5242.2035210285",
+                        "5242.2035210286"
+                    ],
+                    "dpe/logement/installation_chauffage_collection/installation_chauffage[1]/generateur_chauffage_collection/generateur_chauffage/donnee_intermediaire/conso_ch_depensier": [
+                        "6669.2914163473",
+                        "6669.2914163474"
+                    ],
+                    "dpe/logement/installation_chauffage_collection/installation_chauffage[1]/generateur_chauffage_collection/generateur_chauffage/donnee_intermediaire/qp0": [
+                        "383.00510575288",
+                        "383.00510575289"
+                    ],
+                    "dpe/logement/installation_chauffage_collection/installation_chauffage[1]/generateur_chauffage_collection/generateur_chauffage/donnee_intermediaire/rendement_generation": [
+                        "0.74286940764504",
+                        "0.74286940764503"
+                    ],
+                    "dpe/logement/installation_ecs_collection/installation_ecs[1]/generateur_ecs_collection/generateur_ecs/donnee_intermediaire/qp0": [
+                        "383.00510575288",
+                        "383.00510575289"
+                    ],
+                    "dpe/logement/installation_ecs_collection/installation_ecs[1]/generateur_ecs_collection/generateur_ecs/donnee_intermediaire/rendement_generation": [
+                        "0.53316176144785",
+                        "0.53316176144784"
+                    ],
+                    "dpe/logement/sortie/emission_ges/emission_ges_ch": [
+                        "8190.2960843797",
+                        "8190.2960843798"
+                    ],
+                    "dpe/logement/sortie/sortie_par_energie_collection/sortie_par_energie[enum_type_energie_id=2]/conso_5_usages": [
+                        "45289.350599063",
+                        "45289.350599064"
+                    ],
+                    "dpe/logement/sortie/sortie_par_energie_collection/sortie_par_energie[enum_type_energie_id=2]/cout_ch": [
+                        "4432.0534014595",
+                        "4432.0534014596"
+                    ]
+                },
+                "format_only": false
+            },
+            "2688E0016745Q.xml": {
+                "changed_computed_values": [],
+                "format_only": true
+            },
+            "2691E0123392O.xml": {
+                "changed_computed_values": {
+                    "dpe/logement/installation_chauffage_collection/installation_chauffage/generateur_chauffage_collection/generateur_chauffage/donnee_intermediaire/qp0": [
+                        "122.2641509434",
+                        "122.26415094339"
+                    ],
+                    "dpe/logement/installation_ecs_collection/installation_ecs/generateur_ecs_collection/generateur_ecs/donnee_intermediaire/qp0": [
+                        "122.2641509434",
+                        "122.26415094339"
+                    ],
+                    "dpe/logement/installation_ecs_collection/installation_ecs/generateur_ecs_collection/generateur_ecs/donnee_intermediaire/rendement_generation": [
+                        "0.81996351342565",
+                        "0.81996351342566"
+                    ],
+                    "dpe/logement/sortie/apport_et_besoin/pertes_generateur_ch_recup": [
+                        "148.65870465555",
+                        "148.65870465554"
+                    ],
+                    "dpe/logement/sortie/apport_et_besoin/pertes_generateur_ch_recup_depensier": [
+                        "164.10249308744",
+                        "164.10249308743"
+                    ]
+                },
+                "format_only": false
+            }
+        },
+        "crashed": 0,
+        "note": "Cinq différences préexistantes de derniers décimaux ou de formatage, aucun changement nouveau. Pas de revendication d’identité octet à octet pour tous les cas."
+    },
+    "separate_schema_audit": {
+        "engine": {
+            "cases": 750,
+            "validated_blocks": 38946,
+            "invalid_blocks": 12,
+            "crashed": 0
+        },
+        "reference": {
+            "cases": 750,
+            "validated_blocks": 38951,
+            "invalid_blocks": 353,
+            "crashed": 0
+        },
+        "note": "Validation des blocs calculés présents au schéma exact du modèle, sans validation des entrées ni de la complétude du document entier ; aucun compteur du comparateur n’est modifié. Les douze blocs moteur invalides restent documentés en K06."
+    },
+    "isolated_fixes": {
+        "eer_without_cooling_need": {
+            "missing_delta": -2,
+            "source": "§10.3 p.69–70 et EER obligatoire au XSD",
+            "real_zero_not_reference_epsilon": true
+        },
+        "combustion_characteristics_without_external_table_id": {
+            "live_corpus_gain": 0,
+            "note": "Les cas réels retenus portent déjà le TV ; parcours synthétique de 45 familles, générateurs complets validés au XSD. Aucun gain réel de présence n’est déduit de ces tests."
+        },
+        "wood_stove_boiler_equivalence": {
+            "out_of_tolerance_delta_on_750_cases": -8,
+            "source": "§13.1 p.78 et profil de charge bois §13.2.2.3 p.88–90"
+        },
+        "gas_radiator_inapplicable_zeros": {
+            "extra_delta_on_750_cases": -36,
+            "source": "§13.2.2.2 p.88 et bornes strictement positives du XSD"
+        },
+        "ets_public_table_index": {
+            "out_of_tolerance_delta": -42,
+            "resolved_values": 45,
+            "new_failing_values": 3,
+            "source": "Valeurs §6.3 p.51–52 ; classeur ADEME 52792fb9, coef_transparence_ets A2:G22",
+            "source_file_sha256": "50d1189e0df8b47aad006a3e525564ae33fab041c3f389d7b407c99fa5546c81"
+        },
+        "ets_direct_solar_with_unique_explicit_links": {
+            "out_of_tolerance_delta": -179,
+            "resolved_values": 186,
+            "new_failing_values": 7,
+            "improved_cases": 5,
+            "degraded_cases": 0,
+            "source": "§6.3 p.51–52 et relation reference_lnc du XSD",
+            "partial_scope": "Sans association explicite univoque : pas de rattachement inventé, TASK-K99."
+        },
+        "other_sourced_reproductions": {
+            "live_corpus_gain": 0,
+            "features": [
+                "Puissance ventilation justifiée 2.7 préservée et employée comme puissance absolue, refus invalide avant purge",
+                "Suppression de xsi:nil lors d’écriture d’une valeur concrète",
+                "ECS thermodynamique gaz 83 avec COP propre et stockage inclus, sans caractéristiques de chaudière fictives"
+            ]
+        }
+    }
+}
