@@ -13,18 +13,22 @@ use DOMElement;
 /**
  * Bloc <sortie><production_electricite>.
  *
- * Agrège les résultats de `ProductionPvCalculator` (stockés dans chaque
- * `production_elec_enr/donnee_intermediaire`) et ventile l'électricité
- * autoconsommée par usage.
+ * Projette le bilan de `ProductionPvCalculator` et sa répartition par usage.
+ * Le bilan doit être repris avant la déduction sur les consommations finales :
+ * refaire la pondération sur des consommations déjà nettes change les parts,
+ * attribue du PV à un chauffage fossile et oublie les usages mobiliers.
+ *
+ * Les anciens exports sérialisent ici des kWh EF, malgré la documentation
+ * kWh EP du XSD : cette question d'unité reste à qualifier séparément (K97).
+ * Le canal `pv.autoconsommation` porte les six parts avant toute déduction.
  *
  * Quand il n'y a pas de panneaux PV (cas le plus fréquent), toutes les
  * valeurs valent 0.
  *
  * @spec-section 16.2
- * @spec-pages   103-105
+ * @spec-pages   103-106
  * @spec-source  resources/specsplitted/16-eclairage-prod-elec/02-prod-electricite.md
- * @xml-input    production_elec_enr.donnee_intermediaire.{production_pv, conso_elec_ac},
- *               sortie.ef_conso.*
+ * @xml-input    production_elec_enr.donnee_intermediaire.{production_pv, conso_elec_ac}
  * @xml-output   sortie.production_electricite.{production_pv, conso_elec_ac,
  *                   conso_elec_ac_ch, conso_elec_ac_ecs, conso_elec_ac_fr,
  *                   conso_elec_ac_eclairage, conso_elec_ac_auxiliaire, conso_elec_ac_autre_usage}
@@ -33,17 +37,6 @@ use DOMElement;
  */
 final class ProductionElectriciteCalculator implements CalculatorInterface
 {
-    // §16.2 — taux d'autoproduction par poste (taplpi)
-    private const TAPLPI = [
-        'chauffage'   => 0.02,
-        'ecs'         => 0.05,
-        'froid'       => 0.25,
-        'eclairage'   => 0.05,
-        'ventilation' => 0.50,
-        'distribution'=> 0.05,
-        'autres'      => 0.45,
-    ];
-
     public function id(): string
     {
         return self::class;
@@ -71,51 +64,30 @@ final class ProductionElectriciteCalculator implements CalculatorInterface
             $consoElecAc  += $accessor->getFloatOrNull('./donnee_intermediaire/conso_elec_ac', $enr) ?? 0.0;
         }
 
-        // ── 2. Ventilation par usage (si PV présent) ────────────────────────────
-        $consoAcCh    = 0.0;
-        $consoAcEcs   = 0.0;
-        $consoAcFr    = 0.0;
-        $consoAcEcl   = 0.0;
-        $consoAcAux   = 0.0;
-        $consoAcAutre = 0.0;
-
-        if ($consoElecAc > 0.0) {
-            $sortie = $accessor->ensureSortie($node);
-            $ef     = null;
-            foreach ($sortie->childNodes as $child) {
-                if ($child instanceof DOMElement && $child->nodeName === 'ef_conso') {
-                    $ef = $child;
-                    break;
-                }
-            }
-            if ($ef !== null) {
-                $consoChEf        = $accessor->getFloatOrNull('./conso_ch',                      $ef) ?? 0.0;
-                $consoEcsEf       = $accessor->getFloatOrNull('./conso_ecs',                     $ef) ?? 0.0;
-                $consoFrEf        = $accessor->getFloatOrNull('./conso_fr',                      $ef) ?? 0.0;
-                $consoEclEf       = $accessor->getFloatOrNull('./conso_eclairage',               $ef) ?? 0.0;
-                $consoVentEf      = $accessor->getFloatOrNull('./conso_auxiliaire_ventilation',  $ef) ?? 0.0;
-                $consoAuxDistChEf = $accessor->getFloatOrNull('./conso_auxiliaire_distribution_ch', $ef) ?? 0.0;
-                $consoAuxDistEcsEf= $accessor->getFloatOrNull('./conso_auxiliaire_distribution_ecs', $ef) ?? 0.0;
-
-                $total = $consoChEf + $consoEcsEf + $consoFrEf + $consoEclEf
-                       + $consoVentEf + $consoAuxDistChEf + $consoAuxDistEcsEf;
-                if ($total > 0.0) {
-                    $consoAcCh  = $consoElecAc * (self::TAPLPI['chauffage']  * $consoChEf  / $total);
-                    $consoAcEcs = $consoElecAc * (self::TAPLPI['ecs']        * $consoEcsEf / $total);
-                    $consoAcFr  = $consoElecAc * (self::TAPLPI['froid']      * $consoFrEf  / $total);
-                    $consoAcEcl = $consoElecAc * (self::TAPLPI['eclairage']  * $consoEclEf / $total);
-                    $consoAcAux = $consoElecAc * (
-                        self::TAPLPI['ventilation']   * $consoVentEf                              / $total
-                        + self::TAPLPI['distribution'] * ($consoAuxDistChEf + $consoAuxDistEcsEf) / $total
-                    );
-                }
-            }
-        }
+        // §16.2 p.106 : Celec_ac_i = Celec_ac × Taplp_i × Celec_i / Σ(Taplp×Celec).
+        // Le calcul amont connaît les seules consommations électriques et les
+        // usages hors DPE. Ce canal interne évite une seconde formule divergente.
+        $parts = (array)$context->get('pv.autoconsommation', []);
+        $consoAcCh    = (float)($parts['ch'] ?? 0.0);
+        $consoAcEcs   = (float)($parts['ecs'] ?? 0.0);
+        $consoAcFr    = (float)($parts['fr'] ?? 0.0);
+        $consoAcEcl   = (float)($parts['eclairage'] ?? 0.0);
+        $consoAcAux   = (float)($parts['auxiliaire'] ?? 0.0);
+        $consoAcAutre = (float)($parts['autre_usage'] ?? 0.0);
 
         // ── 3. Écrire le bloc <production_electricite> ──────────────────────────
         $sortie = $accessor->ensureSortie($node);
-        $prod   = $context->document->createElement('production_electricite');
-        $sortie->appendChild($prod);
+        $prod = null;
+        foreach ($sortie->childNodes as $child) {
+            if ($child instanceof DOMElement && $child->nodeName === 'production_electricite') {
+                $prod = $child;
+                break;
+            }
+        }
+        if ($prod === null) {
+            $prod = $context->document->createElement('production_electricite');
+            $sortie->appendChild($prod);
+        }
 
         $accessor->setChildValue($prod, 'production_pv',           $productionPv);
         $accessor->setChildValue($prod, 'conso_elec_ac',           $consoElecAc);
