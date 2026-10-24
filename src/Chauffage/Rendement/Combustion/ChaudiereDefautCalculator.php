@@ -14,7 +14,8 @@ use DOMElement;
  *
  * Si `enum_methode_saisie_carac_sys_id = 1` (saisie par table), les valeurs sont lues
  * dans `resources/tables/chauffage/tv_generateur_combustion.php` via `tv_generateur_combustion_id`.
- * Sans cet identifiant, le type ADEME détermine la ligne des chaudières gaz/fioul.
+ * Sans cet identifiant, le type ADEME et Pn déterminent la ligne complète
+ * gaz/fioul/bois, air chaud et radiateurs gaz (§13.2.2).
  * La puissance nominale Pn est calculée depuis GV si absente de donnee_entree :
  *   Pn = 1.2 × GV × (19 − Tbase) / 0.95³   (§13.2.2 p.87, open3cl 13.2_generateur_combustion.js)
  *
@@ -132,16 +133,11 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         if (in_array($typeOriginal, [177, 182], true)) {
             $tvId = 94;
         }
-        // §13.2.2 p.86–88 : le type ADEME normalisé décrit la technologie et
-        // la période des chaudières gaz (85–97) et fioul (75–84). Il suffit à
-        // choisir la ligne de notre table lorsque son identifiant est omis.
-        // Les bandes de puissance des condensations récentes sont départagées
-        // après le dimensionnement ; une table explicitement fournie prime.
-        $tvId ??= match (true) {
-            $genId >= 85 && $genId <= 97 => $genId - 84,
-            $genId >= 75 && $genId <= 84 => $genId - 59,
-            default => null,
-        };
+        // §13.2.2 p.86–90 : sans ID de table, le type normalisé désigne la
+        // technologie et l'époque. Choisir d'abord sa famille, puis sa bande
+        // avec la puissance réellement dimensionnée, après virtualisation.
+        $ligneDepuisType = $tvId === null;
+        $tvId ??= BandePuissanceCombustion::depuisType($genId, 0.0);
         $entry = null;
         $table = [];
         if ($tvId !== null) {
@@ -252,7 +248,9 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
             // §13.2.2 p.88 : les chaudières à condensation récentes ont trois
             // lignes de table départagées par Pn. L'identifiant saisi précède le
             // calcul de la puissance ; la bande se relit donc sur Pn.
-            $bande = BandePuissanceCombustion::pourPuissance($tvId, $pnBuildingKw);
+            $bande = $ligneDepuisType
+                ? (BandePuissanceCombustion::depuisType($genId, $pnBuildingKw) ?? $tvId)
+                : BandePuissanceCombustion::pourPuissance($tvId, $pnBuildingKw);
             if ($bande !== $tvId) {
                 $entry = $table[$bande] ?? $entry;
             }

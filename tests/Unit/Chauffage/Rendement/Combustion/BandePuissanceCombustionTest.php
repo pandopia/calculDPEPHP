@@ -55,4 +55,41 @@ final class BandePuissanceCombustionTest extends TestCase
     {
         self::assertSame($attendu, BandePuissanceCombustion::pourPuissance($tvId, $pnKw));
     }
+
+    #[DataProvider('typesSansIdentifiant')]
+    public function testLaLignePeutEtreDetermineeDepuisLeTypePhysique(int $type, float $pnKw, ?int $expected): void
+    {
+        self::assertSame($expected, BandePuissanceCombustion::depuisType($type, $pnKw));
+    }
+
+    public static function typesSansIdentifiant(): iterable
+    {
+        // Correspondances des libellés physiques XSD avec les lignes de
+        // la méthode, pas un identifiant tv_* fourni par un logiciel.
+        $families = [55 => [28,29,30], 56 => [31,32,33], 57 => [34,35,36], 58 => [37,38,39], 59 => [40,41,42], 60 => [43,44,45], 61 => [46,47,48,49],
+            62 => [28,29,30], 63 => [31,32,33], 64 => [34,35,36], 65 => [37,38,39], 66 => [40,41,42], 67 => [43,44,45], 68 => [46,47,48,49],
+            69 => [50,51,52], 70 => [53,54,55], 71 => [56,57,58], 72 => [59,60,61], 73 => [62,63,64], 74 => [65,66,67,68]];
+        foreach ($families as $type => $ids) {
+            foreach ([20.0, 20.001, 70.0, 70.001, 400.0, 400.001] as $pn) {
+                $expected = count($ids) === 4
+                    ? ($pn <= 20 ? $ids[0] : ($pn <= 70 ? $ids[1] : ($pn <= 400 ? $ids[2] : $ids[3])))
+                    : ($pn <= 70 ? $ids[0] : ($pn <= 400 ? $ids[1] : $ids[2]));
+                yield "$type/$pn" => [$type, $pn, $expected];
+            }
+        }
+        foreach ([50 => 69, 51 => 71, 52 => 73] as $type => $first) {
+            yield "air $type borne" => [$type, 300, $first];
+            yield "air $type au-dessus" => [$type, 300.001, $first + 1];
+        }
+        foreach ([53 => 75, 54 => 77] as $type => $first) {
+            yield "radiateur $type sous seuil" => [$type, 4.999, $first];
+            yield "radiateur $type seuil inclus" => [$type, 5.0, $first + 1]; // §13.2.2.2 p.88 : Pn≥5
+        }
+        foreach (range(75, 97) as $type) {
+            $first = $type >= 85 ? $type - 84 : $type - 59;
+            $expected = $type === 97 ? 15 : ($type === 84 ? 27 : $first);
+            yield "gaz fioul $type" => [$type, 500, $expected];
+        }
+        yield 'pas un générateur de cette table' => [1, 10, null];
+    }
 }

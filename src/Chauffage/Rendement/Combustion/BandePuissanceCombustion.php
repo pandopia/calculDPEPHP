@@ -24,6 +24,36 @@ namespace CalculDpePHP\Chauffage\Rendement\Combustion;
 final class BandePuissanceCombustion
 {
     /**
+     * Retrouve la ligne digitalisée depuis les caractéristiques physiques.
+     *
+     * §13.2.2 p.86–90 : les enums CH 50–97 décrivent intégralement la
+     * technologie et l'époque. L'index renvoyé adresse notre table de
+     * formules, jamais une correspondance inférée d'un ID externe absent.
+     * Les aliases sont normalisés par GenerateurChAlias avant cet appel.
+     * Le domaine 50–97 est exhaustif ; les poêles directs relèvent de §13.1.
+     */
+    public static function depuisType(int $type, float $pnKw): ?int
+    {
+        if ($type >= 50 && $type <= 52) {
+            // §13.2.2.1 p.87 : QP0 est figé à sa valeur de 300 kW au-delà.
+            return 69 + 2 * ($type - 50) + ($pnKw > 300.0 ? 1 : 0);
+        }
+        if ($type === 53 || $type === 54) {
+            // §13.2.2.2 p.88 : la seconde valeur s'applique dès Pn≥5 kW.
+            return 75 + 2 * ($type - 53) + ($pnKw >= 5.0 ? 1 : 0);
+        }
+        $first = match (true) {
+            $type >= 55 && $type <= 61 => 28 + 3 * ($type - 55), // bûches
+            $type >= 62 && $type <= 68 => 28 + 3 * ($type - 62), // plaquettes
+            $type >= 69 && $type <= 74 => 50 + 3 * ($type - 69), // granulés
+            $type >= 75 && $type <= 84 => $type - 59, // fioul
+            $type >= 85 && $type <= 97 => $type - 84, // gaz
+            default => null,
+        };
+        return $first === null ? null : self::pourPuissance($first, $pnKw);
+    }
+
+    /**
      * Familles à trois bandes : [id Pn ≤ 70, id 70 < Pn ≤ 400, id Pn > 400].
      *
      * @var list<array{int, int, int}>
