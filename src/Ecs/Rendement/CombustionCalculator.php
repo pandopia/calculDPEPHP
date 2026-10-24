@@ -52,7 +52,7 @@ final class CombustionCalculator implements CalculatorInterface
     /** Heures annuelles ECS hors vacances — §14.1 p.93 */
     private const H_ECS = 1790.0;
 
-    /** Diviseur pour pertes veilleuse annuelles */
+    /** Heures annuelles de veilleuse hors période de chauffage — §14.1 p.93-94. */
     private const H_VEIL = 6970.0;
 
     /** Diviseur pour accumulateur gaz §14.1.3 */
@@ -161,14 +161,25 @@ final class CombustionCalculator implements CalculatorInterface
         } else {
             [$pn, $rpn, $qp0, $pveil] = $this->resolveCarac($node, $accessor, $context, $typeEcsId, $methode);
         }
+        // XSD : la puissance de veilleuse est une saisie préservée dès la
+        // méthode 2, indépendamment du fait que Rpn/QP0 restent forfaitaires.
+        $pveilSaisi = $accessor->getFloatOrNull('./donnee_entree/pveil', $node)
+            ?? $accessor->getFloatOrNull('./donnee_entree/pveilleuse', $node)
+            ?? $accessor->getFloatOrNull('./donnee_intermediaire/pveilleuse', $node);
+        $pveil = $pveilSaisi ?? $pveil;
 
         // Becs en Wh depuis installation parente
         $becsWh = $this->resolveBecsWh($node, $accessor, $context);
 
         $rg = 1.0;
         if ($becsWh > 0.0 && $rpn > 0.0) {
-            // pveil est ignoré si pas de veilleuse (open3cl: di.pveil = 0 when !di.pveilleuse)
-            $pveilActif = $this->hasPveilleuse($node, $accessor) ? $pveil : 0.0;
+            // Une puissance saisie positive (y compris sur le générateur CH
+            // partagé) atteste la veilleuse. Le XSD ne déclare pas de drapeau
+            // presence_veilleuse : ne pas en exiger un pour utiliser la saisie.
+            $presenceVeilleuse = $pveilSaisi !== null
+                ? $pveilSaisi > 0.0
+                : (($mixteCarac !== null && $pveil > 0.0) || $this->presenceVeilleuseHistorique($node, $accessor));
+            $pveilActif = $presenceVeilleuse ? $pveil : 0.0;
 
             if ($typeEcsId !== null && in_array($typeEcsId, self::TYPE_CHAUFFE_EAU_GAZ, true)) {
                 // §14.1.1 Chauffe-eau gaz : 1790×QP0/Becs + 6970×Pveil/Becs
@@ -191,12 +202,18 @@ final class CombustionCalculator implements CalculatorInterface
                 $qp0 = $qp0Acc;
                 $usesCombinedYield = true;
             } else {
-                // §14.1.2 p.94 — chaudière mixte : le rendement publié est le
-                // produit Rg×Rs et Qgw doit donc être intégré au même dénominateur.
+                /**
+                 * §14.1.2 p.94 — Rg×Rs = 1 / [1/Rpn + (1790 QP0 + Qgw)/Becs
+                 *                                   + 6970 × 0,5 Pveil/Becs].
+                 * Le PDF place 6970 DEVANT la fraction ; l'extraction texte
+                 * l'avait déplacé sous la barre de fraction.
+                 *
+                 * @spec-formula F-14.1.2-rendement-mixte
+                 */
                 $rg = 1.0 / (
                     1.0 / $rpn
                     + (self::H_ECS * $qp0 + ($isMixedBoiler ? $qgw : 0.0)) / $becsWh
-                    + 0.5 * $pveilActif / (self::H_VEIL * $becsWh)
+                    + self::H_VEIL * 0.5 * $pveilActif / $becsWh
                 );
             }
         }
@@ -570,8 +587,8 @@ final class CombustionCalculator implements CalculatorInterface
         return max($pchW, $pecsW) / 1000.0;
     }
 
-    /** Vérifie si la veilleuse est présente (open3cl: pveil=0 si absence). */
-    private function hasPveilleuse(DOMElement $node, NodeAccessor $accessor): bool
+    /** Compatibilité avec les drapeaux historiques hors XSD, en l'absence de puissance saisie. */
+    private function presenceVeilleuseHistorique(DOMElement $node, NodeAccessor $accessor): bool
     {
         // Cherche dans le parent installation
         $inst = $this->findParentInstallation($node);

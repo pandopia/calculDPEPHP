@@ -19,6 +19,26 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K06 — Verdicts historiques COP et sérialisation, à conserver
+
+- Mesure historique, pas un nouveau décompte des 670 cas : sur 45 écarts de
+  Rg ECS, 43 avaient déjà une caractéristique Pn/Rpn/QP0 divergente. Les deux
+  isolés étaient la chaudière électrique (corrigée à 0,97, §12.4.1 p.76) et
+  la référence lacunaire K35. Les puissances amont restent en K85/K95.
+- Rs sans ballon : 10 références l'écrivaient à 1, mais sa publication aurait
+  créé 191 balises supplémentaires. Ne pas le publier sans stockage. Les
+  12 Rg supplémentaires alors recensés étaient des générateurs à combustion,
+  pas des CET, dont le COP inclut le stockage selon le XSD.
+- COP : §14.2 p.95 donne 2,5 sur 2400E0020849A (type 3 H1a), 2,2 sur
+  2401E0359228Q (type 2 H1c), 2,3 sur 2601E0981468A (type 12 H1c). Leurs
+  références publient respectivement 2,8, 2,5 et 2,6, des valeurs d'autres
+  lignes. 2600E0099076V et 2400E4097217K déclarent tous deux H2c, type 6,
+  période 3, forfait, mais publient 3,8 et 3,2. Les valeurs 3,8, 3,2 et
+  3,07 sont déjà imputées par `copForfaitaireHorsTable()` car absentes de
+  toute la table ; ne pas ajouter les autres en refaisant notre calcul.
+- Ne rouvrir ces verdicts qu'avec une nouvelle règle ou une entrée permettant
+  de départager les références, jamais pour relever le COP forfaitaire.
+
 ### TASK-K06 — Sondage ADEME des blocs ECS à deux générateurs (24/10/2026)
 
 - Aucun bloc à plusieurs générateurs ECS parmi les 670 cas du corpus. Le

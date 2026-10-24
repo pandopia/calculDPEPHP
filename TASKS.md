@@ -271,50 +271,23 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K06 — Écarts résiduels de génération ECS
 
-- [~CB] Owner: CB  | Phase: K  | Estimation: 4h  | Priorité: moyenne
-- Acquis : `rendement_stockage` n'est plus écrit sans ballon ; les puissances
-  saisies en `donnee_intermediaire` sont préservées et utilisées ; un chauffe-eau
-  thermodynamique ne publie plus de `rendement_generation` séparé, son `cop`
-  incluant le stockage (XSD).
-- Deux questions de sérialisation sont tranchées, ne pas les rouvrir :
-  - `rendement_stockage` sans ballon : 10 références l'écrivent à 1, 191 balises
-    supplémentaires seraient créées en le publiant. On ne l'écrit pas.
-  - les 12 balises `rendement_generation` surnuméraires restantes portent sur
-    des générateurs **à combustion**, pas thermodynamiques : question distincte.
-- **La racine est en amont, pas dans la génération ECS.** Sur les 45
-  divergences de `rendement_generation` en ECS, **43 s'accompagnent d'un
-  `rpn`, `rpint`, `qp0` ou `pn` faux sur le même fichier** : le résidu de
-  cette tâche est celui des caractéristiques de chaudière, donc TASK-K31 et
-  TASK-K56, pas un problème de génération. Ne pas chercher de famille par
-  type de générateur, c'était la fausse piste.
-- Des deux écarts isolés, l'un est corrigé — §12.4.1 p.76 donne Rg = 0,97 aux
-  chaudières électriques et l'ECS leur donnait 1 — et l'autre appartient à la
-  référence lacunaire de TASK-K35.
-- Deux fichiers concentrent huit de ces divergences, 2400E0669495Y et
+- [ ] Owner: __ | Phase: K | Estimation: 4h | Priorité: moyenne
+- Remonter d'abord aux caractéristiques amont (Pn, Rpn, QP0) : suites K85
+  et K95 ; variantes déjà instruites dans les archives K31/K56. Les verdicts
+  COP et sérialisation sont dans TASKS_DONE.md, pas à réinstruire.
+- **Échelle à qualifier** : 2400E0669495Y et
   2400E0669425G : ils déclarent `nombre_appartement = 1` pour un immeuble de
   822 m² desservi par sept installations d'ECS. L'échelle est le suspect, pas
-  le rendement — les instruire avant le reste (cf. TASK-K31).
-- **COP des chauffe-eau thermodynamiques : tranché, c'est la référence.**
-  Sur les neuf cas en écart, notre valeur est **à chaque fois** celle de la
-  table §14.2 p.95 lue sur la bonne ligne, et la référence est au-dessus :
-  2400E0020849A (type 3 « CET air ambiant 2015-2026 », H1a → 2,5) publie 2,8 ;
-  2401E0359228Q (type 2, 2010-2014, H1c → 2,2) publie 2,5 ; 2601E0981468A
-  (type 12 « PAC double service », H1c → 2,3) publie 2,6, la valeur H3.
-  **Deux fichiers aux entrées identiques se contredisent** : 2600E0099076V et
-  2400E4097217K déclarent tous deux zone H2c, type 6, période 3 et saisie
-  forfaitaire, pour des COP de 3,8 et 3,2.
-- `copForfaitaireHorsTable()` impute les trois dont la valeur n'existe nulle
-  part dans §14.2 — 3,8, 3,2 et 3,07 sous `enum_methode_saisie_carac_sys_id`
-  = 1. Les six autres sont des valeurs du tableau lues sur la mauvaise ligne :
-  les départager demanderait de refaire le calcul, pas de lire le fichier.
-- Objectif : famille « Génération ECS » au-dessus de 92 % en profil strict
-  (84,62 % actuellement).
+  le rendement. Examiner aussi les pertes de stockage récupérées de
+  `2513E1578589Q` (facteur 1/18 sous un besoin de chauffage immeuble, cf. K26).
 - **Deux générateurs dans un même bloc ECS** : aucun exemple dans les 670
   cas retenus. Trois exports anciens récupérés le 24/10 recopient le total
   d'installation dans chacun des deux générateurs, sans répartition exploitable
   (preuves dans TASKS_DONE.md). Sourcer la distinction systèmes/cascade avant
   de partager Becs ; le partage doit précéder Rs, Rg et les auxiliaires, pas
   seulement diviser Cecs après coup. Ne pas utiliser ces exports pour calibrer.
+- Objectif : famille « Génération ECS » au-dessus de 92 % en profil strict
+  (84,49 % sur les 670 cas, mesure du 24/10/2026).
 
 ### TASK-K26 — §17.1.2 : répartition des visites entre sous-ensembles ECS
 
