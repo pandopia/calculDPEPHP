@@ -224,7 +224,8 @@ final class DpeEngine
      * chauffe-eau thermodynamiques à partir de 2027, chaudières bois granulés
      * après 2024, ballons à commande intelligente. Les quatre CET 135-138
      * et les neuf PAC 172-176/178-181, ainsi que les chaudières à condensation
-     * CH 177/182 et ECS 139/144, sont couverts par le classeur ADEME
+     * CH 177/182 et ECS 139/144, et sans condensation CH 183/184 et ECS
+     * 145/146, sont couverts par le classeur ADEME
      * 05aabba7 ; les autres restent
      * refusés tant que toutes leurs caractéristiques ne sont pas digitalisées.
      *
@@ -250,11 +251,11 @@ final class DpeEngine
                     && \CalculDpePHP\Chauffage\Rendement\GenerationNonCombustionCalculator::otherThermoScop($generateur, $accessor) === null) {
                     throw new UnsupportedDpeModelException('Générateur thermodynamique ' . $type . ' : SCOP propre connu et justifié requis. Aucun forfait n’est défini pour cette famille ; refus avant purge.');
                 }
-                if ($balise === 'generateur_ecs' && in_array($type, [135, 136, 137, 138, 139, 144], true)
+                if ($balise === 'generateur_ecs' && in_array($type, [135, 136, 137, 138, 139, 144, 145, 146], true)
                     && $version !== null && version_compare($version, '2.7', '>=')) {
                     continue;
                 }
-                if ($balise === 'generateur_chauffage' && in_array($type, [172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182], true)
+                if ($balise === 'generateur_chauffage' && in_array($type, [172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184], true)
                     && $version !== null && version_compare($version, '2.7', '>=')) {
                     continue;
                 }

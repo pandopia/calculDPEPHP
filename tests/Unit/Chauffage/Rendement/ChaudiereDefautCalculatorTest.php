@@ -19,6 +19,27 @@ final class ChaudiereDefautCalculatorTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
     private const TOL = 1e-5;
 
+    #[DataProvider('granulesSansCondensation2024')]
+    public function testLesGranulesSansCondensationRecentsConserventLaLigne2020(int $type, float $pnKw): void
+    {
+        [$doc, $gen] = $this->buildGenerator($type, 65, 2, ['pn' => 1000 * $pnKw]);
+        (new ChaudiereDefautCalculator())->calculate($gen, $this->makeContext($doc));
+        $rpn = $pnKw <= 20 ? (91 + 2 * log10($pnKw)) / 100 : ($pnKw <= 70 ? (92 + 2 * log10($pnKw)) / 100 : 0.96);
+        $rpint = $pnKw <= 20 ? (88 + 2 * log10($pnKw)) / 100 : ($pnKw <= 70 ? (89 + 2 * log10($pnKw)) / 100 : 0.93);
+        $qp0 = $pnKw <= 70 ? 85 * $pnKw ** 0.6 : ($pnKw <= 400 ? 1100.0 : 500.0);
+        $xp = new \DOMXPath($doc);
+        foreach (['pn' => 1000 * $pnKw, 'rpn' => $rpn, 'rpint' => $rpint, 'qp0' => $qp0] as $field => $expected) {
+            self::assertEqualsWithDelta($expected, $xp->evaluate('number(//generateur_chauffage/donnee_intermediaire/' . $field . ')'), 1e-9);
+        }
+    }
+
+    public static function granulesSansCondensation2024(): iterable
+    {
+        foreach ([183, 184] as $type) {
+            foreach ([10.0, 20.0, 20.001, 70.0, 70.001, 400.0, 400.001] as $pn) { yield "$type $pn kW" => [$type, $pn]; }
+        }
+    }
+
     #[DataProvider('granulesCondensation2024')]
     public function testLesGranulesCondensationRecentsOntLeursQuatreBandes(int $type, float $pnKw): void
     {
@@ -100,6 +121,8 @@ final class ChaudiereDefautCalculatorTest extends TestCase
         yield 'granulés récents 10 kW, retour à la petite bande' => [74, 66, 10000.0, 0.1, 0.93, 0.90, null];
         yield 'condensation 2024, bande physique 49 kW' => [177, 94, 49000.0, 0.1, (91 + 2 * log10(49)) / 100, (101 + 2 * log10(49)) / 100, 8.5 * 49 ** 0.6];
         yield 'condensation hybride 2024, bande physique 100 kW' => [182, 94, 100000.0, 0.01, 0.96, 1.04, 11.0];
+        yield 'sans condensation 2024, bande physique 49 kW' => [183, 65, 49000.0, 0.1, (92 + 2 * log10(49)) / 100, (89 + 2 * log10(49)) / 100, 8.5 * 49 ** 0.6];
+        yield 'sans condensation hybride 2024, bande physique 100 kW' => [184, 65, 100000.0, 0.01, 0.96, 0.93, 11.0];
         yield 'ratio unitaire inchangé' => [89, 5, 24000.0, 1.0, (84 + 2 * log10(24)) / 100, (80 + 3 * log10(24)) / 100, 240.0];
     }
 

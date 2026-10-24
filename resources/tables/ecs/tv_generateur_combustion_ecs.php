@@ -28,6 +28,7 @@ declare(strict_types=1);
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
  * @generated-on 2026-04-30
  * @spec-source https://gitlab.com/observatoire-dpe/observatoire-dpe/-/blob/05aabba7/modele_donnee/valeur_tables.xlsx (generateur_combustion A95:J98)
+ * @spec-source https://gitlab.com/observatoire-dpe/observatoire-dpe/-/blob/52792fb9e79e52390ded7d4527a7f7a962fd5ccc/modele_donnee/valeur_tables.xlsx (generateur_combustion A66:J69)
  * @status partial — manque QP0 des anciens hybrides bois 124-131 et poêles bouilleurs (TASK-K06)
  * @source       open3cl tv.js (IDs 79-93 du tableau generateur_combustion)
  */
@@ -452,5 +453,11 @@ foreach ($pertesBois as [$types, $coefficient, $exposant, $moyenne, $grande]) {
         unset($palier);
     }
 }
+
+// ADEME, lignes 65–68 : mêmes caractéristiques que les granulés 2020–2024.
+// Reprendre la ligne complète (QP0 inclus) pour les nouveaux enums, sans
+// modifier le traitement encore à qualifier de l'ancien hybride 125 (K06).
+$table[145] = $table[34];
+$table[146] = $table[34];
 
 return $table;

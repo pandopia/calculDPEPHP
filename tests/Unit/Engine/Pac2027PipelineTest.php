@@ -19,6 +19,7 @@ final class Pac2027PipelineTest extends TestCase
     public function testLeParcoursCompletConsommeLesPerformancesRecentes(int $type, float $expectedScop, int $boilerType = 149, bool $predictive = false, bool $solar = false, int $ecsType = 136): void
     {
         $root = dirname(__DIR__, 3);
+        $wood = in_array($boilerType, [182, 184], true);
         $doc = new DOMDocument();
         $doc->load($root . '/tests/Fixtures/comparatif-collectif.xml');
         $xp = new DOMXPath($doc);
@@ -35,7 +36,7 @@ final class Pac2027PipelineTest extends TestCase
             $boiler = $gen->cloneNode(true);
             $entry = $xp->query('./donnee_entree', $boiler)->item(0);
             $this->set($entry, 'enum_type_generateur_ch_id', (string)$boilerType);
-            if ($boilerType === 182) {
+            if ($wood) {
                 $this->set($entry, 'enum_type_energie_id', '5');
             }
             $this->set($entry, 'reference', 'chaudiere-hybride-2027');
@@ -59,8 +60,8 @@ final class Pac2027PipelineTest extends TestCase
             }
         }
         foreach ($xp->query('//generateur_ecs/donnee_entree') as $entry) {
-            $this->set($entry, 'enum_type_generateur_ecs_id', $boilerType === 182 ? '144' : (string)$ecsType);
-            $this->set($entry, 'enum_type_energie_id', $boilerType === 182 ? '5' : '1');
+            $this->set($entry, 'enum_type_generateur_ecs_id', $wood ? ($boilerType === 182 ? '144' : '146') : (string)$ecsType);
+            $this->set($entry, 'enum_type_energie_id', $wood ? '5' : '1');
             $this->set($entry, 'volume_stockage', '200');
             $this->set($entry, 'enum_type_stockage_ecs_id', '3');
             if ($ecsType === 82) {
@@ -85,15 +86,17 @@ final class Pac2027PipelineTest extends TestCase
         self::assertEqualsWithDelta($expectedScop, $xr->evaluate('number((//generateur_chauffage)[1]/donnee_intermediaire/scop)'), 1e-12);
         self::assertGreaterThan(0, $xr->evaluate('number((//generateur_chauffage)[1]/donnee_intermediaire/conso_ch)'));
         self::assertSame(0.0, $xr->evaluate('count((//generateur_chauffage)[1]/donnee_intermediaire/rendement_generation)'));
-        if ($boilerType === 182) {
-            self::assertGreaterThan(1, $xr->evaluate('number((//generateur_chauffage)[2]/donnee_intermediaire/rpint)'));
+        if ($wood) {
+            $rpint = $xr->evaluate('number((//generateur_chauffage)[2]/donnee_intermediaire/rpint)');
+            if ($boilerType === 182) { self::assertGreaterThan(1, $rpint); }
+            else { self::assertGreaterThan(0, $rpint); self::assertLessThan(1, $rpint); }
             self::assertGreaterThan(0, $xr->evaluate('number((//generateur_chauffage)[2]/donnee_intermediaire/qp0)'));
             self::assertGreaterThan(0, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/rendement_generation)'));
             self::assertGreaterThan(0, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/qp0)'));
         } else {
             self::assertEqualsWithDelta($ecsType === 82 ? 4.7 : 2.7, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/cop)'), 1e-12);
         }
-        if ($boilerType === 182) {
+        if ($wood) {
             self::assertGreaterThan(0, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/rendement_stockage)'));
         } else {
             self::assertSame(0.0, $xr->evaluate('count(//generateur_ecs/donnee_intermediaire/rendement_stockage)'));
@@ -122,6 +125,7 @@ final class Pac2027PipelineTest extends TestCase
         yield 'autre thermodynamique électrique justifié' => [117, 3.15];
         yield 'autre thermodynamique gaz justifié' => [118, 1.5];
         yield 'CET générique 2027 avec COP propre' => [173, 3.4, 149, false, false, 82];
+        yield 'PAC et granulés récents sans condensation' => [178, 3.4, 184];
     }
 
     private function set(DOMElement $entry, string $name, string $value): void

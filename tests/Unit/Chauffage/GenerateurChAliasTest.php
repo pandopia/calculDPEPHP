@@ -20,6 +20,11 @@ final class GenerateurChAliasTest extends TestCase
         }
         self::assertFalse(GenerateurChAlias::isHybride(171));
         self::assertFalse(GenerateurChAlias::isHybridePac(177));
+        foreach ([177 => false, 182 => true, 183 => false, 184 => true] as $type => $hybrid) {
+            self::assertSame(74, GenerateurChAlias::normalize($type));
+            self::assertSame($hybrid, GenerateurChAlias::isHybride($type));
+            self::assertFalse(GenerateurChAlias::isHybridePac($type));
+        }
     }
 
     private function generateur(int $genId, string $caracteristiqueGenerale): DOMElement

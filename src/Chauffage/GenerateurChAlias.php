@@ -19,6 +19,7 @@ namespace CalculDpePHP\Chauffage;
  * @spec-pages   78-80, 86-92
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
  * @spec-source  editeur/public/schemas/DPEv2.7.xsd
+ * @spec-source  https://gitlab.com/observatoire-dpe/observatoire-dpe/-/blob/52792fb9e79e52390ded7d4527a7f7a962fd5ccc/modele_donnee/valeur_tables.xlsx (generateur_combustion A66:J69)
  * @tables       chauffage/tv_generateur_combustion (groupes d'enums par ligne)
  */
 final class GenerateurChAlias
@@ -56,6 +57,9 @@ final class GenerateurChAlias
         // Même profil de charge bois ; caractéristiques Rpn/Rpint/QP0
         // spécifiques conservées par ChaudiereDefautCalculator (lignes 94-97).
         177 => 74, 182 => 74,
+        // ADEME 52792fb9, generateur_combustion lignes 65–68 : les granulés
+        // sans condensation après 2024 conservent la ligne 2020–2024.
+        183 => 74, 184 => 74,
 
         // PAC hybride : partie chaudière (groupes 96|138|148|160, 97|139|149|161, …)
         144 => 96,                                    // générique (supprimé de l'XSD)
@@ -214,7 +218,7 @@ final class GenerateurChAlias
     public static function isHybride(?int $genId): bool
     {
         return $genId !== null && (($genId >= 143 && $genId <= 170)
-            || in_array($genId, [178, 179, 180, 181, 182], true));
+            || in_array($genId, [178, 179, 180, 181, 182, 184], true));
     }
 
     /**

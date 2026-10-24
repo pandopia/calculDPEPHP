@@ -61,6 +61,7 @@ final class MultiGenerateursTest extends TestCase
         yield 'relève par chaudière granulés' => [7, 74, '1', 0.8, false, 1.0];
         yield 'hybride granulés en H2' => [147, 153, '4', 0.83, false, 1.0];
         yield 'hybride granulés condensation récente' => [178, 182, '8', 0.88, true, 1.0];
+        yield 'hybride granulés récents sans condensation' => [178, 184, '8', 0.88, true, 1.0];
     }
 
     /**

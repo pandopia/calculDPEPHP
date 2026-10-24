@@ -211,7 +211,7 @@ final class DpeEngineTest extends TestCase
 
     public function testLesTechnologiesEcs27EncoreNonCouvertesRestentRefusees(): void
     {
-        foreach ([140, 141, 142, 143, 145, 146] as $type) {
+        foreach ([140, 141, 142, 143] as $type) {
             $xml = $this->xmlAvecGenerateur('generateur_ecs', 'enum_type_generateur_ecs_id', $type);
             $xml = str_replace('<enum_modele_dpe_id>1</enum_modele_dpe_id>', '<enum_modele_dpe_id>1</enum_modele_dpe_id><enum_version_id>2.7</enum_version_id>', $xml);
             try {
@@ -233,23 +233,18 @@ final class DpeEngineTest extends TestCase
         }
     }
 
-    public function testLesChaudieresBois27NonCouvertesRestentRefusees(): void
+    public function testLesGranulesSansCondensation27SontCouverts(): void
     {
         foreach ([183, 184] as $type) {
             $xml = $this->xmlAvecGenerateur('generateur_chauffage', 'enum_type_generateur_ch_id', $type);
             $xml = str_replace('<enum_modele_dpe_id>1</enum_modele_dpe_id>', '<enum_modele_dpe_id>1</enum_modele_dpe_id><enum_version_id>2.7</enum_version_id>', $xml);
-            try {
-                $this->engine()->calculate($xml);
-                self::fail("Chaudière $type non couverte.");
-            } catch (UnsupportedDpeModelException $exception) {
-                self::assertStringContainsString("de type $type", $exception->getMessage());
-            }
+            self::assertSame((string)$type, $this->engine()->calculate($xml)->getElementsByTagName('enum_type_generateur_ch_id')->item(0)?->textContent);
         }
     }
 
     public function testLesChaudieresGranulesCondensationSontAccepteesDansLeModele27(): void
     {
-        foreach ([['generateur_chauffage', 'enum_type_generateur_ch_id', 177], ['generateur_chauffage', 'enum_type_generateur_ch_id', 182], ['generateur_ecs', 'enum_type_generateur_ecs_id', 139], ['generateur_ecs', 'enum_type_generateur_ecs_id', 144]] as [$tag, $field, $type]) {
+        foreach ([['generateur_chauffage', 'enum_type_generateur_ch_id', 177], ['generateur_chauffage', 'enum_type_generateur_ch_id', 182], ['generateur_ecs', 'enum_type_generateur_ecs_id', 139], ['generateur_ecs', 'enum_type_generateur_ecs_id', 144], ['generateur_ecs', 'enum_type_generateur_ecs_id', 145], ['generateur_ecs', 'enum_type_generateur_ecs_id', 146]] as [$tag, $field, $type]) {
             $xml = $this->xmlAvecGenerateur($tag, $field, $type);
             $xml = str_replace('<enum_modele_dpe_id>1</enum_modele_dpe_id>', '<enum_modele_dpe_id>1</enum_modele_dpe_id><enum_version_id>2.7</enum_version_id>', $xml);
             self::assertSame((string)$type, $this->engine()->calculate($xml)->getElementsByTagName($field)->item(0)?->textContent);
