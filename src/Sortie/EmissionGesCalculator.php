@@ -30,6 +30,8 @@ use DOMElement;
  * @spec-section  1
  * @spec-pages    6
  * @spec-source   resources/specsplitted/00-meta/01-methode-conventionnelle.md
+ * @spec-source   resources/specsplitted/16-eclairage-prod-elec/02-prod-electricite.md (§16.2 p.104 : déduction PV avant les étiquettes)
+ * @spec-source   editeur/public/schemas/DPEv1-obsolete.xsd (étiquette énergie seule)
  * @spec-source   https://rt-re-batiment.developpement-durable.gouv.fr/IMG/pdf/consolide_annexes_arrete_du_31_03_2021_relatif_au_dpe_habitation.pdf (annexe 4)
  * @spec-source   https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000043353421 (article 1, 9°)
  * @xml-input     sortie.ef_conso.*
@@ -39,6 +41,7 @@ use DOMElement;
  *                    emission_ges_fr, emission_ges_auxiliaire_*, emission_ges_totale_auxiliaire,
  *                    emission_ges_5_usages, emission_ges_5_usages_m2, classe_emission_ges}
  *                sortie.ep_conso.classe_bilan_dpe (mis à jour avec WORST(classe_energie, classe_ges))
+ *                sortie.ep_conso.classe_conso_energie (modèle ADEME 1 uniquement)
  * @depends-on    \CalculDpePHP\Sortie\EfConsoCalculator
  *                \CalculDpePHP\Sortie\EpConsoCalculator
  * @tables        reference/tv_reseau_chaleur
@@ -214,6 +217,24 @@ final class EmissionGesCalculator implements CalculatorInterface
         // ── 7. Mise à jour classe_bilan_dpe = WORST(classe_energie, classe_ges) ──
         $epConso = $this->ensureChild($context->document, $sortie, 'ep_conso');
         $classeEnergie = $accessor->getStringOrNull('./classe_bilan_dpe', $epConso) ?? 'G';
+        // §16.2 p.104-106 : l'autoconsommation est déduite de l'énergie
+        // utilisée pour les étiquettes. Le PV s'exécute après EpConsoCalculator :
+        // sa classe provisoire peut donc être périmée, même si l'intensité EP
+        // publiée a déjà été corrigée. Classer l'intensité réellement finale.
+        $epM2 = $accessor->getFloatOrNull('./ep_conso_5_usages_m2', $epConso);
+        if ($epM2 !== null) {
+            $classeEnergie = SeuilsClasses::energie(
+                (int) floor($epM2),
+                $surface,
+                $this->zoneClimatiqueId($accessor, $context),
+                $this->classeAltitudeId($accessor, $context),
+                $context,
+            );
+        }
+        if ($accessor->getStringOrNull('/dpe/administratif/enum_version_id') === '1') {
+            // XSD DPEv1-obsolete : étiquette EP seule, distincte du double seuil.
+            $accessor->setChildValue($epConso, 'classe_conso_energie', $classeEnergie);
+        }
         $classeBilan   = $this->worstClasse($classeEnergie, $classeGes);
         $accessor->setChildValue($epConso, 'classe_bilan_dpe', $classeBilan);
 

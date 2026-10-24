@@ -325,7 +325,7 @@ XML;
         $this->assertLessThan(60000, $conso, 'conso_ch should not be unreasonably large');
     }
 
-    public function testZeroBchProducesNoOutput(): void
+    public function testUnBesoinNulPublieDesConsommationsNullesAuLieuDeLesOmettre(): void
     {
         $calc = new CollectifBaseAppoint();
         [$doc, $ctx, $node] = $this->buildXml(
@@ -335,9 +335,38 @@ XML;
         );
         $calc->calculate($node, $ctx);
         $xp    = new \DOMXPath($doc);
-        $conso = $xp->evaluate('number(//installation_chauffage/donnee_intermediaire/conso_ch)');
-        // When bch=0, no calculation is done (early return)
-        $this->assertTrue(is_nan($conso) || $conso === 0.0, 'No conso when bch=0');
+        foreach (['', '_depensier'] as $suffixe) {
+            self::assertSame(1.0, $xp->evaluate('count(//installation_chauffage/donnee_intermediaire/besoin_ch' . $suffixe . ')'));
+            self::assertSame(0.0, $xp->evaluate('number(//installation_chauffage/donnee_intermediaire/besoin_ch' . $suffixe . ')'));
+            self::assertSame(1.0, $xp->evaluate('count(//installation_chauffage/donnee_intermediaire/conso_ch' . $suffixe . ')'));
+            self::assertSame(0.0, $xp->evaluate('number(//installation_chauffage/donnee_intermediaire/conso_ch' . $suffixe . ')'));
+            foreach ([1, 2] as $index) {
+                $path = '//generateur_chauffage[' . $index . ']/donnee_intermediaire/conso_ch' . $suffixe;
+                self::assertSame(1.0, $xp->evaluate('count(' . $path . ')'));
+                self::assertSame(0.0, $xp->evaluate('number(' . $path . ')'));
+            }
+        }
+    }
+
+    public function testLeScenarioNulNometPasSesBalisesQuandLAutreScenarioChauffeEncore(): void
+    {
+        foreach ([[0, 15000], [15000, 0]] as [$conv, $dep]) {
+            [$doc, $ctx, $node] = $this->buildXml(
+                bch: $conv, gv: 200, surface: 80, sh: 80, hsp: 2.5,
+                rdim: 1, pnW: 0, rgBase: 1, reBase: 1, rdBase: 1, rrBase: 1, i0Base: 1,
+                rgAppoint: 1, reAppoint: 1, rdAppoint: 1, rrAppoint: 1, i0Appoint: 1,
+            );
+            $ctx->set('chauffage.besoin_ch_depensier', (float)$dep);
+            (new CollectifBaseAppoint())->calculate($node, $ctx);
+            $xp = new \DOMXPath($doc);
+            foreach (['' => $conv, '_depensier' => $dep] as $suffixe => $besoin) {
+                self::assertSame(1.0, $xp->evaluate('count(//installation_chauffage/donnee_intermediaire/conso_ch' . $suffixe . ')'));
+                self::assertEqualsWithDelta($besoin, $xp->evaluate('number(//installation_chauffage/donnee_intermediaire/conso_ch' . $suffixe . ')'), 1e-9);
+                foreach ([1, 2] as $index) {
+                    self::assertEqualsWithDelta($besoin / 2, $xp->evaluate('number(//generateur_chauffage[' . $index . ']/donnee_intermediaire/conso_ch' . $suffixe . ')'), 1e-9);
+                }
+            }
+        }
     }
 
     public function testBaseAndAppointGeneratorsGetConso(): void

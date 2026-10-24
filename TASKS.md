@@ -322,9 +322,9 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   saisi et QP0 identique au chauffage collectif, sans clé mixte ; le calcul
   non linéaire sur ce Pn réduit n'est pas celui de la référence. 2563E3941359I
   porte aussi une puissance virtualisée. Reprendre avec K95, sans inventer
-  d'association. Les classes de 2691E2041329J/2691E2041336Q divergent après
-  restauration des pertes : leur régime ECS déclaré individuel et leur
-  puissance de 97,2 kW demandent une qualification amont, pas un seuil adapté.
+  d'association. Qualifier aussi le régime ECS déclaré individuel et la
+  puissance de 97,2 kW de 2691E2041329J/2691E2041336Q avant toute correction
+  de caractéristiques ; ne pas adapter les seuils des classes.
 - **Échelle à qualifier** : 2400E0669495Y et
   2400E0669425G : ils déclarent `nombre_appartement = 1` pour un immeuble de
   822 m² desservi par sept installations d'ECS. L'échelle est le suspect, pas
@@ -384,6 +384,11 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   Ne pas modifier le partage pour compenser Rpn/QP0.
 - Les six cases climatiques d'altitude 3 vides sont bien absentes de l'annexe,
   pas des trous de transcription : ne pas les remplir par interpolation.
+- Suite distincte : `CollectifBaseAppoint` publie une seule part de besoin,
+  conventionnelle, réutilisée par les auxiliaires de génération dépensiers.
+  Qualifier le partage par scénario (§9.8), notamment Bch=0 / Bch_dep>0,
+  avant de modifier `PartBesoinGenerateur` et ses consommateurs ; le correctif
+  de publication des consommations nulles ne change pas ce partage.
 
 ### TASK-K72 — `2605E1578332M` : un besoin de froid qui contredit ses propres apports
 

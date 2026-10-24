@@ -19,6 +19,31 @@ final class XsdVocabularyTest extends TestCase
         self::assertArrayHasKey('dpe/logement/enveloppe/inertie/enum_classe_inertie_id', $paths);
     }
 
+    public function testLaDeclarationXsdPrimeSurUneAnnotationDeCheminPerimee(): void
+    {
+        // ADEME 2.7 : le bloc seconde fenêtre a été déplacé hors de
+        // donnee_entree, mais ses vingt appinfo conservent l'ancien chemin.
+        $path = __DIR__ . '/../../../editeur/public/schemas/DPEv2.7.xsd';
+        $vocabulary = XsdVocabulary::load($path);
+        $prefix = 'dpe/logement/enveloppe/baie_vitree_collection/baie_vitree/';
+        foreach (['ug', 'uw', 'sw'] as $tag) {
+            $correct = $prefix . 'baie_vitree_double_fenetre/donnee_intermediaire/' . $tag;
+            $obsolete = $prefix . 'donnee_entree/baie_vitree_double_fenetre/donnee_intermediaire/' . $tag;
+            self::assertArrayHasKey($correct, $vocabulary);
+            self::assertArrayNotHasKey($obsolete, $vocabulary);
+            self::assertSame([], XsdVocabulary::unknownElements([$correct => '1'], $path));
+            self::assertSame([$obsolete], XsdVocabulary::unknownElements([$obsolete => '1'], $path));
+        }
+    }
+
+    public function testUnBlocAbsentDuSchemaHistoriqueNestPasInvente(): void
+    {
+        $prefix = 'dpe/logement/enveloppe/baie_vitree_collection/baie_vitree/';
+        $vocabulary = XsdVocabulary::load(self::XSD);
+        self::assertArrayNotHasKey($prefix . 'donnee_entree/baie_vitree_double_fenetre/donnee_intermediaire/uw', $vocabulary);
+        self::assertArrayNotHasKey($prefix . 'baie_vitree_double_fenetre/donnee_intermediaire/uw', $vocabulary);
+    }
+
     /**
      * Le contrôle porte sur le chemin, pas sur le seul nom : une balise réelle
      * écrite au mauvais endroit doit être signalée (cf. TASK-K14).

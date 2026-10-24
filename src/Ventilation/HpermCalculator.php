@@ -77,7 +77,7 @@ final class HpermCalculator implements CalculatorInterface
         $sh = $accessor->getFloatOrNull('./surface_ventile', $entree);
         $sh = GeneratedApartment::calculationSurface($node, $accessor, $sh);
         $q4paConv = $accessor->getFloatOrNull('./q4pa_conv', $intermediaire);
-        if ($typeId === null || $sh === null || $q4paConv === null) {
+        if ($typeId === null || $sh === null || $sh <= 0.0 || $q4paConv === null) {
             return;
         }
 
@@ -103,7 +103,10 @@ final class HpermCalculator implements CalculatorInterface
 
         // Sdep = somme des parois déperditives hors plancher_bas
         $sdep = $this->computeSdep($node, $accessor);
-        if ($sdep <= 0.0) {
+        // Une enveloppe absente est indéterminée ; une surface explicitement
+        // nulle reste calculable. §4 p.39 : le terme 0,45 Smea Sh peut encore
+        // rendre Q4Pa positif même lorsque Q4Paenv = Q4Paconv × Sdep = 0.
+        if ($sdep === null) {
             return;
         }
 
@@ -150,12 +153,12 @@ final class HpermCalculator implements CalculatorInterface
      * §4 p.39 : Sdep = Σ(mur) + Σ(plancher_haut) + Σ(baie_vitree) + Σ(porte), b>0.
      * Murs "local non déperditif" (adjacence_id=22) exclus.
      */
-    private function computeSdep(DOMElement $ventilation, NodeAccessor $accessor): float
+    private function computeSdep(DOMElement $ventilation, NodeAccessor $accessor): ?float
     {
         // Remontée : ventilation → ventilation_collection → logement → enveloppe
         $logement = $ventilation->parentNode?->parentNode;
         if (!$logement instanceof DOMElement) {
-            return 0.0;
+            return null;
         }
         $enveloppe = null;
         foreach ($logement->childNodes as $child) {
@@ -165,7 +168,7 @@ final class HpermCalculator implements CalculatorInterface
             }
         }
         if ($enveloppe === null) {
-            return 0.0;
+            return null;
         }
 
         $sdep = 0.0;

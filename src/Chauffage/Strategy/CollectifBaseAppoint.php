@@ -123,9 +123,10 @@ final class CollectifBaseAppoint implements CalculatorInterface
         // ── 1. Contexte bâtiment ──────────────────────────────────────────────
         $bch   = (float)$context->get('chauffage.besoin_ch' . $suffixe, 0.0);
         $gv    = (float)$context->get('chauffage.gv', 1.0);
-        if ($bch <= 0.0) {
-            return;
-        }
+        // §9.8 p.66 : Bch=0 donne Cch_base=Cch_appoint=0, pas des
+        // balises absentes. Le calcul de T est déjà protégé par Bch1>0.
+        // Le scénario à 21 °C peut néanmoins conserver un besoin positif.
+        $bch = max(0.0, $bch);
 
         $zoneId = $context->zoneClimatique !== null ? (int)$context->zoneClimatique : 1;
         $altId  = $context->classeAltitude  !== null ? (int)$context->classeAltitude  : 1;
@@ -300,14 +301,14 @@ final class CollectifBaseAppoint implements CalculatorInterface
         if ($genBase !== null) {
             $genDi = $accessor->ensureDonneeIntermediaire($genBase);
             $accessor->setChildValue($genDi, 'conso_ch' . $suffixe, $consoBase);
-            if (!$depensier) {
+            if (!$depensier && $bch1 > 0.0) {
                 \CalculDpePHP\Chauffage\PartBesoinGenerateur::publier($context, $genBase, $partBase);
             }
         }
         if ($genAppoint !== null) {
             $genDi = $accessor->ensureDonneeIntermediaire($genAppoint);
             $accessor->setChildValue($genDi, 'conso_ch' . $suffixe, $consoApp);
-            if (!$depensier) {
+            if (!$depensier && $bch1 > 0.0) {
                 \CalculDpePHP\Chauffage\PartBesoinGenerateur::publier($context, $genAppoint, max(0.0, 1.0 - $partBase));
             }
         }

@@ -91,16 +91,15 @@ final class Pac2027PipelineTest extends TestCase
             if ($boilerType === 182) { self::assertGreaterThan(1, $rpint); }
             else { self::assertGreaterThan(0, $rpint); self::assertLessThan(1, $rpint); }
             self::assertGreaterThan(0, $xr->evaluate('number((//generateur_chauffage)[2]/donnee_intermediaire/qp0)'));
-            self::assertGreaterThan(0, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/rendement_generation)'));
+            // XSD : avec ballon intégré, Rg×Rs est un seul rendement,
+            // même en l'absence de référence vers le générateur chauffage.
+            self::assertGreaterThan(0, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/rendement_generation_stockage)'));
+            self::assertSame(0.0, $xr->evaluate('count(//generateur_ecs/donnee_intermediaire/rendement_generation)'));
             self::assertGreaterThan(0, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/qp0)'));
         } else {
             self::assertEqualsWithDelta($ecsType === 82 ? 4.7 : 2.7, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/cop)'), 1e-12);
         }
-        if ($wood) {
-            self::assertGreaterThan(0, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/rendement_stockage)'));
-        } else {
-            self::assertSame(0.0, $xr->evaluate('count(//generateur_ecs/donnee_intermediaire/rendement_stockage)'));
-        }
+        self::assertSame(0.0, $xr->evaluate('count(//generateur_ecs/donnee_intermediaire/rendement_stockage)'));
         self::assertGreaterThan(0, $xr->evaluate('number(//prod_enr_totale)'));
         if ($predictive) {
             self::assertEqualsWithDelta(0.98, $xr->evaluate('number((//emetteur_chauffage)[1]/donnee_intermediaire/i0)'), 1e-12);

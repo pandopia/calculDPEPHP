@@ -19,6 +19,41 @@ une.
 
 ## Enquêtes closes
 
+### Balises manquantes — inventaire résiduel sur 710 cas (24/10/2026, soir)
+
+Après les corrections, **690 balises restent manquantes**, toutes conservées
+dans le décompte brut. Leur inventaire ne justifie aucun ajout automatique :
+
+| Groupe | Nombre | Cause établie / suite |
+|---|---:|---|
+| Quatre `*_auxiliaire_distribution_fr` | 476 | 119 références, toutes à zéro ; facultatives au XSD. Verdicts K40/K70 inchangés : pas de formule de distribution froid à inventer. |
+| `rendement_stockage` | 73 | Toutes attendues à 1 : absence de ballon ou convention Rg/Rs face au rendement combiné. Ne pas multiplier les facteurs pour compléter la forme. |
+| `rendement_generation` ECS | 25 | Un rendement combiné est déjà produit ; les éventuels écarts de valeur restent à instruire en K06, pas à masquer par un renommage. |
+| Rubriques d'isolation du plancher haut | 40 | Rubrique dominante contre plusieurs rubriques ou une classification différente ; verdict « une seule rubrique » conservé. |
+| Lignes d'énergie 12 | 40 | Quatre références ventilent l'autoconsommation PV dans une ligne dédiée ; les autres lignes ne sont plus de faux manquants. Voir K88. |
+| Trois intermédiaires PV | 15 | Cinq exports publient des zéros malgré `presence_production_pv=0`. |
+| `pvent_moy` | 10 | Zéros facultatifs. Le seul format 9.1.1 compte sept publications et une omission : un garde de format ne définit pas une règle de méthode. |
+| `pn` | 10 | Neuf puissances de réseaux et une de PAC, toutes en saisie forfaitaire ; aucune formule 3CL ne permet de les reconstituer. Le XSD documente Pn pour les générateurs à combustion. |
+| `pveilleuse` ECS | 1 | 2606E1070535W publie 0,1500 malgré l'unité W, sans entrée de présence exploitable. Ne pas inventer une saisie depuis cette sortie. |
+
+La correction du comparateur est **séparée du gain moteur** dans la preuve A/B :
+30 faux manquants et 30 faux supplémentaires disparaissent, mais 19 écarts
+numériques jusque-là non comparés apparaissent. Aucune tolérance n'est changée.
+
+**Sondage ADEME hors corpus.** Les douze premiers résultats de `version_dpe:1`,
+triés par date décroissante le 24/10/2026 (348 200 résultats), ont été récupérés
+avant calcul : 2291E0000002Q, 2251E0000001B, 2128E0330409D, 2138E0442282I,
+2138E0442298Y, 2106E0617843L, 2194E0611417R, 2194E0612492A, 2169E0612782F,
+2163E0612830V, 2127E0611700Z, 2140E0611502W. Huit exports n'ont aucune entrée
+d'enveloppe, de ventilation ni de génération ; quatre autres publient, sans PV,
+un `taux_autoproduction` de 2 169 à 16 432 et une production ECS solaire de 1
+sous une installation déclarée sans solaire. Ils ne sont pas intégrés comme
+étalons et aucun budget n'est initialisé pour eux. Reprendre uniquement avec
+des exports complets et cohérents, pas en remplissant leurs sorties à l'aveugle.
+
+Rouvrir les postes résiduels sur une nouvelle entrée permettant de calculer la
+grandeur, une règle de publication documentée ou un texte définissant le calcul.
+
 ### Dépendances — 12 alertes GitHub hors des versions verrouillées (24/10/2026)
 
 - Au push de la PR 51, GitHub annonce 12 alertes ouvertes sur main. Lecture

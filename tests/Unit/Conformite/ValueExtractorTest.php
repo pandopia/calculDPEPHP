@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Tests\Unit\Conformite;
 
 use CalculDpePHP\Conformite\ValueExtractor;
+use CalculDpePHP\Conformite\CaseComparator;
+use CalculDpePHP\Conformite\ComparisonStatus;
+use CalculDpePHP\Conformite\ToleranceProfile;
 use DOMDocument;
 use PHPUnit\Framework\TestCase;
 
@@ -55,6 +58,71 @@ final class ValueExtractorTest extends TestCase
         $prefix = 'dpe/logement/sortie/sortie_par_energie_collection/sortie_par_energie';
         self::assertSame('10', $values[$prefix . '[enum_type_energie_id=3]/conso_5_usages']);
         self::assertSame('20', $values[$prefix . '[enum_type_energie_id=1]/conso_5_usages']);
+    }
+
+    public function testUneEnergieUniqueGardeSaCleMetier(): void
+    {
+        $document = $this->doc('<dpe><logement><sortie><sortie_par_energie_collection>'
+            . '<sortie_par_energie><enum_type_energie_id>1</enum_type_energie_id><conso_5_usages>20</conso_5_usages></sortie_par_energie>'
+            . '</sortie_par_energie_collection></sortie></logement></dpe>');
+        foreach ([false, true] as $useReferences) {
+            $values = (new ValueExtractor($useReferences))->extract($document);
+            self::assertSame('20', $values['dpe/logement/sortie/sortie_par_energie_collection/sortie_par_energie[enum_type_energie_id=1]/conso_5_usages']);
+        }
+    }
+
+    public function testUneCleEnergieDupliqueeNecraseAucuneValeur(): void
+    {
+        $document = $this->doc('<dpe><logement><sortie><sortie_par_energie_collection>'
+            . '<sortie_par_energie><enum_type_energie_id>1</enum_type_energie_id><conso_5_usages>20</conso_5_usages></sortie_par_energie>'
+            . '<sortie_par_energie><enum_type_energie_id>1</enum_type_energie_id><conso_5_usages>5</conso_5_usages></sortie_par_energie>'
+            . '</sortie_par_energie_collection></sortie></logement></dpe>');
+        $prefix = 'dpe/logement/sortie/sortie_par_energie_collection/sortie_par_energie';
+        foreach ([false, true] as $useReferences) {
+            $values = (new ValueExtractor($useReferences))->extract($document);
+            self::assertCount(4, $values);
+            self::assertSame('20', $values[$prefix . '[1]/conso_5_usages']);
+            self::assertSame('5', $values[$prefix . '[2]/conso_5_usages']);
+        }
+    }
+
+    public function testUneEnergieManquanteNeRendPasLesAutresManquantes(): void
+    {
+        $one = '<sortie_par_energie><enum_type_energie_id>1</enum_type_energie_id><conso_5_usages>20</conso_5_usages></sortie_par_energie>';
+        $other = '<sortie_par_energie><enum_type_energie_id>12</enum_type_energie_id><conso_5_usages>5</conso_5_usages></sortie_par_energie>';
+        $wrap = static fn(string $rows): string => '<dpe><logement><sortie><sortie_par_energie_collection>' . $rows . '</sortie_par_energie_collection></sortie></logement></dpe>';
+        $comparator = new CaseComparator(ToleranceProfile::strict());
+        foreach ([false, true] as $reverse) {
+            $reference = $this->doc($wrap($one . $other));
+            $actual = $this->doc($wrap($one));
+            $deltas = $reverse
+                ? $comparator->compareDocuments($actual, $reference)
+                : $comparator->compareDocuments($reference, $actual);
+            self::assertCount(4, $deltas);
+            foreach ($deltas as $delta) {
+                $expectedStatus = str_contains($delta['path'], '[enum_type_energie_id=1]')
+                    ? ComparisonStatus::EXACT
+                    : ($reverse ? ComparisonStatus::EXTRA : ComparisonStatus::MISSING);
+                self::assertSame($expectedStatus, $delta['status'], $delta['path']);
+            }
+        }
+    }
+
+    public function testLaValeurDeLEnergiePresenteDesDeuxCotesResteComparee(): void
+    {
+        $reference = $this->doc('<dpe><logement><sortie><sortie_par_energie_collection>'
+            . '<sortie_par_energie><enum_type_energie_id>1</enum_type_energie_id><conso_5_usages>20</conso_5_usages></sortie_par_energie>'
+            . '<sortie_par_energie><enum_type_energie_id>12</enum_type_energie_id><conso_5_usages>5</conso_5_usages></sortie_par_energie>'
+            . '</sortie_par_energie_collection></sortie></logement></dpe>');
+        $actual = $this->doc('<dpe><logement><sortie><sortie_par_energie_collection>'
+            . '<sortie_par_energie><enum_type_energie_id>1</enum_type_energie_id><conso_5_usages>21</conso_5_usages></sortie_par_energie>'
+            . '</sortie_par_energie_collection></sortie></logement></dpe>');
+        $deltas = (new CaseComparator(ToleranceProfile::strict()))->compareDocuments($reference, $actual);
+        $byPath = array_column($deltas, null, 'path');
+        $path = 'dpe/logement/sortie/sortie_par_energie_collection/sortie_par_energie[enum_type_energie_id=1]/conso_5_usages';
+        self::assertSame(ComparisonStatus::OUT, $byPath[$path]['status']);
+        self::assertSame('20', $byPath[$path]['expected']);
+        self::assertSame('21', $byPath[$path]['actual']);
     }
 
     public function testNilEstDistingueDeLaValeurVide(): void

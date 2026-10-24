@@ -18,10 +18,10 @@ declare(strict_types=1);
  *       4,6    |    2,0    |    1,5    |  1,0  |    3,3     |    2,2    |    1,9    |    1,3    |  0,6
  *
  * Cas spéciaux (§4 p.39-40) :
- *   - Bâtiments/logements avant 1948 avec isolation ≥50% des surfaces murs/plafond :
- *       Q4Paconv/m² = 2,0 (immeuble) — ID 10
- *   - Bâtiments/logements 1948-1974 avec isolation ≥50% des surfaces murs/plafond :
- *       Q4Paconv/m² = 1,9 (immeuble) — ID 11
+ *   - Bâtiments/logements avant 1948 avec isolation >50% des surfaces murs/plafond :
+ *       Q4Paconv/m² = 2,0 (tout type de bâtiment) — ID 10
+ *   - Bâtiments/logements 1948-1974 avec isolation >50% des surfaces murs/plafond :
+ *       Q4Paconv/m² = 1,9 (tout type de bâtiment) — ID 11
  *   - Bâtiments/logements avant 1948 avec menuiseries avec joints (>50% des surfaces) :
  *       Q4Paconv/m² = 2,5 (immeuble) — ID 12
  *
@@ -44,8 +44,8 @@ return [
     8  => 1.3,   // 2006 - 2012
     9  => 0.6,   // > 2012
 
-    // Cas spéciaux immeuble/logement avec isolation ou joints
-    10 => 2.0,   // Avant 1948 avec isolation murs/plafond ≥ 50 %
-    11 => 1.9,   // 1948-1974 avec isolation murs/plafond ≥ 50 %
+    // Cas spéciaux bâtiment/logement avec isolation ou joints (§4 p.39)
+    10 => 2.0,   // Avant 1948 avec isolation murs/plafond > 50 %
+    11 => 1.9,   // 1948-1974 avec isolation murs/plafond > 50 %
     12 => 2.5,   // Avant 1948 avec menuiseries avec joints sur > 50 % des surfaces
 ];
