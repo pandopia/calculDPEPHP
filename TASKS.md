@@ -309,7 +309,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K06 — Écarts résiduels de génération ECS
 
-- [~CDX] Owner: CDX | Phase: K | Estimation: 4h | Priorité: moyenne
+- [ ] Owner: __ | Phase: K | Estimation: 4h | Priorité: moyenne
 - Remonter d'abord aux caractéristiques amont (Pn, Rpn, QP0) : suites K85
   et K95 ; variantes déjà instruites dans les archives K31/K56. Les verdicts
   COP et sérialisation sont dans TASKS_DONE.md, pas à réinstruire.
@@ -322,9 +322,9 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   saisi et QP0 identique au chauffage collectif, sans clé mixte ; le calcul
   non linéaire sur ce Pn réduit n'est pas celui de la référence. 2563E3941359I
   porte aussi une puissance virtualisée. Reprendre avec K95, sans inventer
-  d'association. Les classes de 2691E2041329J/2691E2041336Q divergent après
-  restauration des pertes : leur régime ECS déclaré individuel et leur
-  puissance de 97,2 kW demandent une qualification amont, pas un seuil adapté.
+  d'association. Qualifier aussi le régime ECS déclaré individuel et la
+  puissance de 97,2 kW de 2691E2041329J/2691E2041336Q avant toute correction
+  de caractéristiques ; ne pas adapter les seuils des classes.
 - **Échelle à qualifier** : 2400E0669495Y et
   2400E0669425G : ils déclarent `nombre_appartement = 1` pour un immeuble de
   822 m² desservi par sept installations d'ECS. L'échelle est le suspect, pas
