@@ -156,8 +156,11 @@ final class ValueExtractor
             $seen[$name] = ($seen[$name] ?? 0) + 1;
 
             $suffix = '';
-            if ($counts[$name] > 1 || ($this->useReferences && $this->semanticKey($child) !== null)) {
-                $semantic = $this->semanticKey($child);
+            // La clé métier ne dépend pas du nombre de lignes : une énergie
+            // électrique unique doit garder le même chemin si une seconde
+            // énergie n'existe que de l'autre côté de la comparaison.
+            $semantic = $this->semanticKey($child);
+            if ($counts[$name] > 1 || $semantic !== null) {
                 $suffix = '[' . ($semantic ?? $seen[$name]) . ']';
             }
 
@@ -196,7 +199,10 @@ final class ValueExtractor
             if ($node instanceof DOMElement && $node->nodeName === $keyTag) {
                 $value = trim($node->textContent);
 
-                if ($this->useReferences && $value !== '') {
+                // Une clé dupliquée n'est pas une identité : conserver les
+                // positions plutôt qu'écraser silencieusement une des lignes,
+                // y compris dans le rapport officiel sans références métier.
+                if ($value !== '') {
                     $matches = 0;
                     foreach ($child->parentNode->childNodes as $sibling) {
                         if (!$sibling instanceof DOMElement || $sibling->nodeName !== $child->nodeName) { continue; }
@@ -249,7 +255,7 @@ final class ValueExtractor
                 }
             }
 
-            $key = $this->useReferences ? $this->semanticKey($cursor) : null;
+            $key = $this->semanticKey($cursor);
             $parts[] = $key !== null ? $name . '[' . $key . ']' : ($siblings > 1 ? $name . '[' . $position . ']' : $name);
             $cursor = $parent instanceof DOMElement ? $parent : null;
         }
