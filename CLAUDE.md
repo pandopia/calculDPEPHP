@@ -218,9 +218,14 @@ commités : si ce nombre change entre deux runs, la comparaison est invalide.
 
 ### Point de départ et acquis
 
-Deux corpus : `ademe-observatoire-local` (229 cas, historique, 92 % d'immeubles
+Les compteurs ci-dessous sont un **historique**, pas la baseline courante.
+Lire `reports/official-tests.md` pour l'état mesuré ; les gains récents et
+leurs empreintes A/B sont dans `reports/ab-conformite-*.json`. Ne jamais
+comparer directement des relevés portant sur des corpus différents.
+
+Deux corpus initiaux : `ademe-observatoire-local` (229 cas, historique, 92 % d'immeubles
 collectifs) et `ademe-2026-09` (120 cas, **stratifié 30 par périmètre CSTB**).
-Le rapport par défaut couvre les deux — 349 cas.
+À cette étape, le rapport rassemblait ces deux jeux — 349 cas.
 
 | Étape | Hors tolérance | Suppl. | Conformité |
 |---|---:|---:|---:|
@@ -240,7 +245,7 @@ Le rapport par défaut couvre les deux — 349 cas.
 | K04 — Pch ramené à l'appartement moyen (ECS individuelle) | −140 | | 89,54 % |
 | K04 — millésime de la chaudière lu dans le type XSD | −25 | | 89,56 % |
 | K04 — ligne Tfonc lue sur la nature de l'émetteur | −1 285 | | 90,63 % |
-| **Actuel — 375 cas** | **9 124** | **1 926** | **90,63 %** |
+| **Relevé historique — 375 cas** | **9 124** | **1 926** | **90,63 %** |
 
 **Le corpus historique flatte le chiffre.** Par périmètre CSTB : immeuble
 collectif 92,3 %, appartement individuel 90,1 %, maison individuelle 87,6 %,
@@ -248,8 +253,9 @@ collectif 92,3 %, appartement individuel 90,1 %, maison individuelle 87,6 %,
 contre post-2026 91,5 %. Ne juge jamais une correction sur le seul corpus
 historique.
 
-Sur les écarts restants, **3 357 sont imputables à la référence** : le plafond
-atteignable sur ces corpus est de **93,44 %**. Le rapport l'affiche.
+Sur ce relevé historique, **3 357 écarts étaient imputables à la référence** :
+le plafond atteignable y était de **93,44 %**. Le rapport courant recalcule
+ces valeurs pour le corpus effectivement présent.
 
 Cinq leçons à retenir de ces corrections :
 

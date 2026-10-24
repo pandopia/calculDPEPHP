@@ -13,6 +13,7 @@
 !/reports/*.md
 # Synthèse A/B compacte, avec révisions et empreintes des sources évaluées.
 !/reports/ab-conformite-2026-10-24.json
+!/reports/ab-conformite-2h-2026-10-24.json
 
 # Local tool state
 /.claude/
