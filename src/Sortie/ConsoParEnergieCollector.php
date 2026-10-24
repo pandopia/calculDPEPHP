@@ -37,6 +37,7 @@ use DOMElement;
  *
  * @spec-section 17
  * @spec-source  resources/specsplitted/17-collectif/02-appartement.md
+ * @spec-source  editeur/public/schemas/DPEv2.7.xsd
  * @xml-input    installation_chauffage.{donnee_entree.{rdim, ratio_virtualisation,
  *                   cle_repartition_ch, nombre_logement_echantillon,
  *                   enum_methode_calcul_conso_id, enum_type_installation_id},
@@ -138,8 +139,13 @@ final class ConsoParEnergieCollector
                     $gen = $generators->item(0);
                     if ($gen instanceof DOMElement) {
                         $eId = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $gen) ?? 1;
-                        $conso = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoField, $install) ?? 0.0) * $scale;
-                        $consoDep = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoDepField, $install) ?? 0.0) * $scale;
+                        // Les agrégats d'installation sont optionnels au XSD.
+                        // Avec une seule énergie, le générateur est un repli
+                        // sans ambiguïté ; un zéro explicite reste prioritaire.
+                        $conso = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoField, $install)
+                            ?? $accessor->getFloatOrNull('./donnee_intermediaire/' . $consoField, $gen) ?? 0.0) * $scale;
+                        $consoDep = ($accessor->getFloatOrNull('./donnee_intermediaire/' . $consoDepField, $install)
+                            ?? $accessor->getFloatOrNull('./donnee_intermediaire/' . $consoDepField, $gen) ?? 0.0) * $scale;
                         $byEnergie[$eId] ??= [0.0, 0.0];
                         $byEnergie[$eId][0] += $conso;
                         $byEnergie[$eId][1] += $consoDep;

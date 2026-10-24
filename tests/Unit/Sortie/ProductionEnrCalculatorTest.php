@@ -291,6 +291,25 @@ final class ProductionEnrCalculatorTest extends TestCase
         self::assertGreaterThan(1.0, (float)$this->valeur($sortie, 'prod_enr_pourcentage'));
     }
 
+    public function testPvCalculeLocalementNestPasProratiseDeuxFoisDansLeBilanEnr(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML('<dpe><administratif><enum_version_id>2.7</enum_version_id></administratif><logement>'
+            . '<caracteristique_generale><enum_methode_application_dpe_log_id>10</enum_methode_application_dpe_log_id><surface_habitable_logement>100</surface_habitable_logement><surface_habitable_immeuble>1000</surface_habitable_immeuble><nombre_appartement>10</nombre_appartement></caracteristique_generale>'
+            . '<production_elec_enr><donnee_entree><presence_production_pv>1</presence_production_pv></donnee_entree><panneaux_pv_collection><panneaux_pv><surface_totale_capteurs>20</surface_totale_capteurs><enum_orientation_pv_id>3</enum_orientation_pv_id><enum_inclinaison_pv_id>2</enum_inclinaison_pv_id></panneaux_pv></panneaux_pv_collection></production_elec_enr>'
+            . '<sortie><ef_conso><conso_eclairage>200</conso_eclairage><conso_totale_auxiliaire>100</conso_totale_auxiliaire><conso_auxiliaire_ventilation>100</conso_auxiliaire_ventilation><conso_5_usages>300</conso_5_usages></ef_conso></sortie></logement></dpe>');
+        $ctx = new CalculationContext($doc, new TableRepository(self::PROJECT_ROOT . '/resources/tables'), zoneClimatique: '1');
+        $logement = $doc->getElementsByTagName('logement')->item(0);
+        (new \CalculDpePHP\ProductionElec\ProductionPvCalculator())->calculate($logement, $ctx);
+        $local = (float)$ctx->get('pv.production_pv');
+        self::assertGreaterThan(0.0, $local);
+        self::assertEqualsWithDelta($local * 10, $ctx->get('pv.production_pv_immeuble'), 1e-8);
+        foreach ([1, 2] as $passage) {
+            (new ProductionEnrCalculator())->calculate($logement, $ctx);
+            self::assertEqualsWithDelta($local, (float)$doc->getElementsByTagName('prod_enr_pv')->item(0)->textContent, 1e-8);
+        }
+    }
+
     public function testLeBlocEnrRespecteLesNeufBalisesObligatoiresDuSchema27(): void
     {
         $sortie = $this->sortie('2.7', '');

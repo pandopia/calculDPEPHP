@@ -143,7 +143,7 @@ final class ProductionEnrCalculator implements CalculatorInterface
         }
 
         $composantes = [
-            'prod_enr_pv'                   => $this->productionPv($accessor, $node),
+            'prod_enr_pv'                   => $this->productionPv($accessor, $node, $context),
             'prod_enr_solaire_thermique'    => ProductionSolaireThermique::total($context),
             'prod_enr_chaleur_ambiante_pac' => $this->chaleurCaptee($accessor, $node, $context, geothermique: false),
             'prod_enr_geothermie_pac'       => $this->chaleurCaptee($accessor, $node, $context, geothermique: true),
@@ -249,8 +249,15 @@ final class ProductionEnrCalculator implements CalculatorInterface
     }
 
     /** §1.2.3 : la production photovoltaïque, déjà calculée par §16.2. */
-    private function productionPv(NodeAccessor $accessor, DOMElement $logement): float
+    private function productionPv(NodeAccessor $accessor, DOMElement $logement, CalculationContext $context): float
     {
+        // Le calcul PV local (§16.2) a déjà proratisé les capteurs du lot.
+        // Ici toutes les composantes partent du bâtiment avant le prorata
+        // ENR global ; ne pas multiplier deux fois la part de l'appartement.
+        $productionImmeuble = $context->get('pv.production_pv_immeuble');
+        if ($productionImmeuble !== null) {
+            return (float)$productionImmeuble;
+        }
         return $accessor->getFloatOrNull(
             './/production_elec_enr/donnee_intermediaire/production_pv',
             $logement,
