@@ -25,6 +25,38 @@ final class FixedFactorStrategiesTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
     private const TOL = 1e-6;
 
+    public function testUnAppartementAvecPlusieursInstallationsGardeLeVolumeDuLogement(): void
+    {
+        foreach ([2, 3, 4, 5, 31, 32, 35, 36, 37] as $mode) {
+            [$doc, $node] = $this->buildInstallation(3, 1, rg: 1, re: 1, rd: 1, rr: 1, i0: 1);
+            $xp = new \DOMXPath($doc);
+            $carac = $xp->query('//caracteristique_generale')->item(0);
+            $carac->appendChild($doc->createElement('enum_methode_application_dpe_log_id', (string)$mode));
+            $carac->appendChild($doc->createElement('surface_habitable_logement', '200'));
+            $carac->getElementsByTagName('surface_habitable_immeuble')->item(0)->nodeValue = '2000';
+            $xp->query('./donnee_entree/surface_chauffee', $node)->item(0)->nodeValue = '100';
+            (new InsertPoeleAppoint())->calculate($node, $this->makeContext($doc));
+            // GV=500 pour 200 m², donc G=1 ; l'installation couvre la moitié
+            // du logement et son générateur principal 75 % de cette moitié.
+            self::assertEqualsWithDelta(500.0, $this->besoinCh($node), self::TOL);
+            self::assertEqualsWithDelta(375.0, $this->consoCh($node), self::TOL);
+            self::assertEqualsWithDelta(450.0, $xp->evaluate('number(./donnee_intermediaire/conso_ch_depensier)', $node), self::TOL);
+        }
+    }
+
+    public function testSansSurfaceDImmeubleLeVolumeDUnAppartementNeSeReduitPasALInstallation(): void
+    {
+        [$doc, $node] = $this->buildInstallation(3, 1, rg: 1, re: 1, rd: 1, rr: 1, i0: 1);
+        $xp = new \DOMXPath($doc);
+        $carac = $xp->query('//caracteristique_generale')->item(0);
+        $carac->removeChild($carac->getElementsByTagName('surface_habitable_immeuble')->item(0));
+        $carac->appendChild($doc->createElement('enum_methode_application_dpe_log_id', '2'));
+        $carac->appendChild($doc->createElement('surface_habitable_logement', '200'));
+        $xp->query('./donnee_entree/surface_chauffee', $node)->item(0)->nodeValue = '100';
+        (new InsertPoeleAppoint())->calculate($node, $this->makeContext($doc));
+        self::assertEqualsWithDelta(375.0, $this->consoCh($node), self::TOL);
+    }
+
     private function buildInstallation(int $cfgId, int $position, float $rg = 0.9, float $re = 0.95, float $rd = 1.0, float $rr = 1.0, float $i0 = 1.0): array
     {
         // Build a collection with $position installations, all with same cfgId

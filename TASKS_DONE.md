@@ -19,6 +19,20 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K94 — Variante globale de volume G non retenue (24/10/2026)
+
+- A/B isolé sur l'arbre `3868d54`, même corpus 670 cas et un fichier `src/`
+  non commité, substitution en mémoire du seul trait : 18 301 → 18 045
+  numériques hors tolérance (−256), 44 → 40 classes, 688 manquantes et
+  2 355 supplémentaires inchangées. Quinze cas gagnent, quatre perdent.
+- Les budgets qui augmenteraient sont `2400E0856203A` (+1, GES/m²),
+  `2401E0473146C` (+1, GES/m²), `2601E1280780A` (+1, coût ECS) et
+  `2611E1951763L` (+2, coûts auxiliaires). Aucun budget n'est relevé.
+- Le sous-périmètre des appartements décrits directement apporte −41
+  numériques, aucun nouveau défaut et aucun cas dégradé ; il est livré
+  séparément. Ne pas rejouer la généralisation aux maisons sans avoir
+  départagé les quatre résidus d'aval (suite actionnable K94).
+
 ### TASK-K85 — Variantes de périmètre GV déjà écartées
 
 - Conserver ces chiffres historiques, sans les présenter comme des mesures

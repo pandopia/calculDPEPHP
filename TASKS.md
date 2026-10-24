@@ -54,6 +54,17 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase K — Conformité au corpus ADEME
 
+### TASK-K94 — Volume d'intermittence des maisons multi-installations
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- Le repli de `StrategieComputeTrait::getShImmeuble()` utilise la surface
+  d'installation quand Sh_immeuble est absente, face au GV du logement entier.
+  Le périmètre appartement est corrigé ; reste celui des maisons.
+- La variante Sh_logement globale gagne −256 numériques et −4 classes sur
+  670 cas, mais dépasse quatre budgets de maison (+1, +1, +1, +2).
+  Départager ces écarts d'aval avant généralisation ; mesures et cas dans
+  TASKS_DONE.md. Ne pas relever les budgets pour activer cette variante.
+
 ### TASK-K93 — Enveloppe mixte : colonne Joule dépendante de l'ordre XML
 
 - [ ] Owner: __ | Phase: K | Priorité: haute
