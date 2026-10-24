@@ -404,7 +404,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K67 — 2242E2979513I : conso_ch à +20 % une fois le facteur CO2 juste
 
-- [ ] Owner: __ | Phase: K | Priorité: basse
+- [~CB] Owner: CB | Phase: K | Priorité: basse
 - Le facteur d'émission de ce DPE est désormais exact — ses trois lignes
   `sortie_par_energie` donnent 0,109000 à six décimales, et nous l'appliquons
   (cf. le bloc TASK-K65 de `TASKS_DONE.md`). Sa branche ECS en devient juste au
