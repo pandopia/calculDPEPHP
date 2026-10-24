@@ -14,21 +14,18 @@ use RuntimeException;
  * Coefficient Uw (fenêtre complète) — §3.3.2.
  *
  * Algorithme :
- *   1. Si `enum_methode_saisie_perf_vitrage_id` correspond à une saisie directe Uw
- *      (méthodes 5, 8, 11, 14) ou si `<uw_1>` est présent dans la donnée d'entrée :
- *      lecture directe.
+ *   1. `<uw_saisi>` justifié : performance du complexe complet.
+ *      Double fenêtre : Uw = 1 / (1/Uw1 + 1/Uw2 + 0,07).
+ *      Sinon `<uw_1>` est la performance de la fenêtre simple.
  *   2. Cas spéciaux (paroi en brique de verre / polycarbonate) — `enum_type_baie_id` 1/2/3 :
  *      Uw forfaitaire (3.5 / 2.0 / 3.0 selon §3.3 et `tv_ug.special_uw`).
  *   3. Sinon : lookup tv_uw par (type_menuiserie, Ug, type_baie) avec **interpolation linéaire
  *      entre les deux Ug tabulés les plus proches** (§3.3.2 introduction).
- *   4. Double-fenêtre (`double_fenetre == 1`) : on suppose que `<uw_1>` (saisi) est utilisé
- *      via la voie 1. Sinon Uw_1 et Uw_2 doivent être disponibles individuellement (non
- *      géré pour l'instant — voir TODO).
  *
  * @spec-section 3.3.2
- * @spec-pages 26-29
+ * @spec-pages 26-30
  * @spec-source resources/specsplitted/03-enveloppe-deperditions/03-parois-vitrees-portes/02-uw/00-calcul.md
- * @xml-input  baie_vitree.donnee_entree.{enum_type_baie_id, enum_type_materiaux_menuiserie_id, uw_saisi, uw_1, double_fenetre}
+ * @xml-input  baie_vitree.donnee_entree.{enum_type_baie_id, enum_type_materiaux_menuiserie_id, uw_saisi, uw_1, uw_2, double_fenetre}
  * @xml-output baie_vitree.donnee_intermediaire.uw
  * @depends-on \CalculDpePHP\Enveloppe\BaieVitree\UgCalculator
  * @tables tv_uw, tv_ug.special_uw
@@ -68,9 +65,23 @@ final class UwCalculator implements CalculatorInterface
 
     private function resolveUw(DOMElement $entree, DOMElement $intermediaire, NodeAccessor $accessor, CalculationContext $context): ?float
     {
-        // 1. Saisie directe (méthodes 5/8/11/14) ou Uw_1 pré-calculé par le diagnostiqueur
-        $direct = $accessor->getFloatOrNull('./uw_saisi', $entree)
-                ?? $accessor->getFloatOrNull('./uw_1', $entree);
+        // Saisie justifiée du complexe complet, et non de sa première fenêtre.
+        $direct = $accessor->getFloatOrNull('./uw_saisi', $entree);
+        if ($direct !== null) {
+            return $direct;
+        }
+        if ($accessor->getIntOrNull('./double_fenetre', $entree) === 1) {
+            $u1 = $this->singleWindowUw($entree, $intermediaire, $accessor, $context);
+            $u2 = $accessor->getFloatOrNull('./uw_2', $entree);
+            return $this->doubleWindowUw($u1, $u2);
+        }
+
+        return $this->singleWindowUw($entree, $intermediaire, $accessor, $context);
+    }
+
+    private function singleWindowUw(DOMElement $entree, DOMElement $intermediaire, NodeAccessor $accessor, CalculationContext $context): ?float
+    {
+        $direct = $accessor->getFloatOrNull('./uw_1', $entree);
         if ($direct !== null) {
             return $direct;
         }
@@ -107,6 +118,21 @@ final class UwCalculator implements CalculatorInterface
         }
 
         return $this->interpolateLinear($rows, $baieKey, $ug);
+    }
+
+    /**
+     * §3.3.2 p.30 : Uw = 1 / (1/Uw1 + 1/Uw2 + 0,07).
+     * Chaque fenêtre du complexe doit être caractérisée séparément.
+     *
+     * @spec-formula F-3.3.2-double-fenetre
+     */
+    private function doubleWindowUw(?float $u1, ?float $u2): float
+    {
+        if ($u1 === null || $u2 === null || !is_finite($u1) || !is_finite($u2) || $u1 <= 0.0 || $u2 <= 0.0) {
+            throw new RuntimeException('Uw de double fenêtre : les deux coefficients doivent être caractérisés et strictement positifs (§3.3.2 p.30).');
+        }
+
+        return 1.0 / (1.0 / $u1 + 1.0 / $u2 + 0.07);
     }
 
     private function menuiserieKey(?int $enumId): ?string
