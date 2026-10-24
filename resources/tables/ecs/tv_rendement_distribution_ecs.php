@@ -23,6 +23,7 @@ declare(strict_types=1);
  * @spec-pages   73-74
  * @spec-source  resources/specsplitted/11-conso-ecs/05-rendement-distribution.md
  * @generated-on 2026-04-29
+ * @status partial — ligne ADEME 2.7 n°9 (MTA, Rd=0,74) non implémentée : TASK-K63 ; refus avant purge, jamais de repli à 1
  */
 return [
     1 => 0.93, // individuel, vol. habitable, pièces contiguës    p.73

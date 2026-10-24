@@ -64,4 +64,21 @@ final class ApartmentHeatingNeedsTest extends TestCase
         $this->expectExceptionMessage('sans association logement');
         ApartmentHeatingNeeds::calculate($invalid, CalculDpePHP::calculate($input->xml));
     }
+
+    public function testLesChampsLogementNulsNeFontPasPerdreLaSurfaceDuLogementProjete(): void
+    {
+        $input = $this->input();
+        $document = (new XmlReader())->loadString($input->xml);
+        $general = $document->getElementsByTagName('caracteristique_generale')->item(0);
+        foreach (['surface_habitable_logement', 'nombre_niveau_logement'] as $tag) {
+            $node = $general->getElementsByTagName($tag)->item(0);
+            if (!$node instanceof \DOMElement) { $node = $general->appendChild($document->createElement($tag)); }
+            $node->textContent = '';
+            $node->setAttributeNS('http://www.w3.org/2001/XMLSchema-instance', 'xsi:nil', 'true');
+        }
+        $nilInput = new BuildingInput($document->saveXML(), $input->apartments, 1, 0, individualizationCoefficient: 0.7);
+        $expected = ApartmentHeatingNeeds::calculate($input, CalculDpePHP::calculate($input->xml));
+        $actual = ApartmentHeatingNeeds::calculate($nilInput, CalculDpePHP::calculate($nilInput->xml));
+        foreach ($expected as $reference => $need) { self::assertEqualsWithDelta($need, $actual[$reference], 1e-6, $reference); }
+    }
 }

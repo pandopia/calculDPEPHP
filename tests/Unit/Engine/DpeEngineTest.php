@@ -43,6 +43,53 @@ final class DpeEngineTest extends TestCase
         );
     }
 
+    public function testUnScopPropreHorsXsdEstRefuseAvantPurgeSansRequalifierLesAnciensModeles(): void
+    {
+        foreach ([117, 118] as $type) {
+            foreach (['1.1', '2.6', '2.7'] as $version) {
+                foreach ([0.5, 1.0, 1.001, 8.0, 8.001] as $scop) {
+                    $doc = new \DOMDocument();
+                    $doc->loadXML('<dpe><administratif><enum_version_id>' . $version . '</enum_version_id></administratif><logement><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>' . $type
+                        . '</enum_type_generateur_ch_id><enum_methode_saisie_carac_sys_id>6</enum_methode_saisie_carac_sys_id></donnee_entree><donnee_intermediaire><scop>' . $scop
+                        . '</scop></donnee_intermediaire></generateur_chauffage><sortie><temoin>123</temoin></sortie></logement></dpe>');
+                    $before = $doc->saveXML();
+                    $valid = $scop > ($version === '1.1' ? 0 : 1) && $scop <= 8;
+                    try {
+                        $this->engine()->calculateDocument($doc);
+                        self::assertTrue($valid, 'La performance doit être publiable au XSD du modèle.');
+                        self::assertSame($scop, (new \CalculDpePHP\Xml\NodeAccessor($doc))->getFloatOrNull('//scop'));
+                    } catch (UnsupportedDpeModelException $exception) {
+                        self::assertFalse($valid, $exception->getMessage());
+                        self::assertSame($before, $doc->saveXML(), 'Une entrée invalide ne doit pas être purgée.');
+                    }
+                }
+            }
+        }
+    }
+
+    public function testLeThermodynamiqueGazEcsExigeUnePerformanceReelleAvantPurge(): void
+    {
+        foreach ([1, 6] as $method) {
+            foreach ([null, 0.0, -1.0, .8, 1.0, 1.5, 8.0, 8.001] as $cop) {
+                $value = $cop === null ? '' : '<cop>' . $cop . '</cop>';
+                $document = new \DOMDocument();
+                $document->loadXML('<dpe><logement><generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>83</enum_type_generateur_ecs_id>'
+                    . '<enum_methode_saisie_carac_sys_id>' . $method . '</enum_methode_saisie_carac_sys_id></donnee_entree><donnee_intermediaire>' . $value
+                    . '</donnee_intermediaire></generateur_ecs><sortie><temoin>123</temoin></sortie></logement></dpe>');
+                $before = $document->saveXML();
+                try {
+                    $this->engine()->calculateDocument($document);
+                    self::assertSame(6, $method);
+                    self::assertTrue($cop > 1 && $cop <= 8);
+                } catch (UnsupportedDpeModelException $exception) {
+                    self::assertTrue($method !== 6 || $cop === null || $cop <= 1 || $cop > 8);
+                    self::assertSame($before, $document->saveXML());
+                    self::assertStringContainsString('COP', $exception->getMessage());
+                }
+            }
+        }
+    }
+
     private function xmlNeuf(int $modeleId): string
     {
         return <<<XML
@@ -58,6 +105,63 @@ final class DpeEngineTest extends TestCase
                 </logement_neuf>
             </dpe>
             XML;
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('ventilationsJustifiees')]
+    public function testLaPuissanceJustifieeInexploitableEstRefuseeAvantPurge(int $method, ?string $value, bool $valid): void
+    {
+        $power = $value === null ? '' : '<pvent_moy>' . $value . '</pvent_moy>';
+        $document = new \DOMDocument();
+        $document->loadXML('<dpe><administratif><enum_version_id>2.7</enum_version_id></administratif><logement><ventilation_collection><ventilation><donnee_entree><enum_type_ventilation_id>6</enum_type_ventilation_id><enum_methode_saisie_pvent_moy_id>' . $method . '</enum_methode_saisie_pvent_moy_id></donnee_entree><donnee_intermediaire>' . $power . '<hvent>12</hvent></donnee_intermediaire></ventilation></ventilation_collection><sortie><temoin>123</temoin></sortie></logement></dpe>');
+        $before = $document->saveXML();
+        try {
+            $this->engine()->calculateDocument($document);
+            self::assertTrue($valid, 'Une entrée justifiée invalide doit être refusée.');
+            self::assertSame((float)$value, (new \CalculDpePHP\Xml\NodeAccessor($document))->getFloatOrNull('//pvent_moy'));
+        } catch (UnsupportedDpeModelException $exception) {
+            self::assertFalse($valid, $exception->getMessage());
+            self::assertStringContainsString('avant purge', $exception->getMessage());
+            self::assertSame($before, $document->saveXML());
+        }
+    }
+
+    public static function ventilationsJustifiees(): iterable
+    {
+        foreach ([2, 3] as $method) {
+            foreach ([null, '', '-1', 'NaN', 'INF', '1e309', '0', '39.5'] as $value) {
+                yield $method . '/' . ($value ?? 'absent') => [$method, $value, in_array($value, ['0', '39.5'], true)];
+            }
+        }
+    }
+
+    public function testLePreflightVentilationNeRequalifiePasLesAnciensModelesOuLeForfait(): void
+    {
+        foreach (['', '<enum_version_id>2.6</enum_version_id>', '<enum_version_id>2.7</enum_version_id>'] as $version) {
+            foreach ([1, 2, 3] as $method) {
+                if ($version === '<enum_version_id>2.7</enum_version_id>' && $method !== 1) { continue; }
+                $document = new \DOMDocument();
+                $document->loadXML('<dpe><administratif>' . $version . '</administratif><logement><ventilation><donnee_entree><enum_methode_saisie_pvent_moy_id>' . $method . '</enum_methode_saisie_pvent_moy_id></donnee_entree></ventilation></logement></dpe>');
+                self::assertSame($document, $this->engine()->calculateDocument($document));
+            }
+        }
+    }
+
+    public function testLaSeuleLigneMtaNeContournePasLeRefusAvantPurge(): void
+    {
+        foreach (['2.6', '2.7'] as $version) {
+            foreach (['', '<enum_bouclage_reseau_ecs_id>1</enum_bouclage_reseau_ecs_id>'] as $bouclage) {
+                $document = new \DOMDocument();
+                $document->loadXML('<dpe><administratif><enum_version_id>' . $version . '</enum_version_id></administratif><logement><installation_ecs><donnee_entree><tv_rendement_distribution_ecs_id>9</tv_rendement_distribution_ecs_id>' . $bouclage . '</donnee_entree><donnee_intermediaire><rendement_distribution>0.74</rendement_distribution></donnee_intermediaire></installation_ecs><sortie><temoin>123</temoin></sortie></logement></dpe>');
+                $before = $document->saveXML();
+                try {
+                    $this->engine()->calculateDocument($document);
+                    self::fail('Le MTA est non implémenté même si le bouclage 4 n’est pas déclaré.');
+                } catch (UnsupportedDpeModelException $exception) {
+                    self::assertStringContainsString('tv_rendement_distribution_ecs_id', $exception->getMessage());
+                    self::assertSame($before, $document->saveXML());
+                }
+            }
+        }
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('froidsNonCouverts')]

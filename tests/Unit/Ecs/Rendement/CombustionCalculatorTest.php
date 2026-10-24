@@ -671,6 +671,22 @@ XML;
         $this->assertEqualsWithDelta(2.5, $rg, self::TOL);
     }
 
+    public function testLeCetGazNeRecoitPasDesCaracteristiquesDeChaudiere(): void
+    {
+        [$doc, $gen] = $this->buildCombustionGen(1, 1000.0, 6);
+        $gen->getElementsByTagName('enum_type_generateur_ecs_id')->item(0)->nodeValue = '83';
+        $di = $doc->createElement('donnee_intermediaire');
+        $di->appendChild($doc->createElement('cop', '1.5'));
+        $gen->appendChild($di);
+
+        (new CombustionCalculator())->calculate($gen, $this->makeContext($doc));
+
+        self::assertSame('1.5', $di->getElementsByTagName('cop')->item(0)->textContent);
+        foreach (['pn', 'rpn', 'qp0', 'rendement_generation', 'rendement_generation_stockage'] as $field) {
+            self::assertSame(0, $di->getElementsByTagName($field)->length, $field);
+        }
+    }
+
     /**
      * Pour un ballon électrique standard (ID 68-71, hors CET), le rendement
      * est bien écrasé à 1.0 (pas d'apport thermodynamique).

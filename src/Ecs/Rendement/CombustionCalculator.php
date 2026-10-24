@@ -108,6 +108,13 @@ final class CombustionCalculator implements CalculatorInterface
         $accessor  = new NodeAccessor($context->document);
         $energieId = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $node);
 
+        // Le gaz est son énergie d'entraînement, pas la preuve d'une
+        // chaudière. Le type 83 utilise son COP propre (§14.2), stockage
+        // inclus ; lui fabriquer Rpn/QP0/Rg ferait ignorer cette performance.
+        if ($accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $node) === 83) {
+            return;
+        }
+
         // Réseau de chaleur → rendement géré exclusivement par ReseauChaleurCalculator §14.3
         if ($energieId === self::ENERGIE_RESEAU_CHALEUR) {
             return;

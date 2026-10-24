@@ -91,6 +91,10 @@ final class NodeAccessor
      */
     public function setChildValue(DOMElement $container, string $tag, string|int|float|null $value): void
     {
+        // XML Schema §2.6.2 : un élément xsi:nil=true doit être vide.
+        // Dès qu'on écrit un enfant, son conteneur porte un contenu réel.
+        // https://www.w3.org/TR/xmlschema-1/#xsi_nil
+        $container->removeAttributeNS('http://www.w3.org/2001/XMLSchema-instance', 'nil');
         $existing = null;
         foreach ($container->childNodes as $c) {
             if ($c instanceof DOMElement && $c->nodeName === $tag) {
@@ -106,6 +110,10 @@ final class NodeAccessor
             $existing->removeChild($existing->firstChild);
         }
         if ($value !== null) {
+            // Remplacer un emplacement nul par une valeur le rend lisible
+            // par getStringOrNull et valide au XSD, sans toucher aux autres
+            // attributs. null, à l'inverse, n'invente pas de valeur.
+            $existing->removeAttributeNS('http://www.w3.org/2001/XMLSchema-instance', 'nil');
             $existing->appendChild($container->ownerDocument->createTextNode((string)$value));
         }
     }

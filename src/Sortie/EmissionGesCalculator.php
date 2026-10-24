@@ -41,7 +41,7 @@ use DOMElement;
  *                    emission_ges_fr, emission_ges_auxiliaire_*, emission_ges_totale_auxiliaire,
  *                    emission_ges_5_usages, emission_ges_5_usages_m2, classe_emission_ges}
  *                sortie.ep_conso.classe_bilan_dpe (mis à jour avec WORST(classe_energie, classe_ges))
- *                sortie.ep_conso.classe_conso_energie (modèle ADEME 1 uniquement)
+ *                sortie.ep_conso.classe_conso_energie (modèles ADEME 1 et 1.1 uniquement)
  * @depends-on    \CalculDpePHP\Sortie\EfConsoCalculator
  *                \CalculDpePHP\Sortie\EpConsoCalculator
  * @tables        reference/tv_reseau_chaleur
@@ -231,7 +231,7 @@ final class EmissionGesCalculator implements CalculatorInterface
                 $context,
             );
         }
-        if ($accessor->getStringOrNull('/dpe/administratif/enum_version_id') === '1') {
+        if (in_array($accessor->getStringOrNull('/dpe/administratif/enum_version_id'), ['1', '1.1'], true)) {
             // XSD DPEv1-obsolete : étiquette EP seule, distincte du double seuil.
             $accessor->setChildValue($epConso, 'classe_conso_energie', $classeEnergie);
         }

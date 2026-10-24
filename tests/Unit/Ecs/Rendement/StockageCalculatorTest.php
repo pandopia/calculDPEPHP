@@ -501,6 +501,16 @@ XML;
         }
     }
 
+    public function testLeCetGazInclutLeStockageDansSonCop(): void
+    {
+        [$doc, $node] = $this->buildGen(200.0, 2, 83, null);
+        $ctx = $this->makeContext($doc);
+        (new StockageCalculator())->calculate($node, $ctx);
+
+        self::assertNull($doc->getElementsByTagName('rendement_stockage')->item(0));
+        self::assertGreaterThan(0.0, (float) $ctx->get(StockageCalculator::qgwKey($node)));
+    }
+
     /**
      * Rs stocké dans le contexte.
      */

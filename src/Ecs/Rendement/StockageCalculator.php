@@ -45,7 +45,7 @@ final class StockageCalculator implements CalculatorInterface
     private const FACTEUR_ELEC = 8592.0 * 45.0 / 24.0;
 
     /** Identifiants CET — §14.2 traite leur Rs différemment */
-    private const CET_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 82, 135, 136, 137, 138];
+    private const CET_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 82, 83, 135, 136, 137, 138];
 
     /**
      * Réseaux de chaleur : §14.3 p.95 remplace **les deux** rendements, de

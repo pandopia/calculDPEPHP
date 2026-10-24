@@ -27,14 +27,14 @@ final class EpConsoCalculatorTest extends TestCase
 
     public static function versionsXml(): iterable
     {
-        foreach (['1', '2', '2.1', '2.6', '2.7', null] as $version) {
+        foreach (['1', '1.1', '2', '2.1', '2.6', '2.7', null] as $version) {
             yield $version ?? 'non déclaré' => [$version];
         }
     }
 
-    /** Le XSD 1 contient l'étiquette EP seule, les modèles 2.x l'ont retirée. */
+    /** Le même XSD ancien sert 1 et 1.1 ; les modèles 2.x ont retiré cette étiquette. */
     #[\PHPUnit\Framework\Attributes\DataProvider('versionsXml')]
-    public function testClasseEnergieSepareeUniquementDansLeModele1(?string $version): void
+    public function testClasseEnergieSepareeUniquementDansLesModeles1Et11(?string $version): void
     {
         [$doc, $node, $ctx] = $this->buildDocWithEfConso(['conso_eclairage' => 10000], 100, 100);
         $doc->removeChild($node);
@@ -46,10 +46,25 @@ final class EpConsoCalculatorTest extends TestCase
         $root->appendChild($node);
         (new EpConsoCalculator())->calculate($node, $ctx);
         $classes = $doc->getElementsByTagName('classe_conso_energie');
-        self::assertSame($version === '1' ? 1 : 0, $classes->length);
-        if ($version === '1') {
+        $ancienModele = in_array($version, ['1', '1.1'], true);
+        self::assertSame($ancienModele ? 1 : 0, $classes->length);
+        if ($ancienModele) {
             self::assertSame('D', $classes->item(0)->textContent);
             self::assertSame('D', $doc->getElementsByTagName('classe_bilan_dpe')->item(0)->textContent);
+            $schema = new DOMDocument();
+            $schema->load(self::PROJECT_ROOT . '/editeur/public/schemas/DPEv1-obsolete.xsd');
+            $xpath = new \DOMXPath($schema);
+            $standalone = new DOMDocument();
+            $root = $standalone->appendChild($standalone->createElementNS('http://www.w3.org/2001/XMLSchema', 'xs:schema'));
+            foreach ($xpath->query('/xs:schema/xs:simpleType | /xs:schema/xs:complexType') as $type) {
+                $root->appendChild($standalone->importNode($type, true));
+            }
+            $declaration = $standalone->importNode($xpath->query('(//xs:element[@name="ep_conso"]//xs:element[@name="classe_conso_energie"])[1]')->item(0), true);
+            $declaration->removeAttribute('minOccurs');
+            $root->appendChild($declaration);
+            $value = new DOMDocument();
+            $value->appendChild($value->importNode($classes->item(0), true));
+            self::assertTrue($value->schemaValidateSource($standalone->saveXML()));
         }
     }
 

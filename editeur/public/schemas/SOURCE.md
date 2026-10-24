@@ -14,7 +14,7 @@ Dernière synchronisation : **2026-10-17**.
 | DPEv2.3.xsd | V8.2.0 — 2024-05-20 | 2.4 |
 | DPEv2.4.xsd | V9.1.1 — 2025-04-30 | 2.5 |
 | DPEv2.6.xsd | V9.2.3 — 2026-06-09 | 2.6 |
-| DPEv2.7.xsd | V10.0.0 — 2026-10-16 | **2.7** — câblé dans l'éditeur ; le moteur de calcul reste sur 2.6, cf. TASK-K63 |
+| DPEv2.7.xsd | V10.0.0 — 2026-10-16 | **2.7** — câblé dans l'éditeur ; couverture partielle du moteur avec refus explicites des options non implémentées, cf. TASK-K63 |
 
 Le nom des fichiers suit le **numéro de livraison**, pas la version du modèle :
 l'amont publie aussi un `DPEv2.5.xsd` (V9.2.1 — 2025-10-17) qui est une

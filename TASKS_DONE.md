@@ -19,6 +19,109 @@ une.
 
 ## Enquêtes closes
 
+### Émetteur 41 — auxiliaires génériques non activés (24/10/2026, nuit)
+
+Audit du classeur public ADEME 52792fb9 : 50 associations d'émission,
+50 de régulation et 98 de distribution non ambiguës concordent avec le
+moteur. L'émetteur 41 apparaît en revanche sur les douze lignes de réseau,
+pas seulement « sans réseau ». Deux références le déclarent sur 750 cas :
+`2501E0132767Q` (ligne 1, Rd=1) et `2605E2654977X` (ligne 6, Rd=0,91).
+
+Trois prototypes contrôlés sur les mêmes 750 cas, même arbre `fe7e3a8`
+sans source non commitée, même juge et mêmes tolérances :
+
+| Variante | Numériques | Chaînes | Résolus / nouveaux | Budget à relever |
+|---|---:|---:|---:|---:|
+| Départ | 20 297 | 55 | — | aucun |
+| Rd seul, retenu séparément | 20 297 | 55 | 1 / 1 | aucun |
+| Auxiliaire seul | 20 298 | 55 | 0 / 1 | +1 sur 2605E2654977X |
+| Rd et auxiliaire | 20 297 | 56 | 1 / 2 | +1 sur 2605E2654977X |
+
+Manquantes 715 et supplémentaires 2 476 inchangées. Les auxiliaires des
+réseaux génériques « air/eau » ont été évalués avec la ligne « Autres cas »
+de §15.2.1 p.98–99, sans les transformer en plancher chauffant : 479,128620
+kWh sur ce cas, contre 438,058779 publiés. L'inversion de la même formule,
+Sh=91,51 m² et deux niveaux, donne ΔPem=30,000002 kPa, pas 35 : la référence
+semble utiliser la ligne radiateur monotube malgré l'émission générique.
+Elle diffère aussi en Rpn, Rpint et QP0 en amont ; aucune valeur n'est
+ajustée pour compenser ces écarts. Les variantes d'auxiliaires restent hors
+du moteur, aucun budget relevé. Reprendre en TASK-K100 sur des données
+permettant de qualifier l'émission réelle ou une clarification réglementaire.
+
+### Froid modèle 1.1 — douze exports historiques non retenus (24/10/2026, nuit)
+
+Sélection publique avant calcul : `version_dpe:1.1 AND surface_climatisee:[1 TO *]`,
+douze premiers résultats par date décroissante sur 1 179 résultats :
+2230E0005552T, 2207E0004655J, 2245E0005903V, 2218E0006322X,
+2283E0004286C, 2230E0005821C, 2291E0004321T, 2283E0005575R,
+2134E1017601V, 2134E1013616O, 2106E1012199Z et 2118E1014745J.
+Les douze XML sont téléchargés sans retouche, Licence Ouverte 2.0.
+
+Ils ont bien des entrées d'enveloppe et de climatisation, mais déclarent tous
+`presence_production_pv=0`, `production_pv=0` et un `taux_autoproduction`
+compris entre 3 165 et 8 666. Ce dernier ne peut pas être le taux de §16.2
+p.105, `Tap=1/(1/Tcv+1/Tapl)`, sans production. Le schéma 1.1 ne borne pas
+ce champ : l'audit des blocs ne signale donc pas cette incohérence sémantique.
+Les EER forfaitaires publiés valent aussi 0,9 fois les lignes SEER, y compris
+avant 2008 ; §10.3 p.69–70 distingue EER direct ancien et conversion 0,95 des
+SEER. Aucun changement de coefficient n'est déduit de cette seule observation.
+
+Sondage brut : 1 294 numériques hors tolérance, 102 manquantes, 90
+supplémentaires et six chaînes divergentes, zéro crash. Les absences portent
+sur les conventions historiques d'auxiliaires froid, de PV, de solaire déclaré
+absent et sur le nom ancien de classe, pas sur un nouvel intermédiaire
+calculable. Aucun cas intégré ni budget initialisé. Rouvrir sur des exports
+historiques cohérents ou un texte daté qui justifie une règle différente ;
+ne pas convertir ces sorties en nouveaux forfaits.
+
+### ETS — rattachement automatique au seul espace tampon non activé (24/10/2026, nuit)
+
+Après correction de l'index public des 21 transparences, A/B isolé sur les
+mêmes 750 cas, mêmes moteur et tables sauf le calcul de Ssd, même juge :
+appliquer §6.3 p.51–52 avec toutes les baies d'adjacence 10 au seul ETS,
+même sans `reference_lnc`, donne 20 476 → 20 354 numériques hors tolérance
+(−122), sept cas améliorés et trois dégradés. Les budgets à relever seraient
+2507E4042846N +34, 2507E4042848P +43 et 2507E4042850R +58. Variante retirée.
+
+Le calcul avec association explicite univoque donne 20 476 → 20 297 (−179),
+cinq cas améliorés, aucun dégradé et aucun budget relevé. Ses 186 valeurs
+résolues et sept nouveaux écarts restent séparés dans la preuve A/B ; aucune
+tolérance n'est modifiée. Ce périmètre conserve la relation d'entrée au lieu
+de choisir la première véranda. La suite sans lien ou à références dupliquées
+est TASK-K99 ; rouvrir le rattachement global sur une règle d'association
+documentée ou des entrées qui lèvent l'ambiguïté, pas selon le score.
+
+### Thermodynamique gaz CH — six références sans SCOP propre (24/10/2026, nuit)
+
+Sélection publique avant calcul : `qs=type_generateur_n1_installation_n1:*thermodynamique*gaz*`,
+tri par date décroissante, taille 8 ; six résultats au total, tous téléchargés :
+2259E0123697X, 2159E0907317C, 2171E0773147E, 2171E0773138V,
+2193E0731052Z et 2175E0710986N. Les six déclarent le type CH 118 et la
+méthode forfaitaire 1, sans SCOP. Les quatre exports du modèle 1.1 publient
+une consommation chauffage de 1 ; le plus récent publie des caractéristiques
+de combustion sous ce type thermodynamique, pas une performance justifiée.
+
+Pas de forfait à inférer de ces sorties, pas d'intégration comme étalon ni de
+budget initialisé. Le refus avant purge reste en place. Rouvrir sur un export
+complet doté d'un SCOP propre justifié ou un forfait réglementaire pour cette
+famille. La requête équivalente ECS thermodynamique gaz retourne zéro résultat.
+
+### Solaire ECS à forte couverture — sondage sans nouveau manque calculable (24/10/2026, nuit)
+
+Douze premiers résultats de `facteur_couverture_solaire_n1:[0.9 TO 1]`,
+par date décroissante, sur 7 471 résultats, sélectionnés avant calcul :
+2677E2659661V, 2624E2667112J, 2624E2655656T, 2625E2655638C,
+2621E2645560I, 2601E2649985T, 2601E2649585J, 2601E2652048C,
+2601E2652292M, 2616E2651739U, 2601E2648960I et 2633E2652126I.
+
+Sondage brut : 497 numériques hors tolérance, 21 manquantes et trois
+supplémentaires ; aucun crash ni écart de classe. Les manques relèvent des
+rendements séparés, rubriques de toiture et auxiliaires froid déjà instruits.
+Trois exports natifs 0.1.0 sérialisent la production solaire en Wh alors que
+le XSD la documente en kWh. Aucune conversion générale ni copie d'epsilon
+n'est déduite de ces références ; aucun nouveau budget n'est initialisé.
+Rouvrir sur une nouvelle entrée calculable ou une règle de publication datée.
+
 ### Balises manquantes — inventaire résiduel sur 710 cas (24/10/2026, soir)
 
 Après les corrections, **690 balises restent manquantes**, toutes conservées

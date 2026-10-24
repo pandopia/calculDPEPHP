@@ -20,9 +20,14 @@ use DOMElement;
  *   6 → scop/cop/eer (thermodynamique) ; 8 → eer/seer (climatisation).
  * Les purger ferait perdre une donnée d'entrée irrécupérable.
  *
+ * Modèle ADEME 2.7 : `ventilation/pvent_moy` est également une entrée si
+ * `enum_methode_saisie_pvent_moy_id` vaut 2 (documentation) ou 3 (RSET/RSEE).
+ * Les débits, pertes et consommations restent toujours des résultats purgés.
+ *
  * @spec-section 13.2.2, 14.1
  * @spec-pages   86-95
  * @spec-source  resources/ademe_DPE.xsd (appinfo enum_methode_saisie_carac_sys_id)
+ * @spec-source  editeur/public/schemas/DPEv2.7.xsd (enum_methode_saisie_pvent_moy_id)
  */
 final class OutputPurger
 {
@@ -98,7 +103,18 @@ final class OutputPurger
     private static function champsAPreserver(DOMElement $diNode): array
     {
         $parent = $diNode->parentNode;
-        if (!$parent instanceof DOMElement || !in_array($parent->nodeName, self::PARENTS_SAISIE, true)) {
+        if (!$parent instanceof DOMElement) {
+            return [];
+        }
+        if ($parent->nodeName === 'ventilation') {
+            $accessor = new NodeAccessor($diNode->ownerDocument);
+            $version = $accessor->getStringOrNull('/dpe/administratif/enum_version_id');
+            $method = $accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_pvent_moy_id', $parent);
+            return $version !== null && version_compare($version, '2.7', '>=') && in_array($method, [2, 3], true)
+                ? ['pvent_moy']
+                : [];
+        }
+        if (!in_array($parent->nodeName, self::PARENTS_SAISIE, true)) {
             return [];
         }
 

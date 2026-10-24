@@ -37,15 +37,19 @@ $energy = CalculDpePHP::calculate($xml, ['energieOnly' => true]);
 php bin/calcul-dpe /chemin/vers/input.xml [/chemin/vers/output.xml]
 ```
 
-Le modèle DPE 2.7 est pris en charge **partiellement**. Les nouveaux types de
-générateurs et les options dont le calcul n'est pas encore implémenté (MTA,
-régulation prédictive, solaire ECS seule, récupération sur eaux grises,
-commande intelligente, couverture hybride saisie et aération par fenêtres en 2.7), ainsi que les systèmes
+Le modèle DPE 2.7 est pris en charge **partiellement**. Les technologies et
+options dont le calcul n'est pas encore implémenté (MTA, certaines configurations
+de régulation prédictive, récupération sur eaux grises, commande intelligente,
+couverture hybride saisie et aération par fenêtres en 2.7), ainsi que les systèmes
 de refroidissement autres que le froid électrique du réseau (gaz, réseau de froid urbain,
 autre énergie explicitement renseignée), lèvent
 `UnsupportedDpeModelException` avant toute purge du XML. Un fichier accepté
 ne constitue donc pas une certification de conformité 2.7 complète ; les
 travaux restants sont décrits dans `TASKS.md` (K63).
+
+Les familles thermodynamiques génériques sans forfait exigent une performance
+propre justifiée. En particulier, l'ECS thermodynamique gaz (type 83) exige un
+COP en méthode 6 ; elle ne peut pas être assimilée à une chaudière.
 
 ## Rapport PDF du DPE
 
@@ -132,6 +136,24 @@ php bin/official-test-report --filter=2657E --famille="Génération chauffage" -
 
 Profils de tolerance : `strict` (0,1 %, defaut), `reglementaire` (1 %),
 `repo` (reprend `tests/tolerances.php`).
+
+### Audit des blocs calculés au XSD exact
+
+```bash
+php bin/check-output-schema --filter=2657E
+php bin/check-output-schema --reference --limit=10
+php bin/check-output-schema --input=output.xml
+```
+
+Ce contrôle indépendant choisit le schéma correspondant à `enum_version_id`
+(les numéros de modèle et de livraison diffèrent). Il vérifie les enfants
+obligatoires, types, bornes et `xsi:nil` des blocs calculés présents, même si
+la référence omet aussi une balise. Les fratries restent indexées.
+Il ne valide ni les entrées ni la complétude du document entier, ne remplit
+aucune valeur et ne modifie pas le juge de conformité ou ses tolérances.
+JSON sur stdout ; codes de sortie 0 (aucun bloc invalide), 1 (blocs invalides),
+2 (lecture, calcul, schéma ou sélection en erreur). Les références peuvent
+elles-mêmes être invalides : les auditer séparément du résultat du moteur.
 
 ## Jeux de tests
 

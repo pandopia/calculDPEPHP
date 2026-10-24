@@ -111,6 +111,23 @@ final class DpeEngine
         $this->assertTechnologiesConnues($accessor, $document);
         $this->assertOptionsConnues($accessor, $document);
         $this->assertFroidElectrique($accessor, $document);
+        $this->assertVentilationSaisie($accessor, $document);
+    }
+
+    /** Une entrée justifiée manquante doit être refusée avant toute purge. */
+    private function assertVentilationSaisie(NodeAccessor $accessor, DOMDocument $document): void
+    {
+        $version = $accessor->getStringOrNull('/dpe/administratif/enum_version_id');
+        if ($version === null || version_compare($version, '2.7', '<')) {
+            return;
+        }
+        foreach ($document->getElementsByTagName('ventilation') as $ventilation) {
+            $method = $accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_pvent_moy_id', $ventilation);
+            if (in_array($method, [2, 3], true)
+                && \CalculDpePHP\Ventilation\PventMoyCalculator::justifiedPower($ventilation, $accessor) === null) {
+                throw new UnsupportedDpeModelException('Puissance moyenne de ventilation justifiée absente ou invalide (méthodes 2/3 du modèle 2.7) : refus avant purge.');
+            }
+        }
     }
 
     /**
@@ -171,6 +188,7 @@ final class DpeEngine
         $options = [
             ['installation_ecs', 'enum_type_installation_solaire_id', 4],
             ['installation_ecs', 'enum_bouclage_reseau_ecs_id', 3],
+            ['installation_ecs', 'tv_rendement_distribution_ecs_id', 8],
             ['emetteur_chauffage', 'enum_equipement_intermittence_id', 7],
             ['generateur_ecs', 'enum_periode_installation_ecs_thermo_id', 3],
             ['installation_ecs', 'presence_rceg', 0],
@@ -194,13 +212,13 @@ final class DpeEngine
                 }
                 // La période 4 décrit les CET depuis 2027. Les nouveaux
                 // enums 135-138 sont couverts par la feuille officielle scop
-                // (lignes 108-113). Le type générique 82 exige un COP propre
+                // (lignes 108-113). Les types génériques 82/83 exigent un COP propre
                 // justifié : aucune ligne 2027 ne le rattache à une famille. Les anciens
                 // enums datés ne sont pas requalifiés depuis leur seule période.
                 if ($balise === 'generateur_ecs' && $champ === 'enum_periode_installation_ecs_thermo_id'
                     && $valeur === 4.0 && $version !== null && version_compare($version, '2.7', '>=')
                     && (in_array($accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $equipement), [135, 136, 137, 138], true)
-                        || ($accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $equipement) === 82
+                        || (in_array($accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $equipement), [82, 83], true)
                             && \CalculDpePHP\Ecs\Rendement\CetAccumulationCalculator::justifiedCop($equipement, $accessor) !== null))) {
                     continue;
                 }
@@ -250,6 +268,10 @@ final class DpeEngine
                 if ($balise === 'generateur_chauffage' && in_array($type, [117, 118], true)
                     && \CalculDpePHP\Chauffage\Rendement\GenerationNonCombustionCalculator::otherThermoScop($generateur, $accessor) === null) {
                     throw new UnsupportedDpeModelException('Générateur thermodynamique ' . $type . ' : SCOP propre connu et justifié requis. Aucun forfait n’est défini pour cette famille ; refus avant purge.');
+                }
+                if ($balise === 'generateur_ecs' && $type === 83
+                    && \CalculDpePHP\Ecs\Rendement\CetAccumulationCalculator::justifiedCop($generateur, $accessor) === null) {
+                    throw new UnsupportedDpeModelException('Thermodynamique gaz ECS 83 : COP propre connu et justifié requis en méthode 6. Aucun forfait n’est défini pour cette famille ; refus avant purge.');
                 }
                 if ($balise === 'generateur_ecs' && in_array($type, [135, 136, 137, 138, 139, 144, 145, 146], true)
                     && $version !== null && version_compare($version, '2.7', '>=')) {

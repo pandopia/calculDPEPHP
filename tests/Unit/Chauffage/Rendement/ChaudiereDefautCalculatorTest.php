@@ -188,6 +188,10 @@ XML;
         (new ChaudiereDefautCalculator())->calculate($node, $this->makeContext($doc));
         $di = $node->getElementsByTagName('donnee_intermediaire')->item(0);
         foreach (['pn' => $pn, 'rpn' => $rpn, 'rpint' => $rpint, 'qp0' => $qp0] as $tag => $expected) {
+            if (in_array($type, [53, 54], true) && in_array($tag, ['rpint', 'qp0'], true)) {
+                self::assertSame(0, $di->getElementsByTagName($tag)->length, 'Le zéro de calcul ne doit pas remplir un champ inapplicable interdit à zéro par le XSD.');
+                continue;
+            }
             $actual = $di->getElementsByTagName($tag)->item(0);
             self::assertNotNull($actual, $tag . ' doit être calculé sans table explicite');
             self::assertEqualsWithDelta($expected, (float)$actual->textContent, self::TOL);
@@ -205,6 +209,39 @@ XML;
         yield 'condensation gaz au-dessus de 70 kW' => [97, 100000.0, 0.96, 1.06, 300.0];
         yield 'condensation fioul au-dessus de 70 kW' => [84, 100000.0, 0.96, 1.02, 600.0];
         yield 'partie chaudière hybride gaz' => [149, 100000.0, 0.96, 1.06, 300.0];
+
+        // §13.2.2.3 p.89–90 : les caractéristiques ne dépendent pas d'un
+        // identifiant de table externe lorsque type, époque et Pn sont connus.
+        $wood = [
+            55 => [47, 6, 48, 6, 80, .73], 62 => [47, 6, 48, 6, 80, .73], 69 => [47, 6, 48, 6, 80, .73],
+            56 => [47, 6, 48, 6, 70, .70], 63 => [47, 6, 48, 6, 70, .70], 70 => [47, 6, 48, 6, 70, .70],
+            57 => [47, 6, 48, 6, 85, .60], 64 => [47, 6, 48, 6, 85, .60],
+            58 => [57, 6, 58, 6, 85, .60], 65 => [57, 6, 58, 6, 85, .60], 71 => [57, 6, 58, 6, 85, .60],
+            59 => [67, 6, 68, 6, 85, .60], 66 => [67, 6, 68, 6, 85, .60], 72 => [67, 6, 68, 6, 85, .60],
+            60 => [80, 2, 77, 3, 85, .60], 67 => [80, 2, 77, 3, 85, .60], 73 => [80, 2, 77, 3, 85, .60],
+            61 => [89, 2, 84, 2, 85, .60], 68 => [89, 2, 84, 2, 85, .60], 74 => [91, 2, 88, 2, 85, .60],
+            120 => [47, 6, 48, 6, 80, .73], // charbon assimilé bûches, p.88
+            140 => [47, 6, 48, 6, 70, .70], // bouilleur granulés avant 2012
+            141 => [67, 6, 68, 6, 85, .60], // bouilleur granulés depuis 2012
+            152 => [80, 2, 77, 3, 85, .60], // partie chaudière hybride granulés
+        ];
+        foreach ($wood as $type => [$rn, $cn, $ri, $ci, $loss, $exponent]) {
+            yield "bois sans ID $type" => [$type, 18000.0, ($rn + $cn * log10(18)) / 100, ($ri + $ci * log10(18)) / 100, $loss * 18 ** $exponent];
+        }
+        foreach ([50 => [.77, .74], 51 => [.84, .77], 52 => [.90, .83]] as $type => [$rn, $ri]) {
+            foreach ([18.0, 300.0, 300.001] as $pn) {
+                $p = min($pn, 300);
+                yield "air chaud sans ID $type $pn" => [$type, 1000 * $pn, $rn, $ri, 10 * $p * (1.75 - .55 * log10($p))];
+            }
+        }
+        foreach ([53 => [.70, .73], 54 => [.80, .82]] as $type => [$low, $high]) {
+            foreach ([4.999, 5.0, 5.001] as $pn) {
+                yield "radiateur sans ID $type $pn" => [$type, 1000 * $pn, $pn < 5 ? $low : $high, 0.0, 0.0];
+            }
+        }
+        yield 'bûches récente sans ID, bande 20–70' => [61, 24000.0, (90 + 2 * log10(24)) / 100, (85 + 2 * log10(24)) / 100, 85 * 24 ** .6];
+        yield 'granulés sans ID, bande 70–400' => [74, 100000.0, .96, .93, 1100.0];
+        yield 'granulés sans ID, bande >400' => [74, 500000.0, .96, .93, 500.0];
     }
 
     public function testConserveLaTableExpliciteQuandLeTypeSuggereUneAutrePeriode(): void
@@ -212,6 +249,27 @@ XML;
         [$doc, $node] = $this->buildGenerator(89, 4, 2, ['pn' => 24000]);
         (new ChaudiereDefautCalculator())->calculate($node, $this->makeContext($doc));
         self::assertEqualsWithDelta(288.0, (float)$node->getElementsByTagName('qp0')->item(0)->textContent, self::TOL);
+    }
+
+    public function testLeForfaitRadiateurNePubliePasLesZerosInapplicablesEtNettoieUneAncienneSortie(): void
+    {
+        [$doc, $node] = $this->buildGenerator(53, 76, 2, ['pn' => 10000]);
+        $di = $node->appendChild($doc->createElement('donnee_intermediaire'));
+        foreach (['rpint', 'qp0'] as $field) { $di->appendChild($doc->createElement($field, '0')); }
+        (new ChaudiereDefautCalculator())->calculate($node, $this->makeContext($doc));
+        self::assertSame(0, $di->getElementsByTagName('rpint')->length);
+        self::assertSame(0, $di->getElementsByTagName('qp0')->length);
+        self::assertEqualsWithDelta(.73, (float)$di->getElementsByTagName('rpn')->item(0)->textContent, 1e-12);
+    }
+
+    public function testLesValeursExplicitementSaisiesDuRadiateurNeSontPasEffacees(): void
+    {
+        foreach ([0.0, 17.5] as $value) {
+            [$doc, $node] = $this->buildGenerator(53, 76, 4, ['pn' => 10000, 'rpn' => .8, 'rpint' => .75, 'qp0' => $value]);
+            (new ChaudiereDefautCalculator())->calculate($node, $this->makeContext($doc));
+            self::assertEqualsWithDelta($value, (float)$node->getElementsByTagName('qp0')->item(0)->textContent, 1e-12);
+            self::assertEqualsWithDelta(.75, (float)$node->getElementsByTagName('rpint')->item(0)->textContent, 1e-12);
+        }
     }
 
     /**

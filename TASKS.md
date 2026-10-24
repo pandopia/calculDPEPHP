@@ -59,6 +59,33 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase K — Conformité au corpus ADEME
 
+### TASK-K100 — Réseau des émetteurs génériques : auxiliaires à qualifier
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- L'index public ADEME de distribution CH associe le type générique 41 aux
+  douze réseaux possibles. Rd utilise désormais cette nature sans requalifier
+  l'émission ; le libellé générique seul ne prouve pas l'absence de circuit.
+- `2605E2654977X` : réseau individuel BT explicite (TV 6), mais auxiliaire
+  encore nul. §15.2.1 « Autres cas » (ΔPem=35, Fcot=0,802) produit 479,129 kWh,
+  contre 438,059 publiés, qui impliquent ΔPem≈30 — un monotube non déclaré.
+- La variante auxiliaires seule ajoute un numérique ; avec Rd elle ajoute
+  une classe (A/B identique sur 750 cas, chiffres dans TASKS_DONE.md). Ne pas
+  imposer le monotube ni relever le budget ; qualifier aussi Rpn/Rpint/QP0
+  amont du bouilleur granulés, déjà divergents. Aucun circuit n'est à inventer
+  pour les lignes 1 et 12 (sans réseau / fluide frigorigène).
+
+### TASK-K99 — Apports directs ETS sans association explicite
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- §6.3 p.51–52 : Ssd est désormais compté pour les baies reliées par
+  `reference_lnc` à une référence ETS unique. Sans lien, conserver le
+  traitement historique de Sst jusqu'à qualification de l'association.
+- Le rattachement automatique au seul ETS améliore sept cas mais en dégrade
+  trois de +34/+43/+58 : 2507E4042846N, 2507E4042848P, 2507E4042850R.
+  Variante écartée, chiffres dans TASKS_DONE.md ; aucun budget relevé.
+- 2601E2428885X a deux ETS et deux baies sans lien : ne choisir ni le premier
+  ni un tri arbitraire. Les références ETS dupliquées sont aussi ambiguës.
+
 ### TASK-K98 — Activer `sw_saisi` sur les fenêtres simples
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
@@ -318,6 +345,12 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   §13.2.2.3 p.88–90. La variante globale incluant les hybrides reste écartée
   (mesure dans TASKS_DONE.md) : leurs exports publient parfois les
   caractéristiques gaz pour une chaudière bois.
+- Audit XSD exact du 24/10 au soir : après retrait des zéros inapplicables
+  des radiateurs gaz, douze blocs restent invalides sur 714 cas. Onze ECS
+  portent QP0=0 (notamment hybrides/bouilleurs et gaz instantané) ; un
+  chauffage porte Rpint=0. Sur 2469E2496824M, Pn équivalent=35,28 W est
+  aussi sous la borne XSD. Reprendre les caractéristiques et la virtualisation,
+  pas un remplacement par epsilon ; `bin/check-output-schema` les localise.
 - **Nouveaux cas ECS seuls (16)** : 2687E2488430K porte un Pn équivalent
   saisi et QP0 identique au chauffage collectif, sans clé mixte ; le calcul
   non linéaire sur ce Pn réduit n'est pas celui de la référence. 2563E3941359I
@@ -612,9 +645,18 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   à refaire ; voir les tests et les commits. Conserver les gardes ci-dessous.
 - **Ballons intelligents ECS 140–143 / SCF** : sourcer la formule et les
   forfaits avant de lever le refus ; scf_saisi ne doit pas être ignoré.
-- **Module thermique d'appartement** : bouclage ECS 4 encore refusé.
+- **Module thermique d'appartement** : bouclage ECS 4 et TV de distribution 9
+  refusés avant purge. La table Rd est marquée partielle : ligne 9 à 0,74
+  du classeur ADEME, pas un forfait neutre 1. Qualifier le modèle complet
+  (distribution, pertes récupérables et auxiliaires), pas le seul Rd.
 - **RCEG** : presence_rceg, fech_saisi, ftrans_saisi → fecs_rceg et
   besoin_ecs_rceg ; trouver les textes datés, pas un mapping depuis un cas.
+  Source officielle complémentaire trouvée : dépôt ADEME 05aabba7,
+  `svc_controle_coherence/controle_coherence/controle_coherence.py`, lignes
+  2114–2288 : forfait 0,1104, méthode justifiée 0,92×Fech×Ftrans,
+  besoin ajusté Becs×(1−Fecs). Reste le texte paginé et le branchement de
+  tous les consommateurs (stockage, rendements, auxiliaires, solaire et
+  scénarios), pas seulement la publication de deux balises. Garde conservé.
 - **Couverture PAC hybride justifiée** : couverture_pac_hybride_saisi ;
   qualifier aussi son effet sur la charge de la chaudière et les ENR, pas
   seulement le partage final des consommations.

@@ -8,6 +8,7 @@ use CalculDpePHP\Apport\EspaceTamponSolariseCalculator;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class EspaceTamponSolariseCalculatorTest extends TestCase
@@ -57,11 +58,11 @@ XML;
     }
 
     /**
-     * id=1 → Bois simple vitrage → T = 0.62
+     * id=2 → Bois simple vitrage → T = 0.62 (classeur ADEME ligne 3).
      */
     public function testCoefficientTransparenceBoisSimple(): void
     {
-        $doc = $this->buildDoc(1, 7); // cfg 7 = lc isolé + ETS sud
+        $doc = $this->buildDoc(2, 7); // cfg 7 = lc isolé + ETS sud
         $ets = $doc->getElementsByTagName('ets')->item(0);
         $ctx = $this->makeContext($doc, '1');
         (new EspaceTamponSolariseCalculator())->calculate($ets, $ctx);
@@ -71,11 +72,11 @@ XML;
     }
 
     /**
-     * id=10 → PVC triple vitrage peu émissif → T = 0.36
+     * id=11 → PVC triple vitrage peu émissif → T = 0.36.
      */
     public function testCoefficientTransparencePvcTriplePE(): void
     {
-        $doc = $this->buildDoc(10, 7);
+        $doc = $this->buildDoc(11, 7);
         $ets = $doc->getElementsByTagName('ets')->item(0);
         $ctx = $this->makeContext($doc, '1');
         (new EspaceTamponSolariseCalculator())->calculate($ets, $ctx);
@@ -85,11 +86,11 @@ XML;
     }
 
     /**
-     * id=21 → Polycarbonate → T = 0.40
+     * id=1 → Polycarbonate → T = 0.40 (classeur ADEME ligne 2).
      */
     public function testCoefficientTransparencePolycarbonate(): void
     {
-        $doc = $this->buildDoc(21, 7);
+        $doc = $this->buildDoc(1, 7);
         $ets = $doc->getElementsByTagName('ets')->item(0);
         $ctx = $this->makeContext($doc, '1');
         (new EspaceTamponSolariseCalculator())->calculate($ets, $ctx);
@@ -170,13 +171,13 @@ XML;
     }
 
     /**
-     * Baie ETS sud sup75°, 10m², T=0.62 (id=1), bver=0.58 (cfg 7, H1)
+     * Baie ETS sud sup75°, 10m², T=0.62 (id=2), bver=0.58 (cfg 7, H1)
      * sseFact = 0.8*0.62 + 0.024 = 0.52; C1 sud sup75 H1a jan = 1.0
      * Sst jan = 10 * 0.52 * 1.0 = 5.2 ; Sse_veranda jan = 5.2 * 0.58 = 3.016
      */
     public function testSseMensuelAvecBaieEts(): void
     {
-        $doc = $this->buildDoc(1, 7, [[10.0, 1, 3]]); // sud, sup75°
+        $doc = $this->buildDoc(2, 7, [[10.0, 1, 3]]); // sud, sup75°
         $ets = $doc->getElementsByTagName('ets')->item(0);
         $ctx = $this->makeContext($doc, '1'); // H1a
         (new EspaceTamponSolariseCalculator())->calculate($ets, $ctx);
@@ -201,5 +202,20 @@ XML;
 
         $bver = (float)$doc->getElementsByTagName('bver')->item(0)->textContent;
         $this->assertEqualsWithDelta(1.0, $bver, self::TOL);
+    }
+
+    /** Valeurs physiques p.51–52 ; indexation ADEME coef_transparence_ets A2:G22. */
+    public static function transparencesOfficielles(): iterable
+    {
+        $values = [0.40, 0.62, 0.55, 0.48, 0.49, 0.44, 0.50, 0.45, 0.39, 0.40, 0.36, 0.63, 0.56, 0.48, 0.50, 0.45, 0.64, 0.58, 0.50, 0.52, 0.47];
+        foreach ($values as $index => $value) { yield 'ligne ADEME ' . ($index + 1) => [$index + 1, $value]; }
+    }
+
+    #[DataProvider('transparencesOfficielles')]
+    public function testLes21CorrespondancesPubliquesSontCouvertes(int $id, float $expected): void
+    {
+        $document = $this->buildDoc($id, 7);
+        (new EspaceTamponSolariseCalculator())->calculate($document->documentElement, $this->makeContext($document));
+        self::assertEqualsWithDelta($expected, (float) $document->getElementsByTagName('coef_transparence_ets')->item(0)->textContent, 1e-12);
     }
 }

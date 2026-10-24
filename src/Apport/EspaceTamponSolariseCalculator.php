@@ -26,11 +26,15 @@ use DOMElement;
  * @spec-section 6.3
  * @spec-pages   50-52
  * @spec-source  resources/specsplitted/06-apports-gratuits/03-espaces-tampons-solarises.md
+ * @spec-source  resources/ademe_DPE.xsd (reference_lnc : relation au local adjacent)
  * @xml-input    ets.donnee_entree.{tv_coef_transparence_ets_id, enum_cfg_isolation_lnc_id}
  * @xml-input    ets.baie_ets_collection.baie_ets.donnee_entree.{surface_totale_baie, enum_orientation_id, enum_inclinaison_vitrage_id}
+ * @xml-input    baie_vitree.donnee_entree.{reference_lnc, enum_type_adjacence_id, surface_totale_baie, enum_orientation_id, enum_inclinaison_vitrage_id}
+ * @xml-input    baie_vitree.donnee_intermediaire.{sw, fe1, fe2}
  * @xml-output   ets.donnee_intermediaire.{coef_transparence_ets, bver}
  * @depends-on   \CalculDpePHP\Apport\SurfaceSudEquivalenteCalculator
  * @tables       apports/tv_coef_transparence_ets, enveloppe/tv_b
+ * @status partial — sans association reference_lnc univoque, Ssd reste à qualifier (TASK-K99)
  */
 final class EspaceTamponSolariseCalculator implements CalculatorInterface
 {
@@ -54,7 +58,7 @@ final class EspaceTamponSolariseCalculator implements CalculatorInterface
 
     public function dependencies(): array
     {
-        return [];
+        return [SurfaceSudEquivalenteCalculator::class];
     }
 
     public function appliesTo(DOMElement $node): bool
@@ -108,9 +112,10 @@ final class EspaceTamponSolariseCalculator implements CalculatorInterface
 
     /**
      * Calcule la contribution mensuelle Sse_veranda,j et l'accumule dans le contexte.
-     * Utilise uniquement les baies ETS↔extérieur (Sst) — les baies logement↔ETS (Ssd)
-     * seraient des baies vitrées déjà comptées dans SurfaceSudEquivalenteCalculator.
-     * Par simplification spec §6.3 : Sse_veranda,j ≈ Sst,j × bver.
+     * SurfaceSudEquivalenteCalculator exclut les baies logement↔ETS : leurs
+     * apports directs ne sont donc pas déjà comptés. §6.3 p.51–52 :
+     * Sse = Ssd + (Sst − Ssd) × bver = Sst × bver + Ssd × (1 − bver).
+     * Le rattachement utilise la clé explicite reference_lnc, jamais l'ordre.
      */
     private function accumulateEtsSse(
         DOMElement $node,
@@ -148,8 +153,9 @@ final class EspaceTamponSolariseCalculator implements CalculatorInterface
             }
         }
 
+        $direct = $this->apportsDirects($node, $accessor, $context, $T, $tvC1);
         for ($j = 1; $j <= 12; $j++) {
-            $sseMensuel[$j] *= $bver;
+            $sseMensuel[$j] = $sseMensuel[$j] * $bver + $direct[$j] * (1.0 - $bver);
         }
 
         $existing = $context->get('apport.sse_ets_mensuel', array_fill(1, 12, 0.0));
@@ -157,6 +163,59 @@ final class EspaceTamponSolariseCalculator implements CalculatorInterface
             $existing[$j] += $sseMensuel[$j];
         }
         $context->set('apport.sse_ets_mensuel', $existing);
+    }
+
+    /**
+     * §6.3 p.51 : Ssd,j = T × Σ(Ai × Swi × Fei × C1i,j).
+     *
+     * XSD : reference_lnc relie la baie au local adjacent. Sans cette clé,
+     * ou si plusieurs ETS portent la même référence, aucune association n'est
+     * inventée ; le traitement historique de Sst reste inchangé (TASK-K99).
+     *
+     * @spec-formula F-6.3-Ssd
+     * @return array<int, float>
+     */
+    private function apportsDirects(
+        DOMElement $node,
+        NodeAccessor $accessor,
+        CalculationContext $context,
+        float $transparence,
+        ?array $tvC1,
+    ): array {
+        $result = array_fill(1, 12, 0.0);
+        $xpath = new \DOMXPath($context->document);
+        $logement = $xpath->query('ancestor::logement[1]', $node)->item(0);
+        $reference = $accessor->getStringOrNull('./donnee_entree/reference', $node);
+        if (!$logement instanceof DOMElement || $reference === null) {
+            return $result;
+        }
+        $owners = 0;
+        foreach ($xpath->query('./enveloppe/ets_collection/ets', $logement) as $ets) {
+            $owners += (int) ($accessor->getStringOrNull('./donnee_entree/reference', $ets) === $reference);
+        }
+        if ($owners !== 1) {
+            return $result;
+        }
+        foreach ($xpath->query('./enveloppe/baie_vitree_collection/baie_vitree', $logement) as $baie) {
+            if ($accessor->getIntOrNull('./donnee_entree/enum_type_adjacence_id', $baie) !== 10
+                || $accessor->getStringOrNull('./donnee_entree/reference_lnc', $baie) !== $reference) {
+                continue;
+            }
+            $surface = $accessor->getFloatOrNull('./donnee_entree/surface_totale_baie', $baie);
+            $sw = $accessor->getFloatOrNull('./donnee_intermediaire/sw', $baie);
+            if ($surface === null || $surface <= 0.0 || $sw === null || $sw <= 0.0) {
+                continue;
+            }
+            $fe1 = $accessor->getFloatOrNull('./donnee_intermediaire/fe1', $baie) ?? 1.0;
+            $fe2 = $accessor->getFloatOrNull('./donnee_intermediaire/fe2', $baie) ?? 1.0;
+            $orientation = $accessor->getIntOrNull('./donnee_entree/enum_orientation_id', $baie);
+            $inclinaison = $accessor->getIntOrNull('./donnee_entree/enum_inclinaison_vitrage_id', $baie);
+            for ($j = 1; $j <= 12; $j++) {
+                $result[$j] += $transparence * $surface * $sw * $fe1 * $fe2
+                    * $this->lookupC1($tvC1, $j, $orientation, $inclinaison);
+            }
+        }
+        return $result;
     }
 
     private function lookupC1(?array $zoneTable, int $month, ?int $orientId, ?int $inclId): float
