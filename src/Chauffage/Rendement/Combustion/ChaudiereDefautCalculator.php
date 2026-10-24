@@ -268,8 +268,20 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
 
         $accessor->setChildValue($di, 'pn',    $saisie['pn']    ?? (float)($row['pn']    ?? $pnW));
         $accessor->setChildValue($di, 'rpn',   $saisie['rpn']   ?? (float)($row['rpn']   ?? 0.0));
-        $accessor->setChildValue($di, 'rpint', $saisie['rpint'] ?? (float)($row['rpint'] ?? 0.0));
-        $accessor->setChildValue($di, 'qp0',   $saisie['qp0']   ?? (float)($row['qp0']   ?? 0.0));
+        foreach (['rpint', 'qp0'] as $field) {
+            $value = $saisie[$field] ?? (float)($row[$field] ?? 0.0);
+            // §13.2.2.2 p.88 : le radiateur gaz n'a ni point intermédiaire
+            // ni pertes fixes à l'arrêt. Les zéros restent internes à sa loi
+            // QPx ; le XSD rend ces champs facultatifs et interdit leur zéro.
+            // Une saisie explicite, en revanche, n'est jamais effacée ici.
+            if (in_array($genId, [53, 54], true) && !array_key_exists($field, $saisie) && $value === 0.0) {
+                foreach (iterator_to_array($di->childNodes) as $child) {
+                    if ($child instanceof DOMElement && $child->tagName === $field) { $di->removeChild($child); }
+                }
+                continue;
+            }
+            $accessor->setChildValue($di, $field, $value);
+        }
         // §13.2.2 p.86 : Pveil ne s'applique que « si veilleuse ». L'export ne
         // fournit pas d'indicateur de présence distinct : ne pas inventer la
         // veilleuse forfaitaire lorsque sa puissance n'a pas été renseignée.

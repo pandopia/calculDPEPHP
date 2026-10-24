@@ -50,6 +50,23 @@ final class CombustionSansTablePipelineTest extends TestCase
             self::assertGreaterThan(0, $a->getFloatOrNull('./donnee_intermediaire/qp0', $output));
         }
         self::assertSame(0, (new DOMXPath($result))->query('//generateur_chauffage/donnee_entree/tv_generateur_combustion_id')->length);
+
+        $schema = new DOMDocument();
+        $schema->load($root . '/editeur/public/schemas/DPEv2.6.xsd');
+        $xs = new DOMXPath($schema);
+        $declaration = $xs->query('(//xs:element[@name="generateur_chauffage"])[1]')->item(0)->cloneNode(true);
+        $declaration->removeAttribute('minOccurs');
+        $declaration->removeAttribute('maxOccurs');
+        $schema->documentElement->appendChild($declaration);
+        $single = new DOMDocument();
+        $single->appendChild($single->importNode($output, true));
+        $previous = libxml_use_internal_errors(true);
+        libxml_clear_errors();
+        $valid = $single->schemaValidateSource($schema->saveXML());
+        $errors = implode("\n", array_map(static fn($error) => trim($error->message), libxml_get_errors()));
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        self::assertTrue($valid, "type $type : $errors");
     }
 
     public static function types(): iterable

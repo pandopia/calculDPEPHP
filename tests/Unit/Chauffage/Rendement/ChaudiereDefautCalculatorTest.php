@@ -188,6 +188,10 @@ XML;
         (new ChaudiereDefautCalculator())->calculate($node, $this->makeContext($doc));
         $di = $node->getElementsByTagName('donnee_intermediaire')->item(0);
         foreach (['pn' => $pn, 'rpn' => $rpn, 'rpint' => $rpint, 'qp0' => $qp0] as $tag => $expected) {
+            if (in_array($type, [53, 54], true) && in_array($tag, ['rpint', 'qp0'], true)) {
+                self::assertSame(0, $di->getElementsByTagName($tag)->length, 'Le zéro de calcul ne doit pas remplir un champ inapplicable interdit à zéro par le XSD.');
+                continue;
+            }
             $actual = $di->getElementsByTagName($tag)->item(0);
             self::assertNotNull($actual, $tag . ' doit être calculé sans table explicite');
             self::assertEqualsWithDelta($expected, (float)$actual->textContent, self::TOL);
@@ -245,6 +249,27 @@ XML;
         [$doc, $node] = $this->buildGenerator(89, 4, 2, ['pn' => 24000]);
         (new ChaudiereDefautCalculator())->calculate($node, $this->makeContext($doc));
         self::assertEqualsWithDelta(288.0, (float)$node->getElementsByTagName('qp0')->item(0)->textContent, self::TOL);
+    }
+
+    public function testLeForfaitRadiateurNePubliePasLesZerosInapplicablesEtNettoieUneAncienneSortie(): void
+    {
+        [$doc, $node] = $this->buildGenerator(53, 76, 2, ['pn' => 10000]);
+        $di = $node->appendChild($doc->createElement('donnee_intermediaire'));
+        foreach (['rpint', 'qp0'] as $field) { $di->appendChild($doc->createElement($field, '0')); }
+        (new ChaudiereDefautCalculator())->calculate($node, $this->makeContext($doc));
+        self::assertSame(0, $di->getElementsByTagName('rpint')->length);
+        self::assertSame(0, $di->getElementsByTagName('qp0')->length);
+        self::assertEqualsWithDelta(.73, (float)$di->getElementsByTagName('rpn')->item(0)->textContent, 1e-12);
+    }
+
+    public function testLesValeursExplicitementSaisiesDuRadiateurNeSontPasEffacees(): void
+    {
+        foreach ([0.0, 17.5] as $value) {
+            [$doc, $node] = $this->buildGenerator(53, 76, 4, ['pn' => 10000, 'rpn' => .8, 'rpint' => .75, 'qp0' => $value]);
+            (new ChaudiereDefautCalculator())->calculate($node, $this->makeContext($doc));
+            self::assertEqualsWithDelta($value, (float)$node->getElementsByTagName('qp0')->item(0)->textContent, 1e-12);
+            self::assertEqualsWithDelta(.75, (float)$node->getElementsByTagName('rpint')->item(0)->textContent, 1e-12);
+        }
     }
 
     /**
