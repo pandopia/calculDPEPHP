@@ -73,17 +73,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   écarts) ; chiffres dans `TASKS_DONE.md`. Reprendre sur clarification du
   chauffage mixte ou données explicites, pas en choisissant une majorité arbitraire.
 
-### TASK-K92 — Dépendances de l'éditeur : traiter les alertes de sécurité
-
-- [~CB] Owner: CB | Phase: K | Priorité: haute (hors moteur 3CL)
-- Au push du 21/10/2026, GitHub signale 6 alertes ouvertes, toutes dans
-  `editeur/package-lock.json` : `tinypool` (2 critiques),
-  `@modelcontextprotocol/sdk` (haute), `@angular/common`, `vitest` et
-  `@vitest/mocker` (modérées). Détail : API Dependabot du dépôt, alertes 1–6.
-- Mettre à niveau les dépendances parentes sans `--force`, vérifier les
-  versions transitives réellement verrouillées, puis build + tests éditeur.
-  Cette PR de calcul ne modifie pas les dépendances et ne clôt aucune alerte.
-
 ### TASK-K91 — PAC multi-émetteurs : COP défavorable et SCOP publié à départager
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne

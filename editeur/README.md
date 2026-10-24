@@ -23,7 +23,8 @@ npm run test:corpus  # + aller-retour sur le corpus local resources/XML (s'il es
 `editeur/` (tests, puis `ng build --base-href /calculDPEPHP/`). Prérequis
 côté dépôt : *Settings › Pages › Source = GitHub Actions*.
 
-Prérequis : Node 20.19 ou plus récent (Angular 20). Le build produit un site
+Prérequis : Node 24 LTS (Angular 21, Vitest 4). La CI vérifie les contraintes
+de runtime avec `npm ci --ignore-scripts --engine-strict`. Le build produit un site
 statique (≈ 350 ko de JavaScript, plus les XSD et le validateur WebAssembly
 chargés à la demande) ; aucun serveur applicatif n'est nécessaire.
 

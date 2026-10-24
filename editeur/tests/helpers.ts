@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { Blob as NodeBlob } from 'node:buffer';
 import { SchemaRegistry } from '../src/app/core/schema/schema-registry';
 
 export const SCHEMAS_DIR = join(__dirname, '..', 'public', 'schemas');
@@ -11,6 +12,15 @@ export function fixture(name: string): string {
 
 export function nodeSchemas(): SchemaRegistry {
   return new SchemaRegistry(async (file) => readFileSync(join(SCHEMAS_DIR, file), 'utf8'));
+}
+
+/** jsdom ne fournit pas Blob.arrayBuffer : la doublure fetch utilise le Blob standard de Node. */
+export function blobResponse(body: string, init: ResponseInit = {}): Response {
+  const response = new Response(body, init);
+  response.blob = async () => new NodeBlob([body], {
+    type: response.headers.get('Content-Type') ?? '',
+  }) as unknown as Blob;
+  return response;
 }
 
 /** Corpus local complet (non versionné) : utilisé s'il est présent. */
