@@ -326,32 +326,21 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   surface habitable du bâtiment », ce que le code applique déjà : chercher la
   source avant de s'en écarter, et mesurer en A/B.
 
-### TASK-K69 — §9.8 collectif base + appoint : les deux résidus après branchement
+### TASK-K69 — §9.8 base électrique : puissance de base absente
 
-- [~CB] Owner: CB | Phase: K | Priorité: moyenne
-- La stratégie est désormais branchée et le garde `Textj <= 0` corrigé.
-  `besoin_ch` est **exact** sur les deux cas du corpus, et la répartition
-  base/appoint de `2600E0006037K` est juste à la proportion près (97,8 % /
-  2,2 %, comme sa référence). Restent deux choses, distinctes.
-- **1. Pn absent quand la base n'est pas une chaudière.** `2478E0866009E`
-  porte deux générateurs électriques (102 plancher rayonnant, 100 radiateur) :
-  `ChaudiereDefautCalculator` ne les dimensionne pas, `pn` reste vide, donc
-  `Pe = 0` et §9.8 retombe sur la convention de 50 %. Sa référence répartit
-  82 % / 18 %. Une recherche de la puissance émise qui reproduirait ce partage
-  donne **Pe ≈ 12,3 kW pour 1 762 m²**, soit 7 W/m² — trop faible pour un
-  dimensionnement, donc la convention de 50 % n'est pas simplement mal
-  calibrée : c'est la source de Pn qu'il faut trouver pour un générateur
-  électrique. §9.8 ne la donne pas ; chercher du côté de §13.2.2.4 (Pdim) et
-  de open3cl avant d'écrire quoi que ce soit.
-- **2. Les six tabulations vides d'altitude 3 : tranché, elles sont vides dans
-  l'annexe.** §18.2.3 et §18.3.3 ne publient aucune donnée pour H1a, H2a et
-  H2b au-dessus de 800 m. Ce n'était pas un trou de transcription. Les deux
-  tables ont été recoupées une à une avec §18.2.1-18.2.3 (`ilpa = 0`) et
-  §18.3.1-18.3.3 (`ilpa = 1`) : 576 valeurs chacune, une seule corrigée. Rien
-  à reprendre de ce côté.
-- Résidu mesuré de `2600E0006037K` après correction : `conso_ch` à ×1,12, qui
-  suit son `rendement_generation` de chaudière gaz (0,8141 contre 0,8342) —
-  c'est TASK-K31, pas §9.8.
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- `2478E0866009E` : base électrique 102, appoint 100, aucun `pn` publié.
+  Le partage reste forfaitaire à 50 %, contre 82 % / 18 % en référence.
+  Inverser §9.8 donne Pe ≈ 12,3 kW pour 1 762 m² : ce n'est pas une règle
+  de dimensionnement. Trouver la source de Pn électrique avant de coder.
+- Les trois cfg 10 du corpus utilisent désormais leurs Bchj réels, le
+  scénario dépensier et le volume au périmètre de leur GV (23/10–24/10,
+  A/B 670 cas : −5 numériques et −2 classes, aucun budget relevé).
+- Sur les deux bases à combustion, les résidus sont en amont : caractéristiques
+  du générateur virtualisé, notamment `pn` saisi déjà ramené au logement.
+  Ne pas modifier le partage pour compenser Rpn/QP0.
+- Les six cases climatiques d'altitude 3 vides sont bien absentes de l'annexe,
+  pas des trous de transcription : ne pas les remplir par interpolation.
 
 ### TASK-K72 — `2605E1578332M` : un besoin de froid qui contredit ses propres apports
 
