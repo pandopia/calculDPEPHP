@@ -15,7 +15,7 @@ use RuntimeException;
 final class CalculDpePHP
 {
     // Synchronisée avec le tag par .github/workflows/packagist-publish.yml.
-    public const VERSION = '0.1.56';
+    public const VERSION = '0.1.57';
 
     public static function calculateBuilding(Dto\BuildingInput $input): Dto\BuildingResult
     {
