@@ -49,12 +49,29 @@ final class CetAccumulationCalculatorTest extends TestCase
         }
     }
 
-    public function testAutreThermodynamiquePeriode2027UtiliseLeCopDoubleServiceRecent(): void
+    public function testAutreThermodynamiquePeriode2027ExigeSonCopPropreJustifie(): void
     {
-        [$doc, $node] = $this->buildNode(82);
-        $doc->getElementsByTagName('donnee_entree')->item(0)->appendChild($doc->createElement('enum_periode_installation_ecs_thermo_id', '4'));
-        (new CetAccumulationCalculator())->calculate($node, $this->makeContext($doc, '1'));
-        self::assertSame('2.8', $doc->getElementsByTagName('cop')->item(0)?->textContent);
+        foreach ([1, 6] as $method) {
+            foreach ([null, 0.0, 4.7] as $value) {
+                [$doc, $node] = $this->buildNode(82);
+                $entry = $node->getElementsByTagName('donnee_entree')->item(0);
+                $entry->appendChild($doc->createElement('enum_periode_installation_ecs_thermo_id', '4'));
+                $entry->appendChild($doc->createElement('enum_methode_saisie_carac_sys_id', (string)$method));
+                if ($value !== null) {
+                    $di = $doc->createElement('donnee_intermediaire');
+                    $di->appendChild($doc->createElement('cop', (string)$value));
+                    $node->appendChild($di);
+                }
+                try {
+                    (new CetAccumulationCalculator())->calculate($node, $this->makeContext($doc, '1'));
+                    self::assertSame(6, $method);
+                    self::assertSame(4.7, $value);
+                    self::assertSame('4.7', $doc->getElementsByTagName('cop')->item(0)?->textContent);
+                } catch (\CalculDpePHP\Engine\UnsupportedDpeModelException $exception) {
+                    self::assertTrue($method !== 6 || $value === null || $value <= 0);
+                }
+            }
+        }
     }
 
     private function buildNode(int $typeId): array

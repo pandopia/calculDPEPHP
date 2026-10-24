@@ -171,12 +171,31 @@ final class DpeEngineTest extends TestCase
 
     public function testLesQuatreCetEtLaPeriode2027SontAcceptesUniquementDansLeModele27(): void
     {
-        foreach ([82, 135, 136, 137, 138] as $type) {
+        foreach ([135, 136, 137, 138] as $type) {
             $xml = $this->xmlAvecGenerateur('generateur_ecs', 'enum_type_generateur_ecs_id', $type);
             $xml = str_replace('<enum_modele_dpe_id>1</enum_modele_dpe_id>', '<enum_modele_dpe_id>1</enum_modele_dpe_id><enum_version_id>2.7</enum_version_id>', $xml);
             $xml = str_replace('</donnee_entree>', '<enum_periode_installation_ecs_thermo_id>4</enum_periode_installation_ecs_thermo_id></donnee_entree>', $xml);
             $result = $this->engine()->calculate($xml);
             self::assertSame((string)$type, $result->getElementsByTagName('enum_type_generateur_ecs_id')->item(0)?->textContent);
+        }
+    }
+
+    public function testLeCetGenerique2027NeTraverseLeGardeQuAvecSonCopJustifie(): void
+    {
+        foreach ([1, 6] as $method) {
+            foreach ([null, 0, 4.7] as $cop) {
+                $doc = new \DOMDocument();
+                $doc->loadXML('<dpe><administratif><enum_version_id>2.7</enum_version_id></administratif><logement><generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>82</enum_type_generateur_ecs_id><enum_periode_installation_ecs_thermo_id>4</enum_periode_installation_ecs_thermo_id><enum_methode_saisie_carac_sys_id>' . $method . '</enum_methode_saisie_carac_sys_id></donnee_entree>' . ($cop === null ? '' : '<donnee_intermediaire><cop>' . $cop . '</cop></donnee_intermediaire>') . '</generateur_ecs><sortie><temoin>123</temoin></sortie></logement></dpe>');
+                $before = $doc->saveXML();
+                try {
+                    $this->engine()->calculateDocument($doc);
+                    self::assertSame(6, $method);
+                    self::assertSame(4.7, $cop);
+                } catch (UnsupportedDpeModelException $exception) {
+                    self::assertTrue($method !== 6 || $cop === null || $cop <= 0);
+                    self::assertSame($before, $doc->saveXML());
+                }
+            }
         }
     }
 

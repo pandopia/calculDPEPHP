@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
 final class Pac2027PipelineTest extends TestCase
 {
     #[DataProvider('typesRecents')]
-    public function testLeParcoursCompletConsommeLesPerformancesRecentes(int $type, float $expectedScop, int $boilerType = 149, bool $predictive = false, bool $solar = false): void
+    public function testLeParcoursCompletConsommeLesPerformancesRecentes(int $type, float $expectedScop, int $boilerType = 149, bool $predictive = false, bool $solar = false, int $ecsType = 136): void
     {
         $root = dirname(__DIR__, 3);
         $doc = new DOMDocument();
@@ -59,10 +59,17 @@ final class Pac2027PipelineTest extends TestCase
             }
         }
         foreach ($xp->query('//generateur_ecs/donnee_entree') as $entry) {
-            $this->set($entry, 'enum_type_generateur_ecs_id', $boilerType === 182 ? '144' : '136');
+            $this->set($entry, 'enum_type_generateur_ecs_id', $boilerType === 182 ? '144' : (string)$ecsType);
             $this->set($entry, 'enum_type_energie_id', $boilerType === 182 ? '5' : '1');
             $this->set($entry, 'volume_stockage', '200');
             $this->set($entry, 'enum_type_stockage_ecs_id', '3');
+            if ($ecsType === 82) {
+                $this->set($entry, 'enum_periode_installation_ecs_thermo_id', '4');
+                $this->set($entry, 'enum_methode_saisie_carac_sys_id', '6');
+                $di = $xp->query('../donnee_intermediaire', $entry)->item(0);
+                if (!$di instanceof DOMElement) { $di = $entry->parentNode->appendChild($doc->createElement('donnee_intermediaire')); }
+                $this->set($di, 'cop', '4.7');
+            }
         }
         if ($solar) {
             foreach ($xp->query('//installation_ecs/donnee_entree') as $entry) {
@@ -84,7 +91,7 @@ final class Pac2027PipelineTest extends TestCase
             self::assertGreaterThan(0, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/rendement_generation)'));
             self::assertGreaterThan(0, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/qp0)'));
         } else {
-            self::assertEqualsWithDelta(2.7, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/cop)'), 1e-12);
+            self::assertEqualsWithDelta($ecsType === 82 ? 4.7 : 2.7, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/cop)'), 1e-12);
         }
         if ($boilerType === 182) {
             self::assertGreaterThan(0, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/rendement_stockage)'));
@@ -114,6 +121,7 @@ final class Pac2027PipelineTest extends TestCase
         yield 'PAC récente et ECS solaire 2.7' => [173, 3.4, 149, false, true];
         yield 'autre thermodynamique électrique justifié' => [117, 3.15];
         yield 'autre thermodynamique gaz justifié' => [118, 1.5];
+        yield 'CET générique 2027 avec COP propre' => [173, 3.4, 149, false, false, 82];
     }
 
     private function set(DOMElement $entry, string $name, string $value): void

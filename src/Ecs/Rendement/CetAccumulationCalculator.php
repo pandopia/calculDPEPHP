@@ -78,11 +78,20 @@ final class CetAccumulationCalculator implements CalculatorInterface
         // selon la période d'installation (open3cl 13.2_generateur_pac.js).
         if ($typeId === 82) {
             $periode = $accessor->getIntOrNull('./donnee_entree/enum_periode_installation_ecs_thermo_id', $node);
+            if ($periode === 4) {
+                // Le classeur 2.7 ne rattache pas le type générique 82 à une
+                // des quatre familles 135–138. Ne pas inventer cette famille.
+                $cop = self::justifiedCop($node, $accessor);
+                if ($cop === null) {
+                    throw new \CalculDpePHP\Engine\UnsupportedDpeModelException('CET générique 82 depuis 2027 : COP propre connu et justifié requis, aucun forfait ADEME publié pour ce type.');
+                }
+                $accessor->setChildValue($accessor->ensureDonneeIntermediaire($node), 'cop', $cop);
+                return;
+            }
             $typeId  = match ($periode) {
                 1       => 10,
                 2       => 11,
                 3       => 12,
-                4       => 138, // XSD : installation depuis 2027
                 default => 10, // période inconnue → la plus pénalisante
             };
         }
@@ -106,13 +115,7 @@ final class CetAccumulationCalculator implements CalculatorInterface
         // §14.2 et méthode de saisie 6 du XSD : une performance réelle
         // justifiée n'est pas un résultat forfaitaire à recalculer. Le champ
         // cop propre à ce CET est préservé par OutputPurger.
-        if ($accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node) === 6) {
-            $copSaisi = $accessor->getFloatOrNull('./donnee_entree/cop', $node)
-                ?? $accessor->getFloatOrNull('./donnee_intermediaire/cop', $node);
-            if ($copSaisi !== null && $copSaisi > 0.0) {
-                $cop = $copSaisi;
-            }
-        }
+        $cop = self::justifiedCop($node, $accessor) ?? $cop;
 
         // Le XSD définit `rendement_generation` comme « le rendement de
         // génération dans le cas où le rendement de stockage est séparé du
@@ -121,5 +124,14 @@ final class CetAccumulationCalculator implements CalculatorInterface
         // ballon intégré, donc un COP et pas de Rg séparé.
         $di = $accessor->ensureDonneeIntermediaire($node);
         $accessor->setChildValue($di, 'cop', $cop);
+    }
+
+    /** §14.2 p.95 : performance réelle propre, méthode de saisie 6 du XSD. */
+    public static function justifiedCop(DOMElement $node, NodeAccessor $accessor): ?float
+    {
+        if ($accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node) !== 6) { return null; }
+        $cop = $accessor->getFloatOrNull('./donnee_entree/cop', $node)
+            ?? $accessor->getFloatOrNull('./donnee_intermediaire/cop', $node);
+        return $cop !== null && is_finite($cop) && $cop > 0.0 ? $cop : null;
     }
 }

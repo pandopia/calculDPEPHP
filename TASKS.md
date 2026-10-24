@@ -600,7 +600,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K63 — Modèle DPE 2.7 : technologies et ENR restant à couvrir
 
-- [~CB] Owner: CB | Phase: K | Priorité: haute
+- [ ] Owner: — | Phase: K | Priorité: haute
 - Sources : `editeur/public/schemas/DPEv2.7.xsd` (V10.0.0, ADEME du
   16/10/2026) et `resources/textes/arrete-2026-06-11-epbd.pdf`
   (JO du 13/08/2026, texte 23, entrée en vigueur au 01/01/2027).
@@ -611,8 +611,10 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   garde et sourcer chaque nouvelle valeur avant de le lever.
 - Les CET 135–138 sont couverts par les six lignes COP de la feuille scop
   ADEME 05aabba7, avec stockage inclus et saisie justifiée prioritaire. La
-  période ECS thermo 4 est admise en 2.7 pour ces types et le type 82,
-  pas pour requalifier un ancien type daté. Les anciens modèles sont inchangés.
+  période ECS thermo 4 est admise en 2.7 pour ces types ; le type générique
+  82 exige un COP propre justifié en méthode 6 (aucune ligne 2027 ne le
+  rattache à une famille). Ne pas requalifier un ancien type daté. Les
+  anciens modèles sont inchangés.
 - Les neuf PAC CH 172–176 et 178–181 ont leur SCOP propre (18 lignes
   ADEME), leur classification de famille et leur répartition hybride.
   Les groupes d'émission du classeur sont sélectionnés uniquement en 2.7

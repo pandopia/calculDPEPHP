@@ -193,12 +193,15 @@ final class DpeEngine
                     continue;
                 }
                 // La période 4 décrit les CET depuis 2027. Les nouveaux
-                // enums 135-138 et l'« autre thermodynamique » 82 sont couverts
-                // par la feuille officielle scop (lignes 108-113). Les anciens
+                // enums 135-138 sont couverts par la feuille officielle scop
+                // (lignes 108-113). Le type générique 82 exige un COP propre
+                // justifié : aucune ligne 2027 ne le rattache à une famille. Les anciens
                 // enums datés ne sont pas requalifiés depuis leur seule période.
                 if ($balise === 'generateur_ecs' && $champ === 'enum_periode_installation_ecs_thermo_id'
                     && $valeur === 4.0 && $version !== null && version_compare($version, '2.7', '>=')
-                    && in_array($accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $equipement), [82, 135, 136, 137, 138], true)) {
+                    && (in_array($accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $equipement), [135, 136, 137, 138], true)
+                        || ($accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $equipement) === 82
+                            && \CalculDpePHP\Ecs\Rendement\CetAccumulationCalculator::justifiedCop($equipement, $accessor) !== null))) {
                     continue;
                 }
                 if ($valeur !== null && ($maximum === null || $valeur > $maximum)) {
