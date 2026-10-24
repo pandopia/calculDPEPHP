@@ -292,16 +292,22 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K06 — Écarts résiduels de génération ECS
 
-- [~CB] Owner: CB | Phase: K | Estimation: 4h | Priorité: moyenne
+- [ ] Owner: __ | Phase: K | Estimation: 4h | Priorité: moyenne
 - Remonter d'abord aux caractéristiques amont (Pn, Rpn, QP0) : suites K85
   et K95 ; variantes déjà instruites dans les archives K31/K56. Les verdicts
   COP et sérialisation sont dans TASKS_DONE.md, pas à réinstruire.
-- **QP0 bois ECS n'est pas implémenté dans la table**, qui met les pertes à
-  zéro par simplification. §14.1.2 p.94 renvoie pourtant à §13.2.2.3 p.89–90.
-  Prototype mesuré sur 694 cas : +3 numériques et +1 classe, quatre budgets
-  dépassés d'un écart, aucun relevé. Qualifier d'abord les huit nouveaux
-  exports `ademe-ecs-bois-hybride-2026-10`, dont plusieurs publient les
-  caractéristiques gaz pour une chaudière bois. Mesure dans TASKS_DONE.md.
+- **QP0 des hybrides bois et poêles bouilleurs reste à qualifier.** Les
+  chaudières bois/charbon ordinaires sont couvertes selon §14.1.2 p.94 et
+  §13.2.2.3 p.88–90. La variante globale incluant les hybrides reste écartée
+  (mesure dans TASKS_DONE.md) : leurs exports publient parfois les
+  caractéristiques gaz pour une chaudière bois.
+- **Nouveaux cas ECS seuls (16)** : 2687E2488430K porte un Pn équivalent
+  saisi et QP0 identique au chauffage collectif, sans clé mixte ; le calcul
+  non linéaire sur ce Pn réduit n'est pas celui de la référence. 2563E3941359I
+  porte aussi une puissance virtualisée. Reprendre avec K95, sans inventer
+  d'association. Les classes de 2691E2041329J/2691E2041336Q divergent après
+  restauration des pertes : leur régime ECS déclaré individuel et leur
+  puissance de 97,2 kW demandent une qualification amont, pas un seuil adapté.
 - **Échelle à qualifier** : 2400E0669495Y et
   2400E0669425G : ils déclarent `nombre_appartement = 1` pour un immeuble de
   822 m² desservi par sept installations d'ECS. L'échelle est le suspect, pas

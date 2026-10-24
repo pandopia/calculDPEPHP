@@ -13,6 +13,7 @@ declare(strict_types=1);
  *   'pn_max_kw' → float (seuil Pn supérieur inclus, INF pour le dernier palier)
  *   'rpn'       → float (fraction 0-1) ou Closure($pn_kW):float
  *   'qp0_pct'   → float (% de Pn) ou null (qp0 à zéro/calculé par formula)
+ *   'qp0_w'     → Closure($pn_kW):float, pertes bois absolues en W
  *   'pveil'     → float W (0 si pas de veilleuse)
  *
  * Note : pour accumulateur gaz (IDs 58-62, 105-109), open3cl surcharge qp0
@@ -21,11 +22,12 @@ declare(strict_types=1);
  * IDs alias : 110-114 (chauffe-eau gpl/propane/butane) sont traités identiquement
  * aux IDs 63-67 ; 105-109 identiquement aux 58-62.
  *
- * @spec-section 14.1
- * @spec-pages   93-95
+ * @spec-section 13.2.2.3, 14.1
+ * @spec-pages   88-90, 93-95
  * @spec-source  resources/specsplitted/14-rendement-ecs-generateurs/01-combustion.md
+ * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
  * @generated-on 2026-04-30
- * @status partial — manque QP0 des chaudières bois et assimilées (TASK-K06)
+ * @status partial — manque QP0 des hybrides bois et poêles bouilleurs (TASK-K06)
  * @source       open3cl tv.js (IDs 79-93 du tableau generateur_combustion)
  */
 
@@ -47,11 +49,7 @@ $e90_2    = $pnFn(2.0, 90.0);   // (90+2×log10(Pn))/100  (bois >2019 20<Pn≤70
 $e91_2    = $pnFn(2.0, 91.0);   // (91+2×log10(Pn))/100  (bois granulés >2019 Pn≤20)
 $e92_2    = $pnFn(2.0, 92.0);   // (92+2×log10(Pn))/100  (bois granulés >2019 20<Pn≤70)
 
-// qp0 bois (pertes à l'arrêt, valeur absolue en W, % de Pn calculée dynamiquement)
-// Pour ces formules, open3cl retourne un pourcentage mais l'applique différemment.
-// Pour simplifier, on utilise des qp0_pct null (qp0=0 si non explicitement fourni).
-
-return [
+$table = [
     // ─── Chaudières gaz classique ───────────────────────────────────────────
     // ID 45 : Chaudière gaz classique avant 1981
     45  => [['pn_max_kw' => INF, 'rpn' => $e84_2, 'qp0_pct' => 0.04, 'pveil' => 240.0]],
@@ -417,3 +415,31 @@ return [
     // Mêmes formules que bois bûche pour les périodes correspondantes
     // (simplification conservative §14.1)
 ];
+
+// §13.2.2.3 p.88-90 et §14.1.2 p.94 : QP0 est une puissance absolue
+// en kW, et les chaudières charbon suivent les chaudières bois bûche.
+// La ligne bûche/plaquette 2004-2012 est tronquée dans le PDF ; son
+// exposant -0,4 est confirmé par Open3CL/engine src/tv.js, même famille,
+// révision aa78053f549b93509009d195b9332ac85f33fb4d.
+// Les hybrides et poêles bouilleurs restent à qualifier (TASK-K06).
+// [enums ECS, coefficient, exposant, QP0 70..400 kW, QP0 >400 kW].
+$pertesBois = [
+    [[15, 22, 29, 85], 0.08, 0.73, 1.8, 1.1], // avant 1978, p.89
+    [[16, 23, 30, 86], 0.07, 0.70, 1.4, 0.8], // 1978-1994, p.89
+    [[17, 18, 19, 20, 21, 24, 25, 26, 27, 28, 31, 32, 33, 34,
+      87, 88, 89, 90, 91], 0.085, 0.60, 1.1, 0.5], // depuis 1995, p.89-90
+];
+foreach ($pertesBois as [$types, $coefficient, $exposant, $moyenne, $grande]) {
+    foreach ($types as $type) {
+        foreach ($table[$type] as &$palier) {
+            $palier['qp0_w'] = match (true) {
+                $palier['pn_max_kw'] <= 70.0 => static fn(float $pnKw): float => 1000 * $coefficient * ($pnKw ** $exposant),
+                $palier['pn_max_kw'] <= 400.0 => static fn(float $pnKw): float => 1000 * $moyenne,
+                default => static fn(float $pnKw): float => 1000 * $grande,
+            };
+        }
+        unset($palier);
+    }
+}
+
+return $table;
