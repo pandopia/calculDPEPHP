@@ -17,7 +17,7 @@ use DOMElement;
  *
  * Agrégation BAT vs ZONE :
  *   BAT  : ef_conso.conso_ch = Σ(install.conso_ch × rdim)
- *   ZONE générée : ef_conso.conso_ch = building_total_conso_ch × cle_repartition_ch
+ *   ZONE générée : ef_conso.conso_ch = Σ(conso_install × rdim × clé_install)
  *   ZONE directe : aucune seconde clé de chauffage, le besoin est déjà local.
  *
  * cle_repartition_ch et cle_repartition_ecs sont des données d'entrée
@@ -80,7 +80,6 @@ final class EfConsoCalculator implements CalculatorInterface
         // ── 2. Chauffage ──────────────────────────────────────────────────────
         [$buildingConsoChTotal, $buildingConsoChDepTotal, $cleRepartitionCh] =
             $this->aggregateChauffage($accessor, $node, $nbreAppt, $shImmeuble);
-        $cleRepartitionCh = GeneratedApartment::heatingShare($node, $accessor, $cleRepartitionCh);
 
         $consoChEf    = $isZone ? $buildingConsoChTotal    * $cleRepartitionCh : $buildingConsoChTotal;
         $consoChDepEf = $isZone ? $buildingConsoChDepTotal * $cleRepartitionCh : $buildingConsoChDepTotal;
@@ -164,7 +163,7 @@ final class EfConsoCalculator implements CalculatorInterface
 
         $totalConso    = 0.0;
         $totalConsoDep = 0.0;
-        $cleRepartition = 1.0;
+        $isZone = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement) !== null;
 
         foreach ($collection->childNodes as $install) {
             if (!$install instanceof DOMElement || $install->nodeName !== 'installation_chauffage') {
@@ -176,16 +175,15 @@ final class EfConsoCalculator implements CalculatorInterface
             $conso    = $accessor->getFloatOrNull('./donnee_intermediaire/conso_ch',           $install) ?? 0.0;
             $consoDep = $accessor->getFloatOrNull('./donnee_intermediaire/conso_ch_depensier', $install) ?? 0.0;
 
-            $totalConso    += $conso    * $rdimEff;
-            $totalConsoDep += $consoDep * $rdimEff;
-
             $cle = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ch', $install);
-            if ($cle !== null && $cle > 0.0) {
-                $cleRepartition = $cle;
-            }
+            // §17.2.2.2 p.115-116 : répartir chaque installation avant de
+            // sommer. Les clés des installations voisines sont indépendantes.
+            $part = $isZone ? GeneratedApartment::heatingShare($logement, $accessor, $cle !== null && $cle > 0.0 ? $cle : 1.0) : 1.0;
+            $totalConso    += $conso    * $rdimEff * $part;
+            $totalConsoDep += $consoDep * $rdimEff * $part;
         }
 
-        return [$totalConso, $totalConsoDep, $cleRepartition];
+        return [$totalConso, $totalConsoDep, 1.0];
     }
 
     /**
@@ -215,7 +213,7 @@ final class EfConsoCalculator implements CalculatorInterface
 
         $totalConso    = 0.0;
         $totalConsoDep = 0.0;
-        $cleRepartition = 1.0;
+        $isZone = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement) !== null;
 
         foreach ($collection->childNodes as $install) {
             if (!$install instanceof DOMElement || $install->nodeName !== 'installation_ecs') {
@@ -234,16 +232,15 @@ final class EfConsoCalculator implements CalculatorInterface
                 $installConsoDep += $accessor->getFloatOrNull('./donnee_intermediaire/conso_ecs_depensier', $gen) ?? 0.0;
             }
 
-            $totalConso    += $installConso    * $rdimEff;
-            $totalConsoDep += $installConsoDep * $rdimEff;
-
             $cle = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
-            if ($cle !== null && $cle > 0.0) {
-                $cleRepartition = $cle;
-            }
+            // §17.2.2.3 p.117 : même règle pour l'ECS, jamais la dernière
+            // clé rencontrée appliquée à la somme du bâtiment.
+            $part = $isZone && $cle !== null && $cle > 0.0 ? $cle : 1.0;
+            $totalConso    += $installConso    * $rdimEff * $part;
+            $totalConsoDep += $installConsoDep * $rdimEff * $part;
         }
 
-        return [$totalConso, $totalConsoDep, $cleRepartition];
+        return [$totalConso, $totalConsoDep, 1.0];
     }
 
     private function computeRdimChauffage(

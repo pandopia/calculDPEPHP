@@ -36,7 +36,7 @@ use DOMElement;
  * est réservée aux appartements générés depuis le DPE immeuble (§17.2).
  *
  * @spec-section 15.1, 17.2.2.2
- * @spec-pages   97-98, 115-116
+ * @spec-pages   97-98, 115-117
  * @spec-source  resources/specsplitted/15-auxiliaires/01-aux-generation.md
  * @spec-source  resources/specsplitted/17-collectif/02-appartement.md
  * @xml-input    installation_chauffage.generateur_chauffage.donnee_entree.{enum_type_energie_id,
@@ -294,7 +294,6 @@ final class AuxGenerationCalculator implements CalculatorInterface
 
         $totalQ    = 0.0;
         $totalQDep = 0.0;
-        $cle       = 1.0;
 
         foreach ($collection->childNodes as $install) {
             if (!$install instanceof DOMElement || $install->nodeName !== 'installation_ecs') {
@@ -307,7 +306,11 @@ final class AuxGenerationCalculator implements CalculatorInterface
             $ratioVirt = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation',        $install) ?? 1.0;
             // rdim : nombre d'unités (appartements) représentées par cette installation.
             // Comme pour conso_ecs, la conso d'aux est agrégée à l'échelle bâtiment au niveau sortie.
-            $rdim      = $this->ecsInstallationMultiplicity($accessor, $install);
+            // §17.2.2.3 p.117 : la clé porte sur l'installation qui produit
+            // ce besoin, pas sur la somme de toutes les installations ECS.
+            $cleDeclaree = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
+            $partLogement = $isZone && $cleDeclaree !== null && $cleDeclaree > 0.0 ? $cleDeclaree : 1.0;
+            $rdim = $this->ecsInstallationMultiplicity($accessor, $install) * $partLogement;
 
             foreach ($install->getElementsByTagName('generateur_ecs') as $gen) {
                 if (!$gen instanceof DOMElement) {
@@ -339,14 +342,9 @@ final class AuxGenerationCalculator implements CalculatorInterface
                     $totalQDep += $rdim * $paux * $besoinDep / $pn;
                 }
             }
-
-            $cleInst = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
-            if ($cleInst !== null && $cleInst > 0.0) {
-                $cle = $cleInst;
-            }
         }
 
-        return [$totalQ, $totalQDep, $cle];
+        return [$totalQ, $totalQDep, 1.0];
     }
 
     /**
