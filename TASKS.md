@@ -327,6 +327,13 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   Le repli par typologie (`enum_typologie_logement_id`) la précède quand les
   groupes concordent. Seul `2657E1981571R` (100 logements, 20 visites, deux
   installations) en dépend encore — 87,6 %, 25 écarts.
+- **L'ordre ECS est désormais mesuré sur le corpus élargi** : inversion des
+  seules installations ECS, remise en ordre des nœuds après recalcul, chauffage
+  et données physiques inchangés. Sur 120 fichiers à plusieurs installations,
+  41 changent de valeurs calculées, dont 26 changent leurs sorties globales
+  (contrôle numérique à 1e-9). Le stockage échantillonné et ses visites
+  attribuées par position sont la première racine visible ; ce n'est plus un
+  seul cas. Ne pas substituer un tri arbitraire à l'association manquante.
 - **Cas à part, à ne pas traiter ici** : `2513E1578589Q` (18 logements,
   2 visites) publie des pertes de stockage récupérées valant exactement
   **1/18** des nôtres, soit celles d'un seul ballon sous un besoin de chauffage
