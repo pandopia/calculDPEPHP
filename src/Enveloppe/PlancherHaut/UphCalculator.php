@@ -180,7 +180,8 @@ final class UphCalculator implements CalculatorInterface
      *       description mentionne « comble »                          → 'combles'
      *       sinon type_plancher_haut ∈ TYPE_PH_COMBLES                → 'combles'
      *       sinon                                                     → 'terrasse'
-     *   • toute autre adjacence (local non chauffé adjacent)        → 'combles'
+     *   • toute autre adjacence (local non chauffé ou non résidentiel)
+     *     → 'terrasse', prescription explicite en bas de la p.21
      */
     private function resolveConfig(?int $adjacence, ?int $typePlancherHaut, ?string $description): string
     {
@@ -198,7 +199,7 @@ final class UphCalculator implements CalculatorInterface
             $adjacence === 22 && in_array($typePlancherHaut, self::TYPE_PH_COMBLES, true) => 'combles',
             $adjacence === 22                                      => 'terrasse',
             $adjacence === null                                    => 'terrasse',
-            default                                                 => 'combles',
+            default                                                 => 'terrasse',
         };
     }
 }
