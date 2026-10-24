@@ -152,6 +152,21 @@ final class DpeEngine
      */
     private function assertOptionsConnues(NodeAccessor $accessor, DOMDocument $document): void
     {
+        // ADEME 05aabba7, feuille debits_ventilation : en 2.7 le type 1
+        // utilise qvaerat_conv=1.2 et qvarep_conv=0, contre qvarep=1.2
+        // historiquement. Tant que la nouvelle séparation aération/ventilation
+        // n'est pas implémentée, ne pas produire les anciens intermédiaires.
+        $version = $accessor->getStringOrNull('//administratif/enum_version_id');
+        if ($version !== null && version_compare($version, '2.7', '>=')) {
+            foreach ($document->getElementsByTagName('ventilation') as $ventilation) {
+                if ($accessor->getIntOrNull('./donnee_entree/enum_type_ventilation_id', $ventilation) === 1) {
+                    throw new UnsupportedDpeModelException(
+                        'aération par ouverture des fenêtres : la séparation ventilation/aération du modèle DPE 2.7 '
+                        . 'n’est pas encore implémentée. Le fichier est refusé avant purge — voir TASK-K63.',
+                    );
+                }
+            }
+        }
         $options = [
             ['installation_ecs', 'enum_type_installation_solaire_id', 4],
             ['installation_ecs', 'enum_bouclage_reseau_ecs_id', 3],

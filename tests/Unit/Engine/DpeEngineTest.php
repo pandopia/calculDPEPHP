@@ -84,6 +84,33 @@ final class DpeEngineTest extends TestCase
         $this->expectNotToPerformAssertions();
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('aerationsVersionnees')]
+    public function testAeration27RefuseeSansChangerLesAnciensDpe(?string $version, int $type, bool $refus): void
+    {
+        $doc = new \DOMDocument();
+        $doc->loadXML('<dpe>' . ($version === null ? '' : '<administratif><enum_version_id>' . $version . '</enum_version_id></administratif>')
+            . '<logement><ventilation><donnee_entree><enum_type_ventilation_id>' . $type . '</enum_type_ventilation_id></donnee_entree></ventilation>'
+            . '<sortie><a_conserver>123</a_conserver></sortie></logement></dpe>');
+        $before = $doc->saveXML();
+        try {
+            $this->engine()->calculateDocument($doc);
+            self::assertFalse($refus, 'La répartition ventilation/aération 2.7 ne doit pas utiliser silencieusement la méthode historique.');
+        } catch (UnsupportedDpeModelException $exception) {
+            self::assertTrue($refus);
+            self::assertStringContainsString('aération', $exception->getMessage());
+            self::assertSame($before, $doc->saveXML());
+        }
+    }
+
+    public static function aerationsVersionnees(): iterable
+    {
+        yield 'historique sans version' => [null, 1, false];
+        yield 'modèle 2.6' => ['2.6', 1, false];
+        yield 'aération 2.7 non couverte' => ['2.7', 1, true];
+        yield 'ventilation naturelle par conduit 2.7' => ['2.7', 2, false];
+        yield 'VMC 2.7' => ['2.7', 3, false];
+    }
+
     /**
      * Document minimal portant un générateur du type donné.
      *

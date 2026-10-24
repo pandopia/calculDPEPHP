@@ -573,7 +573,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K63 — Modèle DPE 2.7 : technologies et ENR restant à couvrir
 
-- [~CB] Owner: CB | Phase: K | Priorité: haute
+- [ ] Owner: __ | Phase: K | Priorité: haute
 - Sources : `editeur/public/schemas/DPEv2.7.xsd` (V10.0.0, ADEME du
   16/10/2026) et `resources/textes/arrete-2026-06-11-epbd.pdf`
   (JO du 13/08/2026, texte 23, entrée en vigueur au 01/01/2027).
@@ -601,8 +601,9 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   énergétique avant de lever ce garde. Un EER seul ne suffit pas.
 - **Aération 2.7** : la feuille `debits_ventilation` ajoute `qvaerat_conv` et
   déplace le débit d'ouverture des fenêtres (type 1) hors de `qvarep_conv`.
-  Sourcer la nouvelle répartition ventilation/aération et ses sorties ; ne
-  pas écraser les valeurs historiques pour les anciens modèles.
+  Ce type est refusé avant purge pour le modèle 2.7 uniquement. Sourcer la
+  nouvelle répartition ventilation/aération et ses sorties avant de lever le
+  garde ; ne pas écraser les valeurs historiques des anciens modèles.
 - **ENR réseau** : `prod_enr_rcfu` reste à 0. Les taux ENR/récupération sont
   désormais extraits exhaustivement du classeur ADEME (six éditions, 5 643
   lignes, source figée et SHA-256 dans `reference/tv_reseau_chaleur_enr`).
