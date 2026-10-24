@@ -384,6 +384,11 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   Ne pas modifier le partage pour compenser Rpn/QP0.
 - Les six cases climatiques d'altitude 3 vides sont bien absentes de l'annexe,
   pas des trous de transcription : ne pas les remplir par interpolation.
+- Suite distincte : `CollectifBaseAppoint` publie une seule part de besoin,
+  conventionnelle, réutilisée par les auxiliaires de génération dépensiers.
+  Qualifier le partage par scénario (§9.8), notamment Bch=0 / Bch_dep>0,
+  avant de modifier `PartBesoinGenerateur` et ses consommateurs ; le correctif
+  de publication des consommations nulles ne change pas ce partage.
 
 ### TASK-K72 — `2605E1578332M` : un besoin de froid qui contredit ses propres apports
 
