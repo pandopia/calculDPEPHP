@@ -19,6 +19,37 @@ une.
 
 ## Enquêtes closes
 
+### Thermodynamique gaz CH — six références sans SCOP propre (24/10/2026, nuit)
+
+Sélection publique avant calcul : `qs=type_generateur_n1_installation_n1:*thermodynamique*gaz*`,
+tri par date décroissante, taille 8 ; six résultats au total, tous téléchargés :
+2259E0123697X, 2159E0907317C, 2171E0773147E, 2171E0773138V,
+2193E0731052Z et 2175E0710986N. Les six déclarent le type CH 118 et la
+méthode forfaitaire 1, sans SCOP. Les quatre exports du modèle 1.1 publient
+une consommation chauffage de 1 ; le plus récent publie des caractéristiques
+de combustion sous ce type thermodynamique, pas une performance justifiée.
+
+Pas de forfait à inférer de ces sorties, pas d'intégration comme étalon ni de
+budget initialisé. Le refus avant purge reste en place. Rouvrir sur un export
+complet doté d'un SCOP propre justifié ou un forfait réglementaire pour cette
+famille. La requête équivalente ECS thermodynamique gaz retourne zéro résultat.
+
+### Solaire ECS à forte couverture — sondage sans nouveau manque calculable (24/10/2026, nuit)
+
+Douze premiers résultats de `facteur_couverture_solaire_n1:[0.9 TO 1]`,
+par date décroissante, sur 7 471 résultats, sélectionnés avant calcul :
+2677E2659661V, 2624E2667112J, 2624E2655656T, 2625E2655638C,
+2621E2645560I, 2601E2649985T, 2601E2649585J, 2601E2652048C,
+2601E2652292M, 2616E2651739U, 2601E2648960I et 2633E2652126I.
+
+Sondage brut : 497 numériques hors tolérance, 21 manquantes et trois
+supplémentaires ; aucun crash ni écart de classe. Les manques relèvent des
+rendements séparés, rubriques de toiture et auxiliaires froid déjà instruits.
+Trois exports natifs 0.1.0 sérialisent la production solaire en Wh alors que
+le XSD la documente en kWh. Aucune conversion générale ni copie d'epsilon
+n'est déduite de ces références ; aucun nouveau budget n'est initialisé.
+Rouvrir sur une nouvelle entrée calculable ou une règle de publication datée.
+
 ### Balises manquantes — inventaire résiduel sur 710 cas (24/10/2026, soir)
 
 Après les corrections, **690 balises restent manquantes**, toutes conservées

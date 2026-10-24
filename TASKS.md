@@ -318,6 +318,12 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   §13.2.2.3 p.88–90. La variante globale incluant les hybrides reste écartée
   (mesure dans TASKS_DONE.md) : leurs exports publient parfois les
   caractéristiques gaz pour une chaudière bois.
+- Audit XSD exact du 24/10 au soir : après retrait des zéros inapplicables
+  des radiateurs gaz, douze blocs restent invalides sur 714 cas. Onze ECS
+  portent QP0=0 (notamment hybrides/bouilleurs et gaz instantané) ; un
+  chauffage porte Rpint=0. Sur 2469E2496824M, Pn équivalent=35,28 W est
+  aussi sous la borne XSD. Reprendre les caractéristiques et la virtualisation,
+  pas un remplacement par epsilon ; `bin/check-output-schema` les localise.
 - **Nouveaux cas ECS seuls (16)** : 2687E2488430K porte un Pn équivalent
   saisi et QP0 identique au chauffage collectif, sans clé mixte ; le calcul
   non linéaire sur ce Pn réduit n'est pas celui de la référence. 2563E3941359I
