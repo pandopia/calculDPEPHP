@@ -19,6 +19,35 @@ une.
 
 ## Enquêtes closes
 
+### Émetteur 41 — auxiliaires génériques non activés (24/10/2026, nuit)
+
+Audit du classeur public ADEME 52792fb9 : 50 associations d'émission,
+50 de régulation et 98 de distribution non ambiguës concordent avec le
+moteur. L'émetteur 41 apparaît en revanche sur les douze lignes de réseau,
+pas seulement « sans réseau ». Deux références le déclarent sur 750 cas :
+`2501E0132767Q` (ligne 1, Rd=1) et `2605E2654977X` (ligne 6, Rd=0,91).
+
+Trois prototypes contrôlés sur les mêmes 750 cas, même arbre `fe7e3a8`
+sans source non commitée, même juge et mêmes tolérances :
+
+| Variante | Numériques | Chaînes | Résolus / nouveaux | Budget à relever |
+|---|---:|---:|---:|---:|
+| Départ | 20 297 | 55 | — | aucun |
+| Rd seul, retenu séparément | 20 297 | 55 | 1 / 1 | aucun |
+| Auxiliaire seul | 20 298 | 55 | 0 / 1 | +1 sur 2605E2654977X |
+| Rd et auxiliaire | 20 297 | 56 | 1 / 2 | +1 sur 2605E2654977X |
+
+Manquantes 715 et supplémentaires 2 476 inchangées. Les auxiliaires des
+réseaux génériques « air/eau » ont été évalués avec la ligne « Autres cas »
+de §15.2.1 p.98–99, sans les transformer en plancher chauffant : 479,128620
+kWh sur ce cas, contre 438,058779 publiés. L'inversion de la même formule,
+Sh=91,51 m² et deux niveaux, donne ΔPem=30,000002 kPa, pas 35 : la référence
+semble utiliser la ligne radiateur monotube malgré l'émission générique.
+Elle diffère aussi en Rpn, Rpint et QP0 en amont ; aucune valeur n'est
+ajustée pour compenser ces écarts. Les variantes d'auxiliaires restent hors
+du moteur, aucun budget relevé. Reprendre en TASK-K100 sur des données
+permettant de qualifier l'émission réelle ou une clarification réglementaire.
+
 ### Froid modèle 1.1 — douze exports historiques non retenus (24/10/2026, nuit)
 
 Sélection publique avant calcul : `version_dpe:1.1 AND surface_climatisee:[1 TO *]`,

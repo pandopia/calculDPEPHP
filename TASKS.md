@@ -59,6 +59,21 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase K — Conformité au corpus ADEME
 
+### TASK-K100 — Réseau des émetteurs génériques : auxiliaires à qualifier
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- L'index public ADEME de distribution CH associe le type générique 41 aux
+  douze réseaux possibles. Rd utilise désormais cette nature sans requalifier
+  l'émission ; le libellé générique seul ne prouve pas l'absence de circuit.
+- `2605E2654977X` : réseau individuel BT explicite (TV 6), mais auxiliaire
+  encore nul. §15.2.1 « Autres cas » (ΔPem=35, Fcot=0,802) produit 479,129 kWh,
+  contre 438,059 publiés, qui impliquent ΔPem≈30 — un monotube non déclaré.
+- La variante auxiliaires seule ajoute un numérique ; avec Rd elle ajoute
+  une classe (A/B identique sur 750 cas, chiffres dans TASKS_DONE.md). Ne pas
+  imposer le monotube ni relever le budget ; qualifier aussi Rpn/Rpint/QP0
+  amont du bouilleur granulés, déjà divergents. Aucun circuit n'est à inventer
+  pour les lignes 1 et 12 (sans réseau / fluide frigorigène).
+
 ### TASK-K99 — Apports directs ETS sans association explicite
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
