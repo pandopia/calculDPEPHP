@@ -12,8 +12,10 @@ use DOMXPath;
  *
  * §18.2 fournit le cas courant ; §18.3 remplace E, Nref et DH lorsque le
  * bâtiment est déclaré en matériaux anciens (`batiment_materiaux_anciens=1`).
- * Cette sélection est indépendante de la classe d'inertie globale, comme dans
- * l'algorithme de référence open3cl (engine.js, variable `ilpa`).
+ * La convention actuellement reproduite, également présente dans open3cl
+ * (engine.js, variable `ilpa`), traite ce drapeau comme une qualification
+ * complète. §18.3 exige pourtant une inertie lourde ; les exports où la
+ * classe publiée la contredit restent à départager (TASK-K96).
  *
  * @spec-section 18.2, 18.3
  * @spec-pages 121-145

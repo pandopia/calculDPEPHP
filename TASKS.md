@@ -54,6 +54,17 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase K — Conformité au corpus ADEME
 
+### TASK-K96 — Sollicitations anciennes : drapeau et classe d'inertie
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- §18.3 p.136 exige des matériaux anciens ET une inertie lourde. Le sélecteur
+  commun suit actuellement le seul drapeau `meteo/batiment_materiaux_anciens`,
+  comme open3cl. Quatorze références déclarent ce drapeau avec une classe
+  moyenne ou légère : départager la sémantique du drapeau et la classe publiée.
+- Variante globale `drapeau && classe ∈ {1,2}` : +448 numériques et +2 classes
+  sur les mêmes 670 cas, sans aucun autre code changé. Mesure archivée dans
+  TASKS_DONE.md ; ne pas la réactiver ni relever les budgets sans clarification.
+
 ### TASK-K94 — Volume d'intermittence des maisons multi-installations
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne

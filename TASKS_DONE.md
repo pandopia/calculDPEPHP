@@ -19,6 +19,21 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K96 — Condition d'inertie du sélecteur climatique global (24/10/2026)
+
+- A/B isolé en mémoire sur l'arbre `42f819a`, 670 cas, aucun fichier `src/`
+  non commité : imposer une classe ADEME 1 ou 2 en plus de
+  `batiment_materiaux_anciens=1` porte les numériques hors tolérance de
+  **17 843 à 18 291** (+448), les classes de 44 à 46 (+2). Manquantes 688
+  et supplémentaires 2 355 inchangées ; aucune tolérance modifiée.
+- §18.3 p.136 exprime bien les deux conditions, mais 14 références sur les
+  51 à matériaux anciens publient une classe moyenne ou légère. Le sélecteur
+  commun actuel et open3cl suivent le drapeau seul. Cette mesure ne permet
+  pas d'inventer une qualification différente pour ces seuls fichiers.
+- Ne pas rejouer cette variante sans clarification de la sémantique du
+  drapeau, des classes publiées ou export corrigé. La suite actionnable est
+  conservée en K96 ; aucun changement du sélecteur global n'est livré.
+
 ### TASK-K67 — Besoin ancien incompatible avec ses propres apports (24/10/2026)
 
 - `2242E2979513I`, modèle 2.2 du 06/04/2022 : ni erreur d'échelle ni
