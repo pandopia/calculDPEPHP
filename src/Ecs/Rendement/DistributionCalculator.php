@@ -51,7 +51,13 @@ final class DistributionCalculator implements CalculatorInterface
         $rd = 1.0; // valeur neutre si id absent
         if ($tableId !== null) {
             $tvRd = $context->tables->load('ecs/tv_rendement_distribution_ecs');
-            $rd   = (float)($tvRd[$tableId] ?? 1.0);
+            if (!array_key_exists($tableId, $tvRd)) {
+                throw new \CalculDpePHP\Engine\UnsupportedDpeModelException(
+                    'Rendement de distribution ECS : ligne ' . $tableId
+                    . ' non implémentée. La ligne 9 décrit un MTA (modèle 2.7, TASK-K63) ; aucun rendement neutre n’est substitué.',
+                );
+            }
+            $rd = (float)$tvRd[$tableId];
         }
 
         $di = $this->ensureDi($context->document, $node);

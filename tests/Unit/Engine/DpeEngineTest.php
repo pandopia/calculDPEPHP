@@ -122,6 +122,24 @@ final class DpeEngineTest extends TestCase
         }
     }
 
+    public function testLaSeuleLigneMtaNeContournePasLeRefusAvantPurge(): void
+    {
+        foreach (['2.6', '2.7'] as $version) {
+            foreach (['', '<enum_bouclage_reseau_ecs_id>1</enum_bouclage_reseau_ecs_id>'] as $bouclage) {
+                $document = new \DOMDocument();
+                $document->loadXML('<dpe><administratif><enum_version_id>' . $version . '</enum_version_id></administratif><logement><installation_ecs><donnee_entree><tv_rendement_distribution_ecs_id>9</tv_rendement_distribution_ecs_id>' . $bouclage . '</donnee_entree><donnee_intermediaire><rendement_distribution>0.74</rendement_distribution></donnee_intermediaire></installation_ecs><sortie><temoin>123</temoin></sortie></logement></dpe>');
+                $before = $document->saveXML();
+                try {
+                    $this->engine()->calculateDocument($document);
+                    self::fail('Le MTA est non implémenté même si le bouclage 4 n’est pas déclaré.');
+                } catch (UnsupportedDpeModelException $exception) {
+                    self::assertStringContainsString('tv_rendement_distribution_ecs_id', $exception->getMessage());
+                    self::assertSame($before, $document->saveXML());
+                }
+            }
+        }
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('froidsNonCouverts')]
     public function testFroidNonElectriqueRefuseAvantPurge(?int $type, ?int $energie): void
     {

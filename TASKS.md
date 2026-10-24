@@ -630,7 +630,10 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   à refaire ; voir les tests et les commits. Conserver les gardes ci-dessous.
 - **Ballons intelligents ECS 140–143 / SCF** : sourcer la formule et les
   forfaits avant de lever le refus ; scf_saisi ne doit pas être ignoré.
-- **Module thermique d'appartement** : bouclage ECS 4 encore refusé.
+- **Module thermique d'appartement** : bouclage ECS 4 et TV de distribution 9
+  refusés avant purge. La table Rd est marquée partielle : ligne 9 à 0,74
+  du classeur ADEME, pas un forfait neutre 1. Qualifier le modèle complet
+  (distribution, pertes récupérables et auxiliaires), pas le seul Rd.
 - **RCEG** : presence_rceg, fech_saisi, ftrans_saisi → fecs_rceg et
   besoin_ecs_rceg ; trouver les textes datés, pas un mapping depuis un cas.
   Source officielle complémentaire trouvée : dépôt ADEME 05aabba7,

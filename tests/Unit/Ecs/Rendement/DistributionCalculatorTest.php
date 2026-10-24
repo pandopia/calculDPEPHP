@@ -8,6 +8,7 @@ use CalculDpePHP\Ecs\Rendement\DistributionCalculator;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Tables\TableRepository;
 use DOMDocument;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -117,5 +118,39 @@ XML;
 
         $rd = (float)$doc->getElementsByTagName('rendement_distribution')->item(0)->textContent;
         $this->assertEqualsWithDelta(1.0, $rd, self::TOL);
+    }
+
+    public static function lignesHistoriques(): iterable
+    {
+        foreach ([1 => .93, 2 => .87, 3 => .83, 4 => .28, 5 => .26, 6 => .55, 7 => .52, 8 => .83] as $id => $rd) {
+            yield (string)$id => [$id, $rd];
+        }
+    }
+
+    #[DataProvider('lignesHistoriques')]
+    public function testToutesLesLignesHistoriquesGardentLeurValeur(int $id, float $expected): void
+    {
+        [$document, $node] = $this->buildInstallation($id);
+        (new DistributionCalculator())->calculate($node, $this->makeContext($document));
+        self::assertEqualsWithDelta($expected, (float)$document->getElementsByTagName('rendement_distribution')->item(0)->textContent, 1e-12);
+    }
+
+    public static function lignesNonImplementees(): iterable
+    {
+        foreach ([-1, 0, 9, 10, 42] as $id) { yield (string)$id => [$id]; }
+    }
+
+    #[DataProvider('lignesNonImplementees')]
+    public function testUneLigneInconnueNeDevientPasUnRendementNeutre(int $id): void
+    {
+        [$document, $node] = $this->buildInstallation($id);
+        $before = $document->saveXML();
+        try {
+            (new DistributionCalculator())->calculate($node, $this->makeContext($document));
+            self::fail('La ligne inconnue doit être refusée.');
+        } catch (\CalculDpePHP\Engine\UnsupportedDpeModelException $exception) {
+            self::assertStringContainsString('aucun rendement neutre', $exception->getMessage());
+            self::assertSame($before, $document->saveXML());
+        }
     }
 }

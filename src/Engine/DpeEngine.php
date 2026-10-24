@@ -188,6 +188,7 @@ final class DpeEngine
         $options = [
             ['installation_ecs', 'enum_type_installation_solaire_id', 4],
             ['installation_ecs', 'enum_bouclage_reseau_ecs_id', 3],
+            ['installation_ecs', 'tv_rendement_distribution_ecs_id', 8],
             ['emetteur_chauffage', 'enum_equipement_intermittence_id', 7],
             ['generateur_ecs', 'enum_periode_installation_ecs_thermo_id', 3],
             ['installation_ecs', 'presence_rceg', 0],
