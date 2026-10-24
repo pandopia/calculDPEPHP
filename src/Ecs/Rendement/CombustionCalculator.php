@@ -120,7 +120,8 @@ final class CombustionCalculator implements CalculatorInterface
             // rendement déjà écrit par CetAccumulationCalculator — ne pas écraser.
             // 82 « autre système thermodynamique électrique » est ramené
             // à une PAC double service par CetAccumulationCalculator.
-            if ($typeEcsId === 82 || ($typeEcsId !== null && $typeEcsId >= 1 && $typeEcsId <= 12)) {
+            if ($typeEcsId === 82 || ($typeEcsId !== null
+                && (($typeEcsId >= 1 && $typeEcsId <= 12) || ($typeEcsId >= 135 && $typeEcsId <= 138)))) {
                 return;
             }
             // §12.4.1 p.76 distingue deux lignes électriques : « générateur à

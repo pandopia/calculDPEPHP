@@ -25,7 +25,7 @@ use DOMElement;
  * @xml-input    generateur_ecs.donnee_intermediaire.cop (saisie méthode 6)
  * @xml-output   generateur_ecs.donnee_intermediaire.cop
  * @depends-on   aucun
- * @tables       (aucune — valeurs directement de la spec p.95)
+ * @tables       ecs/tv_cop_2027 (extension ADEME du modèle 2.7)
  */
 final class CetAccumulationCalculator implements CalculatorInterface
 {
@@ -82,17 +82,26 @@ final class CetAccumulationCalculator implements CalculatorInterface
                 1       => 10,
                 2       => 11,
                 3       => 12,
+                4       => 138, // XSD : installation depuis 2027
                 default => 10, // période inconnue → la plus pénalisante
             };
         }
 
-        if ($typeId === null || $typeId < 1 || $typeId > 12) {
+        $recent = $typeId !== null && $typeId >= 135 && $typeId <= 138;
+        if (!$recent && ($typeId === null || $typeId < 1 || $typeId > 12)) {
             return;
         }
 
         $zone  = CalculationContext::zoneGroupeFromId($context->zoneClimatique);
-        $table = ($zone === 'H3') ? self::COP_H3 : self::COP_H1H2;
-        $cop   = $table[$typeId];
+        if ($recent) {
+            // ADEME 05aabba7, feuille scop lignes 108-113 : les nouvelles
+            // générations ont leur propre COP, pas celui des CET 2015-2026.
+            $table = $context->tables->load('ecs/tv_cop_2027');
+            $cop = $table[$typeId][$zone === 'H3' ? 'h3' : 'h1h2'];
+        } else {
+            $table = ($zone === 'H3') ? self::COP_H3 : self::COP_H1H2;
+            $cop = $table[$typeId];
+        }
 
         // §14.2 et méthode de saisie 6 du XSD : une performance réelle
         // justifiée n'est pas un résultat forfaitaire à recalculer. Le champ

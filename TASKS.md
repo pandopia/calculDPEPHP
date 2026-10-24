@@ -595,17 +595,21 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K63 — Modèle DPE 2.7 : technologies et ENR restant à couvrir
 
-- [~CB] Owner: CB | Phase: K | Priorité: haute
+- [ ] Owner: __ | Phase: K | Priorité: haute
 - Sources : `editeur/public/schemas/DPEv2.7.xsd` (V10.0.0, ADEME du
   16/10/2026) et `resources/textes/arrete-2026-06-11-epbd.pdf`
   (JO du 13/08/2026, texte 23, entrée en vigueur au 01/01/2027).
   L'éditeur prend déjà en charge le schéma 2.7 ; ne pas refaire ce raccordement.
-- **Tables encore incomplètes** : CH 172–184 et ECS 135–146 (PAC/CET ≥2027,
+- **Tables encore incomplètes** : CH 172–184 et ECS 139–146 (PAC ≥2027,
   chaudières granulés après 2024, ballons avec commande intelligente).
   Le moteur refuse ces types tant qu'ils ne sont pas couverts : conserver ce
   garde et sourcer chaque nouvelle valeur avant de le lever.
+- Les CET 135–138 sont couverts par les six lignes COP de la feuille scop
+  ADEME 05aabba7, avec stockage inclus et saisie justifiée prioritaire. La
+  période ECS thermo 4 est admise en 2.7 pour ces types et le type 82,
+  pas pour requalifier un ancien type daté. Les anciens modèles sont inchangés.
 - **Nouvelles modalités** : bouclage ECS 4 (module thermique d'appartement),
-  intermittence 8 (régulation prédictive), période ECS thermo 4, solaire 5
+  intermittence 8 (régulation prédictive), solaire 5
   (« ECS solaire seule » ; 2 et 3 ne sont plus admis en 2.7).
   Comme RCEG, `scf_saisi` et `couverture_pac_hybride_saisi`, elles sont
   désormais refusées explicitement avant purge, pas ignorées. Lever chaque

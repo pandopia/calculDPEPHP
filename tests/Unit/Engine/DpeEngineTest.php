@@ -153,6 +153,41 @@ final class DpeEngineTest extends TestCase
         yield 'ballon à commande intelligente' => ['generateur_ecs', 'enum_type_generateur_ecs_id', 140];
     }
 
+    public function testLesQuatreCetEtLaPeriode2027SontAcceptesUniquementDansLeModele27(): void
+    {
+        foreach ([82, 135, 136, 137, 138] as $type) {
+            $xml = $this->xmlAvecGenerateur('generateur_ecs', 'enum_type_generateur_ecs_id', $type);
+            $xml = str_replace('<enum_modele_dpe_id>1</enum_modele_dpe_id>', '<enum_modele_dpe_id>1</enum_modele_dpe_id><enum_version_id>2.7</enum_version_id>', $xml);
+            $xml = str_replace('</donnee_entree>', '<enum_periode_installation_ecs_thermo_id>4</enum_periode_installation_ecs_thermo_id></donnee_entree>', $xml);
+            $result = $this->engine()->calculate($xml);
+            self::assertSame((string)$type, $result->getElementsByTagName('enum_type_generateur_ecs_id')->item(0)?->textContent);
+        }
+    }
+
+    public function testUneAncienneFamilleCetNeDevientPasImplicitementUneGeneration2027(): void
+    {
+        $xml = $this->xmlAvecGenerateur('generateur_ecs', 'enum_type_generateur_ecs_id', 3);
+        $xml = str_replace('<enum_modele_dpe_id>1</enum_modele_dpe_id>', '<enum_modele_dpe_id>1</enum_modele_dpe_id><enum_version_id>2.7</enum_version_id>', $xml);
+        $xml = str_replace('</donnee_entree>', '<enum_periode_installation_ecs_thermo_id>4</enum_periode_installation_ecs_thermo_id></donnee_entree>', $xml);
+        $this->expectException(UnsupportedDpeModelException::class);
+        $this->expectExceptionMessage('enum_periode_installation_ecs_thermo_id=4');
+        $this->engine()->calculate($xml);
+    }
+
+    public function testLesTechnologiesEcs27EncoreNonCouvertesRestentRefusees(): void
+    {
+        foreach (range(139, 146) as $type) {
+            $xml = $this->xmlAvecGenerateur('generateur_ecs', 'enum_type_generateur_ecs_id', $type);
+            $xml = str_replace('<enum_modele_dpe_id>1</enum_modele_dpe_id>', '<enum_modele_dpe_id>1</enum_modele_dpe_id><enum_version_id>2.7</enum_version_id>', $xml);
+            try {
+                $this->engine()->calculate($xml);
+                self::fail("Le type $type ne doit pas traverser le garde CET.");
+            } catch (UnsupportedDpeModelException $exception) {
+                self::assertStringContainsString("de type $type", $exception->getMessage());
+            }
+        }
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('technologies27')]
     public function testUneTechnologieDu27EstRefuseeAuLieuDEtreCalculeeAFaux(
         string $balise,

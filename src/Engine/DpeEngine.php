@@ -75,7 +75,8 @@ final class DpeEngine
      * Domaine des types de générateur que les tables couvrent, par balise :
      * [champ, identifiant maximal, libellé d'usage].
      *
-     * Les bornes sont celles du modèle 2.6 ; le 2.7 les dépasse.
+     * Les bornes sont celles du modèle 2.6 ; les extensions 2.7 couvertes
+     * sont admises explicitement dans assertTechnologiesConnues().
      */
     private const GENERATEURS_CONNUS = [
         'generateur_chauffage' => ['enum_type_generateur_ch_id', 171, 'de chauffage'],
@@ -179,6 +180,15 @@ final class DpeEngine
         foreach ($options as [$balise, $champ, $maximum]) {
             foreach ($document->getElementsByTagName($balise) as $equipement) {
                 $valeur = $accessor->getFloatOrNull('./donnee_entree/' . $champ, $equipement);
+                // La période 4 décrit les CET depuis 2027. Les nouveaux
+                // enums 135-138 et l'« autre thermodynamique » 82 sont couverts
+                // par la feuille officielle scop (lignes 108-113). Les anciens
+                // enums datés ne sont pas requalifiés depuis leur seule période.
+                if ($balise === 'generateur_ecs' && $champ === 'enum_periode_installation_ecs_thermo_id'
+                    && $valeur === 4.0 && $version !== null && version_compare($version, '2.7', '>=')
+                    && in_array($accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $equipement), [82, 135, 136, 137, 138], true)) {
+                    continue;
+                }
                 if ($valeur !== null && ($maximum === null || $valeur > $maximum)) {
                     throw new UnsupportedDpeModelException(sprintf(
                         '%s/%s=%s : option du modèle DPE 2.7 non encore implémentée — voir TASK-K63. '
@@ -197,8 +207,9 @@ final class DpeEngine
      * Le modèle 2.7 du 16 octobre 2026 ajoute treize types de générateur de
      * chauffage (172 à 184) et douze d'ECS (135 à 146) : pompes à chaleur et
      * chauffe-eau thermodynamiques à partir de 2027, chaudières bois granulés
-     * après 2024, ballons à commande intelligente. Leurs caractéristiques
-     * viennent d'un arrêté que nous n'avons pas encore digitalisé.
+     * après 2024, ballons à commande intelligente. Les quatre CET 135-138
+     * sont couverts par le classeur ADEME 05aabba7 ; les autres restent
+     * refusés tant que toutes leurs caractéristiques ne sont pas digitalisées.
      *
      * **Sans ce garde le moteur ne crashe pas : il fait pire.** Un générateur
      * inconnu traverse les calculateurs de rendement sans que l'un d'eux
@@ -211,12 +222,17 @@ final class DpeEngine
      */
     private function assertTechnologiesConnues(NodeAccessor $accessor, DOMDocument $document): void
     {
+        $version = $accessor->getStringOrNull('//administratif/enum_version_id');
         foreach (self::GENERATEURS_CONNUS as $balise => [$champ, $maximum, $usage]) {
             foreach ($document->getElementsByTagName($balise) as $generateur) {
                 if (!$generateur instanceof DOMElement) {
                     continue;
                 }
                 $type = $accessor->getIntOrNull('./donnee_entree/' . $champ, $generateur);
+                if ($balise === 'generateur_ecs' && in_array($type, [135, 136, 137, 138], true)
+                    && $version !== null && version_compare($version, '2.7', '>=')) {
+                    continue;
+                }
                 if ($type !== null && $type > $maximum) {
                     throw new UnsupportedDpeModelException(sprintf(
                         'générateur %s de type %d : technologie introduite par le modèle DPE 2.7, '

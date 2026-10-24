@@ -16,6 +16,47 @@ final class CetAccumulationCalculatorTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
     private const TOL = 1e-9;
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('copDepuis2027')]
+    public function testLesNouveauxCetConserventUnCopStockageInclus(int $type, string $zone, float $expected, bool $saisi): void
+    {
+        [$doc, $node] = $this->buildNode($type);
+        $entry = $doc->getElementsByTagName('donnee_entree')->item(0);
+        $entry->appendChild($doc->createElement('enum_type_energie_id', '1'));
+        if ($saisi) {
+            $entry->appendChild($doc->createElement('enum_methode_saisie_carac_sys_id', '6'));
+            $di = $doc->createElement('donnee_intermediaire');
+            $di->appendChild($doc->createElement('cop', '4.7'));
+            $node->appendChild($di);
+            $expected = 4.7;
+        }
+        $context = $this->makeContext($doc, $zone);
+        (new CetAccumulationCalculator())->calculate($node, $context);
+        (new CombustionCalculator())->calculate($node, $context);
+        self::assertEqualsWithDelta($expected, (float)$doc->getElementsByTagName('cop')->item(0)?->textContent, 1e-12);
+        self::assertSame(0, $doc->getElementsByTagName('rendement_generation')->length);
+        self::assertSame(0, $doc->getElementsByTagName('rendement_stockage')->length);
+    }
+
+    public static function copDepuis2027(): iterable
+    {
+        // ADEME valeur_tables.xlsx 05aabba7, scop lignes 108 à 113.
+        foreach ([135 => [2.7, 3.0], 136 => [2.7, 3.0], 137 => [3.0, 3.1], 138 => [2.8, 3.1]] as $type => [$cold, $warm]) {
+            foreach (range(1, 8) as $zone) {
+                foreach ([false, true] as $saisi) {
+                    yield "$type zone $zone, saisie " . (int)$saisi => [$type, (string)$zone, $zone === 8 ? $warm : $cold, $saisi];
+                }
+            }
+        }
+    }
+
+    public function testAutreThermodynamiquePeriode2027UtiliseLeCopDoubleServiceRecent(): void
+    {
+        [$doc, $node] = $this->buildNode(82);
+        $doc->getElementsByTagName('donnee_entree')->item(0)->appendChild($doc->createElement('enum_periode_installation_ecs_thermo_id', '4'));
+        (new CetAccumulationCalculator())->calculate($node, $this->makeContext($doc, '1'));
+        self::assertSame('2.8', $doc->getElementsByTagName('cop')->item(0)?->textContent);
+    }
+
     private function buildNode(int $typeId): array
     {
         $xml = <<<XML
