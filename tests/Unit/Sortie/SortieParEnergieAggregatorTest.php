@@ -212,6 +212,28 @@ XML;
         $this->assertEqualsWithDelta(5000.0 + 2000.0 + 300.0 + 400.0, $conso5[0], self::TOL, 'elec all-in conso_5');
     }
 
+    public static function combinaisonsElectriciteRenouvelable(): iterable
+    {
+        yield 'CH et ECS renouvelables' => [12, 12];
+        yield 'CH renouvelable, ECS réseau' => [12, 1];
+        yield 'CH réseau, ECS renouvelable' => [1, 12];
+        yield 'CH renouvelable, ECS gaz' => [12, 2];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('combinaisonsElectriciteRenouvelable')]
+    public function testElectriciteRenouvelableNeDupliquePasLesAutresUsages(int $energieCh, int $energieEcs): void
+    {
+        $doc = $this->buildDoc($energieCh, $energieEcs, 5000.0, 2000.0, 300.0, 400.0);
+        $doc->getElementsByTagName('conso_fr')->item(0)->nodeValue = '50';
+        (new SortieParEnergieAggregator())->calculate($doc->documentElement, $this->makeContext($doc));
+
+        $lignes = $this->getValues($doc, '//sortie_par_energie/conso_5_usages');
+        self::assertEqualsWithDelta(7750.0, array_sum($lignes), 1e-8);
+        $renouvelable = ($energieCh === 12 ? 5000.0 : 0.0) + ($energieEcs === 12 ? 2000.0 : 0.0);
+        self::assertEqualsWithDelta($renouvelable, $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=12]/conso_5_usages')[0], 1e-8);
+        self::assertSame([0.0], $this->getValues($doc, '//sortie_par_energie[enum_type_energie_id=12]/emission_ges_5_usages'));
+    }
+
     /**
      * Fioul — prix du kWh unique. La fixture ne porte pas de date
      * d'établissement : le barème le plus récent s'applique, soit 0,14821 €/kWh

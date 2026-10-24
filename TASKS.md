@@ -705,7 +705,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K57 — Branches du moteur nouvellement couvertes : écarts restants
 
-- [~CB] Owner: CB | Phase: K | Priorité: haute
+- [ ] Owner: __ | Phase: K | Priorité: haute
 - Le jeu `ademe-branches-2026-10` (76 cas, 19 branches, manifeste suivi)
   couvre les configurations §9.x, ventilations et générateurs que le corpus
   stratifié n'atteignait pas. Après huit corrections livrées, les branches
@@ -737,9 +737,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   — et les deux qui le respectent sont exactement celles que nous
   reproduisons. `ReferenceDefects` les impute désormais sur cette preuve,
   interne au fichier.
-- `sortie_par_energie` ne porte pas de ligne pour
-  `enum_type_energie_id = 12` (« électricité d'origine renouvelable utilisée
-  dans le bâtiment ») : 2601E0370414Y en attend une complète.
 - `rendement_stockage` = 1 : 27 références le publient, plus de 300 l'omettent
   comme nous. Convention d'éditeur, rien à corriger (cf. TASK-K06).
 
