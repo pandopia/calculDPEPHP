@@ -92,7 +92,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K94 — Volume d'intermittence des maisons multi-installations
 
-- [~CB] Owner: CB | Phase: K | Priorité: moyenne
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
 - Le repli de `StrategieComputeTrait::getShImmeuble()` utilise la surface
   d'installation quand Sh_immeuble est absente, face au GV du logement entier.
   Le périmètre appartement est corrigé ; reste celui des maisons.
@@ -109,6 +109,10 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   2611E1951763L en ponts thermiques.
   Les deux coûts électriques bougent parce que le prix moyen dépend du
   panier chauffage : ne pas corriger ECS/ventilation pour compenser l'amont.
+- Contrôle ciblé après les corrections du 24/10 : `2400E0856203A` n'est
+  plus bloquant (−1 classe). Les trois autres dépassent encore leurs budgets
+  de +1, +1 et +2. Pas de nouvelle mesure globale : qualifier ces trois
+  résidus avant de réactiver la variante sur tout le corpus.
 
 ### TASK-K93 — Enveloppe mixte : colonne Joule dépendante de l'ordre XML
 
