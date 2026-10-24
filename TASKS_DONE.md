@@ -19,6 +19,20 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K97 — Conversion PV historique EF→EP non retenue (24/10/2026)
+
+Après correction de la pondération des autoconsommations, variante isolée
+sur les mêmes 686 cas : multiplier les huit champs de
+`sortie/production_electricite` par le coefficient électrique de la période
+(2,3 avant 2026, 1,9 ensuite), comme leur documentation XSD le suggère.
+18 115 → 18 203 numériques hors tolérance : **+88**, 23 cas dégradés,
+aucun amélioré, aucun autre code ni tolérance modifié. La ventilation
+physique reste en kWh EF conformément à §16.2 p.104–106 ; le contrat de
+sérialisation est à clarifier, pas à déduire d'un seul export.
+
+Rouvrir sur un erratum de documentation ou un export dont les unités sont
+cohérentes et explicites. La variante n'est pas activée, aucun budget relevé.
+
 ### TASK-K06 — Verdicts historiques COP et sérialisation, à conserver
 
 - Mesure historique, pas un nouveau décompte des 670 cas : sur 45 écarts de

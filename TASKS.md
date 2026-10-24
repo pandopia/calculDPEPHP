@@ -54,6 +54,20 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase K — Conformité au corpus ADEME
 
+### TASK-K97 — Unités et total de production PV des sorties historiques
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- Le XSD documente `sortie/production_electricite/*` en kWh EP ; les
+  autoconsommations des références suivent les kWh EF de §16.2. Conserver
+  la sérialisation historique tant que ce contrat n'est pas clarifié.
+- Conversion générale ×1,9/2,3 mesurée sur 686 cas après correction des
+  parts : +88 numériques, 23 cas dégradés, aucun amélioré. Variante écartée
+  dans TASKS_DONE.md ; ne pas relever les budgets pour la réintroduire.
+- `production_pv` de sortie est aussi à qualifier : sur 2659E2639542I,
+  27 587,624 = Ppv publié 15 753,530 + autoconsommation des autres usages
+  11 834,094, pas une conversion EF→EP. Chercher un erratum ADEME ou des
+  exports cohérents avant de remplacer une grandeur par une autre.
+
 ### TASK-K95 — QP0 non linéaire du générateur équivalent
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
