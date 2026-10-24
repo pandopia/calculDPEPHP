@@ -19,6 +19,23 @@ final class ChaudiereDefautCalculatorTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
     private const TOL = 1e-5;
 
+    #[DataProvider('granules1978')]
+    public function testLeCoefficientQp0Granules1978EstSeptCentiemes(float $pnKw, float $qp0): void
+    {
+        [$doc, $gen] = $this->buildGenerator(70, 53, 2, ['pn' => 1000 * $pnKw]);
+        (new ChaudiereDefautCalculator())->calculate($gen, $this->makeContext($doc));
+        self::assertEqualsWithDelta($qp0, (float)$gen->getElementsByTagName('qp0')->item(0)->textContent, 1e-8);
+    }
+
+    public static function granules1978(): iterable
+    {
+        // §13.2.2.3 p.89, granulés 1978–1994 : 0,07 × Pn × Pn^-0,3.
+        yield '10 kW' => [10.0, 70 * 10 ** 0.7];
+        yield 'borne 70 kW' => [70.0, 70 * 70 ** 0.7];
+        yield 'au-dessus de 70' => [70.001, 1400.0];
+        yield 'au-dessus de 400' => [400.001, 800.0];
+    }
+
     /** §17.2.1.1 p.112 : Pe est conservée, Rpn/Rpint restent ceux du collectif. */
     #[DataProvider('puissancesVirtualiseesSaisies')]
     public function testLaPuissanceSaisieVirtualiseeNeReduitPasLeRendementDeLaChaudiere(

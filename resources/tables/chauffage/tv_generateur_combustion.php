@@ -741,14 +741,14 @@ return [
             'pveil' => 0.0,
         ];
     },
-    // ID 53 : Chaudière bois granulés 1978-1994 — Pn≤70 — rpn=47+6*log10(Pn), rpint=48+6*log10(Pn), qp0=0.08*Pn*(Pn)^-0.3
+    // ID 53 : Chaudière bois granulés 1978-1994 — Pn≤70 — rpn=47+6*log10(Pn), rpint=48+6*log10(Pn), qp0=0.07*Pn*(Pn)^-0.3 (p.89)
     53 => static function (float $pnKw, float $e, float $f): array {
         $pnW = $pnKw * 1000.0;
         return [
             'pn'    => $pnW,
             'rpn'   => (47 + 6 * log10($pnKw)) / 100.0,
             'rpint' => (48 + 6 * log10($pnKw)) / 100.0,
-            'qp0'   => 0.08 * ($pnKw ** 0.70) * 1000.0,
+            'qp0'   => 0.07 * ($pnKw ** 0.70) * 1000.0,
             'pveil' => 0.0,
         ];
     },
