@@ -59,15 +59,228 @@ final class ProductionEnrCalculatorTest extends TestCase
         return $sortie?->getElementsByTagName($balise)->item(0)?->textContent;
     }
 
+    /** Tous les IDs CH du XSD, y compris ceux qui ne sont PAS des PAC. */
+    public static function typesGenerateurChDuSchema(): iterable
+    {
+        $schema = new DOMDocument();
+        $schema->load(self::PROJECT_ROOT . '/editeur/public/schemas/DPEv2.7.xsd');
+        $xp = new \DOMXPath($schema);
+        $element = $xp->query('(//xs:element[@name="enum_type_generateur_ch_id"])[1]')->item(0);
+        $libelles = json_decode($xp->evaluate('string(xs:annotation/xs:appinfo)', $element), true, flags: JSON_THROW_ON_ERROR);
+        foreach ($xp->query('.//xs:enumeration', $element) as $enumeration) {
+            $type = (int)$enumeration->getAttribute('value');
+            $libelle = $libelles[$type];
+            $pac = str_starts_with($libelle, 'pac ') || str_contains($libelle, 'partie pompe à chaleur');
+            $geothermique = $pac && preg_match('/eau\/eau|eau glycolée\/eau|géothermique/u', $libelle) === 1;
+            yield "$type : $libelle" => [$type, $pac, $geothermique];
+        }
+    }
+
+    #[DataProvider('typesGenerateurChDuSchema')]
+    public function testLaClassificationEnrCouvreLesLibellesChDuXsd(
+        int $type,
+        bool $pac,
+        bool $geothermique,
+    ): void {
+        $sortie = $this->sortie('2.7', <<<XML
+            <installation_chauffage_collection><installation_chauffage><generateur_chauffage_collection><generateur_chauffage>
+              <donnee_entree><enum_type_generateur_ch_id>$type</enum_type_generateur_ch_id><enum_type_energie_id>1</enum_type_energie_id></donnee_entree>
+              <donnee_intermediaire><conso_ch>1000</conso_ch><scop>4</scop></donnee_intermediaire>
+            </generateur_chauffage></generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection>
+            XML);
+        self::assertEqualsWithDelta($pac && !$geothermique ? 3000.0 : 0.0, (float)$this->valeur($sortie, 'prod_enr_chaleur_ambiante_pac'), 1e-9);
+        self::assertEqualsWithDelta($geothermique ? 3000.0 : 0.0, (float)$this->valeur($sortie, 'prod_enr_geothermie_pac'), 1e-9);
+    }
+
+    public static function typesGenerateurEcsDuSchema(): iterable
+    {
+        $schema = new DOMDocument();
+        $schema->load(self::PROJECT_ROOT . '/editeur/public/schemas/DPEv2.7.xsd');
+        $xp = new \DOMXPath($schema);
+        $element = $xp->query('(//xs:element[@name="enum_type_generateur_ecs_id"])[1]')->item(0);
+        $libelles = json_decode($xp->evaluate('string(xs:annotation/xs:appinfo)', $element), true, flags: JSON_THROW_ON_ERROR);
+        $minimum = (int)$xp->evaluate('string(.//xs:minInclusive/@value)', $element);
+        $maximum = (int)$xp->evaluate('string(.//xs:maxInclusive/@value)', $element);
+        foreach (range($minimum, $maximum) as $type) {
+            $libelle = $libelles[$type];
+            yield "$type : $libelle" => [$type, str_starts_with($libelle, 'cet ') || str_starts_with($libelle, 'pac double service')];
+        }
+    }
+
+    #[DataProvider('typesGenerateurEcsDuSchema')]
+    public function testUnCopResiduelSurUneChaudiereEcsNeCreePasDeChaleurCaptee(int $type, bool $thermodynamique): void
+    {
+        $sortie = $this->sortie('2.7', <<<XML
+            <installation_ecs_collection><installation_ecs><generateur_ecs_collection><generateur_ecs>
+              <donnee_entree><enum_type_generateur_ecs_id>$type</enum_type_generateur_ecs_id></donnee_entree>
+              <donnee_intermediaire><conso_ecs>200</conso_ecs><cop>3</cop></donnee_intermediaire>
+            </generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection>
+            XML);
+        self::assertEqualsWithDelta($thermodynamique ? 400.0 : 0.0, (float)$this->valeur($sortie, 'prod_enr_chaleur_ambiante_cet'), 1e-9);
+    }
+
+    public static function perimetresProductionEnr(): iterable
+    {
+        foreach (['2', '0.1.0'] as $format) {
+            foreach ([7, 10] as $mode) {
+                foreach ([false, true] as $echantillonne) {
+                    yield "$format, mode $mode, échantillonnage=" . (int)$echantillonne => [$format, $mode, $echantillonne];
+                }
+            }
+        }
+    }
+
+    public static function hybridesEtZones(): iterable
+    {
+        foreach ([147 => false, 168 => true, 178 => false, 181 => true] as $type => $geothermique) {
+            foreach (['1' => 0.8, '3' => 0.8, '4' => 0.83, '7' => 0.83, '8' => 0.88] as $zone => $part) {
+                yield "hybride $type, zone $zone" => [$type, $geothermique, (string)$zone, $part];
+            }
+        }
+    }
+
+    #[DataProvider('hybridesEtZones')]
+    public function testLeForfaitHybrideEnrPorteSurLeTotalDuSysteme(
+        int $type,
+        bool $geothermique,
+        string $zone,
+        float $part,
+    ): void {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<XML
+            <dpe><administratif><enum_version_id>2.7</enum_version_id></administratif><logement>
+              <installation_chauffage_collection><installation_chauffage>
+                <donnee_intermediaire><conso_ch>1000</conso_ch></donnee_intermediaire>
+                <generateur_chauffage_collection>
+                  <generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>$type</enum_type_generateur_ch_id></donnee_entree>
+                    <donnee_intermediaire><conso_ch>100</conso_ch><scop>4</scop></donnee_intermediaire>
+                  </generateur_chauffage>
+                  <generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>149</enum_type_generateur_ch_id></donnee_entree>
+                    <donnee_intermediaire><conso_ch>900</conso_ch><scop>8</scop></donnee_intermediaire>
+                  </generateur_chauffage>
+                </generateur_chauffage_collection>
+              </installation_chauffage></installation_chauffage_collection>
+            </logement></dpe>
+            XML);
+        $ctx = new CalculationContext($doc, new TableRepository(self::PROJECT_ROOT . '/resources/tables'), zoneClimatique: $zone);
+        (new ProductionEnrCalculator())->calculate($doc->getElementsByTagName('logement')->item(0), $ctx);
+        $attendu = 1000 * $part * (4 - 1);
+        self::assertEqualsWithDelta($attendu, (float)$doc->getElementsByTagName('prod_enr_totale')->item(0)->textContent, 1e-9);
+        self::assertEqualsWithDelta($geothermique ? $attendu : 0.0, (float)$doc->getElementsByTagName('prod_enr_geothermie_pac')->item(0)->textContent, 1e-9);
+        self::assertEqualsWithDelta($geothermique ? 0.0 : $attendu, (float)$doc->getElementsByTagName('prod_enr_chaleur_ambiante_pac')->item(0)->textContent, 1e-9);
+    }
+
+    public function testPlusieursHybridesSansTotalIndividuelNeRecomptentPasLeBloc(): void
+    {
+        $sortie = $this->sortie('2.7', <<<'XML'
+            <installation_chauffage_collection><installation_chauffage>
+              <donnee_intermediaire><conso_ch>1000</conso_ch></donnee_intermediaire>
+              <generateur_chauffage_collection>
+                <generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>147</enum_type_generateur_ch_id></donnee_entree>
+                  <donnee_intermediaire><conso_ch>100</conso_ch><scop>3</scop></donnee_intermediaire></generateur_chauffage>
+                <generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>178</enum_type_generateur_ch_id></donnee_entree>
+                  <donnee_intermediaire><conso_ch>200</conso_ch><scop>4</scop></donnee_intermediaire></generateur_chauffage>
+              </generateur_chauffage_collection>
+            </installation_chauffage></installation_chauffage_collection>
+            XML);
+        self::assertEqualsWithDelta(800.0, (float)$this->valeur($sortie, 'prod_enr_totale'), 1e-9);
+    }
+
+    public function testLaMultipliciteDeRepliEtLesInstallationsCollectivesRestentDistinctes(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<'XML'
+            <dpe><administratif><enum_version_id>2.7</enum_version_id></administratif><logement>
+              <caracteristique_generale><nombre_appartement>12</nombre_appartement></caracteristique_generale>
+              <installation_chauffage_collection>
+                <installation_chauffage><donnee_entree><enum_methode_calcul_conso_id>2</enum_methode_calcul_conso_id>
+                  <enum_type_installation_id>1</enum_type_installation_id><nombre_logement_echantillon>2</nombre_logement_echantillon>
+                  <ratio_virtualisation>0.5</ratio_virtualisation><rdim>9</rdim></donnee_entree>
+                  <generateur_chauffage_collection><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>3</enum_type_generateur_ch_id></donnee_entree>
+                    <donnee_intermediaire><conso_ch>100</conso_ch><scop>3</scop></donnee_intermediaire></generateur_chauffage></generateur_chauffage_collection>
+                </installation_chauffage>
+                <installation_chauffage><donnee_entree><enum_methode_calcul_conso_id>2</enum_methode_calcul_conso_id>
+                  <enum_type_installation_id>2</enum_type_installation_id><nombre_logement_echantillon>1</nombre_logement_echantillon><rdim>2</rdim></donnee_entree>
+                  <generateur_chauffage_collection><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>19</enum_type_generateur_ch_id></donnee_entree>
+                    <donnee_intermediaire><conso_ch>100</conso_ch><scop>4</scop></donnee_intermediaire></generateur_chauffage></generateur_chauffage_collection>
+                </installation_chauffage>
+              </installation_chauffage_collection>
+            </logement></dpe>
+            XML);
+        $ctx = new CalculationContext($doc, new TableRepository(self::PROJECT_ROOT . '/resources/tables'));
+        (new ProductionEnrCalculator())->calculate($doc->getElementsByTagName('logement')->item(0), $ctx);
+        // Extrapolation 12×0,5/(2+1)=2 pour l'individuel ; rdim=2 pour le collectif.
+        self::assertEqualsWithDelta(400.0, (float)$doc->getElementsByTagName('prod_enr_chaleur_ambiante_pac')->item(0)->textContent, 1e-9);
+        self::assertEqualsWithDelta(600.0, (float)$doc->getElementsByTagName('prod_enr_geothermie_pac')->item(0)->textContent, 1e-9);
+    }
+
+    #[DataProvider('perimetresProductionEnr')]
+    public function testLesMultiplicitesPrecedentLeProrataSurfaciqueEnr(
+        string $format,
+        int $mode,
+        bool $echantillonne,
+    ): void {
+        $methodeCh = $echantillonne ? 2 : 1;
+        $methodeEcs = $echantillonne ? 4 : 1;
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<XML
+            <dpe version="$format"><administratif><enum_version_id>2.7</enum_version_id></administratif><logement>
+              <caracteristique_generale><enum_methode_application_dpe_log_id>$mode</enum_methode_application_dpe_log_id>
+                <surface_habitable_immeuble>1000</surface_habitable_immeuble><surface_habitable_logement>100</surface_habitable_logement>
+                <nombre_appartement>10</nombre_appartement></caracteristique_generale>
+              <production_elec_enr><donnee_intermediaire><production_pv>1000</production_pv></donnee_intermediaire></production_elec_enr>
+              <installation_chauffage_collection>
+                <installation_chauffage><donnee_entree><enum_methode_calcul_conso_id>$methodeCh</enum_methode_calcul_conso_id>
+                  <enum_type_installation_id>1</enum_type_installation_id><surface_chauffee>400</surface_chauffee>
+                  <rdim>2</rdim><cle_repartition_ch>0.8</cle_repartition_ch></donnee_entree>
+                  <generateur_chauffage_collection><generateur_chauffage>
+                    <donnee_entree><enum_type_generateur_ch_id>3</enum_type_generateur_ch_id><enum_type_energie_id>1</enum_type_energie_id></donnee_entree>
+                    <donnee_intermediaire><conso_ch>100</conso_ch><scop>3</scop></donnee_intermediaire>
+                  </generateur_chauffage></generateur_chauffage_collection>
+                </installation_chauffage>
+                <installation_chauffage><donnee_entree><enum_methode_calcul_conso_id>$methodeCh</enum_methode_calcul_conso_id>
+                  <enum_type_installation_id>1</enum_type_installation_id><surface_chauffee>600</surface_chauffee>
+                  <rdim>3</rdim><cle_repartition_ch>0.8</cle_repartition_ch></donnee_entree>
+                  <generateur_chauffage_collection><generateur_chauffage>
+                    <donnee_entree><enum_type_generateur_ch_id>97</enum_type_generateur_ch_id><enum_type_energie_id>5</enum_type_energie_id></donnee_entree>
+                    <donnee_intermediaire><conso_ch>500</conso_ch></donnee_intermediaire>
+                  </generateur_chauffage></generateur_chauffage_collection>
+                </installation_chauffage>
+              </installation_chauffage_collection>
+              <installation_ecs_collection><installation_ecs><donnee_entree>
+                <enum_methode_calcul_conso_id>$methodeEcs</enum_methode_calcul_conso_id><enum_type_installation_id>1</enum_type_installation_id>
+                <surface_habitable>600</surface_habitable><rdim>4</rdim><cle_repartition_ecs>0.6</cle_repartition_ecs>
+                </donnee_entree><generateur_ecs_collection><generateur_ecs>
+                  <donnee_entree><enum_type_generateur_ecs_id>3</enum_type_generateur_ecs_id></donnee_entree>
+                  <donnee_intermediaire><conso_ecs>50</conso_ecs><cop>3</cop></donnee_intermediaire>
+                </generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection>
+              <sortie><ef_conso><conso_5_usages>1000</conso_5_usages></ef_conso></sortie>
+            </logement></dpe>
+            XML);
+        $logement = $doc->getElementsByTagName('logement')->item(0);
+        $ctx = new CalculationContext($doc, new TableRepository(self::PROJECT_ROOT . '/resources/tables'));
+        $part = $mode === 10 ? 0.1 : 1.0;
+        foreach ([1, 2] as $passage) {
+            (new ProductionEnrCalculator())->calculate($logement, $ctx);
+            $sortie = $doc->getElementsByTagName('sortie')->item(0);
+            self::assertEqualsWithDelta(1000 * $part, (float)$this->valeur($sortie, 'prod_enr_pv'), 1e-9);
+            self::assertEqualsWithDelta(($echantillonne ? 800 : 400) * $part, (float)$this->valeur($sortie, 'prod_enr_chaleur_ambiante_pac'), 1e-9);
+            self::assertEqualsWithDelta(($echantillonne ? 3000 : 1500) * $part, (float)$this->valeur($sortie, 'prod_enr_bois'), 1e-9);
+            self::assertEqualsWithDelta(($echantillonne ? 600 : 400) * $part, (float)$this->valeur($sortie, 'prod_enr_chaleur_ambiante_cet'), 1e-9);
+            self::assertEqualsWithDelta(($echantillonne ? 5400 : 3300) * $part, (float)$this->valeur($sortie, 'prod_enr_totale'), 1e-9);
+        }
+    }
+
     public function testLaFractionEnrReintegreChaleurCapteeEtAutoconsommationSansPlafond(): void
     {
         $sortie = $this->sortie('2.7', <<<'XML'
             <production_elec_enr><donnee_intermediaire><production_pv>2000</production_pv><conso_elec_ac>300</conso_elec_ac></donnee_intermediaire></production_elec_enr>
             <installation_chauffage_collection><installation_chauffage><generateur_chauffage_collection><generateur_chauffage>
-              <donnee_entree><enum_type_generateur_ch_id>120</enum_type_generateur_ch_id><enum_type_energie_id>1</enum_type_energie_id></donnee_entree>
+              <donnee_entree><enum_type_generateur_ch_id>3</enum_type_generateur_ch_id><enum_type_energie_id>1</enum_type_energie_id></donnee_entree>
               <donnee_intermediaire><conso_ch>1000</conso_ch><scop>3</scop></donnee_intermediaire>
             </generateur_chauffage></generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection>
             <installation_ecs_collection><installation_ecs><generateur_ecs_collection><generateur_ecs>
+              <donnee_entree><enum_type_generateur_ecs_id>3</enum_type_generateur_ecs_id></donnee_entree>
               <donnee_intermediaire><conso_ecs>200</conso_ecs><cop>3</cop></donnee_intermediaire>
             </generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection>
             XML, sortieXml: '<ef_conso><conso_5_usages>1000</conso_5_usages></ef_conso>');
@@ -154,7 +367,7 @@ final class ProductionEnrCalculatorTest extends TestCase
         $sortie = $this->sortie('2.7', <<<'XML'
             <installation_chauffage_collection><installation_chauffage><generateur_chauffage_collection>
               <generateur_chauffage>
-                <donnee_entree><enum_type_generateur_ch_id>120</enum_type_generateur_ch_id><enum_type_energie_id>1</enum_type_energie_id></donnee_entree>
+                <donnee_entree><enum_type_generateur_ch_id>3</enum_type_generateur_ch_id><enum_type_energie_id>1</enum_type_energie_id></donnee_entree>
                 <donnee_intermediaire><conso_ch>1000</conso_ch><scop>3</scop></donnee_intermediaire>
               </generateur_chauffage>
             </generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection>
@@ -171,7 +384,7 @@ final class ProductionEnrCalculatorTest extends TestCase
         $sortie = $this->sortie('2.7', <<<'XML'
             <installation_chauffage_collection><installation_chauffage><generateur_chauffage_collection>
               <generateur_chauffage>
-                <donnee_entree><enum_type_generateur_ch_id>44</enum_type_generateur_ch_id><enum_type_energie_id>1</enum_type_energie_id></donnee_entree>
+                <donnee_entree><enum_type_generateur_ch_id>19</enum_type_generateur_ch_id><enum_type_energie_id>1</enum_type_energie_id></donnee_entree>
                 <donnee_intermediaire><conso_ch>1000</conso_ch><scop>4</scop></donnee_intermediaire>
               </generateur_chauffage>
             </generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection>
@@ -202,7 +415,7 @@ final class ProductionEnrCalculatorTest extends TestCase
         $sortie = $this->sortie('2.7', <<<'XML'
             <installation_chauffage_collection><installation_chauffage><generateur_chauffage_collection>
               <generateur_chauffage>
-                <donnee_entree><enum_type_generateur_ch_id>120</enum_type_generateur_ch_id><enum_type_energie_id>1</enum_type_energie_id></donnee_entree>
+                <donnee_entree><enum_type_generateur_ch_id>3</enum_type_generateur_ch_id><enum_type_energie_id>1</enum_type_energie_id></donnee_entree>
                 <donnee_intermediaire><conso_ch>1000</conso_ch><scop>0.9</scop></donnee_intermediaire>
               </generateur_chauffage>
             </generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection>

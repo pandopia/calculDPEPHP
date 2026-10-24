@@ -596,7 +596,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K63 — Modèle DPE 2.7 : technologies et ENR restant à couvrir
 
-- [~CB] Owner: CB | Phase: K | Priorité: haute
+- [ ] Owner: __ | Phase: K | Priorité: haute
 - Sources : `editeur/public/schemas/DPEv2.7.xsd` (V10.0.0, ADEME du
   16/10/2026) et `resources/textes/arrete-2026-06-11-epbd.pdf`
   (JO du 13/08/2026, texte 23, entrée en vigueur au 01/01/2027).
@@ -618,9 +618,12 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   Qualifier aussi l'efficacité du réseau pour `mention_a0` (L.711-4).
   Un réseau absent de l'annexe 7 n'est pas efficace par défaut (annexe 2 §1.1
   du nouvel arrêté). Identifiants 2.7 : `[0-9]{4}C` et `[0-9]{4}F`.
-- **Périmètre ENR** : vérifier la multiplicité des PAC, CET et chaudières bois
-  en immeuble et leur prorata vers l'appartement généré (§1.1) ; le solaire
-  thermique dispose désormais de son canal kWh et de ce prorata.
+- **Plusieurs hybrides dans un même bloc** : le forfait ENR zonal utilise le
+  Cch du système hybride. Si plusieurs parties PAC partagent une installation
+  sans total individuel, conserver leurs consommations PAC individualisées
+  plutôt que réutiliser N fois le total ; qualifier leur association avant
+  de généraliser ce forfait. Les catégories CH/ECS, multiplicités et prorata
+  surfacique ENR sont désormais testés sur le XSD complet.
 - Conserver/lire `flexibilite_reseau`, `chauffage_duree_vie_restante`,
   `clim_duree_vie_restante`. Vérifier sur texte daté le futur pef électrique
   avant d'ajouter un régime à `Common\\Period`.
