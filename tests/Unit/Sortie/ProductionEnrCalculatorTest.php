@@ -26,7 +26,7 @@ final class ProductionEnrCalculatorTest extends TestCase
     /**
      * @param array<string, string> $options version, classe, et les blocs
      */
-    private function sortie(string $version, string $generateurs, string $classe = 'A'): ?DOMElement
+    private function sortie(string $version, string $generateurs, string $classe = 'A', string $sortieXml = ''): ?DOMElement
     {
         $document = new DOMDocument();
         $document->loadXML(<<<XML
@@ -36,7 +36,7 @@ final class ProductionEnrCalculatorTest extends TestCase
               <logement>
                 <caracteristique_generale><surface_habitable_logement>100</surface_habitable_logement></caracteristique_generale>
                 {$generateurs}
-                <sortie><ep_conso><classe_bilan_dpe>{$classe}</classe_bilan_dpe></ep_conso></sortie>
+                <sortie>{$sortieXml}<ep_conso><classe_bilan_dpe>{$classe}</classe_bilan_dpe></ep_conso></sortie>
               </logement>
             </dpe>
             XML);
@@ -57,6 +57,95 @@ final class ProductionEnrCalculatorTest extends TestCase
     private function valeur(?DOMElement $sortie, string $balise): ?string
     {
         return $sortie?->getElementsByTagName($balise)->item(0)?->textContent;
+    }
+
+    public function testLaFractionEnrReintegreChaleurCapteeEtAutoconsommationSansPlafond(): void
+    {
+        $sortie = $this->sortie('2.7', <<<'XML'
+            <production_elec_enr><donnee_intermediaire><production_pv>2000</production_pv><conso_elec_ac>300</conso_elec_ac></donnee_intermediaire></production_elec_enr>
+            <installation_chauffage_collection><installation_chauffage><generateur_chauffage_collection><generateur_chauffage>
+              <donnee_entree><enum_type_generateur_ch_id>120</enum_type_generateur_ch_id><enum_type_energie_id>1</enum_type_energie_id></donnee_entree>
+              <donnee_intermediaire><conso_ch>1000</conso_ch><scop>3</scop></donnee_intermediaire>
+            </generateur_chauffage></generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection>
+            <installation_ecs_collection><installation_ecs><generateur_ecs_collection><generateur_ecs>
+              <donnee_intermediaire><conso_ecs>200</conso_ecs><cop>3</cop></donnee_intermediaire>
+            </generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection>
+            XML, sortieXml: '<ef_conso><conso_5_usages>1000</conso_5_usages></ef_conso>');
+        self::assertEqualsWithDelta(4400.0, (float)$this->valeur($sortie, 'prod_enr_totale'), 1e-9);
+        self::assertEqualsWithDelta(4400 / 3700, (float)$this->valeur($sortie, 'prod_enr_pourcentage'), 1e-9);
+        self::assertGreaterThan(1.0, (float)$this->valeur($sortie, 'prod_enr_pourcentage'));
+    }
+
+    public function testLeBlocEnrRespecteLesNeufBalisesObligatoiresDuSchema27(): void
+    {
+        $sortie = $this->sortie('2.7', '');
+        $bloc = $sortie->getElementsByTagName('production_enr')->item(0);
+        self::assertSame(9, $bloc->childNodes->length);
+        self::assertSame('0', $this->valeur($sortie, 'prod_enr_pourcentage'));
+        $schema = new DOMDocument();
+        $schema->load(self::PROJECT_ROOT . '/editeur/public/schemas/DPEv2.7.xsd');
+        $xp = new \DOMXPath($schema);
+        $declaration = $xp->query('//xs:element[@name="logement"]//xs:element[@name="production_enr"]')->item(0);
+        $schemaIsole = new DOMDocument();
+        $racine = $schemaIsole->createElementNS('http://www.w3.org/2001/XMLSchema', 'xs:schema');
+        $schemaIsole->appendChild($racine);
+        $racine->appendChild($schemaIsole->importNode($declaration, true));
+        $resultat = new DOMDocument();
+        $resultat->appendChild($resultat->importNode($bloc, true));
+        self::assertTrue($resultat->schemaValidateSource($schemaIsole->saveXML()));
+    }
+
+    public static function casSolaireThermique(): iterable
+    {
+        yield 'immeuble, export historique' => ['2', 7, 3000.0];
+        yield 'immeuble, XML ADEME natif' => ['0.1.0', 7, 3000.0];
+        yield 'appartement généré, export historique' => ['2', 10, 1000.0];
+        yield 'appartement généré, XML ADEME natif' => ['0.1.0', 10, 1000.0];
+    }
+
+    #[DataProvider('casSolaireThermique')]
+    public function testSolaireChauffageEtEcsTransitEnKwhAvecUnSeulProrata(string $format, int $mode, float $attendu): void
+    {
+        $besoinEcs = $format === '0.1.0' ? 1000000 : 1000;
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<XML
+            <dpe version="$format"><administratif><enum_version_id>2.7</enum_version_id></administratif><logement>
+              <caracteristique_generale><enum_methode_application_dpe_log_id>$mode</enum_methode_application_dpe_log_id>
+                <surface_habitable_immeuble>300</surface_habitable_immeuble><surface_habitable_logement>100</surface_habitable_logement>
+                <nombre_appartement>3</nombre_appartement><hsp>2.5</hsp></caracteristique_generale>
+              <installation_chauffage_collection><installation_chauffage>
+                <donnee_entree><enum_cfg_installation_ch_id>2</enum_cfg_installation_ch_id><surface_chauffee>300</surface_chauffee><rdim>3</rdim><fch_saisi>0.4</fch_saisi></donnee_entree>
+                <emetteur_chauffage_collection><emetteur_chauffage><donnee_entree><surface_chauffee>300</surface_chauffee></donnee_entree>
+                  <donnee_intermediaire><i0>1</i0><rendement_emission>1</rendement_emission><rendement_distribution>1</rendement_distribution><rendement_regulation>1</rendement_regulation></donnee_intermediaire>
+                </emetteur_chauffage></emetteur_chauffage_collection>
+                <generateur_chauffage_collection><generateur_chauffage><donnee_entree><enum_type_energie_id>2</enum_type_energie_id></donnee_entree>
+                  <donnee_intermediaire><rendement_generation>0.8</rendement_generation></donnee_intermediaire>
+                </generateur_chauffage></generateur_chauffage_collection>
+              </installation_chauffage></installation_chauffage_collection>
+              <installation_ecs_collection><installation_ecs>
+                <donnee_entree><rdim>3</rdim></donnee_entree>
+                <donnee_intermediaire><besoin_ecs>$besoinEcs</besoin_ecs><besoin_ecs_depensier>$besoinEcs</besoin_ecs_depensier><rendement_distribution>1</rendement_distribution><fecs>0.4</fecs></donnee_intermediaire>
+                <generateur_ecs_collection><generateur_ecs><donnee_entree><enum_type_energie_id>2</enum_type_energie_id></donnee_entree>
+                  <donnee_intermediaire><rendement_generation>0.8</rendement_generation><rendement_stockage>1</rendement_stockage></donnee_intermediaire>
+                </generateur_ecs></generateur_ecs_collection>
+              </installation_ecs></installation_ecs_collection>
+              <sortie><ef_conso><conso_5_usages>$attendu</conso_5_usages></ef_conso></sortie>
+            </logement></dpe>
+            XML);
+        $ctx = new CalculationContext($doc, new TableRepository(self::PROJECT_ROOT . '/resources/tables'));
+        $ctx->set('chauffage.besoin_ch', 3000.0);
+        $ctx->set('chauffage.besoin_ch_depensier', 4500.0);
+        $ctx->set('chauffage.gv', 750.0);
+        $ch = $doc->getElementsByTagName('installation_chauffage')->item(0);
+        $ecs = $doc->getElementsByTagName('installation_ecs')->item(0);
+        foreach ([1, 2] as $passage) {
+            (new \CalculDpePHP\Chauffage\Strategy\ChauffageSolaire())->calculate($ch, $ctx);
+            (new \CalculDpePHP\Ecs\ConsoEcsCalculator())->calculate($ecs, $ctx);
+            (new ProductionEnrCalculator())->calculate($doc->getElementsByTagName('logement')->item(0), $ctx);
+            self::assertEqualsWithDelta(3000.0, \CalculDpePHP\Common\ProductionSolaireThermique::total($ctx), 1e-8);
+            self::assertEqualsWithDelta($attendu, (float)$doc->getElementsByTagName('prod_enr_solaire_thermique')->item(0)->textContent, 1e-8);
+            self::assertEqualsWithDelta(0.5, (float)$doc->getElementsByTagName('prod_enr_pourcentage')->item(0)->textContent, 1e-8);
+        }
     }
 
     /** Une PAC de SCOP 3 qui consomme 1 000 kWh capte 2 000 kWh à l'environnement. */

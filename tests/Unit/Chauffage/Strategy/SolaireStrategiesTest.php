@@ -253,7 +253,9 @@ XML;
     public function testSolaireInsertPoele_productionSolaire(): void
     {
         [$doc, $node] = $this->buildInstallation(7, 1, fchSaisi: 0.40);
-        (new SolaireInsertPoele())->calculate($node, $this->makeContext($doc, 1000.0, '1'));
+        $ctx = $this->makeContext($doc, 1000.0, '1');
+        (new SolaireInsertPoele())->calculate($node, $ctx);
+        self::assertEqualsWithDelta($this->di($node, 'production_ch_solaire'), \CalculDpePHP\Common\ProductionSolaireThermique::total($ctx), self::TOL);
 
         $this->assertEqualsWithDelta(
             self::BESOIN_INSTALLATION * 0.40 * 0.75 * self::INT_ICH,

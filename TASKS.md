@@ -566,96 +566,39 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   export publie un `k` nul avec une méthode de saisie 2 ou 3, ou si le texte
   introduit une annulation que §3.4 ne mentionne pas.
 
-### TASK-K63 — Modèle DPE 2.7 : EPBD, nouvelles technologies, pef élec
+### TASK-K63 — Modèle DPE 2.7 : technologies et ENR restant à couvrir
 
-- [~CB] Owner: CB | Phase: K | Priorité: haute
-- L'ADEME a publié le **2026-10-16** `DPEv2.7.xsd` (V10.0.0), copié dans
-  `editeur/public/schemas/` avec `enums.json`, `CHANGELOG.md` et consorts
-  (`SOURCE.md` porte la date de synchronisation). `enum_version_id` = 2.7 vaut
-  « changement de pef elec, epbd et nouvelles techno ». Le moteur ne connaît
-  que 2.6 ; `schema-registry.ts` de l'éditeur s'arrête aussi à 2.6, et
-  `xsd-compiler.ts` annonce un inventaire « DPEv1 à DPEv2.6 » à revérifier.
-- **Deux blocs de sortie deviennent obligatoires** et nous ne les produisons
-  pas — ils compteraient en balises manquantes sur tout fichier 2.7 :
-  `logement/sortie/production_enr` (neuf balises) et
-  `logement/sortie/mention_a0`.
-- **Le texte est identifié** : arrêté du 11 juin 2026 « portant diverses
-  dispositions d'adaptation au droit de l'Union européenne sur le diagnostic
-  de performance énergétique », `JORFTEXT000054673312`.
-  - `mention_a0` — son annexe 1 point 3 : étiquette **A ou B**, énergies
-    « exclusivement des énergies renouvelables sur site ou à proximité, de
-    l'électricité, ou de l'énergie provenant d'un réseau de chaleur ou de
-    froid considéré comme efficace » (art. L. 711-4 du code de l'énergie), et
-    **aucune installation de chauffage ou d'ECS pouvant utiliser des énergies
-    fossiles** sur site ou à proximité. Le logigramme d'attribution n'est pas
-    dans le texte HTML.
-  - `production_enr` — son annexe 2 point 1.2, une sous-section par
-    composante : 1.2.1 `Prod_enr_PAC` (variables `Cch_pac_j`, `SCOPj` ; les
-    PAC hybrides ont une expression distincte par groupe de zones H1, H2,
-    H3), 1.2.2 `Prod_enr_thermodynamique` (`Cecsj`, `COPj`), 1.2.3 `Ppv`
-    (renvoi à l'annexe 1 de l'arrêté du 31 mars 2021), 1.2.4
-    `Prod_enr_sol_therm` (`Bchj`, `INTj`, `Fch`, `Ichj`, `Becsj`, `Fecs`,
-    `Iecsj` — le `Fch` du §18.4 que nous tabulons déjà), 1.2.5
-    `Prod_enr_bois` = « la consommation de bois pour le chauffage », 1.2.6
-    `Prod_enr_rcfu` depuis les taux d'ENR et de récupération de l'annexe 7 de
-    l'arrêté du 15 septembre 2006, 1.2.7 `Prod_PAC_géo` (mêmes variables que
-    la PAC).
-  - L'article 1 points 9.b et 9.c définissent les deux indicateurs : l'ENR
-    produite sur site en kWh et par source, puis son rapport à la
-    consommation d'énergie finale totale — « la consommation d'énergie à
-    considérer contient l'autoconsommation ». Aucun seuil n'est fixé.
-- **Déblocage** : l'arrêté est déposé dans `resources/textes/`
-  (JO n° 188 du 13 août 2026, texte 23). Les formules, images dans la page
-  HTML, y sont lisibles — `production_enr` et `mention_a0` sont **livrés**,
-  cf. `ProductionEnrCalculator`. Le « logigramme » d'attribution de A0 annoncé
-  par l'annexe 1 **ne figure pas dans l'extrait du JO** ; le texte précise
-  qu'il ne fait qu'« intégrer ces conditions », qui sont complètes, et c'est
-  d'elles que part l'implémentation.
-- **Reste à qualifier sur `mention_a0`** : le réseau de chaleur n'est admis
-  que s'il est « efficace au sens de l'article L. 711-4 ». Le DPE ne porte pas
-  cette qualification et nous ne la présumons pas — un logement au réseau de
-  chaleur n'obtient donc jamais A0. À confirmer sur l'annexe 7 de l'arrêté du
-  15 septembre 2006, qui tabule les taux ENR des réseaux.
-- **Reste à implémenter dans `production_enr`** : `prod_enr_solaire_thermique`
-  (§1.2.4) et `prod_enr_rcfu` (§1.2.6) sortent à 0, faute des grandeurs
-  intermédiaires. La formule solaire est connue —
-  `Σ Bch × INT × Fch × Ich + Σ Becs × Fecs × Iecs`, avec le `Fch` du §18.4 que
-  nous tabulons déjà — mais `INT` et `Ich` ne transitent pas jusqu'ici ; le
-  RCU attend les taux de l'annexe 7 de 2006.
-- **Déjà fait, et à ne pas refaire** : l'éditeur gère les deux millésimes —
-  `DPEv2.7.xsd` est au registre, 2.7 est proposé en tête à la création, 2.6
-  reste disponible, et un test paramétré couvre les deux formats de bout en
-  bout. Le moteur, lui, **refuse explicitement** un générateur de type 172-184
-  ou 135-146 au lieu de le calculer avec un rendement implicite de 1 : sans ce
-  garde, le fichier produit était silencieusement faux et rien ne le signalait.
-- **Nos tables deviennent incomplètes** — règle d'or n° 2. Le millésime ajoute
-  13 `enum_type_generateur_ch_id` (172 à 184) et 12
-  `enum_type_generateur_ecs_id` (135 à 146) : PAC et CET à partir de 2027,
-  chaudières bois granulés à condensation et sans condensation après 2024,
-  ballons électriques selon la présence de commande intelligente. S'y
-  ajoutent `enum_bouclage_reseau_ecs_id` = 4 (module thermique d'appartement),
-  `enum_equipement_intermittence_id` = 8 (régulation prédictive),
-  `enum_periode_installation_ecs_thermo_id` = 4, et
-  `enum_type_installation_solaire_id` = 5 « ECS solaire seule », les
-  modalités 2 et 3 n'étant **plus permises**.
-- **Nouvelles grandeurs à calculer** : récupération de chaleur sur eaux grises
-  (`presence_rceg`, `fech_saisi`, `ftrans_saisi` → `fecs_rceg`,
-  `besoin_ecs_rceg`), commande intelligente des ballons (`scf_saisi` → `scf`),
-  part du besoin couverte par une PAC hybride
-  (`couverture_pac_hybride_saisi`). Toutes relèvent des « évolutions 2026 de
-  la méthode 3CL-DPE » : **chercher l'arrêté avant de coder**, le XSD ne donne
-  que les emplacements.
-- Entrées EPBD bloquantes à lire et à conserver : `flexibilite_reseau`
-  (`caracteristique_generale`), `chauffage_duree_vie_restante`,
-  `clim_duree_vie_restante`. `identifiant_reseau_chaleur` est désormais
-  restreint à `[0-9]{4}C` pour chauffage/ECS et `[0-9]{4}F` pour un réseau de
-  **froid** urbain, nouvellement déclarable en climatisation —
-  `ReseauChaleurFactorResolver` n'en tient pas compte.
-- Le changement de pef électricité est la même mécanique que `Common\Period`
-  (PRE_2026 / POST_2026) : vérifier s'il faut un troisième régime, daté.
-- Méthode : aucun fichier 2.7 n'étant encore au corpus, commencer par le
-  schéma et le `CHANGELOG.md` amont, puis guetter l'open data. Mesurer en A/B
-  isolé comme d'habitude — un millésime ne doit pas dégrader les 2.6.
+- [ ] Owner: __ | Phase: K | Priorité: haute
+- Sources : `editeur/public/schemas/DPEv2.7.xsd` (V10.0.0, ADEME du
+  16/10/2026) et `resources/textes/arrete-2026-06-11-epbd.pdf`
+  (JO du 13/08/2026, texte 23, entrée en vigueur au 01/01/2027).
+  L'éditeur prend déjà en charge le schéma 2.7 ; ne pas refaire ce raccordement.
+- **Tables encore incomplètes** : CH 172–184 et ECS 135–146 (PAC/CET ≥2027,
+  chaudières granulés après 2024, ballons avec commande intelligente).
+  Le moteur refuse ces types tant qu'ils ne sont pas couverts : conserver ce
+  garde et sourcer chaque nouvelle valeur avant de le lever.
+- **Nouvelles modalités** : bouclage ECS 4 (module thermique d'appartement),
+  intermittence 8 (régulation prédictive), période ECS thermo 4, solaire 5
+  (« ECS solaire seule » ; 2 et 3 ne sont plus admis en 2.7).
+- **Grandeurs à implémenter** : RCEG (`presence_rceg`, `fech_saisi`,
+  `ftrans_saisi` → `fecs_rceg`, `besoin_ecs_rceg`), commande intelligente
+  (`scf_saisi` → `scf`), `couverture_pac_hybride_saisi`.
+  Chercher les textes des évolutions 2026 de la méthode 3CL, pas un mapping
+  depuis un exemple.
+- **ENR réseau** : `prod_enr_rcfu` reste à 0. Il faut les taux ENR/récupération
+  de l'annexe 7 de l'arrêté du 15/09/2006 ; ne pas les déduire du facteur CO₂.
+  Qualifier aussi l'efficacité du réseau pour `mention_a0` (L.711-4).
+  Un réseau absent de l'annexe 7 n'est pas efficace par défaut (annexe 2 §1.1
+  du nouvel arrêté). Identifiants 2.7 : `[0-9]{4}C` et `[0-9]{4}F`.
+- **Périmètre ENR** : vérifier la multiplicité des PAC, CET et chaudières bois
+  en immeuble et leur prorata vers l'appartement généré (§1.1) ; le solaire
+  thermique dispose désormais de son canal kWh et de ce prorata.
+- Conserver/lire `flexibilite_reseau`, `chauffage_duree_vie_restante`,
+  `clim_duree_vie_restante`. Vérifier sur texte daté le futur pef électrique
+  avant d'ajouter un régime à `Common\\Period`.
+- Aucun cas 2.7 au corpus actuel : tests synthétiques sourcés et validation
+  XSD obligatoires, puis acquisition ADEME dès publication. Toute évolution
+  doit garder un A/B isolé sans dégrader les versions antérieures.
 
 ### TASK-K64 — Audit énergétique réglementaire : explorer, puis câbler le moteur
 

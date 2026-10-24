@@ -250,4 +250,20 @@ XML;
 
         self::assertSame(0, $doc->getElementsByTagName('production_ecs_solaire')->length);
     }
+
+    public function testUneCouvertureSolaireTotaleProduitDeLEnergieMemeSansConsommationDAppoint(): void
+    {
+        [$doc, $inst] = $this->buildInstallation(1000.0, 1200.0, 1.0, rgConv: 0.8);
+        $ctx = $this->makeContext($doc);
+        $di = $inst->getElementsByTagName('donnee_intermediaire')->item(0);
+        $fecs = $doc->createElement('fecs', '1');
+        $di->appendChild($fecs);
+        $calc = new ConsoEcsCalculator();
+        $calc->calculate($inst, $ctx);
+        self::assertEqualsWithDelta(0.0, (float)$doc->getElementsByTagName('conso_ecs')->item(0)->textContent, 1e-9);
+        self::assertEqualsWithDelta(1250.0, \CalculDpePHP\Common\ProductionSolaireThermique::total($ctx), 1e-9);
+        $di->removeChild($fecs);
+        $calc->calculate($inst, $ctx);
+        self::assertSame(0.0, \CalculDpePHP\Common\ProductionSolaireThermique::total($ctx), 'le contexte ne conserve pas la production précédente');
+    }
 }

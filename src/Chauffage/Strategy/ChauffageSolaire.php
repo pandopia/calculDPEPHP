@@ -108,6 +108,11 @@ final class ChauffageSolaire implements CalculatorInterface
         // émetteurs : Prod = Bch × Fch × (0,75 INT1 Ich1 + 0,25 INT2 Ich2).
         // Sur l'installation unique de §9.2 la parenthèse se réduit à INT × Ich.
         $accessor->setChildValue($di, 'production_ch_solaire', $besoinPublie * $fch * $intIch);
+        // Annexe 10 (arrêté du 11/06/2026), §1.2.4 : production au
+        // périmètre desservi, avant éventuelle répartition à l'appartement.
+        \CalculDpePHP\Common\ProductionSolaireThermique::publier(
+            $context, $node, $besoinPublie * $fch * $intIch * $rdimEffective,
+        );
     }
 
     public function resolveFch(NodeAccessor $accessor, DOMElement $node, CalculationContext $context): float

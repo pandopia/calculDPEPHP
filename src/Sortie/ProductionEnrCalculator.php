@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Sortie;
 
+use CalculDpePHP\Collectif\GeneratedApartment;
+use CalculDpePHP\Common\ProductionSolaireThermique;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Xml\NodeAccessor;
@@ -43,14 +45,16 @@ use DOMElement;
  *
  * @spec-section Annexe 2, points 1.2.1 à 1.2.9
  * @spec-source  resources/textes/arrete-2026-06-11-epbd.pdf
+ * @spec-source  editeur/public/schemas/DPEv2.7.xsd
  * @xml-input    installation_chauffage.generateur_chauffage.donnee_intermediaire.{conso_ch, scop},
  *               installation_ecs.generateur_ecs.donnee_intermediaire.{conso_ecs, cop},
- *               production_elec_enr.donnee_intermediaire.production_pv,
+ *               production_elec_enr.donnee_intermediaire.{production_pv, conso_elec_ac},
+ *               sortie.ef_conso.conso_5_usages,
  *               sortie.apport_et_besoin.{besoin_ch, besoin_ecs}
  * @xml-output   sortie.production_enr.{prod_enr_pv, prod_enr_solaire_thermique,
  *                   prod_enr_chaleur_ambiante_pac, prod_enr_geothermie_pac,
  *                   prod_enr_chaleur_ambiante_cet, prod_enr_rcfu, prod_enr_bois,
- *                   prod_enr_totale}
+ *                   prod_enr_totale, prod_enr_pourcentage}
  * @depends-on   \CalculDpePHP\Sortie\EfConsoCalculator
  * @tables       (aucune — les coefficients sont dans l'arrêté)
  */
@@ -101,6 +105,8 @@ final class ProductionEnrCalculator implements CalculatorInterface
         return [
             EfConsoCalculator::class,
             \CalculDpePHP\ProductionElec\ProductionPvCalculator::class,
+            \CalculDpePHP\Chauffage\Strategy\ChauffageSolaire::class,
+            \CalculDpePHP\Chauffage\Strategy\SolaireInsertPoele::class,
         ];
     }
 
@@ -118,7 +124,8 @@ final class ProductionEnrCalculator implements CalculatorInterface
 
         $composantes = [
             'prod_enr_pv'                   => $this->productionPv($accessor, $node),
-            'prod_enr_solaire_thermique'    => (float) ($context->get('enr.solaire_thermique') ?? 0.0),
+            'prod_enr_solaire_thermique'    => ProductionSolaireThermique::total($context)
+                * (GeneratedApartment::surfaceShare($node, $accessor) ?? 1.0),
             'prod_enr_chaleur_ambiante_pac' => $this->chaleurCaptee($accessor, $node, $context, geothermique: false),
             'prod_enr_geothermie_pac'       => $this->chaleurCaptee($accessor, $node, $context, geothermique: true),
             'prod_enr_chaleur_ambiante_cet' => $this->chaleurCapteeCet($accessor, $node),
@@ -132,8 +139,31 @@ final class ProductionEnrCalculator implements CalculatorInterface
             $accessor->setChildValue($bloc, $balise, $valeur);
         }
         $accessor->setChildValue($bloc, 'prod_enr_totale', array_sum($composantes));
+        $accessor->setChildValue($bloc, 'prod_enr_pourcentage', $this->fractionEnr($accessor, $node, $composantes));
 
         $accessor->setChildValue($sortie, 'mention_a0', $this->mentionA0($accessor, $node) ? '1' : '0');
+    }
+
+    /**
+     * Article 1, 9.c de l'arrêté du 11/06/2026 et XSD 2.7, appinfo
+     * sortie/production_enr/prod_enr_pourcentage : fraction (pas ×100),
+     * sans plafond à 1. Le dénominateur réintègre les chaleurs renouvelables
+     * et l'électricité autoconsommée retirées des consommations finales.
+     *
+     * @param array<string, float> $composantes
+     * @spec-formula F-ENR-part-energie-finale
+     */
+    private function fractionEnr(NodeAccessor $accessor, DOMElement $logement, array $composantes): float
+    {
+        $denominateur = ($accessor->getFloatOrNull('./sortie/ef_conso/conso_5_usages', $logement) ?? 0.0)
+            + ($accessor->getFloatOrNull('./production_elec_enr/donnee_intermediaire/conso_elec_ac', $logement) ?? 0.0)
+            + $composantes['prod_enr_solaire_thermique']
+            + $composantes['prod_enr_chaleur_ambiante_pac']
+            + $composantes['prod_enr_geothermie_pac']
+            + $composantes['prod_enr_chaleur_ambiante_cet'];
+
+        // Aucun usage ni production : la fraction est nulle, jamais NaN/INF.
+        return $denominateur > 0.0 ? array_sum($composantes) / $denominateur : 0.0;
     }
 
     /**
