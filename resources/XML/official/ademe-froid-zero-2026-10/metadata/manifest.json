@@ -1,0 +1,107 @@
+{
+  "corpus": "ademe-froid-zero-2026-10",
+  "organisme": "ADEME",
+  "jeu_de_donnees": "DPE Logements existants (depuis juillet 2021)",
+  "portail": "https://data.ademe.fr/datasets/dpe03existant",
+  "api_selection": "https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/lines",
+  "api_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/%s/xml",
+  "licence": "Licence Ouverte / Open Licence v2.0",
+  "statut": "Substitut public ADEME, pas un jeu officiel CSTB.",
+  "genere_le": "2026-10-24T21:52:00Z",
+  "echantillonnage": "Sélection publique avant calcul : douze premiers résultats par date décroissante, surface climatisée positive et besoin de froid global nul. Périmètre retenu pour cette régression : les quatre DPE directs maison/appartement ; huit appartements générés sont documentés séparément et non intégrés.",
+  "selection": {
+    "query": "surface_climatisee:[0.001 TO *] AND besoin_refroidissement:0",
+    "sort": "-date_etablissement_dpe",
+    "size": 12,
+    "total": 18,
+    "selected_before_calculation": true
+  },
+  "sondages_non_integres": [
+    {
+      "numero_dpe": "2413E3646930E",
+      "methode_application_dpe": "dpe appartement généré à partir des données DPE immeuble",
+      "motif": "Appartement généré d'un même immeuble : besoin global publié nul, mais dix besoins et consommations de climatiseurs strictement positifs. Hors du périmètre des DPE directs ciblé ici ; pas de budget initialisé."
+    },
+    {
+      "numero_dpe": "2413E3646929D",
+      "methode_application_dpe": "dpe appartement généré à partir des données DPE immeuble",
+      "motif": "Appartement généré d'un même immeuble : besoin global publié nul, mais dix besoins et consommations de climatiseurs strictement positifs. Hors du périmètre des DPE directs ciblé ici ; pas de budget initialisé."
+    },
+    {
+      "numero_dpe": "2413E3646924Y",
+      "methode_application_dpe": "dpe appartement généré à partir des données DPE immeuble",
+      "motif": "Appartement généré d'un même immeuble : besoin global publié nul, mais dix besoins et consommations de climatiseurs strictement positifs. Hors du périmètre des DPE directs ciblé ici ; pas de budget initialisé."
+    },
+    {
+      "numero_dpe": "2413E3646922W",
+      "methode_application_dpe": "dpe appartement généré à partir des données DPE immeuble",
+      "motif": "Appartement généré d'un même immeuble : besoin global publié nul, mais dix besoins et consommations de climatiseurs strictement positifs. Hors du périmètre des DPE directs ciblé ici ; pas de budget initialisé."
+    },
+    {
+      "numero_dpe": "2413E3646923X",
+      "methode_application_dpe": "dpe appartement généré à partir des données DPE immeuble",
+      "motif": "Appartement généré d'un même immeuble : besoin global publié nul, mais dix besoins et consommations de climatiseurs strictement positifs. Hors du périmètre des DPE directs ciblé ici ; pas de budget initialisé."
+    },
+    {
+      "numero_dpe": "2413E3646932G",
+      "methode_application_dpe": "dpe appartement généré à partir des données DPE immeuble",
+      "motif": "Appartement généré d'un même immeuble : besoin global publié nul, mais dix besoins et consommations de climatiseurs strictement positifs. Hors du périmètre des DPE directs ciblé ici ; pas de budget initialisé."
+    },
+    {
+      "numero_dpe": "2413E3646933H",
+      "methode_application_dpe": "dpe appartement généré à partir des données DPE immeuble",
+      "motif": "Appartement généré d'un même immeuble : besoin global publié nul, mais dix besoins et consommations de climatiseurs strictement positifs. Hors du périmètre des DPE directs ciblé ici ; pas de budget initialisé."
+    },
+    {
+      "numero_dpe": "2413E3646921V",
+      "methode_application_dpe": "dpe appartement généré à partir des données DPE immeuble",
+      "motif": "Appartement généré d'un même immeuble : besoin global publié nul, mais dix besoins et consommations de climatiseurs strictement positifs. Hors du périmètre des DPE directs ciblé ici ; pas de budget initialisé."
+    }
+  ],
+  "cases": [
+    {
+      "methode_application_dpe": "dpe maison individuelle",
+      "conso_refroidissement_ef": 0,
+      "surface_climatisee": 85.5,
+      "version_dpe": 2.6,
+      "periode_installation_generateur_froid": "A partir de 2015",
+      "numero_dpe": "2633E2567188M",
+      "date_etablissement_dpe": "2026-10-07",
+      "besoin_refroidissement": 0,
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2633E2567188M/xml"
+    },
+    {
+      "methode_application_dpe": "dpe appartement individuel",
+      "conso_refroidissement_ef": 0,
+      "surface_climatisee": 33.7,
+      "version_dpe": 2.6,
+      "periode_installation_generateur_froid": "Avant 2008",
+      "numero_dpe": "2683E2144886A",
+      "date_etablissement_dpe": "2026-08-17",
+      "besoin_refroidissement": 0,
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2683E2144886A/xml"
+    },
+    {
+      "methode_application_dpe": "dpe appartement individuel",
+      "conso_refroidissement_ef": 0,
+      "surface_climatisee": 11,
+      "version_dpe": 2.6,
+      "periode_installation_generateur_froid": "A partir de 2015",
+      "numero_dpe": "2613E1786955T",
+      "date_etablissement_dpe": "2026-07-02",
+      "besoin_refroidissement": 0,
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2613E1786955T/xml"
+    },
+    {
+      "methode_application_dpe": "dpe maison individuelle",
+      "conso_refroidissement_ef": 0,
+      "surface_climatisee": 29.1,
+      "version_dpe": 2.6,
+      "periode_installation_generateur_froid": "Avant 2008",
+      "numero_dpe": "2606E1681800B",
+      "date_etablissement_dpe": "2026-06-22",
+      "besoin_refroidissement": 0,
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2606E1681800B/xml"
+    }
+  ]
+}
