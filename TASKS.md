@@ -15,7 +15,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-A01 — Digitalisation des `specsplitted` : ce qui reste vraiment
 
-- [ ] Owner: __  | Phase: A  | Estimation: variable  | Itératif
+- [~CB] Owner: CB  | Phase: A  | Estimation: variable  | Itératif
 - **Le retard est apparent, pas réel.** 100 des 103 fichiers de
   `resources/specsplitted/` portent encore `status: "verbatim"`, mais la
   couverture du moteur, elle, est complète : les **119 sections du sommaire**
