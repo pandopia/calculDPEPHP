@@ -3,14 +3,14 @@
     "session_started_at_utc": "2026-10-24T21:37:44Z",
     "session_deadline_utc": "2026-10-25T04:37:44Z",
     "session_status": "in_progress",
-    "measured_at_utc": "2026-10-24T23:03:20+00:00",
+    "measured_at_utc": "2026-10-24T23:17:24+00:00",
     "base_engine_revision": "147e5383e48e5f696728cec777fbeeee892e4337",
     "before_revision": {
-        "head": "63c806e",
+        "head": "d0fc2c0",
         "dirty": ""
     },
     "after_revision": {
-        "head": "63c806e",
+        "head": "d0fc2c0",
         "dirty": ""
     },
     "control_method": "Autoload des classes src exportées depuis le commit de départ, Conformite exclu pour garder le juge courant ; seul TableRepository est redirigé vers les tables du même commit. Aucune substitution de valeur calculée ou référence.",
@@ -51,11 +51,15 @@
     },
     "engine_and_tables": {
         "before_tree_sha256": "c07129950cc8553e799493e5a000d0e1167852c9b48361d735904ae8ff1661b0",
-        "after_tree_sha256": "22c2f170f9863f5c8d9729b1261d784326c7b84e2e066e71e87fcdb22d997264",
+        "after_tree_sha256": "ba3db3fe2aa88b5110f6af3bdf6cc8fa7f5f6f7b3811410f398e18b06d8836cf",
         "changed_files": {
             "resources/tables/apports/tv_coef_transparence_ets.php": {
                 "before": "9df55c947d6b354887d8707c74e819340bd97321fa29b73c888c2c80d1584450",
                 "after": "eedf1ad3667bc0b44c98f68eac9a376350fa9a14bf69f35af1ce7b9ea0596d8b"
+            },
+            "resources/tables/ecs/tv_rendement_distribution_ecs.php": {
+                "before": "b258b1bc4d951ecc217b5d10fb511464d453011906231c432b0c8a292e1651cf",
+                "after": "6dbb1def033a81e4d462b756b1bf4a972da7a0f764d5159a3c651aab1f95b71a"
             },
             "src/Apport/EspaceTamponSolariseCalculator.php": {
                 "before": "3063cea0bf25565b713beb42ecd3a8777e016d65e452b25cced96e00ecbb3f7e",
@@ -81,13 +85,17 @@
                 "before": "12f4fd36f62e07c7afd64aa3c5a01227e22f86987c5c13bb41dc5b5fd8559ed8",
                 "after": "3bccea83954650f6b989057ef7458666ac5adc1ae9d45abf2fb0b86160c78629"
             },
+            "src/Ecs/Rendement/DistributionCalculator.php": {
+                "before": "eaaca3765c05883b64fb83057836a14d8ff364a25d073cf89299f33373fb8b6e",
+                "after": "4713c59b6c69c8409a33125f9e853d573cc1f76a822a602ce6a999c52f17ac63"
+            },
             "src/Ecs/Rendement/StockageCalculator.php": {
                 "before": "29bce1549a8e002d0000c1ae42b0a94ef8c0da53ba1e9457074b97165dc42597",
                 "after": "cb1634dfead7d4712b5bbcdc1d18a64c041014f28e852dcf8ec72734924602e3"
             },
             "src/Engine/DpeEngine.php": {
                 "before": "0db2e11f42d93bf07c0b25104e02acdfc28f840b8a542d17750d110bd89a7d32",
-                "after": "b61626711d2457224b4f2ebde05cd2c71bc8674465fe20e4888dc0aef2ae0be8"
+                "after": "59dd81bb3f9ee4558c62fdbfb7b33abd4dd3998367077ebacfe6d4994ef82bce"
             },
             "src/Froid/ConsoFroidCalculator.php": {
                 "before": "92201e4792360ce1bd179c31aea80a7a494a60954c511ffc961cce636a12fd0b",
@@ -374,12 +382,12 @@
         }
     },
     "phpunit": {
-        "tests": 7474,
-        "assertions": 24102,
+        "tests": 7488,
+        "assertions": 24128,
         "failures": 0,
         "warnings_or_deprecations": 0,
-        "covered_lines": 10967,
-        "executable_lines": 11872,
+        "covered_lines": 10973,
+        "executable_lines": 11878,
         "coverage_percent": 92.38
     },
     "idempotence": {
