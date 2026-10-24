@@ -54,6 +54,7 @@ final class CombustionSansTablePipelineTest extends TestCase
 
     public static function types(): iterable
     {
+        foreach ([48, 49] as $type) { yield "bouilleur bûches $type" => [$type, 4, 14]; }
         foreach (range(50, 74) as $type) {
             $energy = $type <= 54 ? 2 : ($type >= 69 ? 5 : ($type >= 62 ? 6 : 4));
             yield (string)$type => [$type, $energy, $type <= 52 ? 5 : ($type <= 54 ? 23 : 14)];

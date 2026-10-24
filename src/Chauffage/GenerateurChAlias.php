@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace CalculDpePHP\Chauffage;
 
 /**
- * Normalisation des enum_type_generateur_ch_id > 97 vers leur générateur
- * « équivalent » 1-97 pour les calculs de rendement (§12.4, §13.2).
+ * Normalisation des types particuliers vers leur générateur équivalent
+ * pour les calculs de rendement (§12.4, §13.1 et §13.2).
  *
  * La spec définit les formules pour les familles de base (gaz, fioul, bois,
  * PAC 1-19) ; les enums additionnels de l'XSD (GPL, charbon, PAC hybrides,
@@ -15,9 +15,10 @@ namespace CalculDpePHP\Chauffage;
  * et `scop` d'open3cl (src/tv.js), où chaque ligne liste explicitement les
  * enums équivalents (ex. rpn/rpint identiques pour 96|138|148|160).
  *
- * @spec-section 12.4, 13.2.2
+ * @spec-section 12.4, 13.1, 13.2.2
  * @spec-pages   78-80, 86-92
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
+ * @spec-source  resources/specsplitted/13-rendement-combustion/01-inserts-poeles.md
  * @spec-source  editeur/public/schemas/DPEv2.7.xsd
  * @spec-source  https://gitlab.com/observatoire-dpe/observatoire-dpe/-/blob/52792fb9e79e52390ded7d4527a7f7a962fd5ccc/modele_donnee/valeur_tables.xlsx (generateur_combustion A66:J69)
  * @tables       chauffage/tv_generateur_combustion (groupes d'enums par ligne)
@@ -25,9 +26,14 @@ namespace CalculDpePHP\Chauffage;
 final class GenerateurChAlias
 {
     /**
-     * enum CH > 97 → enum équivalent (groupes des tables generateur_combustion/scop).
+     * Types particuliers → enum équivalent (groupes physiques combustion/scop).
      */
     private const ALIAS = [
+        // §13.1 p.78 : les bouilleurs bûches suivent les chaudières bois
+        // 1978–1994 avant 2012, et 2004–2012 à partir de 2012. Ils doivent
+        // également emprunter leur loi de pertes à 50 % de charge (§13.2.2.3).
+        48 => 56, 49 => 58,
+
         // Chaudières charbon (120-126) → chaudières bois bûche de même période
         // (open3cl generateur_combustion ids 28-49 : groupes 55|62|120, 56|63|121, …)
         120 => 55, 121 => 56, 122 => 57, 123 => 58, 124 => 59, 125 => 60, 126 => 61,

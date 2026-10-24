@@ -11,6 +11,18 @@ use PHPUnit\Framework\TestCase;
 
 final class GenerateurChAliasTest extends TestCase
 {
+    public function testLesBouilleursBuchesSuiventLesPeriodesDeChaudiereExplicitesDeLaMethode(): void
+    {
+        // §13.1 p.78 : avant 2012 → chaudière bois 1978–1994 ;
+        // depuis 2012 → chaudière bois 2004–2012, quel que soit le bâti.
+        foreach ([48 => 56, 49 => 58, 140 => 70, 141 => 72] as $type => $family) {
+            self::assertSame($family, GenerateurChAlias::normalize($type));
+            foreach (['<annee_construction>1900</annee_construction>', '<annee_construction>2020</annee_construction>'] as $general) {
+                self::assertSame($family, GenerateurChAlias::normalizeNode($type, $this->generateur($type, $general)));
+            }
+        }
+    }
+
     public function testLesPacRecentesGardentLeurFamilleSansPerdreLeurNatureHybride(): void
     {
         foreach ([172 => 3, 173 => 7, 174 => 11, 175 => 15, 176 => 19, 178 => 7, 179 => 11, 180 => 15, 181 => 19] as $type => $family) {
