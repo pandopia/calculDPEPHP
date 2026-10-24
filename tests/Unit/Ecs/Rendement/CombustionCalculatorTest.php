@@ -19,6 +19,39 @@ final class CombustionCalculatorTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
     private const TOL = 0.0001;
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('referencesMixtesLibres')]
+    public function testLaReferenceMixteEstDuTextePasUneExpressionXpath(string $reference, string $field): void
+    {
+        $ref = htmlspecialchars($reference, ENT_XML1);
+        $doc = new DOMDocument();
+        $doc->loadXML('<logement><installation_chauffage><generateur_chauffage><donnee_entree><' . $field . '>' . $ref . '</' . $field . '></donnee_entree><donnee_intermediaire><pn>20000</pn><rpn>0.9</rpn><qp0>100</qp0></donnee_intermediaire></generateur_chauffage></installation_chauffage>'
+            . '<installation_ecs><donnee_intermediaire><besoin_ecs>2000</besoin_ecs></donnee_intermediaire><generateur_ecs><donnee_entree><enum_type_energie_id>2</enum_type_energie_id><enum_type_generateur_ecs_id>49</enum_type_generateur_ecs_id><enum_methode_saisie_carac_sys_id>4</enum_methode_saisie_carac_sys_id><reference_generateur_mixte>' . $ref . '</reference_generateur_mixte></donnee_entree><donnee_intermediaire><pn>10000</pn><rpn>0.75</rpn><qp0>0</qp0></donnee_intermediaire></generateur_ecs></installation_ecs></logement>');
+        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        (new CombustionCalculator())->calculate($gen, $this->makeContext($doc));
+        $xp = new \DOMXPath($doc);
+        self::assertSame(20000.0, $xp->evaluate('number(./donnee_intermediaire/pn)', $gen));
+        self::assertSame(100.0, $xp->evaluate('number(./donnee_intermediaire/qp0)', $gen));
+        self::assertEqualsWithDelta(1 / (1 / 0.9 + 1790 * 100 / 2000000), $xp->evaluate('number(./donnee_intermediaire/rendement_generation)', $gen), 1e-12);
+    }
+
+    public static function referencesMixtesLibres(): iterable
+    {
+        foreach (['chaudiere-1', "chaudière d'été", 'chaudière "principale"', 'l\'été "A"', 'annexe\\chaudiere', 'A & B <mixte>'] as $ref) {
+            foreach (['reference', 'reference_generateur_mixte'] as $field) {
+                yield $field . ': ' . $ref => [$ref, $field];
+            }
+        }
+    }
+
+    public function testUneReferenceDirectePrimeSurUneCleMixteCommune(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML('<logement><installation_chauffage><generateur_chauffage><donnee_entree><reference_generateur_mixte>cible</reference_generateur_mixte></donnee_entree><donnee_intermediaire><pn>30000</pn><rpn>0.8</rpn></donnee_intermediaire></generateur_chauffage><generateur_chauffage><donnee_entree><reference>cible</reference></donnee_entree><donnee_intermediaire><pn>20000</pn><rpn>0.9</rpn></donnee_intermediaire></generateur_chauffage></installation_chauffage><installation_ecs><generateur_ecs><donnee_entree><enum_type_energie_id>2</enum_type_energie_id><reference_generateur_mixte>cible</reference_generateur_mixte></donnee_entree></generateur_ecs></installation_ecs></logement>');
+        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        (new CombustionCalculator())->calculate($gen, $this->makeContext($doc));
+        self::assertSame(20000.0, (new \DOMXPath($doc))->evaluate('number(./donnee_intermediaire/pn)', $gen));
+    }
+
     public static function veilleusesSaisies(): iterable
     {
         foreach (['2', '0.1.0'] as $format) {

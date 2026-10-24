@@ -620,21 +620,20 @@ final class CombustionCalculator implements CalculatorInterface
         if ($doc === null) {
             return null;
         }
-        $xpath = new \DOMXPath($doc);
-        $matches = $xpath->query(sprintf(
-            '//generateur_chauffage[donnee_entree/reference="%s"]',
-            addslashes($refMixte),
-        ));
-        if ($matches === false || $matches->length === 0) {
-            $matches = $xpath->query(sprintf(
-                '//generateur_chauffage[donnee_entree/reference_generateur_mixte="%s"]',
-                addslashes($refMixte),
-            ));
+        // Le XSD autorise une référence textuelle libre. Les échappements
+        // PHP (addslashes) ne sont pas des échappements XPath : apostrophes,
+        // guillemets et antislashs faisaient perdre un lien pourtant valide.
+        // Conserver la priorité du lien direct sur la clé mixte commune.
+        $chNode = null;
+        foreach (['reference', 'reference_generateur_mixte'] as $field) {
+            foreach ($doc->getElementsByTagName('generateur_chauffage') as $candidate) {
+                if ($candidate instanceof DOMElement
+                    && $accessor->getStringOrNull('./donnee_entree/' . $field, $candidate) === $refMixte) {
+                    $chNode = $candidate;
+                    break 2;
+                }
+            }
         }
-        if ($matches === false || $matches->length === 0) {
-            return null;
-        }
-        $chNode = $matches->item(0);
         if (!$chNode instanceof DOMElement) {
             return null;
         }
