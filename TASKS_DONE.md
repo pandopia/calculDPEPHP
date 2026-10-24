@@ -19,6 +19,25 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K57 — Cinq puissances de ventilation résiduelles (24/10/2026)
+
+Contrôle sur 710 cas : cinq `pvent_moy` divergents hors défauts de référence
+déjà isolés, pas de correction de formule justifiée. §5 p.41–42 vérifié au
+PDF : simple flux collectif après 2012 = 0,25 W/(m³/h), basse pression
+assimilée à la VMC classique ; hybride maison = 65 × 0,083 = 5,395 W.
+
+- 2576E4044988O, 2576E4045305T et 2601E0735362K, types BP 18/18/17,
+  drapeau après 2012 : la référence suit exactement 1,1 × Qvarep × Sh,
+  coefficient double flux ancien, au lieu de 0,25. Rapport 4,4 constant.
+- 2601E0406718G, hybride maison type 31 : 2,324 W publiés contre 5,395 W
+  prescrits ; 2,324 = 28 × 0,083, sans forfait 28 W dans cette table.
+- 2613E2419802A, hygro B après 2012 type 15 mais drapeau ancien : la
+  référence suit 0,46, le moteur 0,25. Le type XSD porte déjà son millésime.
+
+Ne pas choisir la colonne d'après les valeurs calculées. Rouvrir sur une
+saisie de puissance documentée, une correction des entrées ou un erratum,
+pas pour recopier ces valeurs. Aucun compteur ni budget modifié.
+
 ### TASK-K06 — Pertes à l'arrêt bois ECS : variante isolée non activée (24/10/2026)
 
 Le zéro systématique de `qp0_pct = null` dans la table ECS bois n'est pas

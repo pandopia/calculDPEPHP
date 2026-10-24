@@ -74,7 +74,7 @@ final class PventMoyCalculator implements CalculatorInterface
             return;
         }
 
-        // §5 p.50 tabule deux colonnes, « jusqu'à 2012 » et « après 2012 ».
+        // §5 p.41 tabule deux colonnes, « jusqu'à 2012 » et « après 2012 ».
         // Le libellé XSD porte l'époque pour toutes les VMC sauf les trois
         // basse pression (16, 17, 18) : pour elles seules, `ventilation_post_2012`
         // la désigne. Ailleurs le drapeau contredit parfois le type — il vaut
