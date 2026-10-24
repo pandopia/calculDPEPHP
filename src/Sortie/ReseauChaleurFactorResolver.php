@@ -84,8 +84,8 @@ final class ReseauChaleurFactorResolver
      * `date_arrete_reseau_chaleur` désigne le millésime sans ambiguïté quand
      * l'export la renseigne — le XSD la définit comme « la date de l'arrêté
      * qui modifie l'annexe 7 ». À défaut, la date d'établissement du DPE est
-     * cherchée dans les plages, prises de la plus récente à la plus ancienne
-     * parce que l'amont les laisse se chevaucher d'un mois entre 2021 et 2022.
+     * cherchée dans les plages réglementaires d'entrée en vigueur. Les alias
+     * de déclaration ADEME sont acceptés sans changer ces bornes.
      *
      * Un DPE antérieur au premier arrêté retombe sur le millésime le plus
      * ancien : la méthode 3CL ne s'applique que depuis le 1er juillet 2021,
@@ -99,7 +99,7 @@ final class ReseauChaleurFactorResolver
         if ($dateArrete !== null && $dateArrete !== '') {
             $jour = substr($dateArrete, 0, 10);
             foreach ($arretes as $arrete) {
-                if ($arrete['date_arrete'] === $jour) {
+                if ($arrete['date_arrete'] === $jour || in_array($jour, $arrete['dates_declaration_aliases'] ?? [], true)) {
                     return (int) $arrete['millesime'];
                 }
             }

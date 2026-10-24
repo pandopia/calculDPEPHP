@@ -27,8 +27,13 @@ final class ReseauChaleurEnrResolverTest extends TestCase
     {
         yield '2021 fraction' => ['2022-02-01', 0.715];
         yield '2022 fraction' => ['2023-06-01', 0.688];
-        yield '2023 pourcentage' => ['2024-08-01', 0.896];
+        yield 'veille entrée édition 2023' => ['2024-08-09', 0.688];
+        yield '2023 pourcentage' => ['2024-08-10', 0.896];
+        yield 'veille entrée édition 2024' => ['2025-05-25', 0.896];
+        yield 'entrée édition 2024' => ['2025-05-26', 0.848];
         yield '2024 pourcentage' => ['2025-06-01', 0.848];
+        yield 'veille entrée édition 2025' => ['2026-05-24', 0.848];
+        yield 'entrée édition 2025' => ['2026-05-25', 0.857];
         yield '2025 fraction' => ['2027-01-01', 0.857];
     }
 
