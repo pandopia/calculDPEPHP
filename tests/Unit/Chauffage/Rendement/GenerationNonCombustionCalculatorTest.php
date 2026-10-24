@@ -49,6 +49,43 @@ final class GenerationNonCombustionCalculatorTest extends TestCase
         }
     }
 
+    #[DataProvider('scopPropresBornes')]
+    public function testLeScopPropreRespecteLesBornesDuModele(int $type, ?string $version, string $champ, ?string $value, bool $valid): void
+    {
+        $doc = new DOMDocument();
+        $scop = $value === null ? '' : '<scop>' . $value . '</scop>';
+        $doc->loadXML('<dpe><administratif>' . ($version === null ? '' : '<enum_version_id>' . $version . '</enum_version_id>')
+            . '</administratif><logement><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>' . $type
+            . '</enum_type_generateur_ch_id><enum_methode_saisie_carac_sys_id>6</enum_methode_saisie_carac_sys_id>'
+            . ($champ === 'donnee_entree' ? $scop : '') . '</donnee_entree><donnee_intermediaire>'
+            . ($champ === 'donnee_intermediaire' ? $scop : '') . '</donnee_intermediaire></generateur_chauffage></logement></dpe>');
+        $node = $doc->getElementsByTagName('generateur_chauffage')->item(0);
+        if (!$valid) {
+            $this->expectException(\CalculDpePHP\Engine\UnsupportedDpeModelException::class);
+        }
+        (new GenerationNonCombustionCalculator())->calculate($node, new CalculationContext($doc, new TableRepository(self::PROJECT_ROOT . '/resources/tables')));
+        self::assertEqualsWithDelta((float)$value, (new NodeAccessor($doc))->getFloatOrNull('./donnee_intermediaire/scop', $node), 1e-12);
+        self::assertSame(0, $doc->getElementsByTagName('rendement_generation')->length);
+    }
+
+    public static function scopPropresBornes(): iterable
+    {
+        // Les facettes exécutables priment sur la documentation « 0–20 » :
+        // modèles 1/1.1 : 0 < SCOP ≤ 8 ; modèles 2+ : 1 < SCOP ≤ 8.
+        // Sans version connue, conserver la borne basse historique.
+        foreach ([117, 118] as $type) {
+            foreach ([null, '1', '1.1', '2.6', '2.7'] as $version) {
+                foreach (['donnee_entree', 'donnee_intermediaire'] as $champ) {
+                    foreach ([null, '0', '0.5', '1', '1.001', '8', '8.001', '1e309', 'NaN'] as $value) {
+                        $minimum = in_array($version, ['2.6', '2.7'], true) ? 1 : 0;
+                        $valid = $value !== null && is_numeric($value) && is_finite((float)$value) && (float)$value > $minimum && (float)$value <= 8;
+                        yield "$type/" . ($version ?? 'absent') . "/$champ/" . ($value ?? 'absent') => [$type, $version, $champ, $value, $valid];
+                    }
+                }
+            }
+        }
+    }
+
     #[DataProvider('scopDepuis2027')]
     public function testLesPacDepuis2027SuiventLeurTableEtLeurEmission(int $type, int $emetteur, string $zone, float $expected): void
     {

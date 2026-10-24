@@ -176,16 +176,22 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
      * §12.4.2 p.77 et XSD, méthode 6 : le SCOP réel de ce générateur.
      * Une fiche globale non associée ne permet pas d'identifier le SCOP
      * d'une technologie inconnue parmi plusieurs PAC.
+     * Les facettes XSD imposent SCOP ≤ 8 et SCOP > 1 depuis le modèle 2 ;
+     * les modèles 1/1.1 autorisent SCOP > 0. Sans modèle déclaré, conserver
+     * cette borne basse historique, sans dépasser la borne haute commune.
+     *
+     * @spec-source editeur/public/schemas/DPEv1-obsolete.xsd (scop)
+     * @spec-source editeur/public/schemas/DPEv2.xsd (scop)
      */
     public static function otherThermoScop(DOMElement $node, NodeAccessor $accessor): ?float
     {
         $scop = $accessor->getFloatOrNull('./donnee_entree/scop', $node);
-        if ($scop !== null && is_finite($scop) && $scop > 0.0) { return $scop; }
-        if ($accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node) === 6) {
+        if ($scop === null && $accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node) === 6) {
             $scop = $accessor->getFloatOrNull('./donnee_intermediaire/scop', $node);
-            if ($scop !== null && is_finite($scop) && $scop > 0.0) { return $scop; }
         }
-        return null;
+        $version = $accessor->getStringOrNull('/dpe/administratif/enum_version_id');
+        $minimum = $version !== null && version_compare($version, '2', '>=') ? 1.0 : 0.0;
+        return $scop !== null && is_finite($scop) && $scop > $minimum && $scop <= 8.0 ? $scop : null;
     }
 
     private function writeRg(DOMElement $node, NodeAccessor $accessor, CalculationContext $context, float $rg): void

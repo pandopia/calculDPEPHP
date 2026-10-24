@@ -43,6 +43,30 @@ final class DpeEngineTest extends TestCase
         );
     }
 
+    public function testUnScopPropreHorsXsdEstRefuseAvantPurgeSansRequalifierLesAnciensModeles(): void
+    {
+        foreach ([117, 118] as $type) {
+            foreach (['1.1', '2.6', '2.7'] as $version) {
+                foreach ([0.5, 1.0, 1.001, 8.0, 8.001] as $scop) {
+                    $doc = new \DOMDocument();
+                    $doc->loadXML('<dpe><administratif><enum_version_id>' . $version . '</enum_version_id></administratif><logement><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>' . $type
+                        . '</enum_type_generateur_ch_id><enum_methode_saisie_carac_sys_id>6</enum_methode_saisie_carac_sys_id></donnee_entree><donnee_intermediaire><scop>' . $scop
+                        . '</scop></donnee_intermediaire></generateur_chauffage><sortie><temoin>123</temoin></sortie></logement></dpe>');
+                    $before = $doc->saveXML();
+                    $valid = $scop > ($version === '1.1' ? 0 : 1) && $scop <= 8;
+                    try {
+                        $this->engine()->calculateDocument($doc);
+                        self::assertTrue($valid, 'La performance doit être publiable au XSD du modèle.');
+                        self::assertSame($scop, (new \CalculDpePHP\Xml\NodeAccessor($doc))->getFloatOrNull('//scop'));
+                    } catch (UnsupportedDpeModelException $exception) {
+                        self::assertFalse($valid, $exception->getMessage());
+                        self::assertSame($before, $doc->saveXML(), 'Une entrée invalide ne doit pas être purgée.');
+                    }
+                }
+            }
+        }
+    }
+
     public function testLeThermodynamiqueGazEcsExigeUnePerformanceReelleAvantPurge(): void
     {
         foreach ([1, 6] as $method) {
