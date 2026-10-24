@@ -51,6 +51,30 @@ final class ProductionPvCalculatorTest extends TestCase
         return $doc;
     }
 
+    /** §16.2 p.105-106 : chaque kWh autoconsommé appartient à un seul poste. */
+    public function testCanalAutoconsommationSepareUsagesEtAuxiliairesDeGeneration(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML('<logement><caracteristique_generale><surface_habitable_logement>100</surface_habitable_logement></caracteristique_generale>'
+            . '<production_elec_enr><donnee_entree><presence_production_pv>1</presence_production_pv></donnee_entree>'
+            . '<panneaux_pv_collection><panneaux_pv><surface_totale_capteurs>20</surface_totale_capteurs><enum_orientation_pv_id>3</enum_orientation_pv_id><enum_inclinaison_pv_id>2</enum_inclinaison_pv_id></panneaux_pv></panneaux_pv_collection></production_elec_enr>'
+            . '<sortie><ef_conso><conso_ch>5000</conso_ch><conso_ecs>2000</conso_ecs><conso_fr>100</conso_fr><conso_eclairage>300</conso_eclairage><conso_totale_auxiliaire>400</conso_totale_auxiliaire>'
+            . '<conso_auxiliaire_generation_ch>100</conso_auxiliaire_generation_ch><conso_auxiliaire_generation_ecs>50</conso_auxiliaire_generation_ecs><conso_auxiliaire_distribution_ch>100</conso_auxiliaire_distribution_ch><conso_auxiliaire_distribution_ecs>50</conso_auxiliaire_distribution_ecs><conso_auxiliaire_ventilation>100</conso_auxiliaire_ventilation>'
+            . '<conso_5_usages>7800</conso_5_usages></ef_conso></sortie></logement>');
+        $context = $this->makeContext($doc);
+        (new ProductionPvCalculator())->calculate($doc->documentElement, $context);
+        $parts = $context->get('pv.autoconsommation');
+        self::assertIsArray($parts);
+        self::assertEqualsWithDelta((float)$context->get('pv.conso_elec_ac'), array_sum($parts), 1e-9);
+        self::assertSame(0.0, $parts['ch'], 'Aucun chauffage électrique : les auxiliaires ne sont pas une consommation du générateur.');
+        self::assertSame(0.0, $parts['ecs']);
+        self::assertGreaterThan(0.0, $parts['auxiliaire']);
+        self::assertGreaterThan(0.0, $parts['autre_usage']);
+        self::assertSame($parts['ch'], $context->get('pv.ac_ch'));
+        self::assertSame($parts['ecs'], $context->get('pv.ac_ecs'));
+        self::assertSame($parts['auxiliaire'], $context->get('pv.ac_auxiliaire'));
+    }
+
     /**
      * Sans PV (presence_production_pv=0) : aucun donnee_intermediaire écrit.
      */

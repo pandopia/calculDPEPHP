@@ -197,6 +197,7 @@ final class ProductionPvCalculator implements CalculatorInterface
         $acAuxVent   = $tapl > 0.0 ? $celecAc * (self::TAPLPI['auxiliaire_ventilation'] * $consoAuxVent / $celecTot) / $tapl : 0.0;
         $acAuxDistCh = $tapl > 0.0 ? $celecAc * (self::TAPLPI['auxiliaire_distribution'] * $consoAuxDistCh / $celecTot) / $tapl : 0.0;
         $acAuxDistEcs = $tapl > 0.0 ? $celecAc * (self::TAPLPI['auxiliaire_distribution'] * $consoAuxDistEcs / $celecTot) / $tapl : 0.0;
+        $acAutres    = $tapl > 0.0 ? $celecAc * (self::TAPLPI['autres'] * $celecAu / $celecTot) / $tapl : 0.0;
 
         $acAux = $acAuxGenCh + $acAuxGenEcs + $acAuxDistCh + $acAuxDistEcs + $acAuxVent;
 
@@ -207,11 +208,19 @@ final class ProductionPvCalculator implements CalculatorInterface
         $context->set('pv.production_pv',      $ppv);
         $context->set('pv.conso_elec_ac',      $celecAc);
         $context->set('pv.taux_autoproduction', $tap);
-        $context->set('pv.ac_ch',              $acCh + $acAuxGenCh);
-        $context->set('pv.ac_ecs',             $acEcs + $acAuxGenEcs);
+        // §16.2 p.105-106 : l'auxiliaire de génération est pondéré avec son
+        // usage, mais reste un auxiliaire dans les agrégats EF/EP/GES/coûts.
+        // Le déduire aussi du chauffage/ECS compterait deux fois son énergie,
+        // même lorsque le générateur chauffe au gaz ou au bois.
+        $context->set('pv.ac_ch',              $acCh);
+        $context->set('pv.ac_ecs',             $acEcs);
         $context->set('pv.ac_fr',              $acFr);
         $context->set('pv.ac_eclairage',       $acEcl);
         $context->set('pv.ac_auxiliaire',      $acAux);
+        $context->set('pv.autoconsommation', [
+            'ch' => $acCh, 'ecs' => $acEcs, 'fr' => $acFr,
+            'eclairage' => $acEcl, 'auxiliaire' => $acAux, 'autre_usage' => $acAutres,
+        ]);
 
         // ── 13. Réduire ef_conso dans le sortie (autoconsommation déduite) ──
         if ($efNode !== null && $sh > 0.0) {
