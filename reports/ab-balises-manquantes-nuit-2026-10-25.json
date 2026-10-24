@@ -3,14 +3,14 @@
     "session_started_at_utc": "2026-10-24T21:37:44Z",
     "session_deadline_utc": "2026-10-25T04:37:44Z",
     "session_status": "in_progress",
-    "measured_at_utc": "2026-10-24T23:30:57+00:00",
+    "measured_at_utc": "2026-10-24T23:44:41+00:00",
     "base_engine_revision": "147e5383e48e5f696728cec777fbeeee892e4337",
     "before_revision": {
-        "head": "fe7e3a8",
+        "head": "a92821a",
         "dirty": ""
     },
     "after_revision": {
-        "head": "fe7e3a8",
+        "head": "a92821a",
         "dirty": ""
     },
     "control_method": "Autoload des classes src exportées depuis le commit de départ, Conformite exclu pour garder le juge courant ; seul TableRepository est redirigé vers les tables du même commit. Aucune substitution de valeur calculée ou référence.",
@@ -51,7 +51,7 @@
     },
     "engine_and_tables": {
         "before_tree_sha256": "c07129950cc8553e799493e5a000d0e1167852c9b48361d735904ae8ff1661b0",
-        "after_tree_sha256": "d82a9e43bb73efe98739eddc312ea668d8c72e3c6e708d3d6f9436e2eb5b47ff",
+        "after_tree_sha256": "dce3071456d9c0bc873e0bc1520595376a82620f55fe61a64c564e263dd449ab",
         "changed_files": {
             "resources/tables/apports/tv_coef_transparence_ets.php": {
                 "before": "9df55c947d6b354887d8707c74e819340bd97321fa29b73c888c2c80d1584450",
@@ -76,6 +76,10 @@
             "src/Chauffage/Rendement/Combustion/ChaudiereDefautCalculator.php": {
                 "before": "5fa512bc16ace56e9f5f09a59a03d7d712a94284ec3379f0abf34482dd889b5e",
                 "after": "e5b1745f889a200ec37c9cae04130a2aeb2ca32f46b1612d589e3a7694d80c2b"
+            },
+            "src/Chauffage/Rendement/DistributionCalculator.php": {
+                "before": "c24997cf3b13bf5ef6567c80afc44517531eb547fa2cef0ab942da1639c64ebb",
+                "after": "2cfabf60cd1f77c6e7fcf08ee1a073af7874219f842de0241851341ed651ed09"
             },
             "src/Chauffage/Rendement/GenerationNonCombustionCalculator.php": {
                 "before": "dc6fae5e04a241800cab872fcd039bca04679aaa048e90cd5b1b9a49a050a3aa",
@@ -120,6 +124,10 @@
             "src/Xml/OutputPurger.php": {
                 "before": "9f242989cb5f8497dc48e574ad78f49ddc5bfbdac507d52bcce29ba766de0511",
                 "after": "95bf9ee391c94d927ee0ffedba6b2ced16efdf7854623bf4b299310bc8762e2a"
+            },
+            "resources/tables/chauffage/tv_type_reseau_distribution_ch.php": {
+                "before": null,
+                "after": "450673199743a897c6e5e9589368bff773ac84e0e77a522afbbec4c48ad20397"
             }
         }
     },
@@ -197,7 +205,7 @@
         "2457E3724590U.xml": -1
     },
     "higher_motor_budgets": [],
-    "resolved_values": 274,
+    "resolved_values": 275,
     "new_failing_values": {
         "2601E2643956W.xml:dpe/logement/sortie/emission_ges/emission_ges_5_usages_m2": {
             "path": "dpe/logement/sortie/emission_ges/emission_ges_5_usages_m2",
@@ -218,6 +226,17 @@
             "actual": "57",
             "delta_abs": 0.7700000000000031,
             "delta_percent": 1.332871732733258,
+            "note": null,
+            "status": "out_of_tolerance"
+        },
+        "2605E2654977X.xml:dpe/logement/sortie/emission_ges/emission_ges_5_usages_m2": {
+            "path": "dpe/logement/sortie/emission_ges/emission_ges_5_usages_m2",
+            "tag": "emission_ges_5_usages_m2",
+            "famille": "GES",
+            "expected": "13",
+            "actual": "15",
+            "delta_abs": 2,
+            "delta_percent": 15.384615384615385,
             "note": null,
             "status": "out_of_tolerance"
         },
@@ -386,13 +405,13 @@
         }
     },
     "phpunit": {
-        "tests": 7669,
-        "assertions": 24432,
+        "tests": 7707,
+        "assertions": 24481,
         "failures": 0,
         "warnings_or_deprecations": 0,
-        "covered_lines": 10973,
-        "executable_lines": 11878,
-        "coverage_percent": 92.38
+        "covered_lines": 10980,
+        "executable_lines": 11885,
+        "coverage_percent": 92.39
     },
     "idempotence": {
         "cases": 750,
@@ -577,6 +596,19 @@
                     "assertions": 1868,
                     "failures": 0
                 }
+            }
+        },
+        "generic_emitter_declared_heating_network": {
+            "live_corpus_net_gain": 0,
+            "resolved_values": 1,
+            "new_failing_values": 1,
+            "higher_motor_budgets": [],
+            "source": "§12.2 p.76 et classeur ADEME 52792fb9, rendement_distribution_ch A2:E13",
+            "note": "Les douze réseaux publics qualifient le seul émetteur générique 41 ; les paramètres physiques des autres émetteurs et le drapeau isolation explicite restent prioritaires. Rd=0,91 est rétabli, un écart GES arrondi apparaît en aval et reste compté. Les variantes auxiliaires qui dégradent un budget ne sont pas activées (TASK-K100).",
+            "regression_tests": {
+                "tests": 45,
+                "assertions": 53,
+                "failures": 0
             }
         },
         "other_sourced_reproductions": {

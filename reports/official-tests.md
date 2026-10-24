@@ -1,7 +1,7 @@
 # Conformité du moteur — jeux de tests DPE 3CL
 
-_Généré le 2026-10-24T23:30:57+00:00 — profil de tolérance : `strict`_
-_Révision mesurée : `fe7e3a8`_
+_Généré le 2026-10-24T23:44:41+00:00 — profil de tolérance : `strict`_
+_Révision mesurée : `a92821a`_
 
 Comparaison balise à balise de la totalité de `<donnee_intermediaire>` et
 `<sortie>` entre la sortie du moteur et la référence du cas. Aucune balise
@@ -41,14 +41,14 @@ Il se distingue de la conformité brute (89,96 %) par un point : 5 632 écarts s
 | Apports | 23176 | 19970 | 2242 | 577 | 0 | 387 | 95,84 % |
 | Besoin chauffage | 3736 | 32 | 2951 | 753 | 0 | 0 | 79,84 % |
 | Besoin ECS | 6456 | 5849 | 527 | 80 | 0 | 0 | 98,76 % |
-| Génération chauffage | 15513 | 6710 | 5945 | 2840 | 11 | 7 | 81,58 % |
+| Génération chauffage | 15513 | 6711 | 5945 | 2839 | 11 | 7 | 81,58 % |
 | Génération ECS | 13249 | 8695 | 2447 | 1971 | 103 | 33 | 84,10 % |
 | Auxiliaires | 25500 | 16533 | 4909 | 4057 | 0 | 1 | 84,09 % |
 | Froid | 9824 | 8341 | 463 | 517 | 496 | 7 | 89,62 % |
 | PV | 5379 | 5115 | 112 | 134 | 15 | 3 | 97,17 % |
 | Sorties énergie finale | 5008 | 2586 | 1444 | 968 | 8 | 2 | 80,47 % |
 | Sorties énergie primaire | 6000 | 2718 | 1969 | 1278 | 0 | 1 | 78,12 % |
-| GES | 10137 | 4403 | 3563 | 2135 | 12 | 3 | 78,58 % |
+| GES | 10137 | 4402 | 3563 | 2136 | 12 | 3 | 78,57 % |
 | Coûts | 8637 | 1739 | 3553 | 3330 | 12 | 3 | 61,27 % |
 | Confort d'été | 4107 | 1868 | 0 | 322 | 0 | 1917 | 45,48 % |
 | Autre | 1582 | 941 | 391 | 244 | 3 | 3 | 84,20 % |
