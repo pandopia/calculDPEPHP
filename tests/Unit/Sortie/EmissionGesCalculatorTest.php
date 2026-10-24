@@ -26,7 +26,7 @@ final class EmissionGesCalculatorTest extends TestCase
 
     public static function classesEnergieFinales(): iterable
     {
-        foreach (['1', '2.6'] as $version) {
+        foreach (['1', '1.1', '2.6'] as $version) {
             yield "$version, énergie A après PV" => [$version, 69.9, 0.0, 'A', 'A'];
             yield "$version, énergie C mais climat F" => [$version, 110.1, 80.0, 'C', 'F'];
             yield "$version, énergie D décimale" => [$version, 249.9, 0.0, 'D', 'D'];
@@ -51,8 +51,9 @@ XML);
         (new EmissionGesCalculator())->calculate($node, $this->makeContext($doc));
         self::assertSame($bilan, $doc->getElementsByTagName('classe_bilan_dpe')->item(0)->textContent);
         $sep = $doc->getElementsByTagName('classe_conso_energie');
-        self::assertSame($version === '1' ? 1 : 0, $sep->length);
-        if ($version === '1') {
+        $ancien = in_array($version, ['1', '1.1'], true);
+        self::assertSame($ancien ? 1 : 0, $sep->length);
+        if ($ancien) {
             self::assertSame($energie, $sep->item(0)->textContent);
         }
     }

@@ -29,14 +29,15 @@ use DOMElement;
  * @spec-section  1
  * @spec-pages    6
  * @spec-source   resources/specsplitted/00-meta/01-methode-conventionnelle.md
- * @spec-source   editeur/public/schemas/DPEv1-obsolete.xsd (classe_conso_energie, modèle 1 uniquement)
+ * @spec-source   editeur/public/schemas/DPEv1-obsolete.xsd (classe_conso_energie, modèles 1 et 1.1)
+ * @spec-source   editeur/public/schemas/SOURCE.md (même schéma pour les modèles 1 et 1.1)
  * @xml-input     sortie.ef_conso.{conso_ch, conso_ecs, conso_eclairage, conso_fr, conso_auxiliaire_*}
  *                installation_chauffage.generateur_chauffage_collection.generateur_chauffage.donnee_entree.enum_type_energie_id
  *                installation_ecs.generateur_ecs_collection.generateur_ecs.donnee_entree.enum_type_energie_id
  * @xml-output    sortie.ep_conso.{ep_conso_ch, ep_conso_ecs, ep_conso_eclairage, ep_conso_fr,
  *                    ep_conso_auxiliaire_*, ep_conso_totale_auxiliaire, ep_conso_5_usages,
  *                    ep_conso_5_usages_m2, classe_bilan_dpe}
- * @xml-output    sortie.ep_conso.classe_conso_energie (modèle ADEME 1 uniquement)
+ * @xml-output    sortie.ep_conso.classe_conso_energie (modèles ADEME 1 et 1.1 uniquement)
  * @depends-on    \CalculDpePHP\Sortie\EfConsoCalculator
  * @tables        (aucune)
  */
@@ -166,10 +167,10 @@ final class EpConsoCalculator implements CalculatorInterface
         $accessor->setChildValue($epConso, 'ep_conso_5_usages',                            $ep5);
         $accessor->setChildValue($epConso, 'ep_conso_5_usages_m2',                         IntermediateEnergyUnit::usesDecimalIntensities($context->document) && $surface > 0.0 ? $ep5 / $surface : $ep5m2);
         $accessor->setChildValue($epConso, 'classe_bilan_dpe',                             $classeEnergie);
-        // Le modèle ADEME 1 publiait aussi l'étiquette énergie seule, avant
+        // Les modèles ADEME 1 et 1.1 publiaient aussi l'étiquette énergie seule, avant
         // la synthèse énergie/GES. Cette balise a disparu du modèle 2 : ne
         // pas la propager dans les XML récents (XSD DPEv1-obsolete, ep_conso).
-        if ($accessor->getStringOrNull('/dpe/administratif/enum_version_id') === '1') {
+        if (in_array($accessor->getStringOrNull('/dpe/administratif/enum_version_id'), ['1', '1.1'], true)) {
             $accessor->setChildValue($epConso, 'classe_conso_energie', $classeEnergie);
         }
     }
