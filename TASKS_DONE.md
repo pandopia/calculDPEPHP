@@ -19,6 +19,30 @@ une.
 
 ## Enquêtes closes
 
+### Dépendances — 12 alertes GitHub hors des versions verrouillées (24/10/2026)
+
+- Au push de la PR 51, GitHub annonce 12 alertes ouvertes sur main. Lecture
+  de l'API Dependabot et comparaison du verrou de main avec celui de la PR :
+  ils sont identiques, et aucune des plages affichées ne contient les versions
+  verrouillées ci-dessous. Aucune alerte n'est fermée ou masquée par l'agent.
+
+| Paquet | Version verrouillée | Première version corrigée indiquée dans les alertes |
+|---|---|---|
+| vite | 7.3.7 | 7.3.7 |
+| @modelcontextprotocol/sdk | 1.32.1 | 1.31.0 / 1.32.0 |
+| @angular/common | 21.2.25 | 20.3.34, pour la plage 20.x signalée |
+| tinypool | absent du verrou | 2.1.1 / 2.1.2 |
+| vitest | 4.1.12 | 4.1.11 |
+| @vitest/mocker | 4.1.12 | 4.1.11 |
+
+- composer audit --locked et npm audit --include=dev --package-lock-only :
+  zéro avis de sécurité, aucun paquet PHP abandonné ; aucun paquet installé
+  ou mis à jour. Ce constat porte sur les verrous, pas sur un node_modules
+  éventuellement ancien. Le décalage du graphe GitHub est une inférence.
+- Rouvrir sur une plage touchant réellement une version du verrou courant,
+  ou un nouveau résultat d'audit ; ne pas mettre à jour les paquets à l'aveugle
+  pour faire disparaître cet ancien affichage.
+
 ### TASK-K06/K83 — Huit sondages « autre thermodynamique » non intégrés (24/10/2026)
 
 - Sélection publique avant calcul : huit résultats les plus récents de

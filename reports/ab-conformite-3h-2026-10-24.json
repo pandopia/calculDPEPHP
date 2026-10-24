@@ -346,11 +346,35 @@
         "composer_advisories": 0,
         "composer_abandoned_packages": 0,
         "npm_vulnerabilities_total": 0,
+        "npm_dev_dependencies_explicitly_included": true,
+        "github_alerts_open_on_main": 12,
+        "github_alert_ranges_applicable_to_locked_versions": 0,
+        "main_and_pr_lockfiles_identical": true,
+        "github_alerts_closed_or_dismissed_by_agent": 0,
+        "locked_versions_checked": {
+            "vite": "7.3.7",
+            "@modelcontextprotocol/sdk": "1.32.1",
+            "@angular/common": "21.2.25",
+            "tinypool": null,
+            "vitest": "4.1.12",
+            "@vitest/mocker": "4.1.12"
+        },
         "scope": "Dépendances verrouillées, développement inclus, sans installation ni modification des paquets.",
         "lockfiles_sha256": {
             "composer.lock": "2214e729992c4b5e8eed50984be607d1689e9a03b628c8ad1a9019abafc95a62",
             "editeur/package-lock.json": "21ca0d62ca411c26fd1d93227145b4675d2e35377c7c7ef4907921cd3ccdd05d"
         }
+    },
+    "published_source_replay": {
+        "revision": "b6cf9f7bf1e7b876cb84878941eee49ceb36e0d3",
+        "scope": "Sources src/ et resources/tables/ archivées depuis le commit publié ; juge courant inchangé.",
+        "targeted_tests": 2272,
+        "targeted_assertions": 5019,
+        "deprecations": 0,
+        "warnings": 0,
+        "official_cases": 710,
+        "all_case_counts_and_deltas_identical": true,
+        "xsd_27_sha256": "cae5603a704decb62bfc46ed6edd92eb0028344cb9a312d0e583c90510fd7ec2"
     },
     "phpunit": {
         "tests": 6419,
