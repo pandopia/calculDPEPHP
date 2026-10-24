@@ -103,7 +103,7 @@ final class UpbCalculator implements CalculatorInterface
             3, 4 => $this->byEpaisseur($upb0, $accessor->getFloatOrNull('./epaisseur_isolation', $entree)),
             5, 6 => $this->byResistance($upb0, $accessor->getFloatOrNull('./resistance_isolation', $entree)),
             9, 10 => $accessor->getFloatOrNull('./u_saisi', $entree) ?? $upb0,
-            2, 7, 8 => $this->lookupUpbTab($upb0, $entree, $accessor, $context),
+            2, 7, 8 => $this->lookupUpbTab($upb0, $entree, $accessor, $context, $methode),
             default => $upb0,
         };
     }
@@ -134,17 +134,24 @@ final class UpbCalculator implements CalculatorInterface
     /**
      * Lookup Upb_tab par zone climatique × énergie chauffage × période d'isolation.
      * Upb final = min(Upb0, Upb_tab).
+     * §3.2.2.1 p.17 : isolation connue sans année et construction ≤1974
+     * → année conventionnelle 1975-1977 ; pas pour l'isolation inconnue.
+     * @spec-formula F-3.2.2-annee-isolation-conventionnelle
      */
     private function lookupUpbTab(
         float $upb0,
         DOMElement $entree,
         NodeAccessor $accessor,
         CalculationContext $context,
+        int $methode,
     ): float {
         $zone     = $context->zoneGroupe;
         $energie  = $context->energieChauffagePrincipale;
-        $periodeIsolation = $accessor->getIntOrNull('./enum_periode_isolation_id', $entree)
-            ?? $context->periodeConstructionId;
+        $periodeSaisie = $accessor->getIntOrNull('./enum_periode_isolation_id', $entree);
+        $periodeIsolation = $periodeSaisie ?? $context->periodeConstructionId;
+        if ($methode === 8 && $periodeSaisie === null && $periodeIsolation !== null && $periodeIsolation <= 2) {
+            $periodeIsolation = 3;
+        }
 
         if ($zone === null || $energie === null || $periodeIsolation === null) {
             return $upb0;
