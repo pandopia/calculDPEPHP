@@ -16,7 +16,7 @@ use DOMElement;
  * Seul I0 est calculé ici ; le facteur G/INT est appliqué par les stratégies CH.
  *
  * Détermine le type de bâtiment à partir de `enum_methode_application_dpe_log_id` :
- *   1, 14, 18, 25 → 'maison'
+ *   1, 14, 18 → 'maison' ; 25 décrit un appartement RE2020
  *   Une maison raccordée à un réseau collectif reste une maison avec
  *   chauffage individuel central (§8 p.56), pas un immeuble collectif.
  *   IDs "collectif collectif" détectés via enum_equipement_intermittence_id ∈ {6,7}
@@ -48,7 +48,7 @@ final class IntermittenceCalculator implements CalculatorInterface
     private const PLANCHER    = [8, 9, 11, 12, 13, 14, 43];
 
     /** enum_methode_application_dpe_log_id → maison individuelle */
-    private const MAISON_IDS = [1, 14, 18, 25];
+    private const MAISON_IDS = [1, 14, 18];
 
     public function id(): string
     {

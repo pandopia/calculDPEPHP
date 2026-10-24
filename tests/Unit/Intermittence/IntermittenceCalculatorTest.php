@@ -15,6 +15,16 @@ final class IntermittenceCalculatorTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../..';
     private const TOL = 0.001;
 
+    public function testLaMethode25EstUnAppartementEtNonUneMaison(): void
+    {
+        // Appinfo enum_methode_application_dpe_log_id : 25 = appartement RE2020.
+        foreach ([1, 4] as $inertie) {
+            $doc = $this->buildEmetteur(1, 2, 1, 3);
+            (new IntermittenceCalculator())->calculate($doc->documentElement, $this->makeContext($doc, $inertie, 25));
+            self::assertEqualsWithDelta(0.90, (float)$doc->getElementsByTagName('i0')->item(0)->textContent, 1e-12);
+        }
+    }
+
     /** ADEME 05aabba7, intermittence A190:P229, extraction indépendante de la table PHP. */
     #[\PHPUnit\Framework\Attributes\DataProvider('regulationsPredictives')]
     public function testLesQuaranteLignesPredictivesAvecTousLeursEmetteurs(array $row, int $emission, int $inertie): void
@@ -282,7 +292,7 @@ XML;
 
     public function testUneMaisonSurReseauCollectifGardeLaTableMaisonChauffageCentral(): void
     {
-        foreach ([1, 14, 18, 25] as $mode) {
+        foreach ([1, 14, 18] as $mode) {
             foreach ([2, 3] as $typeInstallation) {
                 foreach ([1, 2] as $typeChauffage) {
                     foreach ([1 => 0.90, 4 => 0.88] as $inertie => $attendu) {
