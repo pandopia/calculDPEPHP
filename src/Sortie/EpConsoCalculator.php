@@ -164,6 +164,12 @@ final class EpConsoCalculator implements CalculatorInterface
         $accessor->setChildValue($epConso, 'ep_conso_5_usages',                            $ep5);
         $accessor->setChildValue($epConso, 'ep_conso_5_usages_m2',                         IntermediateEnergyUnit::usesDecimalIntensities($context->document) && $surface > 0.0 ? $ep5 / $surface : $ep5m2);
         $accessor->setChildValue($epConso, 'classe_bilan_dpe',                             $classeEnergie);
+        // Le modèle ADEME 1 publiait aussi l'étiquette énergie seule, avant
+        // la synthèse énergie/GES. Cette balise a disparu du modèle 2 : ne
+        // pas la propager dans les XML récents (XSD DPEv1-obsolete, ep_conso).
+        if ($accessor->getStringOrNull('/dpe/administratif/enum_version_id') === '1') {
+            $accessor->setChildValue($epConso, 'classe_conso_energie', $classeEnergie);
+        }
     }
 
     /**

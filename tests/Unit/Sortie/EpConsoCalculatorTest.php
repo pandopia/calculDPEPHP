@@ -25,6 +25,34 @@ final class EpConsoCalculatorTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../..';
     private const TOL = 1e-3;
 
+    public static function versionsXml(): iterable
+    {
+        foreach (['1', '2', '2.1', '2.6', '2.7', null] as $version) {
+            yield $version ?? 'non déclaré' => [$version];
+        }
+    }
+
+    /** Le XSD 1 contient l'étiquette EP seule, les modèles 2.x l'ont retirée. */
+    #[\PHPUnit\Framework\Attributes\DataProvider('versionsXml')]
+    public function testClasseEnergieSepareeUniquementDansLeModele1(?string $version): void
+    {
+        [$doc, $node, $ctx] = $this->buildDocWithEfConso(['conso_eclairage' => 10000], 100, 100);
+        $doc->removeChild($node);
+        $root = $doc->appendChild($doc->createElement('dpe'));
+        if ($version !== null) {
+            $administratif = $root->appendChild($doc->createElement('administratif'));
+            $administratif->appendChild($doc->createElement('enum_version_id', $version));
+        }
+        $root->appendChild($node);
+        (new EpConsoCalculator())->calculate($node, $ctx);
+        $classes = $doc->getElementsByTagName('classe_conso_energie');
+        self::assertSame($version === '1' ? 1 : 0, $classes->length);
+        if ($version === '1') {
+            self::assertSame('D', $classes->item(0)->textContent);
+            self::assertSame('D', $doc->getElementsByTagName('classe_bilan_dpe')->item(0)->textContent);
+        }
+    }
+
     private function makeContext(DOMDocument $doc, Period $period = Period::PRE_2026): CalculationContext
     {
         return new CalculationContext(

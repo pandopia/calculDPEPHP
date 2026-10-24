@@ -214,6 +214,24 @@ final class EmissionGesCalculator implements CalculatorInterface
         // ── 7. Mise à jour classe_bilan_dpe = WORST(classe_energie, classe_ges) ──
         $epConso = $this->ensureChild($context->document, $sortie, 'ep_conso');
         $classeEnergie = $accessor->getStringOrNull('./classe_bilan_dpe', $epConso) ?? 'G';
+        // §16.2 p.104-106 : l'autoconsommation est déduite de l'énergie
+        // utilisée pour les étiquettes. Le PV s'exécute après EpConsoCalculator :
+        // sa classe provisoire peut donc être périmée, même si l'intensité EP
+        // publiée a déjà été corrigée. Classer l'intensité réellement finale.
+        $epM2 = $accessor->getFloatOrNull('./ep_conso_5_usages_m2', $epConso);
+        if ($epM2 !== null) {
+            $classeEnergie = SeuilsClasses::energie(
+                (int) floor($epM2),
+                $surface,
+                $this->zoneClimatiqueId($accessor, $context),
+                $this->classeAltitudeId($accessor, $context),
+                $context,
+            );
+        }
+        if ($accessor->getStringOrNull('/dpe/administratif/enum_version_id') === '1') {
+            // XSD DPEv1-obsolete : étiquette EP seule, distincte du double seuil.
+            $accessor->setChildValue($epConso, 'classe_conso_energie', $classeEnergie);
+        }
         $classeBilan   = $this->worstClasse($classeEnergie, $classeGes);
         $accessor->setChildValue($epConso, 'classe_bilan_dpe', $classeBilan);
 

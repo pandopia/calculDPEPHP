@@ -24,6 +24,39 @@ final class EmissionGesCalculatorTest extends TestCase
 {
     private const PROJECT_ROOT = __DIR__ . '/../../..';
 
+    public static function classesEnergieFinales(): iterable
+    {
+        foreach (['1', '2.6'] as $version) {
+            yield "$version, énergie A après PV" => [$version, 69.9, 0.0, 'A', 'A'];
+            yield "$version, énergie C mais climat F" => [$version, 110.1, 80.0, 'C', 'F'];
+            yield "$version, énergie D décimale" => [$version, 249.9, 0.0, 'D', 'D'];
+        }
+    }
+
+    /** §16.2 p.104 : les étiquettes portent sur l'énergie après déduction PV. */
+    #[\PHPUnit\Framework\Attributes\DataProvider('classesEnergieFinales')]
+    public function testClasseEnergieFinaleEtDoubleSeuilRestentDistincts(
+        string $version, float $epM2, float $gesM2, string $energie, string $bilan,
+    ): void {
+        $froid = 100 * $gesM2 / 0.064;
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<XML
+<dpe><administratif><enum_version_id>$version</enum_version_id></administratif><logement>
+  <caracteristique_generale><surface_habitable_logement>100</surface_habitable_logement></caracteristique_generale>
+  <sortie><ef_conso><conso_fr>$froid</conso_fr></ef_conso>
+    <ep_conso><ep_conso_5_usages_m2>$epM2</ep_conso_5_usages_m2><classe_bilan_dpe>G</classe_bilan_dpe></ep_conso>
+  </sortie></logement></dpe>
+XML);
+        $node = $doc->getElementsByTagName('logement')->item(0);
+        (new EmissionGesCalculator())->calculate($node, $this->makeContext($doc));
+        self::assertSame($bilan, $doc->getElementsByTagName('classe_bilan_dpe')->item(0)->textContent);
+        $sep = $doc->getElementsByTagName('classe_conso_energie');
+        self::assertSame($version === '1' ? 1 : 0, $sep->length);
+        if ($version === '1') {
+            self::assertSame($energie, $sep->item(0)->textContent);
+        }
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('facteursCombustibles')]
     public function testLeFacteurReglementaireEstLeMemeParUsageEtParEnergie(int $energy, float $factor): void
     {
