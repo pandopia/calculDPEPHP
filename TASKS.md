@@ -333,38 +333,6 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   référence par `ReferenceDefects`.
 - Traiter avec TASK-K06, qui porte sur les mêmes grandeurs.
 
-### TASK-K27 — Circulateur d'une installation qui ne couvre qu'une partie du bâti
-
-- [~CB] Owner: CB  | Phase: K  | Estimation: 2h  | Priorité: basse
-- Acquis : `δθdim` vaut 15 °C quand `enum_temp_distribution_ch_id = 1`
-  (« absence de réseau de distribution »), valeur absente du tableau §15.2.1
-  p.99 et qui retombait sur 7,5 °C. `conso_auxiliaire_distribution_ch` est
-  désormais exacte sur `2400E0046693A`, `2600E0035103I`, `2600E0045286Z`,
-  `2600E0045287A`, `2600E0046158N`, `2600E0062930P`, et dans la tolérance sur
-  `2600E0099076V`, `2662E2307275Y`, `2688E0016745Q`.
-- Reste deux cas, tous deux avec un circulateur dimensionné à l'échelle du
-  bâtiment alors que l'installation n'en couvre qu'une partie :
-  - `2600E0000098Z` : 2542,0 contre 1875,7 attendu (Pcircem 596,8 contre
-    440,5 W). Trois installations, une seule aéraulique, couvrant 879,88 des
-    1728,98 m².
-  - `2600E0081026P` : 161,4 contre 132,9 (Pcircem 37,9 contre 31,2 W). Une
-    installation, deux émetteurs (5 aéraulique + 21 poêle) et deux générateurs
-    (3 PAC air/air + 39 insert).
-- **Fait** : `emetteurParams` retenait le δθdim du **dernier** émetteur lu, là
-  où ΔPem et Fcot prennent le pire cas. Il prend désormais le plus faible —
-  le plus exigeant, puisque qvem = Pnc / (1,163 × δθdim) — et le résultat ne
-  dépend plus de l'ordre d'écriture. Mesure nulle sur 509 cas : aucune
-  installation du corpus n'a deux émetteurs hydrauliques de régimes
-  différents. Les variantes min et max donnent toutes deux 13 263 écarts.
-- Piste écartée : `rat` calculé sur le besoin plutôt que sur la surface. §15.2.1
-  dit « ratio du besoin couvert par l'équipement », mais les `besoin_ch`
-  publiés par installation donnent exactement les mêmes ratios que les surfaces
-  (0,50890 sur `2600E0000098Z`) — aucun effet sur ces deux cas.
-- Restent à départager : l'échelle de `Sh` dans `Lem` et `shFactor`, et le
-  traitement d'une installation à plusieurs émetteurs. §15.2.1 dit « Sh :
-  surface habitable du bâtiment », ce que le code applique déjà : chercher la
-  source avant de s'en écarter, et mesurer en A/B.
-
 ### TASK-K69 — §9.8 base électrique : puissance de base absente
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
