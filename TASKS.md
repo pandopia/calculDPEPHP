@@ -328,7 +328,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K69 — §9.8 collectif base + appoint : les deux résidus après branchement
 
-- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- [~CB] Owner: CB | Phase: K | Priorité: moyenne
 - La stratégie est désormais branchée et le garde `Textj <= 0` corrigé.
   `besoin_ch` est **exact** sur les deux cas du corpus, et la répartition
   base/appoint de `2600E0006037K` est juste à la proportion près (97,8 % /
