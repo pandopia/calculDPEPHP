@@ -83,6 +83,45 @@ final class DpeEngineTest extends TestCase
             XML;
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('ventilationsJustifiees')]
+    public function testLaPuissanceJustifieeInexploitableEstRefuseeAvantPurge(int $method, ?string $value, bool $valid): void
+    {
+        $power = $value === null ? '' : '<pvent_moy>' . $value . '</pvent_moy>';
+        $document = new \DOMDocument();
+        $document->loadXML('<dpe><administratif><enum_version_id>2.7</enum_version_id></administratif><logement><ventilation_collection><ventilation><donnee_entree><enum_type_ventilation_id>6</enum_type_ventilation_id><enum_methode_saisie_pvent_moy_id>' . $method . '</enum_methode_saisie_pvent_moy_id></donnee_entree><donnee_intermediaire>' . $power . '<hvent>12</hvent></donnee_intermediaire></ventilation></ventilation_collection><sortie><temoin>123</temoin></sortie></logement></dpe>');
+        $before = $document->saveXML();
+        try {
+            $this->engine()->calculateDocument($document);
+            self::assertTrue($valid, 'Une entrée justifiée invalide doit être refusée.');
+            self::assertSame((float)$value, (new \CalculDpePHP\Xml\NodeAccessor($document))->getFloatOrNull('//pvent_moy'));
+        } catch (UnsupportedDpeModelException $exception) {
+            self::assertFalse($valid, $exception->getMessage());
+            self::assertStringContainsString('avant purge', $exception->getMessage());
+            self::assertSame($before, $document->saveXML());
+        }
+    }
+
+    public static function ventilationsJustifiees(): iterable
+    {
+        foreach ([2, 3] as $method) {
+            foreach ([null, '', '-1', 'NaN', 'INF', '1e309', '0', '39.5'] as $value) {
+                yield $method . '/' . ($value ?? 'absent') => [$method, $value, in_array($value, ['0', '39.5'], true)];
+            }
+        }
+    }
+
+    public function testLePreflightVentilationNeRequalifiePasLesAnciensModelesOuLeForfait(): void
+    {
+        foreach (['', '<enum_version_id>2.6</enum_version_id>', '<enum_version_id>2.7</enum_version_id>'] as $version) {
+            foreach ([1, 2, 3] as $method) {
+                if ($version === '<enum_version_id>2.7</enum_version_id>' && $method !== 1) { continue; }
+                $document = new \DOMDocument();
+                $document->loadXML('<dpe><administratif>' . $version . '</administratif><logement><ventilation><donnee_entree><enum_methode_saisie_pvent_moy_id>' . $method . '</enum_methode_saisie_pvent_moy_id></donnee_entree></ventilation></logement></dpe>');
+                self::assertSame($document, $this->engine()->calculateDocument($document));
+            }
+        }
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('froidsNonCouverts')]
     public function testFroidNonElectriqueRefuseAvantPurge(?int $type, ?int $energie): void
     {

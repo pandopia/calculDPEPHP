@@ -111,6 +111,23 @@ final class DpeEngine
         $this->assertTechnologiesConnues($accessor, $document);
         $this->assertOptionsConnues($accessor, $document);
         $this->assertFroidElectrique($accessor, $document);
+        $this->assertVentilationSaisie($accessor, $document);
+    }
+
+    /** Une entrée justifiée manquante doit être refusée avant toute purge. */
+    private function assertVentilationSaisie(NodeAccessor $accessor, DOMDocument $document): void
+    {
+        $version = $accessor->getStringOrNull('/dpe/administratif/enum_version_id');
+        if ($version === null || version_compare($version, '2.7', '<')) {
+            return;
+        }
+        foreach ($document->getElementsByTagName('ventilation') as $ventilation) {
+            $method = $accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_pvent_moy_id', $ventilation);
+            if (in_array($method, [2, 3], true)
+                && \CalculDpePHP\Ventilation\PventMoyCalculator::justifiedPower($ventilation, $accessor) === null) {
+                throw new UnsupportedDpeModelException('Puissance moyenne de ventilation justifiée absente ou invalide (méthodes 2/3 du modèle 2.7) : refus avant purge.');
+            }
+        }
     }
 
     /**

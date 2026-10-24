@@ -70,8 +70,8 @@ final class PventMoyCalculator implements CalculatorInterface
             // XSD 2.7 : « puissance [...] soit saisie soit calculée ».
             // Cette valeur en W est la puissance moyenne de l'installation,
             // pas un coefficient surfacique à remultiplier par Sh ou Qvarep.
-            $power = $accessor->getFloatOrNull('./donnee_intermediaire/pvent_moy', $node);
-            if ($power === null || !is_finite($power) || $power < 0.0) {
+            $power = self::justifiedPower($node, $accessor);
+            if ($power === null) {
                 throw new RuntimeException('La puissance moyenne de ventilation justifiée est absente ou invalide (XSD ADEME 2.7, méthodes 2/3).');
             }
             $accessor->setChildValue($accessor->ensureDonneeIntermediaire($node), 'pvent_moy', $power);
@@ -117,6 +117,13 @@ final class PventMoyCalculator implements CalculatorInterface
 
         $intermediaire = $accessor->ensureDonneeIntermediaire($node);
         $accessor->setChildValue($intermediaire, 'pvent_moy', $pventMoy);
+    }
+
+    /** XSD 2.7 : puissance moyenne saisie en W, finie et positive ou nulle. */
+    public static function justifiedPower(DOMElement $node, NodeAccessor $accessor): ?float
+    {
+        $power = $accessor->getFloatOrNull('./donnee_intermediaire/pvent_moy', $node);
+        return $power !== null && is_finite($power) && $power >= 0.0 ? $power : null;
     }
 
     /**
