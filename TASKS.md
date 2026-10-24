@@ -92,7 +92,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K94 — Volume d'intermittence des maisons multi-installations
 
-- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- [~CB] Owner: CB | Phase: K | Priorité: moyenne
 - Le repli de `StrategieComputeTrait::getShImmeuble()` utilise la surface
   d'installation quand Sh_immeuble est absente, face au GV du logement entier.
   Le périmètre appartement est corrigé ; reste celui des maisons.
