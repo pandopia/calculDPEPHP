@@ -335,7 +335,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K27 — Circulateur d'une installation qui ne couvre qu'une partie du bâti
 
-- [ ] Owner: __  | Phase: K  | Estimation: 2h  | Priorité: basse
+- [~CB] Owner: CB  | Phase: K  | Estimation: 2h  | Priorité: basse
 - Acquis : `δθdim` vaut 15 °C quand `enum_temp_distribution_ch_id = 1`
   (« absence de réseau de distribution »), valeur absente du tableau §15.2.1
   p.99 et qui retombait sur 7,5 °C. `conso_auxiliaire_distribution_ch` est
