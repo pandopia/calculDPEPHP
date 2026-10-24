@@ -30,6 +30,8 @@ use DOMElement;
  * @spec-section  1
  * @spec-pages    6
  * @spec-source   resources/specsplitted/00-meta/01-methode-conventionnelle.md
+ * @spec-source   resources/specsplitted/16-eclairage-prod-elec/02-prod-electricite.md (§16.2 p.104 : déduction PV avant les étiquettes)
+ * @spec-source   editeur/public/schemas/DPEv1-obsolete.xsd (étiquette énergie seule)
  * @spec-source   https://rt-re-batiment.developpement-durable.gouv.fr/IMG/pdf/consolide_annexes_arrete_du_31_03_2021_relatif_au_dpe_habitation.pdf (annexe 4)
  * @spec-source   https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000043353421 (article 1, 9°)
  * @xml-input     sortie.ef_conso.*
@@ -39,6 +41,7 @@ use DOMElement;
  *                    emission_ges_fr, emission_ges_auxiliaire_*, emission_ges_totale_auxiliaire,
  *                    emission_ges_5_usages, emission_ges_5_usages_m2, classe_emission_ges}
  *                sortie.ep_conso.classe_bilan_dpe (mis à jour avec WORST(classe_energie, classe_ges))
+ *                sortie.ep_conso.classe_conso_energie (modèle ADEME 1 uniquement)
  * @depends-on    \CalculDpePHP\Sortie\EfConsoCalculator
  *                \CalculDpePHP\Sortie\EpConsoCalculator
  * @tables        reference/tv_reseau_chaleur

@@ -29,12 +29,14 @@ use DOMElement;
  * @spec-section  1
  * @spec-pages    6
  * @spec-source   resources/specsplitted/00-meta/01-methode-conventionnelle.md
+ * @spec-source   editeur/public/schemas/DPEv1-obsolete.xsd (classe_conso_energie, modèle 1 uniquement)
  * @xml-input     sortie.ef_conso.{conso_ch, conso_ecs, conso_eclairage, conso_fr, conso_auxiliaire_*}
  *                installation_chauffage.generateur_chauffage_collection.generateur_chauffage.donnee_entree.enum_type_energie_id
  *                installation_ecs.generateur_ecs_collection.generateur_ecs.donnee_entree.enum_type_energie_id
  * @xml-output    sortie.ep_conso.{ep_conso_ch, ep_conso_ecs, ep_conso_eclairage, ep_conso_fr,
  *                    ep_conso_auxiliaire_*, ep_conso_totale_auxiliaire, ep_conso_5_usages,
  *                    ep_conso_5_usages_m2, classe_bilan_dpe}
+ * @xml-output    sortie.ep_conso.classe_conso_energie (modèle ADEME 1 uniquement)
  * @depends-on    \CalculDpePHP\Sortie\EfConsoCalculator
  * @tables        (aucune)
  */
