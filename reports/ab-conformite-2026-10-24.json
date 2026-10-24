@@ -17,6 +17,12 @@
         "summary_equal_to_after": true,
         "all_compared_values_equal_to_after": true
     },
+    "idempotence_verification": {
+        "method": "Calcul de chaque entrée, puis recalcul de son XML enrichi et comparaison stricte des balises calculées.",
+        "cases_per_revision": 670,
+        "before_changed_cases_outside_tolerance": 0,
+        "after_changed_cases_outside_tolerance": 0
+    },
     "before_revision": {
         "head": "5f3cfe8",
         "dirty": "",
