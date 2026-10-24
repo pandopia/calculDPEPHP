@@ -56,6 +56,9 @@ use DOMElement;
  *                   prod_enr_chaleur_ambiante_cet, prod_enr_rcfu, prod_enr_bois,
  *                   prod_enr_totale, prod_enr_pourcentage}
  * @depends-on   \CalculDpePHP\Sortie\EfConsoCalculator
+ * @depends-on   \CalculDpePHP\ProductionElec\ProductionPvCalculator
+ * @depends-on   \CalculDpePHP\Chauffage\Strategy\ChauffageSolaire
+ * @depends-on   \CalculDpePHP\Chauffage\Strategy\SolaireInsertPoele
  * @tables       (aucune — les coefficients sont dans l'arrêté)
  */
 final class ProductionEnrCalculator implements CalculatorInterface

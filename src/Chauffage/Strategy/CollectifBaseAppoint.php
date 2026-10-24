@@ -31,13 +31,15 @@ use DOMElement;
  *
  * Conventionnellement l'appoint couvre 50% du besoin (Pn_appoint = 50% du dimensionnement).
  *
- * @spec-section  8, 9.1.1, 9.8, 17.2.1.1
- * @spec-pages    55-59, 65-66, 111-112
+ * @spec-section  8, 9.1.1, 9.8, 17.2.1.1, 18.3
+ * @spec-pages    55-59, 65-66, 111-112, 136-137
  * @spec-source   resources/specsplitted/08-intermittence/00-calcul.md
  * @spec-source   resources/specsplitted/09-conso-chauffage/01-installation-seule/01-conso.md
  * @spec-source   resources/specsplitted/09-conso-chauffage/08-collectif-base-appoint.md
+ * @spec-source   resources/specsplitted/18-annexes/03-inertie-lourde/00-overview.md
  * @xml-input     installation_chauffage.donnee_entree.{enum_cfg_installation_ch_id=10, surface_chauffee, rdim,
- *                    enum_methode_calcul_conso_id, batiment_materiaux_anciens}
+ *                    enum_methode_calcul_conso_id}
+ *                logement.meteo.batiment_materiaux_anciens, logement.enveloppe.inertie.enum_classe_inertie_id
  *                generateur_chauffage[0].donnee_intermediaire.{pn, rendement_generation}
  *                emetteur_chauffage[0,1].donnee_intermediaire.{i0, rendement_emission, rendement_distribution, rendement_regulation}
  * @xml-output    installation_chauffage.donnee_intermediaire.{besoin_ch, conso_ch}
@@ -143,10 +145,14 @@ final class CollectifBaseAppoint implements CalculatorInterface
         }
 
         // ── 3. ilpa : parois anciennes + inertie lourde ───────────────────────
-        $matAnciensRaw = $accessor->getIntOrNull('./donnee_entree/batiment_materiaux_anciens', $logementNode) ?? 0;
-        $inertieId     = (int) ($context->get('inertie.classe_id') ?? 1);
-        // PHP enum: 1=légère, 2=moyenne, 3=lourde, 4=très lourde
-        $ilpa = ($matAnciensRaw === 1 && $inertieId >= 3) ? 1 : 0;
+        $matAnciensRaw = $accessor->getIntOrNull('./meteo/batiment_materiaux_anciens', $logementNode) ?? 0;
+        $inertieId = (int) $context->get(
+            'inertie.classe_id',
+            $accessor->getIntOrNull('./enveloppe/inertie/enum_classe_inertie_id', $logementNode) ?? 1,
+        );
+        // §18.3 : parois anciennes ET inertie lourde. Le XSD numérote
+        // 1=très lourde, 2=lourde, 3=moyenne, 4=légère.
+        $ilpa = ($matAnciensRaw === 1 && in_array($inertieId, [1, 2], true)) ? 1 : 0;
 
         // ── 4. Tables climatiques ─────────────────────────────────────────────
         $tvS    = ClimaticSolicitations::heating($context, $zoneId, $altId);

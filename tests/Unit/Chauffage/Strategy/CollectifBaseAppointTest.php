@@ -22,6 +22,46 @@ final class CollectifBaseAppointTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
     private const TOL = 1e-2;
 
+    public function testDh14EtTextDesParoisAnciennesExigentUneInertieLourde(): void
+    {
+        foreach ([0, 1] as $anciens) {
+            foreach ([1, 2, 3, 4] as $inertie) {
+                [$doc, $ctx, $node] = $this->buildXml(
+                    bch: 10000, gv: 200, surface: 80, sh: 80, hsp: 2.5,
+                    rdim: 1, pnW: 1000, rgBase: 1, reBase: 1, rdBase: 1, rrBase: 1, i0Base: 1,
+                    rgAppoint: 1, reAppoint: 1, rdAppoint: 1, rrAppoint: 1, i0Appoint: 1,
+                    matAnciensId: $anciens, inertieId: $inertie,
+                );
+                $mensuels = array_fill(1, 12, 0.0);
+                $mensuels[1] = 10000.0;
+                $ctx->set('chauffage.besoin_ch_mensuel', $mensuels);
+
+                $ilpa = $anciens === 1 && $inertie <= 2 ? 1 : 0;
+                $dh = $ctx->tables->load('chauffage/dh14_base_appoint')[$ilpa][1];
+                $text = $ctx->tables->load('chauffage/text_mensuel_base_appoint')[$ilpa][1][1][1];
+                $nref = \CalculDpePHP\Common\ClimaticSolicitations::heating($ctx, 1, 1)[1]['Nref19'];
+                $t = 14 - array_sum(array_column($dh, 1)) / 10000;
+                $x = 0.5 * ($t + 9.5) / ($text + 9.5);
+                $dht = max(0.0, $nref * ($text + 9.5) * $x ** 5 * (14 - 28 * $x + 20 * $x ** 2 - 5 * $x ** 3));
+                $attendu = min(10000.0, 10000 * max(0.0, 1 - $dht / $dh[1][1]));
+
+                // Vérifie aussi le repli XML lors d'un appel isolé, sans
+                // InertieCalculator : la classe est portée par l'enveloppe.
+                if ($inertie % 2 === 0) {
+                    $ctx->set('inertie.classe_id', $inertie);
+                }
+                (new CollectifBaseAppoint())->calculate($node, $ctx);
+                $xp = new \DOMXPath($doc);
+                self::assertEqualsWithDelta(
+                    $attendu,
+                    $xp->evaluate('number(//generateur_chauffage[1]/donnee_intermediaire/conso_ch)'),
+                    1e-7,
+                    "matériaux anciens=$anciens, classe ADEME=$inertie",
+                );
+            }
+        }
+    }
+
     public function testLeVolumeDIntermittenceSuitLePerimetreDuBesoin(): void
     {
         foreach ([32 => 80.0, 7 => 800.0] as $mode => $surfaceReference) {
@@ -127,16 +167,14 @@ final class CollectifBaseAppointTest extends TestCase
     <meteo>
         <enum_zone_climatique_id>$zoneId</enum_zone_climatique_id>
         <enum_classe_altitude_id>$altId</enum_classe_altitude_id>
+        <batiment_materiaux_anciens>$matAnciensId</batiment_materiaux_anciens>
     </meteo>
     <caracteristique_generale>
         <hsp>$hsp</hsp>
         <surface_habitable_immeuble>$sh</surface_habitable_immeuble>
         <nombre_appartement>1</nombre_appartement>
-        <batiment_materiaux_anciens>$matAnciensId</batiment_materiaux_anciens>
     </caracteristique_generale>
-    <donnee_intermediaire>
-        <enum_classe_inertie_id>$inertieId</enum_classe_inertie_id>
-    </donnee_intermediaire>
+    <enveloppe><inertie><enum_classe_inertie_id>$inertieId</enum_classe_inertie_id></inertie></enveloppe>
     <installation_chauffage_collection>
         <installation_chauffage>
             <donnee_entree>
