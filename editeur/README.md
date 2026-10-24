@@ -28,6 +28,11 @@ de runtime avec `npm ci --ignore-scripts --engine-strict`. Le build produit un s
 statique (≈ 350 ko de JavaScript, plus les XSD et le validateur WebAssembly
 chargés à la demande) ; aucun serveur applicatif n'est nécessaire.
 
+Le correctif transitif `undici` 7.30.1 est imposé uniquement sous
+`@angular/build` : Angular 21.2.28 verrouille encore 7.29.1, touché notamment
+par [GHSA-xjj6-f33q-929c](https://github.com/advisories/GHSA-xjj6-f33q-929c).
+Retirer cet override dès que le builder dépend d'une version corrigée.
+
 ## Analyse du format
 
 | Constat | Conséquence dans l'application |
