@@ -29,6 +29,8 @@ use RuntimeException;
  * @spec-source resources/specsplitted/03-enveloppe-deperditions/03-parois-vitrees-portes/01-ug/00-calcul.md
  * @xml-input  baie_vitree.donnee_entree.{enum_type_vitrage_id, enum_type_gaz_lame_id, vitrage_vir, enum_inclinaison_vitrage_id, epaisseur_lame, ug_saisi, ug_1}
  * @xml-output baie_vitree.donnee_intermediaire.ug
+ * @xml-input  baie_vitree.baie_vitree_double_fenetre.donnee_entree (mêmes caractéristiques)
+ * @xml-output baie_vitree.baie_vitree_double_fenetre.donnee_intermediaire.ug
  * @tables tv_ug
  */
 final class UgCalculator implements CalculatorInterface
@@ -45,7 +47,10 @@ final class UgCalculator implements CalculatorInterface
 
     public function appliesTo(DOMElement $node): bool
     {
-        return $node->nodeName === 'baie_vitree';
+        return $node->nodeName === 'baie_vitree'
+            || ($node->nodeName === 'baie_vitree_double_fenetre'
+                && !in_array($node->getAttributeNS('http://www.w3.org/2001/XMLSchema-instance', 'nil'), ['true', '1'], true)
+                && $node->getElementsByTagName('donnee_entree')->length > 0);
     }
 
     public function calculate(DOMElement $node, CalculationContext $context): void

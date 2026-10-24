@@ -13,6 +13,7 @@ declare(strict_types=1);
  *   'pn_max_kw' → float (seuil Pn supérieur inclus, INF pour le dernier palier)
  *   'rpn'       → float (fraction 0-1) ou Closure($pn_kW):float
  *   'qp0_pct'   → float (% de Pn) ou null (qp0 à zéro/calculé par formula)
+ *   'qp0_w'     → Closure($pn_kW):float, pertes bois absolues en W
  *   'pveil'     → float W (0 si pas de veilleuse)
  *
  * Note : pour accumulateur gaz (IDs 58-62, 105-109), open3cl surcharge qp0
@@ -21,11 +22,14 @@ declare(strict_types=1);
  * IDs alias : 110-114 (chauffe-eau gpl/propane/butane) sont traités identiquement
  * aux IDs 63-67 ; 105-109 identiquement aux 58-62.
  *
- * @spec-section 14.1
- * @spec-pages   93-95
+ * @spec-section 13.2.2.3, 14.1
+ * @spec-pages   88-90, 93-95
  * @spec-source  resources/specsplitted/14-rendement-ecs-generateurs/01-combustion.md
+ * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
  * @generated-on 2026-04-30
- * @status partial — manque QP0 des chaudières bois et assimilées (TASK-K06)
+ * @spec-source https://gitlab.com/observatoire-dpe/observatoire-dpe/-/blob/05aabba7/modele_donnee/valeur_tables.xlsx (generateur_combustion A95:J98)
+ * @spec-source https://gitlab.com/observatoire-dpe/observatoire-dpe/-/blob/52792fb9e79e52390ded7d4527a7f7a962fd5ccc/modele_donnee/valeur_tables.xlsx (generateur_combustion A66:J69)
+ * @status partial — manque QP0 des anciens hybrides bois 124-131 et poêles bouilleurs (TASK-K06)
  * @source       open3cl tv.js (IDs 79-93 du tableau generateur_combustion)
  */
 
@@ -47,11 +51,7 @@ $e90_2    = $pnFn(2.0, 90.0);   // (90+2×log10(Pn))/100  (bois >2019 20<Pn≤70
 $e91_2    = $pnFn(2.0, 91.0);   // (91+2×log10(Pn))/100  (bois granulés >2019 Pn≤20)
 $e92_2    = $pnFn(2.0, 92.0);   // (92+2×log10(Pn))/100  (bois granulés >2019 20<Pn≤70)
 
-// qp0 bois (pertes à l'arrêt, valeur absolue en W, % de Pn calculée dynamiquement)
-// Pour ces formules, open3cl retourne un pourcentage mais l'applique différemment.
-// Pour simplifier, on utilise des qp0_pct null (qp0=0 si non explicitement fourni).
-
-return [
+$table = [
     // ─── Chaudières gaz classique ───────────────────────────────────────────
     // ID 45 : Chaudière gaz classique avant 1981
     45  => [['pn_max_kw' => INF, 'rpn' => $e84_2, 'qp0_pct' => 0.04, 'pveil' => 240.0]],
@@ -417,3 +417,47 @@ return [
     // Mêmes formules que bois bûche pour les périodes correspondantes
     // (simplification conservative §14.1)
 ];
+
+// §13.2.2.3 p.88-90 et §14.1.2 p.94 : QP0 est une puissance absolue
+// en kW, et les chaudières charbon suivent les chaudières bois bûche.
+// La ligne bûche/plaquette 2004-2012 est tronquée dans le PDF ; son
+// exposant -0,4 est confirmé par Open3CL/engine src/tv.js, même famille,
+// révision aa78053f549b93509009d195b9332ac85f33fb4d.
+// Les hybrides et poêles bouilleurs restent à qualifier (TASK-K06).
+// [enums ECS, coefficient, exposant, QP0 70..400 kW, QP0 >400 kW].
+// Modèle 2.7 : granulés à condensation après 2024, avec/sans relève PAC.
+// Table ADEME 05aabba7, lignes 94-97 : même Rpn sous et au-dessus de 20 kW.
+foreach ([139, 144] as $type) {
+    $table[$type] = [
+        ['pn_max_kw' => 20.0, 'rpn' => $e91_2, 'qp0_pct' => null, 'pveil' => 0.0],
+        ['pn_max_kw' => 70.0, 'rpn' => $e91_2, 'qp0_pct' => null, 'pveil' => 0.0],
+        ['pn_max_kw' => 400.0, 'rpn' => 0.96, 'qp0_pct' => null, 'pveil' => 0.0],
+        ['pn_max_kw' => INF, 'rpn' => 0.96, 'qp0_pct' => null, 'pveil' => 0.0],
+    ];
+}
+$pertesBois = [
+    [[15, 22, 29, 85], 0.08, 0.73, 1.8, 1.1], // avant 1978, p.89
+    [[16, 23, 30, 86], 0.07, 0.70, 1.4, 0.8], // 1978-1994, p.89
+    [[17, 18, 19, 20, 21, 24, 25, 26, 27, 28, 31, 32, 33, 34,
+      87, 88, 89, 90, 91, 139, 144], 0.085, 0.60, 1.1, 0.5], // p.89-90 ; condensation : ADEME 94-97
+];
+foreach ($pertesBois as [$types, $coefficient, $exposant, $moyenne, $grande]) {
+    foreach ($types as $type) {
+        foreach ($table[$type] as &$palier) {
+            $palier['qp0_w'] = match (true) {
+                $palier['pn_max_kw'] <= 70.0 => static fn(float $pnKw): float => 1000 * $coefficient * ($pnKw ** $exposant),
+                $palier['pn_max_kw'] <= 400.0 => static fn(float $pnKw): float => 1000 * $moyenne,
+                default => static fn(float $pnKw): float => 1000 * $grande,
+            };
+        }
+        unset($palier);
+    }
+}
+
+// ADEME, lignes 65–68 : mêmes caractéristiques que les granulés 2020–2024.
+// Reprendre la ligne complète (QP0 inclus) pour les nouveaux enums, sans
+// modifier le traitement encore à qualifier de l'ancien hybride 125 (K06).
+$table[145] = $table[34];
+$table[146] = $table[34];
+
+return $table;

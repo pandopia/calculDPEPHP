@@ -11,6 +11,22 @@ use PHPUnit\Framework\TestCase;
 
 final class GenerateurChAliasTest extends TestCase
 {
+    public function testLesPacRecentesGardentLeurFamilleSansPerdreLeurNatureHybride(): void
+    {
+        foreach ([172 => 3, 173 => 7, 174 => 11, 175 => 15, 176 => 19, 178 => 7, 179 => 11, 180 => 15, 181 => 19] as $type => $family) {
+            self::assertSame($family, GenerateurChAlias::normalize($type));
+            self::assertSame($type >= 178, GenerateurChAlias::isHybride($type));
+            self::assertSame($type >= 178, GenerateurChAlias::isHybridePac($type));
+        }
+        self::assertFalse(GenerateurChAlias::isHybride(171));
+        self::assertFalse(GenerateurChAlias::isHybridePac(177));
+        foreach ([177 => false, 182 => true, 183 => false, 184 => true] as $type => $hybrid) {
+            self::assertSame(74, GenerateurChAlias::normalize($type));
+            self::assertSame($hybrid, GenerateurChAlias::isHybride($type));
+            self::assertFalse(GenerateurChAlias::isHybridePac($type));
+        }
+    }
+
     private function generateur(int $genId, string $caracteristiqueGenerale): DOMElement
     {
         $doc = new DOMDocument();

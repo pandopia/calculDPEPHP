@@ -19,6 +19,72 @@ une.
 
 ## Enquêtes closes
 
+### Dépendances — 12 alertes GitHub hors des versions verrouillées (24/10/2026)
+
+- Au push de la PR 51, GitHub annonce 12 alertes ouvertes sur main. Lecture
+  de l'API Dependabot et comparaison du verrou de main avec celui de la PR :
+  ils sont identiques, et aucune des plages affichées ne contient les versions
+  verrouillées ci-dessous. Aucune alerte n'est fermée ou masquée par l'agent.
+
+| Paquet | Version verrouillée | Première version corrigée indiquée dans les alertes |
+|---|---|---|
+| vite | 7.3.7 | 7.3.7 |
+| @modelcontextprotocol/sdk | 1.32.1 | 1.31.0 / 1.32.0 |
+| @angular/common | 21.2.25 | 20.3.34, pour la plage 20.x signalée |
+| tinypool | absent du verrou | 2.1.1 / 2.1.2 |
+| vitest | 4.1.12 | 4.1.11 |
+| @vitest/mocker | 4.1.12 | 4.1.11 |
+
+- composer audit --locked et npm audit --include=dev --package-lock-only :
+  zéro avis de sécurité, aucun paquet PHP abandonné ; aucun paquet installé
+  ou mis à jour. Ce constat porte sur les verrous, pas sur un node_modules
+  éventuellement ancien. Le décalage du graphe GitHub est une inférence.
+- Rouvrir sur une plage touchant réellement une version du verrou courant,
+  ou un nouveau résultat d'audit ; ne pas mettre à jour les paquets à l'aveugle
+  pour faire disparaître cet ancien affichage.
+
+### TASK-K06/K83 — Huit sondages « autre thermodynamique » non intégrés (24/10/2026)
+
+- Sélection publique avant calcul : huit résultats les plus récents de
+  `type_generateur_n1_installation_n1:*thermodynamique*`, sur 110 résultats
+  ADEME. XML officiels récupérés sans retouche, Licence Ouverte 2.0.
+- Les huit déclarent une seule installation ECS mais publient son besoin
+  exactement ×1 000 par rapport à `sortie/apport_et_besoin/besoin_ecs` :
+  `2549E1250357S/1250366B/1250385U` : 900 174,638321 contre 900,174638321 ;
+  `2549E1406058F/1406059G` : 1 060 333,0144894 contre 1 060,3330144894 ;
+  `2659E0942385B` : 1 106 086,1276955 contre 1 106,0861276955 ;
+  `2659E0949193X` : 1 107 068,0788335 contre 1 107,0680788335 ;
+  `2659E0949540G` : 1 112 591,5539848 contre 1 112,5915539848.
+  Les deux champs sont documentés en kWh par le XSD. Tous sont des exports
+  8.0.2 ; même contradiction que 2676E2269868T, déjà écarté du corpus.
+- Sondage hors corpus : 530 numériques hors tolérance, 77 supplémentaires,
+  aucun manque, aucun crash. Le SCOP propre est déjà saisi en méthode 6 et
+  conservé ; les premiers écarts de besoin sont en amont (récupération des
+  pertes de stockage, cas K83, puis apports et enveloppe). Aucun forfait de
+  PAC et aucune suppression des récupérations ne sont inférés de ces cas.
+- Pas d'intégration ni d'initialisation de budgets pour ces références
+  contradictoires. Rouvrir sur un export corrigé aux unités cohérentes ou
+  une règle réglementaire explicitant leur condition de récupération.
+
+### TASK-K57 — Cinq puissances de ventilation résiduelles (24/10/2026)
+
+Contrôle sur 710 cas : cinq `pvent_moy` divergents hors défauts de référence
+déjà isolés, pas de correction de formule justifiée. §5 p.41–42 vérifié au
+PDF : simple flux collectif après 2012 = 0,25 W/(m³/h), basse pression
+assimilée à la VMC classique ; hybride maison = 65 × 0,083 = 5,395 W.
+
+- 2576E4044988O, 2576E4045305T et 2601E0735362K, types BP 18/18/17,
+  drapeau après 2012 : la référence suit exactement 1,1 × Qvarep × Sh,
+  coefficient double flux ancien, au lieu de 0,25. Rapport 4,4 constant.
+- 2601E0406718G, hybride maison type 31 : 2,324 W publiés contre 5,395 W
+  prescrits ; 2,324 = 28 × 0,083, sans forfait 28 W dans cette table.
+- 2613E2419802A, hygro B après 2012 type 15 mais drapeau ancien : la
+  référence suit 0,46, le moteur 0,25. Le type XSD porte déjà son millésime.
+
+Ne pas choisir la colonne d'après les valeurs calculées. Rouvrir sur une
+saisie de puissance documentée, une correction des entrées ou un erratum,
+pas pour recopier ces valeurs. Aucun compteur ni budget modifié.
+
 ### TASK-K06 — Pertes à l'arrêt bois ECS : variante isolée non activée (24/10/2026)
 
 Le zéro systématique de `qp0_pct = null` dans la table ECS bois n'est pas

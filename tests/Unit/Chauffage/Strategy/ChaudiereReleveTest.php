@@ -17,7 +17,7 @@ final class ChaudiereReleveTest extends TestCase
 {
     /** §9.7 p.65 : 60 % PAC, 15 % relève et 25 % insert, chacun via ses émissions. */
     #[DataProvider('ordresEtDimensionnements')]
-    public function testChaqueGenerateurSuitSesEmissions(bool $inverse, float $rdim): void
+    public function testChaqueGenerateurSuitSesEmissions(bool $inverse, float $rdim, int $typePac = 7): void
     {
         $emetteurs = [];
         foreach ([[1, 40, 0.90, 1, 0.92, 0.95], [1, 60, 0.85, 0.95, 0.92, 0.95], [2, 100, 0.84, 0.95, 1, 0.8]] as [$lien, $surface, $i0, $re, $rd, $rr]) {
@@ -25,7 +25,7 @@ final class ChaudiereReleveTest extends TestCase
                 . "<donnee_intermediaire><i0>$i0</i0><rendement_emission>$re</rendement_emission><rendement_distribution>$rd</rendement_distribution><rendement_regulation>$rr</rendement_regulation></donnee_intermediaire></emetteur_chauffage>";
         }
         $generateurs = [];
-        foreach ([[7, 1, 3.2], [106, 1, 0.97], [43, 2, 0.75]] as [$type, $lien, $rg]) {
+        foreach ([[$typePac, 1, 3.2], [106, 1, 0.97], [43, 2, 0.75]] as [$type, $lien, $rg]) {
             $generateurs[] = "<generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>$type</enum_type_generateur_ch_id><enum_lien_generateur_emetteur_id>$lien</enum_lien_generateur_emetteur_id></donnee_entree>"
                 . "<donnee_intermediaire><rendement_generation>$rg</rendement_generation></donnee_intermediaire></generateur_chauffage>";
         }
@@ -46,7 +46,7 @@ final class ChaudiereReleveTest extends TestCase
 
         $emissionPrincipale = 0.4 * 0.90 / (0.92 * 0.95) + 0.6 * 0.85 / (0.95 * 0.92 * 0.95);
         $attendus = [
-            7 => 0.60 * 1000 * $emissionPrincipale / (3.2 * $rdim),
+            $typePac => 0.60 * 1000 * $emissionPrincipale / (3.2 * $rdim),
             106 => 0.15 * 1000 * $emissionPrincipale / (0.97 * $rdim),
             43 => 0.25 * 1000 * 0.84 / (0.75 * 0.95 * 0.8 * $rdim),
         ];
@@ -66,6 +66,8 @@ final class ChaudiereReleveTest extends TestCase
         yield 'ordre habituel' => [false, 1.0];
         yield 'ordre inverse' => [true, 1.0];
         yield 'dimensionnement multiple' => [true, 4.0];
+        yield 'autre thermodynamique électrique' => [false, 1.0, 117];
+        yield 'autre thermodynamique gaz inversé' => [true, 4.0, 118];
     }
 
     /** Sans association exploitable, le repli sur les émissions de l'installation reste défini. */

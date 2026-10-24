@@ -25,7 +25,7 @@ use DOMElement;
  * @xml-input    generateur_ecs.donnee_intermediaire.cop (saisie méthode 6)
  * @xml-output   generateur_ecs.donnee_intermediaire.cop
  * @depends-on   aucun
- * @tables       (aucune — valeurs directement de la spec p.95)
+ * @tables       ecs/tv_cop_2027 (extension ADEME du modèle 2.7)
  */
 final class CetAccumulationCalculator implements CalculatorInterface
 {
@@ -78,6 +78,16 @@ final class CetAccumulationCalculator implements CalculatorInterface
         // selon la période d'installation (open3cl 13.2_generateur_pac.js).
         if ($typeId === 82) {
             $periode = $accessor->getIntOrNull('./donnee_entree/enum_periode_installation_ecs_thermo_id', $node);
+            if ($periode === 4) {
+                // Le classeur 2.7 ne rattache pas le type générique 82 à une
+                // des quatre familles 135–138. Ne pas inventer cette famille.
+                $cop = self::justifiedCop($node, $accessor);
+                if ($cop === null) {
+                    throw new \CalculDpePHP\Engine\UnsupportedDpeModelException('CET générique 82 depuis 2027 : COP propre connu et justifié requis, aucun forfait ADEME publié pour ce type.');
+                }
+                $accessor->setChildValue($accessor->ensureDonneeIntermediaire($node), 'cop', $cop);
+                return;
+            }
             $typeId  = match ($periode) {
                 1       => 10,
                 2       => 11,
@@ -86,24 +96,26 @@ final class CetAccumulationCalculator implements CalculatorInterface
             };
         }
 
-        if ($typeId === null || $typeId < 1 || $typeId > 12) {
+        $recent = $typeId !== null && $typeId >= 135 && $typeId <= 138;
+        if (!$recent && ($typeId === null || $typeId < 1 || $typeId > 12)) {
             return;
         }
 
         $zone  = CalculationContext::zoneGroupeFromId($context->zoneClimatique);
-        $table = ($zone === 'H3') ? self::COP_H3 : self::COP_H1H2;
-        $cop   = $table[$typeId];
+        if ($recent) {
+            // ADEME 05aabba7, feuille scop lignes 108-113 : les nouvelles
+            // générations ont leur propre COP, pas celui des CET 2015-2026.
+            $table = $context->tables->load('ecs/tv_cop_2027');
+            $cop = $table[$typeId][$zone === 'H3' ? 'h3' : 'h1h2'];
+        } else {
+            $table = ($zone === 'H3') ? self::COP_H3 : self::COP_H1H2;
+            $cop = $table[$typeId];
+        }
 
         // §14.2 et méthode de saisie 6 du XSD : une performance réelle
         // justifiée n'est pas un résultat forfaitaire à recalculer. Le champ
         // cop propre à ce CET est préservé par OutputPurger.
-        if ($accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node) === 6) {
-            $copSaisi = $accessor->getFloatOrNull('./donnee_entree/cop', $node)
-                ?? $accessor->getFloatOrNull('./donnee_intermediaire/cop', $node);
-            if ($copSaisi !== null && $copSaisi > 0.0) {
-                $cop = $copSaisi;
-            }
-        }
+        $cop = self::justifiedCop($node, $accessor) ?? $cop;
 
         // Le XSD définit `rendement_generation` comme « le rendement de
         // génération dans le cas où le rendement de stockage est séparé du
@@ -112,5 +124,14 @@ final class CetAccumulationCalculator implements CalculatorInterface
         // ballon intégré, donc un COP et pas de Rg séparé.
         $di = $accessor->ensureDonneeIntermediaire($node);
         $accessor->setChildValue($di, 'cop', $cop);
+    }
+
+    /** §14.2 p.95 : performance réelle propre, méthode de saisie 6 du XSD. */
+    public static function justifiedCop(DOMElement $node, NodeAccessor $accessor): ?float
+    {
+        if ($accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node) !== 6) { return null; }
+        $cop = $accessor->getFloatOrNull('./donnee_entree/cop', $node)
+            ?? $accessor->getFloatOrNull('./donnee_intermediaire/cop', $node);
+        return $cop !== null && is_finite($cop) && $cop > 0.0 ? $cop : null;
     }
 }

@@ -31,9 +31,10 @@ use DOMElement;
  *   - ZONE collectif (methode_calcul=4, type_installation=2) :
  *       valeur de <rdim> (=1 pour un unique système collectif)
  *
- * @spec-section  9.1.2, 9.10
- * @spec-pages    59
+ * @spec-section  9.1.2, 9.1.4.3, 9.10, 15.1.1
+ * @spec-pages    59, 62, 97
  * @spec-source   resources/specsplitted/09-conso-chauffage/01-installation-seule/02-classique.md
+ * @spec-source   resources/specsplitted/15-auxiliaires/01-aux-generation.md
  * @xml-input     installation_chauffage.donnee_entree.{surface_chauffee, rdim, enum_methode_calcul_conso_id,
  *                    enum_type_installation_id, nombre_logement_echantillon, ratio_virtualisation}
  *                logement.donnee_entree.{hsp, surface_habitable_immeuble, nombre_appartement}
@@ -201,6 +202,8 @@ final class InstallationClassique implements CalculatorInterface
             $consoChDep = 0.0;
             foreach ($hybrideGens as [$gen, $isPac, $rgGen]) {
                 $part      = $isPac ? $prorata['pac'] : $prorata['chaudiere'];
+                // §15.1.1 p.97 : les auxiliaires suivent le seul besoin assuré.
+                PartBesoinGenerateur::publier($context, $gen, $part);
                 $denomGen  = max(1e-9, $rgGen * $re * $rd * $rr);
                 $cGen      = $besoinMoy    * $part * $int / $denomGen;
                 $cGenDep   = $besoinMoyDep * $part * $int / $denomGen;

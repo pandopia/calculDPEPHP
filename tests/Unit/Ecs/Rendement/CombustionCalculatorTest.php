@@ -19,6 +19,101 @@ final class CombustionCalculatorTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
     private const TOL = 0.0001;
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('pertesArretBois')]
+    public function testLesPertesArretBoisNeSontPasSupprimees(int $type, float $pnKw, float $qp0): void
+    {
+        $doc = new DOMDocument();
+        $pn = $pnKw * 1000;
+        $doc->loadXML('<logement><installation_ecs><donnee_intermediaire><besoin_ecs>2000</besoin_ecs></donnee_intermediaire><generateur_ecs><donnee_entree><enum_type_energie_id>5</enum_type_energie_id><enum_type_generateur_ecs_id>' . $type . '</enum_type_generateur_ecs_id><enum_methode_saisie_carac_sys_id>2</enum_methode_saisie_carac_sys_id></donnee_entree><donnee_intermediaire><pn>' . $pn . '</pn></donnee_intermediaire></generateur_ecs></installation_ecs></logement>');
+        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        (new CombustionCalculator())->calculate($gen, $this->makeContext($doc));
+        $xp = new \DOMXPath($doc);
+        self::assertEqualsWithDelta($qp0, $xp->evaluate('number(./donnee_intermediaire/qp0)', $gen), 1e-9);
+        $rpn = $xp->evaluate('number(./donnee_intermediaire/rpn)', $gen);
+        if (in_array($type, [139, 144], true)) {
+            self::assertEqualsWithDelta($pnKw <= 70 ? (91 + 2 * log10($pnKw)) / 100 : 0.96, $rpn, 1e-12);
+        }
+        if (in_array($type, [145, 146], true)) {
+            self::assertEqualsWithDelta($pnKw <= 20 ? (91 + 2 * log10($pnKw)) / 100 : ($pnKw <= 70 ? (92 + 2 * log10($pnKw)) / 100 : 0.96), $rpn, 1e-12);
+        }
+        self::assertEqualsWithDelta(1 / (1 / $rpn + 1790 * $qp0 / 2000000), $xp->evaluate('number(./donnee_intermediaire/rendement_generation)', $gen), 1e-12);
+    }
+
+    public static function pertesArretBois(): iterable
+    {
+        // §13.2.2.3 p.88-90 : coefficients indépendants de la table PHP.
+        $families = [
+            [[15, 22, 29, 85], 0.08, 0.73, 1800, 1100],
+            [[16, 23, 30, 86], 0.07, 0.70, 1400, 800],
+            [[17, 18, 19, 20, 21, 24, 25, 26, 27, 28, 31, 32, 33, 34,
+                87, 88, 89, 90, 91, 139, 144, 145, 146], 0.085, 0.60, 1100, 500],
+        ];
+        foreach ($families as [$types, $coefficient, $exposant, $medium, $large]) {
+            foreach ($types as $type) {
+                foreach ([10.0, 20.0, 20.001, 70.0, 70.001, 400.0, 400.001] as $pn) {
+                    $expected = $pn <= 70 ? 1000 * $coefficient * $pn ** $exposant : ($pn <= 400 ? $medium : $large);
+                    yield "$type, $pn kW" => [$type, $pn, (float)$expected];
+                }
+            }
+        }
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('saisiesQp0Bois')]
+    public function testUneSaisieQp0BoisPrimeSurLeForfait(int $method, float $qp0): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML('<logement><installation_ecs><donnee_intermediaire><besoin_ecs>2000</besoin_ecs></donnee_intermediaire><generateur_ecs><donnee_entree><enum_type_energie_id>5</enum_type_energie_id><enum_type_generateur_ecs_id>34</enum_type_generateur_ecs_id><enum_methode_saisie_carac_sys_id>' . $method . '</enum_methode_saisie_carac_sys_id></donnee_entree><donnee_intermediaire><pn>10000</pn><rpn>0.9</rpn><qp0>' . $qp0 . '</qp0></donnee_intermediaire></generateur_ecs></installation_ecs></logement>');
+        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        (new CombustionCalculator())->calculate($gen, $this->makeContext($doc));
+        self::assertEqualsWithDelta($qp0, (new \DOMXPath($doc))->evaluate('number(./donnee_intermediaire/qp0)', $gen), 1e-12);
+    }
+
+    public static function saisiesQp0Bois(): iterable
+    {
+        foreach ([4, 5] as $method) {
+            foreach ([0.0, 75.0] as $qp0) {
+                yield [$method, $qp0];
+            }
+        }
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('echellesQp0Bois')]
+    public function testLesPertesBoisConserventLeurPuissancePhysiqueEtLesUnites(
+        string $format,
+        float $ratio,
+        int $method,
+        bool $pnSaisie,
+    ): void {
+        $doc = new DOMDocument();
+        $becs = $format === '0.1.0' ? 2000000 : 2000;
+        $saisie = $pnSaisie ? '<donnee_intermediaire><pn>10000</pn><rpn>0.9</rpn><qp0>999</qp0></donnee_intermediaire>' : '';
+        $doc->loadXML('<dpe version="' . $format . '"><logement><installation_ecs><donnee_entree><ratio_virtualisation>' . $ratio . '</ratio_virtualisation></donnee_entree><donnee_intermediaire><besoin_ecs>' . $becs . '</besoin_ecs></donnee_intermediaire><generateur_ecs><donnee_entree><enum_type_energie_id>5</enum_type_energie_id><enum_type_generateur_ecs_id>15</enum_type_generateur_ecs_id><enum_usage_generateur_id>2</enum_usage_generateur_id><enum_methode_saisie_carac_sys_id>' . $method . '</enum_methode_saisie_carac_sys_id></donnee_entree>' . $saisie . '</generateur_ecs></installation_ecs></logement></dpe>');
+        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        (new CombustionCalculator())->calculate($gen, $this->makeContext($doc));
+        // Sans saisie : Pecs=21 kW → Pn=24 kW (§13.2.2.4 p.92),
+        // puis la quote-part seulement après QP0(Pn), non linéaire.
+        $pnKw = $pnSaisie ? 10.0 : 24.0;
+        $share = $pnSaisie ? 1.0 : $ratio;
+        $qp0 = 80 * $pnKw ** 0.73 * $share;
+        $xp = new \DOMXPath($doc);
+        self::assertEqualsWithDelta($pnKw * 1000 * $share, $xp->evaluate('number(./donnee_intermediaire/pn)', $gen), 1e-9);
+        self::assertEqualsWithDelta($qp0, $xp->evaluate('number(./donnee_intermediaire/qp0)', $gen), 1e-9);
+        $rpn = $method === 3 ? 0.9 : (47 + 6 * log10($pnKw)) / 100;
+        self::assertEqualsWithDelta($rpn, $xp->evaluate('number(./donnee_intermediaire/rpn)', $gen), 1e-12);
+        self::assertEqualsWithDelta(1 / (1 / $rpn + 1790 * $qp0 / 2000000), $xp->evaluate('number(./donnee_intermediaire/rendement_generation)', $gen), 1e-12);
+    }
+
+    public static function echellesQp0Bois(): iterable
+    {
+        foreach (['2', '0.1.0'] as $format) {
+            foreach ([1.0, 0.25] as $ratio) {
+                yield "$format, ratio $ratio, forfait" => [$format, $ratio, 1, false];
+                yield "$format, ratio $ratio, Pn saisie" => [$format, $ratio, 2, true];
+                yield "$format, ratio $ratio, Pn/Rpn saisis" => [$format, $ratio, 3, true];
+            }
+        }
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('referencesMixtesLibres')]
     public function testLaReferenceMixteEstDuTextePasUneExpressionXpath(string $reference, string $field): void
     {

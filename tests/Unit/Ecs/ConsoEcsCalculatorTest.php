@@ -18,6 +18,40 @@ final class ConsoEcsCalculatorTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../..';
     private const TOL = 0.01; // kWh
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('systemesCet2027')]
+    public function testLeParcoursCet2027NeDoubleComptePasLeStockage(string $format, int $type, string $zone, float $cop): void
+    {
+        $becs = $format === '0.1.0' ? 2000000 : 2000;
+        $dep = $format === '0.1.0' ? 3200000 : 3200;
+        $doc = new DOMDocument();
+        $doc->loadXML('<dpe version="' . $format . '"><administratif><enum_version_id>2.7</enum_version_id></administratif><logement><installation_ecs_collection><installation_ecs><donnee_intermediaire><besoin_ecs>' . $becs . '</besoin_ecs><besoin_ecs_depensier>' . $dep . '</besoin_ecs_depensier><rendement_distribution>0.9</rendement_distribution></donnee_intermediaire><generateur_ecs_collection><generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>' . $type . '</enum_type_generateur_ecs_id><enum_type_energie_id>1</enum_type_energie_id><enum_type_stockage_ecs_id>1</enum_type_stockage_ecs_id><volume_stockage>200</volume_stockage></donnee_entree></generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection></logement></dpe>');
+        $context = new CalculationContext($doc, new TableRepository(__DIR__ . '/../../../resources/tables'), zoneClimatique: $zone);
+        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        (new \CalculDpePHP\Ecs\Rendement\StockageCalculator())->calculate($gen, $context);
+        (new \CalculDpePHP\Ecs\Rendement\CetAccumulationCalculator())->calculate($gen, $context);
+        (new \CalculDpePHP\Ecs\Rendement\CombustionCalculator())->calculate($gen, $context);
+        (new ConsoEcsCalculator())->calculate($doc->getElementsByTagName('installation_ecs')->item(0), $context);
+        (new \CalculDpePHP\Sortie\ProductionEnrCalculator())->calculate($doc->getElementsByTagName('logement')->item(0), $context);
+        $xp = new \DOMXPath($doc);
+        $conso = 2000 / (0.9 * $cop);
+        self::assertEqualsWithDelta($cop, $xp->evaluate('number(//generateur_ecs/donnee_intermediaire/cop)'), 1e-12);
+        self::assertEqualsWithDelta($conso, $xp->evaluate('number(//generateur_ecs/donnee_intermediaire/conso_ecs)'), 1e-9);
+        self::assertEqualsWithDelta(3200 / (0.9 * $cop), $xp->evaluate('number(//generateur_ecs/donnee_intermediaire/conso_ecs_depensier)'), 1e-9);
+        self::assertEqualsWithDelta($conso * ($cop - 1), $xp->evaluate('number(//prod_enr_chaleur_ambiante_cet)'), 1e-9);
+        self::assertSame(0, $doc->getElementsByTagName('rendement_stockage')->length);
+        self::assertSame(0, $doc->getElementsByTagName('rendement_generation')->length);
+    }
+
+    public static function systemesCet2027(): iterable
+    {
+        foreach (['2', '0.1.0'] as $format) {
+            foreach ([135 => [2.7, 3.0], 136 => [2.7, 3.0], 137 => [3.0, 3.1], 138 => [2.8, 3.1]] as $type => [$h1, $h3]) {
+                yield "$format type $type H1" => [$format, $type, '1', $h1];
+                yield "$format type $type H3" => [$format, $type, '8', $h3];
+            }
+        }
+    }
+
     private function buildInstallation(
         float $becsConv,
         float $becsDep,

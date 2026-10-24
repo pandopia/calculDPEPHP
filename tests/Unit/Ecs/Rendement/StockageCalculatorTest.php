@@ -492,6 +492,15 @@ XML;
         $this->assertNull($rs);
     }
 
+    public function testLesCetDepuis2027NeRecalculentPasUnRendementDeStockageSepare(): void
+    {
+        foreach ([135, 136, 137, 138] as $type) {
+            [$doc, $node] = $this->buildGen(200.0, 1, $type, null);
+            (new StockageCalculator())->calculate($node, $this->makeContext($doc));
+            self::assertNull($doc->getElementsByTagName('rendement_stockage')->item(0), "type $type");
+        }
+    }
+
     /**
      * Rs stocké dans le contexte.
      */

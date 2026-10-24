@@ -88,7 +88,7 @@ final class AuxGenerationCalculator implements CalculatorInterface
     /** Chaudières fioul ECS (35-44, 122-123) */
     private const ECS_CHAUDIERE_FIOUL_RANGES = [[35,44],[122,123]];
     /** Chaudières bois ECS et parties hybrides (XSD 124-131), même ligne §15.1 p.97. */
-    private const ECS_BOIS_RANGES            = [[13,34],[124,131]];
+    private const ECS_BOIS_RANGES            = [[13,34],[124,131],[139,139],[144,146]];
 
     /**
      * `enum_methode_application_dpe_log_id` des DPE immeuble collectif : seuls

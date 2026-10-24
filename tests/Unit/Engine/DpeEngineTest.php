@@ -19,6 +19,22 @@ final class DpeEngineTest extends TestCase
 {
     private const PROJECT_ROOT = __DIR__ . '/../../..';
 
+    public function testUnAutreThermodynamiqueSansScopJustifieEstRefuseAvantPurge(): void
+    {
+        foreach ([117, 118] as $type) {
+            $doc = new \DOMDocument();
+            $doc->loadXML('<dpe><logement><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>' . $type . '</enum_type_generateur_ch_id><enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id></donnee_entree><donnee_intermediaire><scop>3.15</scop></donnee_intermediaire></generateur_chauffage><sortie><temoin>123</temoin></sortie></logement></dpe>');
+            $before = $doc->saveXML();
+            try {
+                $this->engine()->calculateDocument($doc);
+                self::fail('Un ancien SCOP non justifié ne remplace pas un forfait absent.');
+            } catch (UnsupportedDpeModelException $exception) {
+                self::assertStringContainsString('SCOP', $exception->getMessage());
+                self::assertSame($before, $doc->saveXML());
+            }
+        }
+    }
+
     private function engine(): DpeEngine
     {
         return new DpeEngine(
@@ -153,6 +169,88 @@ final class DpeEngineTest extends TestCase
         yield 'ballon à commande intelligente' => ['generateur_ecs', 'enum_type_generateur_ecs_id', 140];
     }
 
+    public function testLesQuatreCetEtLaPeriode2027SontAcceptesUniquementDansLeModele27(): void
+    {
+        foreach ([135, 136, 137, 138] as $type) {
+            $xml = $this->xmlAvecGenerateur('generateur_ecs', 'enum_type_generateur_ecs_id', $type);
+            $xml = str_replace('<enum_modele_dpe_id>1</enum_modele_dpe_id>', '<enum_modele_dpe_id>1</enum_modele_dpe_id><enum_version_id>2.7</enum_version_id>', $xml);
+            $xml = str_replace('</donnee_entree>', '<enum_periode_installation_ecs_thermo_id>4</enum_periode_installation_ecs_thermo_id></donnee_entree>', $xml);
+            $result = $this->engine()->calculate($xml);
+            self::assertSame((string)$type, $result->getElementsByTagName('enum_type_generateur_ecs_id')->item(0)?->textContent);
+        }
+    }
+
+    public function testLeCetGenerique2027NeTraverseLeGardeQuAvecSonCopJustifie(): void
+    {
+        foreach ([1, 6] as $method) {
+            foreach ([null, 0, 4.7] as $cop) {
+                $doc = new \DOMDocument();
+                $doc->loadXML('<dpe><administratif><enum_version_id>2.7</enum_version_id></administratif><logement><generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>82</enum_type_generateur_ecs_id><enum_periode_installation_ecs_thermo_id>4</enum_periode_installation_ecs_thermo_id><enum_methode_saisie_carac_sys_id>' . $method . '</enum_methode_saisie_carac_sys_id></donnee_entree>' . ($cop === null ? '' : '<donnee_intermediaire><cop>' . $cop . '</cop></donnee_intermediaire>') . '</generateur_ecs><sortie><temoin>123</temoin></sortie></logement></dpe>');
+                $before = $doc->saveXML();
+                try {
+                    $this->engine()->calculateDocument($doc);
+                    self::assertSame(6, $method);
+                    self::assertSame(4.7, $cop);
+                } catch (UnsupportedDpeModelException $exception) {
+                    self::assertTrue($method !== 6 || $cop === null || $cop <= 0);
+                    self::assertSame($before, $doc->saveXML());
+                }
+            }
+        }
+    }
+
+    public function testUneAncienneFamilleCetNeDevientPasImplicitementUneGeneration2027(): void
+    {
+        $xml = $this->xmlAvecGenerateur('generateur_ecs', 'enum_type_generateur_ecs_id', 3);
+        $xml = str_replace('<enum_modele_dpe_id>1</enum_modele_dpe_id>', '<enum_modele_dpe_id>1</enum_modele_dpe_id><enum_version_id>2.7</enum_version_id>', $xml);
+        $xml = str_replace('</donnee_entree>', '<enum_periode_installation_ecs_thermo_id>4</enum_periode_installation_ecs_thermo_id></donnee_entree>', $xml);
+        $this->expectException(UnsupportedDpeModelException::class);
+        $this->expectExceptionMessage('enum_periode_installation_ecs_thermo_id=4');
+        $this->engine()->calculate($xml);
+    }
+
+    public function testLesTechnologiesEcs27EncoreNonCouvertesRestentRefusees(): void
+    {
+        foreach ([140, 141, 142, 143] as $type) {
+            $xml = $this->xmlAvecGenerateur('generateur_ecs', 'enum_type_generateur_ecs_id', $type);
+            $xml = str_replace('<enum_modele_dpe_id>1</enum_modele_dpe_id>', '<enum_modele_dpe_id>1</enum_modele_dpe_id><enum_version_id>2.7</enum_version_id>', $xml);
+            try {
+                $this->engine()->calculate($xml);
+                self::fail("Le type $type ne doit pas traverser le garde CET.");
+            } catch (UnsupportedDpeModelException $exception) {
+                self::assertStringContainsString("de type $type", $exception->getMessage());
+            }
+        }
+    }
+
+    public function testLesNeufNouvellesPacChauffageSontAccepteesDansLeModele27(): void
+    {
+        foreach ([172, 173, 174, 175, 176, 178, 179, 180, 181] as $type) {
+            $xml = $this->xmlAvecGenerateur('generateur_chauffage', 'enum_type_generateur_ch_id', $type);
+            $xml = str_replace('<enum_modele_dpe_id>1</enum_modele_dpe_id>', '<enum_modele_dpe_id>1</enum_modele_dpe_id><enum_version_id>2.7</enum_version_id>', $xml);
+            $result = $this->engine()->calculate($xml);
+            self::assertSame((string)$type, $result->getElementsByTagName('enum_type_generateur_ch_id')->item(0)?->textContent);
+        }
+    }
+
+    public function testLesGranulesSansCondensation27SontCouverts(): void
+    {
+        foreach ([183, 184] as $type) {
+            $xml = $this->xmlAvecGenerateur('generateur_chauffage', 'enum_type_generateur_ch_id', $type);
+            $xml = str_replace('<enum_modele_dpe_id>1</enum_modele_dpe_id>', '<enum_modele_dpe_id>1</enum_modele_dpe_id><enum_version_id>2.7</enum_version_id>', $xml);
+            self::assertSame((string)$type, $this->engine()->calculate($xml)->getElementsByTagName('enum_type_generateur_ch_id')->item(0)?->textContent);
+        }
+    }
+
+    public function testLesChaudieresGranulesCondensationSontAccepteesDansLeModele27(): void
+    {
+        foreach ([['generateur_chauffage', 'enum_type_generateur_ch_id', 177], ['generateur_chauffage', 'enum_type_generateur_ch_id', 182], ['generateur_ecs', 'enum_type_generateur_ecs_id', 139], ['generateur_ecs', 'enum_type_generateur_ecs_id', 144], ['generateur_ecs', 'enum_type_generateur_ecs_id', 145], ['generateur_ecs', 'enum_type_generateur_ecs_id', 146]] as [$tag, $field, $type]) {
+            $xml = $this->xmlAvecGenerateur($tag, $field, $type);
+            $xml = str_replace('<enum_modele_dpe_id>1</enum_modele_dpe_id>', '<enum_modele_dpe_id>1</enum_modele_dpe_id><enum_version_id>2.7</enum_version_id>', $xml);
+            self::assertSame((string)$type, $this->engine()->calculate($xml)->getElementsByTagName($field)->item(0)?->textContent);
+        }
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('technologies27')]
     public function testUneTechnologieDu27EstRefuseeAuLieuDEtreCalculeeAFaux(
         string $balise,
@@ -168,7 +266,7 @@ final class DpeEngineTest extends TestCase
     /** Options introduites par les appinfo du XSD 2.7, encore sans calcul. */
     public static function options27NonCouvertes(): iterable
     {
-        yield 'solaire ECS seule' => ['installation_ecs', 'enum_type_installation_solaire_id', '5'];
+        yield 'solaire inconnu' => ['installation_ecs', 'enum_type_installation_solaire_id', '6'];
         yield 'module thermique appartement' => ['installation_ecs', 'enum_bouclage_reseau_ecs_id', '4'];
         yield 'régulation prédictive' => ['emetteur_chauffage', 'enum_equipement_intermittence_id', '8'];
         yield 'CET installé en 2027' => ['generateur_ecs', 'enum_periode_installation_ecs_thermo_id', '4'];
@@ -176,6 +274,25 @@ final class DpeEngineTest extends TestCase
         yield 'commande intelligente' => ['generateur_ecs', 'scf_saisi', '0.9'];
         yield 'commande intelligente zéro explicite' => ['generateur_ecs', 'scf_saisi', '0'];
         yield 'couverture hybride saisie' => ['installation_chauffage', 'couverture_pac_hybride_saisi', '0.75'];
+    }
+
+    public function testLesModalitesSolairesSontVersionneesEtLesAnciensTypesRestentIntacts(): void
+    {
+        foreach (['2.6', '2.7'] as $version) {
+            foreach ([2, 3, 5] as $type) {
+                $doc = new \DOMDocument();
+                $doc->loadXML('<dpe><administratif><enum_version_id>' . $version . '</enum_version_id></administratif><logement><installation_ecs><donnee_entree><enum_type_installation_solaire_id>' . $type . '</enum_type_installation_solaire_id></donnee_entree></installation_ecs><sortie><temoin>123</temoin></sortie></logement></dpe>');
+                $before = $doc->saveXML();
+                $accept = $version === '2.7' ? $type === 5 : $type !== 5;
+                try {
+                    $this->engine()->calculateDocument($doc);
+                    self::assertTrue($accept, "$version solaire $type");
+                } catch (UnsupportedDpeModelException $exception) {
+                    self::assertFalse($accept, "$version solaire $type");
+                    self::assertSame($before, $doc->saveXML());
+                }
+            }
+        }
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('options27NonCouvertes')]
@@ -205,6 +322,32 @@ final class DpeEngineTest extends TestCase
             . '<autre><donnee_entree><presence_rceg>1</presence_rceg></donnee_entree></autre>'
             . '</logement></dpe>');
         $this->expectNotToPerformAssertions();
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('regulationsPredictivesNonCouvertes')]
+    public function testUneCombinaisonPredictiveNonPublieeEstRefuseeAvantPurge(string $version, int $type, int $chauffage, int $regulation, int $emetteur): void
+    {
+        $doc = new \DOMDocument();
+        $doc->loadXML('<dpe><administratif><enum_version_id>' . $version . '</enum_version_id></administratif><logement><caracteristique_generale><enum_methode_application_dpe_log_id>3</enum_methode_application_dpe_log_id></caracteristique_generale><installation_chauffage_collection><installation_chauffage><donnee_entree><enum_type_installation_id>' . $type . '</enum_type_installation_id></donnee_entree><emetteur_chauffage_collection><emetteur_chauffage><donnee_entree><enum_type_chauffage_id>' . $chauffage . '</enum_type_chauffage_id><enum_type_regulation_id>' . $regulation . '</enum_type_regulation_id><enum_equipement_intermittence_id>8</enum_equipement_intermittence_id><enum_type_emission_distribution_id>' . $emetteur . '</enum_type_emission_distribution_id></donnee_entree></emetteur_chauffage></emetteur_chauffage_collection></installation_chauffage></installation_chauffage_collection><sortie><temoin>123</temoin></sortie></logement></dpe>');
+        $before = $doc->saveXML();
+        try {
+            $this->engine()->calculateDocument($doc);
+            self::fail('La configuration ne figure pas dans les lignes prédictives applicables.');
+        } catch (UnsupportedDpeModelException $exception) {
+            self::assertSame($before, $doc->saveXML());
+        }
+    }
+
+    public static function regulationsPredictivesNonCouvertes(): iterable
+    {
+        yield 'ancien modèle' => ['2.6', 2, 2, 2, 2];
+        yield 'mixte non déterminé' => ['2.7', 4, 2, 2, 2];
+        yield 'collectif divisé' => ['2.7', 2, 1, 2, 2];
+        yield 'individuel sans régulation par pièce' => ['2.7', 1, 2, 1, 2];
+        yield 'radiateur électrique exclu du central' => ['2.7', 2, 2, 2, 19];
+        yield 'type chauffage absent' => ['2.7', 2, 0, 2, 2];
+        yield 'régulation absente' => ['2.7', 2, 2, 0, 2];
+        yield 'émetteur absent' => ['2.7', 2, 2, 2, 0];
     }
 
     /** Les bornes du modèle 2.6 restent calculables. */

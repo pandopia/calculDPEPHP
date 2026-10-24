@@ -15,6 +15,53 @@ final class IntermittenceCalculatorTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../..';
     private const TOL = 0.001;
 
+    public function testLaMethode25EstUnAppartementEtNonUneMaison(): void
+    {
+        // Appinfo enum_methode_application_dpe_log_id : 25 = appartement RE2020.
+        foreach ([1, 4] as $inertie) {
+            $doc = $this->buildEmetteur(1, 2, 1, 3);
+            (new IntermittenceCalculator())->calculate($doc->documentElement, $this->makeContext($doc, $inertie, 25));
+            self::assertEqualsWithDelta(0.90, (float)$doc->getElementsByTagName('i0')->item(0)->textContent, 1e-12);
+        }
+    }
+
+    /** ADEME 05aabba7, intermittence A190:P229, extraction indépendante de la table PHP. */
+    #[\PHPUnit\Framework\Attributes\DataProvider('regulationsPredictives')]
+    public function testLesQuaranteLignesPredictivesAvecTousLeursEmetteurs(array $row, int $emission, int $inertie): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML('<dpe><administratif><enum_version_id>2.7</enum_version_id></administratif><logement><caracteristique_generale><enum_methode_application_dpe_log_id>' . $row['mode'] . '</enum_methode_application_dpe_log_id></caracteristique_generale><installation_chauffage_collection><installation_chauffage><donnee_entree><enum_type_installation_id>' . $row['installation'] . '</enum_type_installation_id></donnee_entree><emetteur_chauffage_collection><emetteur_chauffage><donnee_entree><enum_type_chauffage_id>' . $row['chauffage'] . '</enum_type_chauffage_id><enum_type_regulation_id>' . $row['regulation'] . '</enum_type_regulation_id><enum_equipement_intermittence_id>8</enum_equipement_intermittence_id><enum_type_emission_distribution_id>' . $emission . '</enum_type_emission_distribution_id><tv_intermittence_id>' . $row['id'] . '</tv_intermittence_id></donnee_entree></emetteur_chauffage></emetteur_chauffage_collection></installation_chauffage></installation_chauffage_collection></logement></dpe>');
+        $node = $doc->getElementsByTagName('emetteur_chauffage')->item(0);
+        $ctx = $this->makeContext($doc, $inertie, $row['mode']);
+        (new IntermittenceCalculator())->calculate($node, $ctx);
+        self::assertEqualsWithDelta($row['i0'], (new \DOMXPath($doc))->evaluate('number(./donnee_intermediaire/i0)', $node), 1e-12);
+    }
+
+    public static function regulationsPredictives(): iterable
+    {
+        $rows = json_decode(file_get_contents(self::PROJECT_ROOT . '/tests/Fixtures/intermittence-predictive-ademe.json'), true, 512, JSON_THROW_ON_ERROR);
+        foreach ($rows as $row) {
+            foreach ($row['emetteurs'] as $emission) {
+                foreach ($row['inerties'] as $inertie) {
+                    yield $row['id'] . ' émission ' . $emission . ' inertie ' . $inertie => [$row, $emission, $inertie];
+                }
+            }
+        }
+    }
+
+    public function testUneLigneDeComptagePredictiveDoitResterCompatibleAvecLEmetteur(): void
+    {
+        foreach ([[null, 0.88], [214, 0.96], [222, 0.88]] as [$tv, $expected]) {
+            $doc = new DOMDocument();
+            $doc->loadXML('<dpe><administratif><enum_version_id>2.7</enum_version_id></administratif><logement><caracteristique_generale><enum_methode_application_dpe_log_id>3</enum_methode_application_dpe_log_id></caracteristique_generale><installation_chauffage_collection><installation_chauffage><donnee_entree><enum_type_installation_id>2</enum_type_installation_id></donnee_entree><emetteur_chauffage_collection><emetteur_chauffage><donnee_entree><enum_type_chauffage_id>2</enum_type_chauffage_id><enum_type_regulation_id>2</enum_type_regulation_id><enum_equipement_intermittence_id>8</enum_equipement_intermittence_id><enum_type_emission_distribution_id>2</enum_type_emission_distribution_id>' . ($tv === null ? '' : '<tv_intermittence_id>' . $tv . '</tv_intermittence_id>') . '</donnee_entree></emetteur_chauffage></emetteur_chauffage_collection></installation_chauffage></installation_chauffage_collection></logement></dpe>');
+            $ctx = $this->makeContext($doc, 1, 3);
+            $ctx->set('logement.comptage_individuel', 'present');
+            $node = $doc->getElementsByTagName('emetteur_chauffage')->item(0);
+            (new IntermittenceCalculator())->calculate($node, $ctx);
+            self::assertEqualsWithDelta($expected, (new \DOMXPath($doc))->evaluate('number(./donnee_intermediaire/i0)', $node), 1e-12);
+        }
+    }
+
     private function makeContext(DOMDocument $doc, int $classeInertieId = 1, int $methodeId = 1): CalculationContext
     {
         $ctx = new CalculationContext(
@@ -245,7 +292,7 @@ XML;
 
     public function testUneMaisonSurReseauCollectifGardeLaTableMaisonChauffageCentral(): void
     {
-        foreach ([1, 14, 18, 25] as $mode) {
+        foreach ([1, 14, 18] as $mode) {
             foreach ([2, 3] as $typeInstallation) {
                 foreach ([1, 2] as $typeChauffage) {
                     foreach ([1 => 0.90, 4 => 0.88] as $inertie => $attendu) {

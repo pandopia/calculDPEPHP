@@ -196,7 +196,7 @@ XML;
 
     public static function chaudieresBoisHybridesEcs(): iterable
     {
-        foreach (range(124, 131) as $type) {
+        foreach ([...range(124, 131), 139, 144, 145, 146] as $type) {
             foreach ([0, 1] as $ventouse) {
                 yield "$type ventouse $ventouse" => [$type, $ventouse];
             }

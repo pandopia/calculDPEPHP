@@ -89,8 +89,9 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
     {
         $accessor = new NodeAccessor($context->document);
         // Normalisation GPL/charbon/hybride-chaudière → générateur équivalent (§13.2.2)
+        $typeOriginal = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $node);
         $genId    = \CalculDpePHP\Chauffage\GenerateurChAlias::normalizeNode(
-            $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $node),
+            $typeOriginal,
             $node,
         );
 
@@ -126,6 +127,11 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
 
         // Lecture de la table tv_generateur_combustion pour les champs forfaitaires
         $tvId = $accessor->getIntOrNull('./donnee_entree/tv_generateur_combustion_id', $node);
+        // L'alias 74 désigne le profil bois, pas ses caractéristiques récentes.
+        // Lire la famille propre à la condensation, puis sa bande réelle de Pn.
+        if (in_array($typeOriginal, [177, 182], true)) {
+            $tvId = 94;
+        }
         // §13.2.2 p.86–88 : le type ADEME normalisé décrit la technologie et
         // la période des chaudières gaz (85–97) et fioul (75–84). Il suffit à
         // choisir la ligne de notre table lorsque son identifiant est omis.

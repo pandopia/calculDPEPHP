@@ -56,7 +56,7 @@ return [
     15 => ['qvarep' => 1.09, 'qvasouf' => 0.00, 'smea' => 1.5,  'pvent_immeuble' => 0.25,    'pvent_maison' => 15.0  ], // SF Hygro B après 2012
 
     // VMC Basse Pression (mêmes puissances que VMC classiques, §5 p.41)
-    // §5 p.50 : « Les puissances d'auxiliaires des VMC basse pression sont
+    // §5 p.41 : « Les puissances d'auxiliaires des VMC basse pression sont
     // les mêmes que pour les VMC classiques. » Le libellé XSD de ces trois
     // types ne porte aucune date, contrairement à toutes les autres VMC :
     // c'est `ventilation_post_2012` qui désigne la colonne du tableau, d'où

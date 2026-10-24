@@ -1,174 +1,168 @@
 ---
 section_id: "8"
 title: "Modélisation de l'intermittence"
-spec_pages: [55-57]
+spec_pages: [55, 56, 57]
 xml_outputs: ["i0"]
 tables: ["tv_intermittence_id"]
 depends_on: ["7"]
-status: "verbatim"
+status: "digitalized"
 ---
 
 # §8 — Modélisation de l'intermittence
 
-> Source : `resources/spec.pdf` p.55-57
-> Extraction verbatim via `pdftotext -layout`. À digitaliser : tables en pipe-markdown, formules en LaTeX.
+> Source : resources/spec.pdf, p.55–57, annexe 1 d'octobre 2021.
+> Tables et formules contrôlées visuellement sur le PDF le 24/10/2026.
+> Transcription mise en forme ; relecture indépendante encore à effectuer.
 
-## Texte verbatim
+## Données et formule — p.55
 
-```
-     8 Modélisation de l’intermittence
-     Données d’entrée :
+Données d'entrée : type de bâtiment, chauffage divisé ou central, régulation
+par pièce ou non, équipement d'intermittence, émetteur, présence d'un comptage
+et hauteur moyenne sous plafond.
 
-     Type de bâtiment
+Le facteur d'intermittence traduit les baisses temporaires de température
+(absence, ralenti de nuit, éventuellement de façon inégale dans les pièces).
+Il rapporte les besoins réels, pour un comportement moyen des occupants,
+aux besoins théoriques :
 
-     Type de chauffage (divisé, central)
+$$
+INT=\frac{I_0}{1+0,1(G-1)},
+\qquad
+G=\frac{GV}{H_{sp}Sh}
+$$
 
-     Type de régulation (par pièce ou non)
+- $GV$ : déperditions annuelles de l'enveloppe en W/K, déterminées en partie 3.
+- $Sh$ : surface habitable en m².
+- $H_{sp}$ : hauteur moyenne sous plafond en m.
 
-     Equipement d’intermittence (absent, central sans minimum de température, …)
+## Lecture des tables
 
-     Type d’émetteur (air soufflé, convecteurs, …)
+Pour alléger les en-têtes sans supprimer de colonne :
 
-     Présence d’un comptage
+- **C−** : central sans minimum de température.
+- **C+** : central avec minimum de température.
+- **P+** : par pièce avec minimum de température.
+- **P+D** : par pièce avec minimum de température et détection de présence.
+- **Régu.** : régulation pièce par pièce, « avec » ou « sans ».
+- **—** : tiret ou cellule sans valeur dans le PDF ; ce n'est pas un zéro.
 
-     Hauteur moyenne sous plafond
+### Maisons individuelles, chauffage individuel, inertie légère ou moyenne — p.55–56
 
-     Le facteur d’intermittence traduit les baisses temporaires de température, réalisées pour différentes raisons, absence,
-     ralenti de nuit et éventuellement de façon inégale dans les pièces.
+| Chauffage | Régu. | Émetteur | Absent | C− | C+ | P+ | P+D |
+|---|---|---|---:|---:|---:|---:|---:|
+| Divisé | Avec | Air soufflé | 0,84 | 0,83 | 0,81 | 0,77 | 0,75 |
+| Divisé | Avec | Radiateur / Convecteur | 0,84 | 0,83 | 0,81 | 0,77 | 0,75 |
+| Divisé | Avec | Plafond chauffant | 0,84 | 0,83 | 0,81 | 0,77 | 0,75 |
+| Divisé | Avec | Plancher chauffant | 0,90 | 0,89 | 0,88 | 0,86 | — |
+| Central | Avec | Air soufflé | 0,86 | 0,85 | 0,83 | 0,79 | 0,77 |
+| Central | Avec | Radiateur | 0,88 | 0,87 | 0,85 | 0,82 | 0,80 |
+| Central | Avec | Plafond chauffant | 0,88 | 0,87 | 0,85 | 0,82 | 0,80 |
+| Central | Avec | Plancher chauffant | 0,90 | 0,89 | 0,88 | 0,86 | — |
+| Central | Sans | Air soufflé | 0,90 | 0,89 | 0,87 | — | — |
+| Central | Sans | Radiateur | 0,91 | 0,90 | 0,88 | — | — |
+| Central | Sans | Plafond chauffant | 0,91 | 0,90 | 0,88 | — | — |
+| Central | Sans | Plancher chauffant | 0,92 | 0,91 | 0,90 | — | — |
 
-     Il est égal au rapport entre les besoins réels, compte tenu d'un comportement moyen des occupants, et les besoins
-     théoriques. Le facteur d’intermittence est donné par la formule :
+### Maisons individuelles, chauffage individuel, inertie lourde ou très lourde — p.55–56
 
-                                                                                   𝐼𝑜
-                                                                 𝐼𝑁𝑇 =
-                                                                            1 + 0,1 ∗ (𝐺 − 1)
-     Avec :
+| Chauffage | Régu. | Émetteur | Absent | C− | C+ | P+ | P+D |
+|---|---|---|---:|---:|---:|---:|---:|
+| Divisé | Avec | Air soufflé | 0,86 | 0,85 | 0,83 | 0,80 | 0,78 |
+| Divisé | Avec | Radiateur / Convecteur | 0,86 | 0,85 | 0,83 | 0,80 | 0,78 |
+| Divisé | Avec | Plafond chauffant | 0,86 | 0,85 | 0,83 | 0,80 | 0,78 |
+| Divisé | Avec | Plancher chauffant | 0,92 | 0,91 | 0,90 | 0,88 | — |
+| Central | Avec | Air soufflé | 0,88 | 0,87 | 0,85 | 0,82 | 0,80 |
+| Central | Avec | Radiateur | 0,90 | 0,89 | 0,87 | 0,85 | 0,82 |
+| Central | Avec | Plafond chauffant | 0,90 | 0,89 | 0,87 | 0,85 | 0,82 |
+| Central | Avec | Plancher chauffant | 0,92 | 0,91 | 0,90 | 0,88 | — |
+| Central | Sans | Air soufflé | 0,91 | 0,91 | 0,89 | — | — |
+| Central | Sans | Radiateur | 0,93 | 0,92 | 0,90 | — | — |
+| Central | Sans | Plafond chauffant | 0,93 | 0,92 | 0,90 | — | — |
+| Central | Sans | Plancher chauffant | 0,94 | 0,93 | 0,92 | — | — |
 
-                                                                                  𝐺𝑉
-                                                                          𝐺=
-                                                                                𝐻𝑠𝑝 ∗ 𝑆ℎ
+Une maison individuelle raccordée à un réseau collectif de fourniture
+d'énergie pour le chauffage est traitée comme une maison individuelle avec
+chauffage individuel central.
 
-          -    GV : déperditions annuelles de l’enveloppe (W/K) (déterminé en partie 3)
+### Immeubles collectifs avec chauffage individuel — p.56
 
-          -    Sh : surface habitable (m2)
+| Chauffage | Régu. | Émetteur | Absent | C− | C+ | P+ | P+D |
+|---|---|---|---:|---:|---:|---:|---:|
+| Divisé | Avec | Air soufflé | 0,90 | 0,89 | 0,88 | 0,86 | 0,83 |
+| Divisé | Avec | Radiateur / Convecteur | 0,90 | 0,89 | 0,88 | 0,86 | 0,83 |
+| Divisé | Avec | Plafond chauffant | 0,90 | 0,89 | 0,88 | 0,86 | 0,83 |
+| Divisé | Avec | Plancher chauffant | 0,95 | 0,94 | 0,93 | 0,91 | — |
+| Central | Avec | Air soufflé | 0,91 | 0,90 | 0,89 | 0,87 | 0,84 |
+| Central | Avec | Radiateur | 0,93 | 0,92 | 0,91 | 0,89 | 0,86 |
+| Central | Avec | Plafond chauffant | 0,93 | 0,92 | 0,91 | 0,89 | 0,86 |
+| Central | Avec | Plancher chauffant | 0,95 | 0,94 | 0,93 | 0,91 | — |
+| Central | Sans | Air soufflé | 0,95 | 0,94 | 0,93 | — | — |
+| Central | Sans | Radiateur | 0,96 | 0,95 | 0,94 | — | — |
+| Central | Sans | Plafond chauffant | 0,96 | 0,95 | 0,94 | — | — |
+| Central | Sans | Plancher chauffant | 0,97 | 0,96 | 0,95 | — | — |
 
-          -    Hsp : hauteur moyenne sous plafond (m)
+### Immeubles collectifs avec chauffage collectif — p.56
 
-                                                                                       Équipements d’intermittence
-                                                        Inertie Légère ou moyenne                                        Inertie Lourde ou très lourde
-                                                                                            Par pièce avec                                                      Par pièce avec
-              I0                                   Central sans Central avec Par pièce avec minimum de                Central sans   Central avec Par pièce avec minimum de
-Pour les maisons individuelles            Absent   minimum de minimum de minimum de température et           Absent   minimum de     minimum de minimum de température
-                                                   température température température détection de                   température    température température et détection
-   (chauffage individuel)                                                                     présence                                                           de présence
-                         Air soufflé      0,84        0,83         0,81          0,77           0,75         0,86        0,85           0,83          0,80          0,78
-             Avec        Radiateur /
-Chauffage régulation                      0,84        0,83         0,81          0,77           0,75         0,86        0,85           0,83          0,80          0,78
-                         Convecteur
-  divisé   pièce par
-                     Plafond chauffant    0,84        0,83         0,81          0,77           0,75         0,86        0,85           0,83          0,80          0,78
-             pièce
-                     Plancher chauffant   0,90        0,89         0,88          0,86             -          0,92        0,91           0,90          0,88            -
-                         Air soufflé      0,86        0,85         0,83          0,79           0,77         0,88        0,87           0,85          0,82          0,80
-             Avec
-          régulation     Radiateur        0,88        0,87         0,85          0,82           0,80         0,90        0,89           0,87          0,85          0,82
-           pièce par Plafond chauffant    0,88        0,87         0,85          0,82           0,80         0,90        0,89           0,87          0,85          0,82
-Chauffage    pièce
-                     Plancher chauffant   0,90        0,89         0,88          0,86             -          0,92        0,91           0,90          0,88            -
- central
-                         Air soufflé      0,90        0,89         0,87            -                         0,91        0,91           0,89            -
-             Sans
-                         Radiateur        0,91        0,90         0,88            -                         0,93        0,92           0,90            -
-          régulation
-                     Plafond chauffant    0,91        0,90         0,88            -                         0,93        0,92           0,90            -
+Le chauffage est central. Les trois colonnes d'équipement sont : absent,
+central collectif (**CC**) et central collectif avec détection de présence
+(**CC+D**).
 
-        pièce par
-                  Plancher chauffant     0,92       0,91       0,90        -                         0,94   0,93           0,92          -
-          pièce
+| Régu. | Émetteur | Sans comptage : absent | Sans comptage : CC | Sans comptage : CC+D | Avec comptage : absent | Avec comptage : CC | Avec comptage : CC+D |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Avec | Air soufflé | 1,01 | 0,99 | 0,96 | 0,93 | 0,91 | 0,88 |
+| Avec | Radiateur | 1,03 | 1,01 | 0,98 | 0,95 | 0,93 | 0,90 |
+| Avec | Plafond chauffant | 1,03 | 1,01 | 0,98 | 0,95 | 0,93 | 0,90 |
+| Avec | Plancher chauffant | 1,05 | 1,03 | — | 0,97 | 0,95 | — |
+| Sans | Air soufflé | 1,03 | 1,01 | — | 0,95 | 0,93 | — |
+| Sans | Radiateur | 1,05 | 1,03 | — | 0,97 | 0,95 | — |
+| Sans | Plafond chauffant | 1,05 | 1,03 | — | 0,97 | 0,95 | — |
+| Sans | Plancher chauffant | 1,07 | 1,05 | — | 0,99 | 0,97 | — |
 
+## Règles complémentaires — p.56–57
 
-   Une maison individuelle branchée sur un réseau collectif de fourniture d’énergie pour le chauffage sera traitée comme
-   une maison individuelle avec un chauffage individuel central.
+En immeuble collectif, un chauffage mixte facturé pour partie collectivement
+et pour partie individuellement est traité, pour l'intermittence, comme un
+système collectif avec comptage individuel.
 
-                                                                                          Équipements d’intermittence
-                    I0                                                   Central sans       Central avec     Par pièce avec       Par pièce avec minimum
-Pour les immeubles collectifs avec chauffage                  Absent     minimum de         minimum de        minimum de             de température et
-                individuel                                               température        température       température          détection de présence
-                                          Air soufflé          0,90            0,89                 0,88            0,86                     0,83
- Chauffage     Avec régulation Radiateur/Convecteur            0,90            0,89                 0,88            0,86                     0,83
-   divisé      pièce par pièce   Plafond chauffant             0,90            0,89                 0,88            0,86                     0,83
-                                    Plancher chauffant         0,95            0,94                 0,93            0,91                       -
-                                          Air soufflé          0,91            0,90                 0,89            0,87                     0,84
-               Avec régulation            Radiateur            0,93            0,92                 0,91            0,89                     0,86
-               pièce par pièce       Plafond chauffant         0,93            0,92                 0,91            0,89                     0,86
- Chauffage                          Plancher chauffant         0,95            0,94                 0,93            0,91                       -
-  central                                 Air soufflé          0,95            0,94                 0,93             -
-               Sans régulation            Radiateur            0,96            0,95                 0,94             -
-               pièce par pièce       Plafond chauffant         0,96            0,95                 0,94             -
-                                    Plancher chauffant         0,97            0,96                 0,95             -
+Sur une installation base + appoint, seule l'intermittence de l'appoint est
+prise en compte. Une régulation zonale peut être considérée comme une
+régulation pièce par pièce. Un plancher chauffant régulé par zones jour/nuit
+peut donc être associé à cette régulation.
 
+Un poêle est modélisé comme un radiateur/convecteur pour déterminer
+l'intermittence.
 
-                                                               Absence de comptage individuel                 Présence d’un comptage individuel
+### Définition des équipements d'intermittence
 
-                   I0                                           Équipements d’intermittence                        Équipements d’intermittence
-                                                                                        Central collectif                                    Central collectif
-   Pour les immeubles collectifs avec                                     Central                                            Central
-                                                            Absent                      avec détection      Absent                           avec détection
-           chauffage collectif                                            collectif                                          collectif
-                                                                                         de présence                                          de présence
-                                     Air soufflé             1,01              0,99           0,96           0,93             0,91                  0,88
-             Avec régulation           Radiateur             1,03              1,01           0,98           0,95             0,93                  0,90
-             pièce par pièce     Plafond chauffant           1,03              1,01           0,98           0,95             0,93                  0,90
-Chauffage                        Plancher chauffant          1,05              1,03             -            0,97             0,95                   -
- central                             Air soufflé             1,03              1,01                          0,95             0,93
-             Sans régulation           Radiateur             1,05              1,03                          0,97             0,95
-             pièce par pièce     Plafond chauffant           1,05              1,03                          0,97             0,95
-                                 Plancher chauffant          1,07              1,05                          0,99             0,97
+En chauffage individuel :
 
+- Absent : pas d'équipement permettant de programmer des réduits de température.
+- Central sans minimum : programmation de la marche/arrêt seulement, sans
+  garantie d'un minimum de température.
+- Central avec minimum : ralenti ou abaissement central fixe, non modifiable
+  par l'occupant, avec hors-gel, ou ralenti/abaissement au choix de l'occupant.
+- Pièce par pièce avec minimum : ralenti ou abaissement fixe par pièce, non
+  modifiable par l'occupant.
 
-   En immeuble collectif, le chauffage mixte, c'est-à-dire dont une partie est facturée collectivement et une autre
-   individuellement, est traité au niveau de l’intermittence comme un système collectif avec comptage individuel.
+En chauffage collectif :
 
-   Seule l’intermittence de l’appoint est prise en compte sur les installations base + appoint. Une régulation zonale peut
-   être considérée comme une régulation pièce par pièce.
+- Absent : pas de réduit de nuit.
+- Central collectif : possibilité d'un ralenti de nuit.
 
-   L’équipement d’intermittence peut être :
+### Chauffage divisé et central
 
-            En chauffage individuel
-                  o   Absent : pas d’équipement permettant de programmer des réduits de température ;
-                  o   Central sans minimum de température : équipements permettant une programmation seulement de
-                      la fonction marche arrêt et donc ne garantissant pas un minimum de température ;
-                  o   Central avec un minimum de température : équipement pouvant assurer :
+Le chauffage divisé confond génération et émission : convecteurs électriques,
+planchers chauffants électriques, etc.
 
+Le chauffage central comprend un générateur central, individuel ou collectif,
+et une distribution par un fluide chauffant, air ou eau.
 
-                       Centralement un ralenti ou un abaissement de température fixe, non modifiable par
-                        l’occupant, ainsi que la fonction hors gel ;
-                       Centralement un ralenti ou un abaissement de température au choix de l’occupant ;
-            o   Pièce par pièce avec minimum de température : équipement permettant d’obtenir par pièce un ralenti
-                ou un abaissement de température fixe, non modifiable par l’occupant.
-       En chauffage collectif
-            o   Absent : pas de réduit de nuit ;
-            o   Central collectif : possibilité de ralenti de nuit.
-Un plancher chauffant avec une régulation zone jour/zone nuit peut être associée à une régulation pièce par pièce.
+## Repères d'implémentation — hors transcription réglementaire
 
-Un poêle sera modélisé comme un radiateur/convecteur pour la détermination de l’intermittence.
-
-Un système de chauffage divisé est un système pour lequel la génération et l’émission sont confondues. C’est le cas
-des convecteurs électriques, planchers chauffants électriques, …
-
-Un système de chauffage central comporte un générateur central, individuel ou collectif, et une distribution par fluide
-chauffant : air ou eau.
-```
-
-## TODO digitalisation
-
-### Tables à transcrire en pipe-markdown
-- [ ] `tv_intermittence_id`
-
-### Balises XML produites par cette section
-- `i0`
-
-### Reformatages requis
-- [ ] Reformater les formules en LaTeX (`$$ … $$` ou `$`)
-- [ ] Vérifier les indices et exposants (texte verbatim peut perdre la mise en forme)
-- [ ] Référencer les annexes citées (§18.x)
+- Les lignes « chauffage divisé sans régulation pièce par pièce » ne sont
+  pas imprimées comme des lignes distinctes dans le PDF. La transcription
+  n'ajoute pas ces lignes.
+- La régulation prédictive du modèle 2.7 vient des 40 lignes ADEME 189–228,
+  datées séparément dans resources/tables/chauffage/tv_intermittence_predictive.php.
+- Les variantes de surface habitable pour le volume d'intermittence restent
+  documentées en TASK-K94 ; cette mise en forme ne les réactive pas.

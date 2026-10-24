@@ -16,7 +16,7 @@ use DOMElement;
  * Seul I0 est calculé ici ; le facteur G/INT est appliqué par les stratégies CH.
  *
  * Détermine le type de bâtiment à partir de `enum_methode_application_dpe_log_id` :
- *   1, 14, 18, 25 → 'maison'
+ *   1, 14, 18 → 'maison' ; 25 décrit un appartement RE2020
  *   Une maison raccordée à un réseau collectif reste une maison avec
  *   chauffage individuel central (§8 p.56), pas un immeuble collectif.
  *   IDs "collectif collectif" détectés via enum_equipement_intermittence_id ∈ {6,7}
@@ -31,12 +31,14 @@ use DOMElement;
  * @spec-section 8
  * @spec-pages   55-57
  * @spec-source  resources/specsplitted/08-intermittence/00-calcul.md
+ * @spec-source  editeur/public/schemas/DPEv2.7.xsd
+ * @spec-source  https://gitlab.com/observatoire-dpe/observatoire-dpe/-/blob/05aabba7/modele_donnee/valeur_tables.xlsx (intermittence A190:P229)
  * @xml-input    emetteur_chauffage.donnee_entree.{enum_type_chauffage_id, enum_type_regulation_id,
  *               enum_equipement_intermittence_id, enum_type_emission_distribution_id}
  * @xml-input    logement.caracteristique_generale.enum_methode_application_dpe_log_id
  * @xml-output   emetteur_chauffage.donnee_intermediaire.i0
  * @depends-on   \CalculDpePHP\Inertie\InertieCalculator
- * @tables       chauffage/tv_intermittence
+ * @tables       chauffage/tv_intermittence, chauffage/tv_intermittence_predictive
  */
 final class IntermittenceCalculator implements CalculatorInterface
 {
@@ -46,7 +48,7 @@ final class IntermittenceCalculator implements CalculatorInterface
     private const PLANCHER    = [8, 9, 11, 12, 13, 14, 43];
 
     /** enum_methode_application_dpe_log_id → maison individuelle */
-    private const MAISON_IDS = [1, 14, 18, 25];
+    private const MAISON_IDS = [1, 14, 18];
 
     public function id(): string
     {
@@ -100,10 +102,60 @@ final class IntermittenceCalculator implements CalculatorInterface
 
         $table = $context->tables->load('chauffage/tv_intermittence');
 
-        $i0 = $this->lookup($table, $batimentType, $chauffageType, $regulation, $emetteur, $inertieKey, $equipementId, $context, $de, $accessor);
+        $i0 = $equipementId === 8
+            ? $this->predictiveI0($batimentType, $chauffageType, $regulation, $emetteur, $inertieKey, $context, $de, $accessor)
+            : $this->lookup($table, $batimentType, $chauffageType, $regulation, $emetteur, $inertieKey, $equipementId, $context, $de, $accessor);
 
         $intermediaire = $accessor->ensureDonneeIntermediaire($node);
         $accessor->setChildValue($intermediaire, 'i0', $i0);
+    }
+
+    /**
+     * XSD 2.7, équipement 8 ; table ADEME intermittence, lignes 189–228.
+     * Aucun repli sur l'équipement « absent » si la combinaison n'est pas publiée.
+     *
+     * @spec-formula F-8-intermittence-predictive
+     */
+    private function predictiveI0(string $batiment, string $chauffage, string $regulation, string $emetteur, string $inertie, CalculationContext $context, DOMElement $entree, NodeAccessor $accessor): float
+    {
+        self::assertPredictiveInput($entree->parentNode, $accessor);
+        $table = $context->tables->load('chauffage/tv_intermittence_predictive');
+        $value = match ($batiment) {
+            'maison' => $regulation === 'avec' ? ($table[$batiment][$chauffage][$inertie][$emetteur] ?? null) : null,
+            'collectif_individuel' => $regulation === 'avec' ? ($table[$batiment][$chauffage][$emetteur] ?? null) : null,
+            'collectif_collectif' => $chauffage === 'central' ? ($table[$batiment][$regulation][$this->comptageKey($context, $entree, $accessor)][$emetteur] ?? null) : null,
+            default => null,
+        };
+        if ($value === null) {
+            throw new \CalculDpePHP\Engine\UnsupportedDpeModelException('Combinaison de régulation prédictive absente des lignes ADEME 189–228 : ' . "$batiment/$chauffage/$regulation/$emetteur");
+        }
+        return (float)$value;
+    }
+
+    /** Prévalidation commune au moteur (avant purge) et au calcul isolé. */
+    public static function assertPredictiveInput(DOMElement $node, NodeAccessor $accessor): void
+    {
+        $version = $accessor->getStringOrNull('//administratif/enum_version_id');
+        if ($version === null || version_compare($version, '2.7', '<')) {
+            throw new \CalculDpePHP\Engine\UnsupportedDpeModelException('La régulation prédictive requiert le modèle DPE 2.7.');
+        }
+        $installation = $node->parentNode?->parentNode;
+        $type = $installation instanceof DOMElement ? $accessor->getIntOrNull('./donnee_entree/enum_type_installation_id', $installation) : null;
+        if ($type === 4) {
+            throw new \CalculDpePHP\Engine\UnsupportedDpeModelException('Régulation prédictive et installation mixte collective-individuelle : périmètre non déterminé, voir TASK-K63.');
+        }
+        $chauffage = $accessor->getIntOrNull('./donnee_entree/enum_type_chauffage_id', $node);
+        $regulation = $accessor->getIntOrNull('./donnee_entree/enum_type_regulation_id', $node);
+        $emetteur = $accessor->getIntOrNull('./donnee_entree/enum_type_emission_distribution_id', $node);
+        $mode = $accessor->getIntOrNull('//caracteristique_generale/enum_methode_application_dpe_log_id');
+        $collectif = !in_array($mode, self::MAISON_IDS, true) && in_array($type, self::INSTALLATION_COLLECTIVE_IDS, true);
+        $central = $chauffage === 2 || (in_array($mode, self::MAISON_IDS, true) && in_array($type, self::INSTALLATION_COLLECTIVE_IDS, true));
+        if (!in_array($chauffage, [1, 2], true) || !in_array($regulation, [1, 2], true)
+            || $emetteur === null || $emetteur < 1 || $emetteur > 50
+            || ($central && in_array($emetteur, [19, 20, 21, 22, 23], true))
+            || ($collectif ? !$central : $regulation !== 2)) {
+            throw new \CalculDpePHP\Engine\UnsupportedDpeModelException('enum_equipement_intermittence_id=8 : combinaison de régulation prédictive absente des lignes ADEME 189–228, voir TASK-K63.');
+        }
     }
 
     private function lookup(

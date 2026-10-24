@@ -16,7 +16,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 ### TASK-A01 — Digitalisation des `specsplitted` : ce qui reste vraiment
 
 - [ ] Owner: __  | Phase: A  | Estimation: variable  | Itératif
-- **Le retard est apparent, pas réel.** 100 des 103 fichiers de
+- **Le retard est apparent, pas réel.** 95 des 103 fichiers de
   `resources/specsplitted/` portent encore `status: "verbatim"`, mais la
   couverture du moteur, elle, est complète : les **119 sections du sommaire**
   sont toutes revendiquées par au moins un `@spec-section`, et **142 des 147
@@ -41,6 +41,11 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   `pdftotext` à rétablir, puis `status` → `digitalized` et relecture par un
   second agent → `reviewed`. Le moteur n'en dépend pas : il est tracé au PDF
   directement. C'est de la relisibilité, à traiter section par section.
+- §8, §12.4, §13.2.2, §14.2 et §18.4 sont digitalisés et contrôlés
+  visuellement sur le PDF (24/10/2026), avec séparation des extensions ADEME
+  2.7 et signalement des cellules tronquées du PDF. Les 188 coefficients
+  d'intermittence concordent aussi avec le classeur ADEME. Leur relecture
+  indépendante reste à faire avant de les passer en `reviewed`.
 - Priorité de relecture suggérée, là où une coquille d'extraction coûterait le
   plus cher : §18.2-18.3 (sollicitations, déjà deux défauts d'annexe trouvés),
   §13.2.2 (valeurs par défaut des chaudières, trois régimes d'arrondi en
@@ -53,6 +58,18 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   un `00-calcul.md` jamais créé.
 
 ## Phase K — Conformité au corpus ADEME
+
+### TASK-K98 — Activer `sw_saisi` sur les fenêtres simples
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- Le XSD donne la valeur solaire justifiée dans `sw_saisi`, encore ignorée
+  sur les fenêtres simples. Elle est lue sur les doubles fenêtres et leur
+  sous-bloc secondaire. Ne pas généraliser en relevant un budget existant.
+- A/B isolé sur 710 cas (24/10/2026) : −5 écarts sur 2401E2888143P,
+  +5 sur 2401E3066953X, bilan brut nul. Ce dernier porte bien Sw=0,41
+  justifié et publié ; les nouveaux écarts sont en aval, face à des murs
+  dont le doublage déclaré est ignoré dans Umur0 (racine K58). Qualifier
+  cette compensation avant activation globale ; aucune tolérance modifiée.
 
 ### TASK-K97 — Unités et total de production PV des sorties historiques
 
@@ -109,6 +126,10 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   2611E1951763L en ponts thermiques.
   Les deux coûts électriques bougent parce que le prix moyen dépend du
   panier chauffage : ne pas corriger ECS/ventilation pour compenser l'amont.
+- Contrôle ciblé après les corrections du 24/10 : `2400E0856203A` n'est
+  plus bloquant (−1 classe). Les trois autres dépassent encore leurs budgets
+  de +1, +1 et +2. Pas de nouvelle mesure globale : qualifier ces trois
+  résidus avant de réactiver la variante sur tout le corpus.
 
 ### TASK-K93 — Enveloppe mixte : colonne Joule dépendante de l'ordre XML
 
@@ -292,12 +313,18 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Remonter d'abord aux caractéristiques amont (Pn, Rpn, QP0) : suites K85
   et K95 ; variantes déjà instruites dans les archives K31/K56. Les verdicts
   COP et sérialisation sont dans TASKS_DONE.md, pas à réinstruire.
-- **QP0 bois ECS n'est pas implémenté dans la table**, qui met les pertes à
-  zéro par simplification. §14.1.2 p.94 renvoie pourtant à §13.2.2.3 p.89–90.
-  Prototype mesuré sur 694 cas : +3 numériques et +1 classe, quatre budgets
-  dépassés d'un écart, aucun relevé. Qualifier d'abord les huit nouveaux
-  exports `ademe-ecs-bois-hybride-2026-10`, dont plusieurs publient les
-  caractéristiques gaz pour une chaudière bois. Mesure dans TASKS_DONE.md.
+- **QP0 des hybrides bois et poêles bouilleurs reste à qualifier.** Les
+  chaudières bois/charbon ordinaires sont couvertes selon §14.1.2 p.94 et
+  §13.2.2.3 p.88–90. La variante globale incluant les hybrides reste écartée
+  (mesure dans TASKS_DONE.md) : leurs exports publient parfois les
+  caractéristiques gaz pour une chaudière bois.
+- **Nouveaux cas ECS seuls (16)** : 2687E2488430K porte un Pn équivalent
+  saisi et QP0 identique au chauffage collectif, sans clé mixte ; le calcul
+  non linéaire sur ce Pn réduit n'est pas celui de la référence. 2563E3941359I
+  porte aussi une puissance virtualisée. Reprendre avec K95, sans inventer
+  d'association. Les classes de 2691E2041329J/2691E2041336Q divergent après
+  restauration des pertes : leur régime ECS déclaré individuel et leur
+  puissance de 97,2 kW demandent une qualification amont, pas un seuil adapté.
 - **Échelle à qualifier** : 2400E0669495Y et
   2400E0669425G : ils déclarent `nombre_appartement = 1` pour un immeuble de
   822 m² desservi par sept installations d'ECS. L'échelle est le suspect, pas
@@ -573,59 +600,41 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K63 — Modèle DPE 2.7 : technologies et ENR restant à couvrir
 
-- [ ] Owner: __ | Phase: K | Priorité: haute
-- Sources : `editeur/public/schemas/DPEv2.7.xsd` (V10.0.0, ADEME du
-  16/10/2026) et `resources/textes/arrete-2026-06-11-epbd.pdf`
-  (JO du 13/08/2026, texte 23, entrée en vigueur au 01/01/2027).
-  L'éditeur prend déjà en charge le schéma 2.7 ; ne pas refaire ce raccordement.
-- **Tables encore incomplètes** : CH 172–184 et ECS 135–146 (PAC/CET ≥2027,
-  chaudières granulés après 2024, ballons avec commande intelligente).
-  Le moteur refuse ces types tant qu'ils ne sont pas couverts : conserver ce
-  garde et sourcer chaque nouvelle valeur avant de le lever.
-- **Nouvelles modalités** : bouclage ECS 4 (module thermique d'appartement),
-  intermittence 8 (régulation prédictive), période ECS thermo 4, solaire 5
-  (« ECS solaire seule » ; 2 et 3 ne sont plus admis en 2.7).
-  Comme RCEG, `scf_saisi` et `couverture_pac_hybride_saisi`, elles sont
-  désormais refusées explicitement avant purge, pas ignorées. Lever chaque
-  garde uniquement avec son calcul sourcé et ses tests.
-- **Grandeurs à implémenter** : RCEG (`presence_rceg`, `fech_saisi`,
-  `ftrans_saisi` → `fecs_rceg`, `besoin_ecs_rceg`), commande intelligente
-  (`scf_saisi` → `scf`), `couverture_pac_hybride_saisi`.
-  Chercher les textes des évolutions 2026 de la méthode 3CL, pas un mapping
-  depuis un exemple.
-- **Froid** : les lignes SEER 7–8 sont couvertes (classeur officiel 05aabba7),
-  avec sélection 2.7 pour les installations depuis 2015 et maintien des
-  valeurs historiques 3/6. Le froid au gaz (type 21), le réseau urbain (23)
-  et toute énergie explicite autre que l'électricité du réseau sont refusés
-  avant purge : implémenter leurs conversions EP/GES/coûts et leur ligne
-  énergétique avant de lever ce garde. Un EER seul ne suffit pas.
-- **Aération 2.7** : la feuille `debits_ventilation` ajoute `qvaerat_conv` et
-  déplace le débit d'ouverture des fenêtres (type 1) hors de `qvarep_conv`.
-  Ce type est refusé avant purge pour le modèle 2.7 uniquement. Sourcer la
-  nouvelle répartition ventilation/aération et ses sorties avant de lever le
-  garde ; ne pas écraser les valeurs historiques des anciens modèles.
-- **ENR réseau** : `prod_enr_rcfu` reste à 0. Les taux ENR/récupération sont
-  désormais extraits exhaustivement du classeur ADEME (six éditions, 5 643
-  lignes, source figée et SHA-256 dans `reference/tv_reseau_chaleur_enr`).
-  `ReseauChaleurFactorResolver::resolveRenewableShare()` distingue zéro,
-  absence et taux invalide, sans déduire le taux du CO₂ ni réutiliser un ancien
-  taux pour un réseau retiré. Reste à brancher les consommations CH/ECS/froid
-  au bon périmètre et au bon régime, avec propagation des taux indisponibles.
-  Qualifier aussi l'efficacité du réseau pour `mention_a0` (L.711-4).
-  Un réseau absent de l'annexe 7 n'est pas efficace par défaut (annexe 2 §1.1
-  du nouvel arrêté). Identifiants 2.7 : `[0-9]{4}C` et `[0-9]{4}F`.
-- **Plusieurs hybrides dans un même bloc** : le forfait ENR zonal utilise le
-  Cch du système hybride. Si plusieurs parties PAC partagent une installation
-  sans total individuel, conserver leurs consommations PAC individualisées
-  plutôt que réutiliser N fois le total ; qualifier leur association avant
-  de généraliser ce forfait. Les catégories CH/ECS, multiplicités et prorata
-  surfacique ENR sont désormais testés sur le XSD complet.
-- Conserver/lire `flexibilite_reseau`, `chauffage_duree_vie_restante`,
-  `clim_duree_vie_restante`. Vérifier sur texte daté le futur pef électrique
-  avant d'ajouter un régime à `Common\\Period`.
-- Aucun cas 2.7 au corpus actuel : tests synthétiques sourcés et validation
-  XSD obligatoires, puis acquisition ADEME dès publication. Toute évolution
-  doit garder un A/B isolé sans dégrader les versions antérieures.
+- [ ] Owner: — | Phase: K | Priorité: haute
+- Sources : XSD DPEv2.7 ADEME du 16/10/2026, classeur 05aabba7/52792fb9
+  et resources/textes/arrete-2026-06-11-epbd.pdf (JO 13/08/2026, effet 01/01/2027).
+  L'éditeur et les 21 nouveaux types de générateurs déjà couverts ne sont pas
+  à refaire ; voir les tests et les commits. Conserver les gardes ci-dessous.
+- **Ballons intelligents ECS 140–143 / SCF** : sourcer la formule et les
+  forfaits avant de lever le refus ; scf_saisi ne doit pas être ignoré.
+- **Module thermique d'appartement** : bouclage ECS 4 encore refusé.
+- **RCEG** : presence_rceg, fech_saisi, ftrans_saisi → fecs_rceg et
+  besoin_ecs_rceg ; trouver les textes datés, pas un mapping depuis un cas.
+- **Couverture PAC hybride justifiée** : couverture_pac_hybride_saisi ;
+  qualifier aussi son effet sur la charge de la chaudière et les ENR, pas
+  seulement le partage final des consommations.
+- **Régulation prédictive, installation collective-individuelle 4** :
+  déterminer le périmètre piloté avant de choisir entre les tables. Les
+  autres combinaisons sans ligne ADEME restent refusées, pas forcées à I0=1.
+- **CET générique 82 depuis 2027** : aucun forfait publié pour ce type.
+  Conserver l'exigence d'un COP propre justifié en méthode 6 ; la seule période
+  4 ne requalifie ni un ancien type daté ni une famille inconnue.
+- **Froid gaz 21, réseau 23 et énergies non électriques** : conversions
+  EP/GES/coûts et ligne énergétique à implémenter avant de lever le garde.
+- **Aération 2.7, type 1** : la feuille debits_ventilation sépare qvaerat_conv
+  de qvarep_conv. Sourcer la nouvelle répartition et ses sorties ; conserver
+  les valeurs historiques des anciens modèles.
+- **ENR réseaux** : restent le froid, les chaufferies/PAC multi-bâtiment et
+  l'efficacité réglementaire pour mention_a0 (L.711-4, annexe 2 §1.1).
+  Un taux ENR ne prouve pas l'efficacité ; identifiants 2.7 : [0-9]{4}C/F.
+- **Hybrides multiples dans un bloc** : qualifier leur association avant de
+  réutiliser un total système ; ne pas le compter N fois. Garder le repli sur
+  les consommations PAC individualisées quand le total propre manque.
+- Qualifier l'exploitation de flexibilite_reseau et des durées de vie
+  chauffage/climatisation. Aucun nouveau PEF sans texte daté.
+- Aucun DPE 2.7 trouvé au 24/10/2026 (requête ADEME version_dpe:2.7 : zéro).
+  Garder les tests synthétiques et XSD ; acquérir des références à publication.
+  Toute évolution doit conserver un A/B isolé sans dégrader les anciens cas.
 
 ### TASK-K64 — Audit énergétique réglementaire : explorer, puis câbler le moteur
 

@@ -1,395 +1,313 @@
 ---
 section_id: "13.2.2"
-title: "Valeurs par défaut chaudières gaz et fioul"
-spec_pages: [86-92]
-xml_outputs: ["pn", "qp0", "rpn", "rpint"]
-tables: []
-depends_on: ["13.2"]
-status: "verbatim"
+title: "Caractéristiques par défaut et dimensionnement des générateurs à combustion"
+spec_pages: [86, 87, 88, 89, 90, 91, 92]
+xml_outputs: ["pn", "qp0", "rpn", "rpint", "pveilleuse"]
+tables: ["tv_generateur_combustion_id", "tv_pecs_combustion_id", "tv_pn_generateur_combustion_id"]
+depends_on: ["13.2", "18.1"]
+status: "digitalized"
 ---
 
-# §13.2.2 — Valeurs par défaut chaudières gaz et fioul
+# §13.2.2 — Caractéristiques par défaut des générateurs à combustion
 
-> Source : `resources/spec.pdf` p.86-92
-> Extraction verbatim via `pdftotext -layout`. À digitaliser : tables en pipe-markdown, formules en LaTeX.
+> Source : resources/spec.pdf, p.86–92, annexe 1 d'octobre 2021.
+> Tables, indices et exposants contrôlés visuellement le 24/10/2026.
+> Transcription mise en forme ; relecture indépendante encore à effectuer.
+> L'expression tronquée du PDF est conservée explicitement, pas reconstruite.
 
-## Texte verbatim
+## Conventions de lecture
 
-```
-  13.2.2 Valeurs par défaut des caractéristiques des chaudières gaz et fioul
-  Le tableau suivant donne les valeurs par défaut des chaudières gaz et fioul :
+Dans les tables, $P_n$ est exprimée en kW et $L=\log_{10}(P_n)$.
+Les rendements $R_{pn}$ et $R_{pint}$ sont donnés en **pour cent PCI** ;
+les calculateurs qui les manipulent comme fractions doivent les diviser par 100.
 
-                                CHAUDIERES GAZ (Valeurs par défaut Rpn, Rpint et Qp0)
-                                                                   Rendements         Qp0 en %                    Puissance
-                                Puissance nominale Rendements
-    Type         Ancienneté                                         (PCI) Rpint       puissance                veilleuse en W
-                                      Pn (kW)      (PCI) Rpn (%)
-                                                                        (%)         nominale Pn                 (si veilleuse)
-                 Avant 1980                                                              4%                          240
- Classique       1981 - 1985            Pn          84 + 2 logPn 80 + 3 logPn            2%                          150
-                 1986 - 1990                                                            1,5%                         150
-                 1991 - 2000                                                            1,2%                         120
-                 2001 - 2015                                                             1%
-  Standard                              Pn          84 + 2 logPn 80 + 3 logPn
-                 A partir de                                                        Pn * (E + F *
-                    2016                                                            logPn) / 100
-                 1991 - 2000                                                            1,2%                        120
-   Basse         2001 - 2015                           87,5 +         87,5 +             1%
-                                        Pn
-Température      A partir de                         1,5logPn        1,5logPn       Pn * (E + F *
-                    2016                                                            logPn) / 100
-                 1981 - 1985                                                                                        150
-                 1986 - 2000             Pn              91 + logPn      97 + logPn               1%                120
-                 2001 - 2015
-Condensation                                                                103 +
-                                      Pn ≤ 70 kW        91 + 3 logPn                             0,5%
-                                                                          2,5logPn
-                 A partir de
-                                   70 kW < Pn ≤ 400                         105 +
-                    2016                                 94 + logPn
-                                         kW                               0,5logPn               0,3%
-                                     Pn > 400 kW            96,6           106,3
+Le symbole « — » conserve une cellule non renseignée dans le PDF.
+Il ne constitue pas une valeur numérique ajoutée par la transcription.
 
+Pour les lignes récentes gaz/fioul, on note l'expression du tableau :
 
-                                 CHAUDIERES FIOUL (Valeurs par défaut Rpn, Rpint et Qp0)
-                                                                                                               Qp0 en %
-                                      Puissance nominale     Rendements (PCI)      Rendements (PCI)
-       Type          Ancienneté                                                                               puissance
-                                            Pn (kW)              Rpn (%)              Rpint (%)
-                                                                                                             nominale Pn
-                     Avant 1970                                                                                   4%
-                     1970 - 1975                                                                                  3%
-     Classique                                 Pn               84 + 2 logPn             80 + 3 logPn
-                     1976 - 1980                                                                                  2%
-                     1981 - 1990                                                                                  1%
-                     1991 - 2015                                                                                  1%
-     Standard                                  Pn               84 + 2 logPn             80 + 3 logPn     Pn * (E + F * logPn)
-                   A partir de 2016
-                                                                                                                 / 100
-                     1991 - 2015               Pn             87,5 + 1,5 logPn       87,5 + 1,5 logPn             1%
+$$
+Q_f(P_n)=\frac{P_n(E+F\log_{10}(P_n))}{100}
+$$
 
-    Basse                                                                                                   Pn * (E + F * logPn)
-             A partir de 2016
- Température                                                                                                       / 100
-               1996 - 2015                   Pn                 91 + logPn             97 + logPn                   1%
-                                         Pn ≤ 70 kW            91 + 3 logPn           98 + 3 logPn                 0,5%
- Condensation                         70 kW < Pn ≤ 400
-                  A partir de 2016                               94 + logPn           100 + logPn                  0,6%
-                                             kW
-                                        Pn > 400 kW                96,6                  102,6                     0,3%
+Le PDF place cette expression dans la colonne titrée « Qp0 en % puissance
+nominale Pn » ; l'expression contient déjà $P_n$. Elle est reproduite telle
+quelle, sans la multiplier une seconde fois par la puissance nominale.
 
+## Chaudières gaz — p.86
 
+| Type | Ancienneté | Critère de puissance | $R_{pn}$ (%) | $R_{pint}$ (%) | $QP_0$ | Veilleuse (W, si présente) |
+|---|---|---|---:|---:|---|---:|
+| Classique | Avant 1980 | $P_n$ | $84+2L$ | $80+3L$ | 4 % de $P_n$ | 240 |
+| Classique | 1981–1985 | $P_n$ | $84+2L$ | $80+3L$ | 2 % de $P_n$ | 150 |
+| Classique | 1986–1990 | $P_n$ | $84+2L$ | $80+3L$ | 1,5 % de $P_n$ | 150 |
+| Standard | 1991–2000 | $P_n$ | $84+2L$ | $80+3L$ | 1,2 % de $P_n$ | 120 |
+| Standard | 2001–2015 | $P_n$ | $84+2L$ | $80+3L$ | 1 % de $P_n$ | — |
+| Standard | À partir de 2016 | $P_n$ | $84+2L$ | $80+3L$ | $Q_f(P_n)$ | — |
+| Basse température | 1991–2000 | $P_n$ | $87,5+1,5L$ | $87,5+1,5L$ | 1,2 % de $P_n$ | 120 |
+| Basse température | 2001–2015 | $P_n$ | $87,5+1,5L$ | $87,5+1,5L$ | 1 % de $P_n$ | — |
+| Basse température | À partir de 2016 | $P_n$ | $87,5+1,5L$ | $87,5+1,5L$ | $Q_f(P_n)$ | — |
+| Condensation | 1981–1985 | $P_n$ | $91+L$ | $97+L$ | 1 % de $P_n$ | 150 |
+| Condensation | 1986–2000 | $P_n$ | $91+L$ | $97+L$ | 1 % de $P_n$ | 120 |
+| Condensation | 2001–2015 | $P_n$ | $91+L$ | $97+L$ | 1 % de $P_n$ | — |
+| Condensation | À partir de 2016 | $P_n\leq70$ | $91+3L$ | $103+2,5L$ | 0,5 % de $P_n$ | — |
+| Condensation | À partir de 2016 | $70<P_n\leq400$ | $94+L$ | $105+0,5L$ | 0,3 % de $P_n$ | — |
+| Condensation | À partir de 2016 | $P_n>400$ | 96,6 | 106,3 | 0,3 % de $P_n$ | — |
 
+La borne « Avant 1980 » est celle imprimée dans le PDF ; elle n'est pas
+remplacée ici par le libellé différent d'un enum XML.
 
-Avec :
+## Chaudières fioul — p.86–87
 
-                                                                                           E          F
-                   Chaudières à combustible liquide ou gazeux
-                   Absence de ventilateur ou autre dispositif de circulation d’air
-                                                                                          2,5        -0,8
-                   ou de produit de combustion dans le circuit de combustion
-                   Présence de ventilateur ou autre dispositif de circulation d’air
-                                                                                          1,75   -0,55
-                   ou de produit de combustion dans le circuit de combustion
+| Type | Ancienneté | Critère de puissance | $R_{pn}$ (%) | $R_{pint}$ (%) | $QP_0$ |
+|---|---|---|---:|---:|---|
+| Classique | Avant 1970 | $P_n$ | $84+2L$ | $80+3L$ | 4 % de $P_n$ |
+| Classique | 1970–1975 | $P_n$ | $84+2L$ | $80+3L$ | 3 % de $P_n$ |
+| Classique | 1976–1980 | $P_n$ | $84+2L$ | $80+3L$ | 2 % de $P_n$ |
+| Classique | 1981–1990 | $P_n$ | $84+2L$ | $80+3L$ | 1 % de $P_n$ |
+| Standard | 1991–2015 | $P_n$ | $84+2L$ | $80+3L$ | 1 % de $P_n$ |
+| Standard | À partir de 2016 | $P_n$ | $84+2L$ | $80+3L$ | $Q_f(P_n)$ |
+| Basse température | 1991–2015 | $P_n$ | $87,5+1,5L$ | $87,5+1,5L$ | 1 % de $P_n$ |
+| Basse température | À partir de 2016 | $P_n$ | $87,5+1,5L$ | $87,5+1,5L$ | $Q_f(P_n)$ |
+| Condensation | 1996–2015 | $P_n$ | $91+L$ | $97+L$ | 1 % de $P_n$ |
+| Condensation | À partir de 2016 | $P_n\leq70$ | $91+3L$ | $98+3L$ | 0,5 % de $P_n$ |
+| Condensation | À partir de 2016 | $70<P_n\leq400$ | $94+L$ | $100+L$ | 0,6 % de $P_n$ |
+| Condensation | À partir de 2016 | $P_n>400$ | 96,6 | 102,6 | 0,3 % de $P_n$ |
 
+### Coefficients E et F — p.87
 
-13.2.2.1 Générateurs d’air chaud
+| Circuit de combustion, combustible liquide ou gazeux | E | F |
+|---|---:|---:|
+| Absence de ventilateur ou d'autre dispositif de circulation d'air ou de produits de combustion | 2,5 | −0,8 |
+| Présence de ventilateur ou d'autre dispositif de circulation d'air ou de produits de combustion | 1,75 | −0,55 |
 
-Pour les générateurs d’air chaud standard, le point de fonctionnement w correspond à un fonctionnement à 50% de
-charge.
+## §13.2.2.1 — Générateurs d'air chaud — p.87–88
 
-Entre 0 et 50% de charge :
+Le point intermédiaire $w$ correspond à 50 % de charge.
 
-                                             [𝑄𝑃50 − 0,15 ∗ 𝑄𝑃0 ] ∗ 𝑥
-                                     𝑄𝑃𝑥 =                            + 0,15 ∗ 𝑄𝑃0
-                                                       0,5
+Entre 0 et 50 % de charge :
 
-Entre 50 et 100% de charge :
+$$
+QP_x=\frac{(QP_{50}-0,15QP_0)x}{0,5}+0,15QP_0
+$$
 
-                                             [𝑄𝑃100 − 𝑄𝑃50 ] ∗ 𝑥
-                                     𝑄𝑃𝑥 =                       + 2 ∗ 𝑄𝑃50 − 𝑄𝑃100
-                                                    0,5
+Entre 50 et 100 % de charge :
 
-                                                                 100 − 𝑅𝑃𝑖𝑛𝑡
-                                             𝑄𝑃50 = 0,5 ∗ 𝑃𝑛 ∗
-                                                                    𝑅𝑃𝑖𝑛𝑡
+$$
+QP_x=\frac{(QP_{100}-QP_{50})x}{0,5}+2QP_{50}-QP_{100}
+$$
 
-                                                               100 − 𝑅𝑃𝑛
-                                                𝑄𝑃100 = 𝑃𝑛 ∗
-                                                                  𝑅𝑃𝑛
+Avec les rendements exprimés en pour cent :
 
-                                                  𝑃𝑛 ∗ (1,75 − 0,55 ∗ 𝑙𝑜𝑔𝑃𝑛)
-                                          𝑄𝑃0 =
-                                                             100
+$$
+QP_{50}=0,5P_n\frac{100-R_{pint}}{R_{pint}},
+\qquad
+QP_{100}=P_n\frac{100-R_{pn}}{R_{pn}}
+$$
 
-L’expression de QP0 est valable pour une puissance nominale inférieure ou égale à 300 kW. On conservera les valeurs
-pour Pn = 300 kW si Pn > 300 kW.
+$$
+QP_0=\frac{P_n(1,75-0,55\log_{10}(P_n))}{100}
+$$
 
-    -    Si les équipements sont anciens (avant 2006)
+Pour $P_n>300$ kW, conserver pour **cette expression de $QP_0$** la valeur
+obtenue à $P_n=300$ kW.
 
-                                        R pn = 77%                 R pint = 74%
+| Ancienneté / type | $R_{pn}$ (%) | $R_{pint}$ (%) |
+|---|---:|---:|
+| Avant 2006 | 77 | 74 |
+| À partir de 2006, standard | 84 | 77 |
+| À partir de 2006, condensation | 90 | 83 |
 
-    -    Si les équipements sont neufs (à partir de 2006)
+Les caractéristiques réelles issues des bases professionnelles peuvent être
+utilisées pour les installations récentes ou recommandées.
 
-            Pour un générateur standard :
+## §13.2.2.2 — Radiateurs à gaz — p.88
 
+$$
+QP_x=1,04\,\frac{100-R_{pn}}{R_{pn}}\,P_nx
+$$
 
-                                        R pn = 84%                 R pint = 77%
+| Ancienneté | $P_n<5$ kW : $R_{pn}$ (%) | $P_n\geq5$ kW : $R_{pn}$ (%) |
+|---|---:|---:|
+| Avant 2006 | 70 | 73 |
+| À partir de 2006 | 80 | 82 |
 
-           Pour un générateur à condensation :
+## §13.2.2.3 — Chaudières bois — p.88–90
 
-                                       R pn = 90%                   R pint = 83%
+Les chaudières au charbon sont traitées comme les chaudières bois bûche.
+Le point intermédiaire $w$ est à 50 % de charge.
 
-Pour les installations récentes ou recommandées, les caractéristiques réelles des générateurs à air chaud sur les bases
-de données professionnelles peuvent être utilisées.
+Les deux expressions de $QP_x$, ainsi que celles de $QP_{50}$ et $QP_{100}$,
+sont identiques à celles écrites ci-dessus pour l'air chaud, avec les
+caractéristiques bois de la table suivante.
 
+Pour conserver la lisibilité des cellules, on note, en kW :
 
+$$
+Q_a=0,08P_n(P_n)^{-0,27},\qquad
+Q_b=0,07P_n(P_n)^{-0,3},\qquad
+Q_c=0,085P_n(P_n)^{-0,4}
+$$
 
-13.2.2.2 Radiateurs à gaz
-                                                           100 − 𝑅𝑃𝑛
-                                            𝑄𝑃𝑥 = 1,04 ∗             ∗ 𝑃𝑛 ∗ 𝑥
-                                                              𝑅𝑃𝑛
+Le tiret de la colonne $P_n$ conserve les cellules laissées vides dans le
+document. Les valeurs de $R_{pn}$ et $R_{pint}$ restent en pour cent PCI.
 
-    -   Pour les radiateurs à gaz neufs (à partir de 2006) :
+### Bûche ou plaquette — p.89
 
-        Si Pn < 5𝑘𝑊 :                   R pn = 80%
+| Année de fabrication | Critère $P_n$ (kW) | Colonne $P_n$ du PDF (kW) | $R_{pn}$ (%) | $R_{pint}$ (%) | $QP_0$ (kW) |
+|---|---|---|---:|---:|---|
+| <1978 | $\leq70$ | $P_n$ | $47+6L$ | $48+6L$ | $Q_a$ |
+| <1978 | $70<P_n\leq400$ | 70 | 58 | 59 | 1,8 |
+| <1978 | $>400$ | 70 | 58 | 59 | 1,1 |
+| 1978–1994 | $\leq70$ | $P_n$ | $47+6L$ | $48+6L$ | $Q_b$ |
+| 1978–1994 | $70<P_n\leq400$ | 70 | 58 | 59 | 1,4 |
+| 1978–1994 | $>400$ | 70 | 58 | 59 | 0,8 |
+| 1995–2003 | $\leq70$ | — | $47+6L$ | $48+6L$ | $Q_c$ |
+| 1995–2003 | $70<P_n\leq400$ | 70 | 58 | 59 | 1,1 |
+| 1995–2003 | $>400$ | 70 | 58 | 59 | 0,5 |
+| 2004–2012 | $\leq70$ | — | $57+6L$ | $58+6L$ | expression tronquée† |
+| 2004–2012 | $70<P_n\leq400$ | 70 | 68 | 69 | 1,1 |
+| 2004–2012 | $>400$ | 70 | 68 | 69 | 0,5 |
+| 2013–2017 | $\leq70$ | — | $67+6L$ | $68+6L$ | $Q_c$ |
+| 2013–2017 | $70<P_n\leq400$ | 70 | 78 | 79 | 1,1 |
+| 2013–2017 | $>400$ | 70 | 78 | 79 | 0,5 |
+| 2018–2019 | $\leq70$ | — | $80+2L$ | $77+3L$ | $Q_c$ |
+| 2018–2019 | $70<P_n\leq400$ | 70 | 84 | 83 | 1,1 |
+| 2018–2019 | $>400$ | 70 | 84 | 83 | 0,5 |
+| >2019 | $\leq20$ | — | $89+2L$ | $84+2L$ | $Q_c$ |
+| >2019 | $20<P_n\leq70$ | — | $90+2L$ | $85+2L$ | $Q_c$ |
+| >2019 | $70<P_n\leq400$ | 70 | 94 | 89 | 1,1 |
+| >2019 | $>400$ | 70 | 94 | 89 | 0,5 |
 
-        Si Pn ≥ 5kW :                   R pn = 82%
+† La cellule imprimée p.89 s'arrête après « $0,085P_n\cdot*$ ». La
+transcription n'y ajoute aucun exposant manquant. Le complément utilisé par
+le moteur est distingué dans les repères d'implémentation ci-dessous.
 
-    -   Pour les radiateurs à gaz anciens (avant 2006) :
+### Granulés — p.89–90
 
-        Si Pn < 5𝑘𝑊 :                   R pn = 70%
+| Année de fabrication | Critère $P_n$ (kW) | Colonne $P_n$ du PDF (kW) | $R_{pn}$ (%) | $R_{pint}$ (%) | $QP_0$ (kW) |
+|---|---|---|---:|---:|---|
+| <1978 | $\leq70$ | $P_n$ | $47+6L$ | $48+6L$ | $Q_a$ |
+| <1978 | $70<P_n\leq400$ | 70 | 58 | 59 | 1,8 |
+| <1978 | $>400$ | 70 | 58 | 59 | 1,1 |
+| 1978–1994 | $\leq70$ | $P_n$ | $47+6L$ | $48+6L$ | $Q_b$ |
+| 1978–1994 | $70<P_n\leq400$ | 70 | 58 | 59 | 1,4 |
+| 1978–1994 | $>400$ | 70 | 58 | 59 | 0,8 |
+| 1995–2003 | $\leq70$ | — | $57+6L$ | $58+6L$ | $Q_c$ |
+| 1995–2003 | $70<P_n\leq400$ | 70 | 68 | 69 | 1,1 |
+| 1995–2003 | $>400$ | 70 | 68 | 69 | 0,5 |
+| 2004–2012 | $\leq70$ | — | $67+6L$ | $68+6L$ | $Q_c$ |
+| 2004–2012 | $70<P_n\leq400$ | 70 | 78 | 79 | 1,1 |
+| 2004–2012 | $>400$ | 70 | 78 | 79 | 0,5 |
+| 2013–2019 | $\leq70$ | — | $80+2L$ | $77+3L$ | $Q_c$ |
+| 2013–2019 | $70<P_n\leq400$ | 70 | 84 | 83 | 1,1 |
+| 2013–2019 | $>400$ | 70 | 84 | 83 | 0,5 |
+| >2019 | $\leq20$ | — | $91+2L$ | $88+2L$ | $Q_c$ |
+| >2019 | $20<P_n\leq70$ | — | $92+2L$ | $89+2L$ | $Q_c$ |
+| >2019 | $70<P_n\leq400$ | 70 | 96 | 93 | 1,1 |
+| >2019 | $>400$ | 70 | 96 | 93 | 0,5 |
 
-        Si Pn ≥ 5kW :                   R pn = 73%
-
-
-
-13.2.2.3 Chaudières bois
-
-Les chaudières au charbon sont traitées comme des chaudières bois bûche.
-
-Le point de fonctionnement w des chaudières bois correspond à 50% de charge.
-
-Entre 0 et 50% de charge :
-
-                                             [𝑄𝑃50 − 0,15 ∗ 𝑄𝑃0 ] ∗ 𝑥
-                                     𝑄𝑃𝑥 =                            + 0,15 ∗ 𝑄𝑃0
-                                                       0,5
-
-Entre 50 et 100% de charge :
-
-                                            [𝑄𝑃100 − 𝑄𝑃50 ] ∗ 𝑥
-                                    𝑄𝑃𝑥 =                       + 2 ∗ 𝑄𝑃50 − 𝑄𝑃100
-                                                   0,5
-
-                                                                 100 − 𝑅𝑃𝑖𝑛𝑡
-                                             𝑄𝑃50 = 0,5 ∗ 𝑃𝑛 ∗
-                                                                    𝑅𝑃𝑖𝑛𝑡
-
-                                                               100 − 𝑅𝑃𝑛
-                                               𝑄𝑃100 = 𝑃𝑛 ∗
-                                                                  𝑅𝑃𝑛
-
-
-
-
-Le tableau suivant donne les caractéristiques Rpn, Rpint et Qp0 en fonction des années de fabrication du générateur.
-
- Générateurs Chauffage à     Critère Pn               Rendements       Rendements
-                                        Pn (kW)                                               Qp0 (kW)
-      combustion                (kW)                  (PCI) Rpn (%)   (PCI) Rpint (%)
-                               Pn≤70      Pn          47 + 6𝑙𝑜𝑔𝑃𝑛      48 + 6𝑙𝑜𝑔𝑃𝑛      0,08 ∗ 𝑃𝑛 ∗ (𝑃𝑛 )−0,27
- Chaudière bois bûche ou
-                             70<Pn≤400                                                           1,8
-    plaquette <1978                       70               58               59
-                              Pn>400                                                             1,1
-                               Pn≤70      Pn          47 + 6𝑙𝑜𝑔𝑃𝑛      48 + 6𝑙𝑜𝑔𝑃𝑛      0,07 ∗ 𝑃𝑛 ∗ (𝑃𝑛 )−0,3
- Chaudière bois bûche ou
-                             70<Pn≤400    70                                                     1,4
-  plaquette 1978-1994                                      58               59
-                              Pn>400      70                                                     0,8
-                               Pn≤70                  47 + 6𝑙𝑜𝑔𝑃𝑛      48 + 6𝑙𝑜𝑔𝑃𝑛      0,085 ∗ 𝑃𝑛 ∗ (𝑃𝑛 )−0,4
- Chaudière bois bûche ou
-                             70<Pn≤400    70                                                     1,1
-  plaquette 1995-2003                                      58               59
-                              Pn>400      70                                                     0,5
-                               Pn≤70                  57 + 6𝑙𝑜𝑔𝑃𝑛      58 + 6𝑙𝑜𝑔𝑃𝑛          0,085 ∗ 𝑃𝑛 .∗
- Chaudière bois bûche ou
-                             70<Pn≤400    70                                                     1,1
-  plaquette 2004-2012                                      68               69
-                              Pn>400      70                                                     0,5
-                               Pn≤70                  67 + 6𝑙𝑜𝑔𝑃𝑛      68 + 6𝑙𝑜𝑔𝑃𝑛      0,085 ∗ 𝑃𝑛 ∗ (𝑃𝑛 )−0,4
- Chaudière bois bûche ou
-                             70<Pn≤400    70                                                     1,1
-  plaquette 2013-2017                                      78               79
-                              Pn>400      70                                                     0,5
-                               Pn≤70                  80 + 2𝑙𝑜𝑔𝑃𝑛      77 + 3𝑙𝑜𝑔𝑃𝑛      0,085 ∗ 𝑃𝑛 ∗ (𝑃𝑛 )−0,4
- Chaudière bois bûche ou
-                             70<Pn≤400    70                                                     1,1
-  plaquette 2018-2019                                      84               83
-                              Pn>400      70                                                     0,5
-                               Pn≤20                  89 + 2𝑙𝑜𝑔𝑃𝑛      84 + 2𝑙𝑜𝑔𝑃𝑛
-                                                                                        0,085 ∗ 𝑃𝑛 ∗ (𝑃𝑛 )−0,4
-Chaudière bois bûche ou      20<Pn≤70                 90 + 2𝑙𝑜𝑔𝑃𝑛      85 + 2𝑙𝑜𝑔𝑃𝑛
-plaquette >2019              70<Pn≤400    70                                                     1,1
-                                                           94               89
-                              Pn>400      70                                                     0,5
-                               Pn≤70                  47 + 6𝑙𝑜𝑔𝑃𝑛      48 + 6𝑙𝑜𝑔𝑃𝑛      0,08 ∗ 𝑃𝑛 ∗ (𝑃𝑛 )−0,27
-  Chaudière bois granulés
-                             70<Pn≤400    70                                                     1,8
-          <1978                                            58               59
-                              Pn>400      70                                                     1,1
-                               Pn≤70                  47 + 6𝑙𝑜𝑔𝑃𝑛      48 + 6𝑙𝑜𝑔𝑃𝑛      0,07 ∗ 𝑃𝑛 ∗ (𝑃𝑛 )−0,3
-  Chaudière bois granulés
-                             70<Pn≤400    70                                                     1,4
-       1978-1994                                           58               59
-                              Pn>400      70                                                     0,8
-                               Pn≤70                  57 + 6𝑙𝑜𝑔𝑃𝑛      58 + 6𝑙𝑜𝑔𝑃𝑛      0,085 ∗ 𝑃𝑛 ∗ (𝑃𝑛 )−0,4
-  Chaudière bois granulés
-                             70<Pn≤400    70                                                     1,1
-       1995-2003                                           68               69
-                              Pn>400      70                                                     0,5
-  Chaudière bois granulés      Pn≤70                  67 + 6𝑙𝑜𝑔𝑃𝑛      68 + 6𝑙𝑜𝑔𝑃𝑛      0,085 ∗ 𝑃𝑛 ∗ (𝑃𝑛 )−0,4
-       2004-2012             70<Pn≤400    70              78               79                    1,1
-
-                                Pn>400          70                                                   0,5
-                                 Pn≤70                   80 + 2𝑙𝑜𝑔𝑃𝑛       77 + 3𝑙𝑜𝑔𝑃𝑛      0,085 ∗ 𝑃𝑛 ∗ (𝑃𝑛 )−0,4
-  Chaudière bois granulés
-                               70<Pn≤400        70                                                   1,1
-       2013-2019                                              84                83
-                                Pn>400          70                                                   0,5
-                                 Pn≤20                   91 + 2𝑙𝑜𝑔𝑃𝑛       88 + 2𝑙𝑜𝑔𝑃𝑛
-                                                                                            0,085 ∗ 𝑃𝑛 ∗ (𝑃𝑛 )−0,4
-  Chaudière bois granulés      20<Pn≤70                  92 + 2𝑙𝑜𝑔𝑃𝑛       89 + 2𝑙𝑜𝑔𝑃𝑛
-          >2019                70<Pn≤400        70                                                   1,1
-                                                              96                93
-                                Pn>400          70                                                   0,5
-
-Si l’année d’installation de la chaudière bois n’est pas connue, elle sera considérée par défaut correspondre à l’année
-de construction du bâtiment.
-
-Les valeurs des bases de données professionnelles peuvent aussi être utilisées pour les chaudières récentes ou
+Si l'année d'installation est inconnue, la chaudière bois est considérée
+installée l'année de construction du bâtiment. Les valeurs des bases
+professionnelles peuvent être utilisées pour les chaudières récentes ou
 recommandées.
 
+## §13.2.2.4 — Calcul des puissances nominales — p.90–92
 
+Lorsque la puissance individuelle à combustion n'est pas connue, et pour
+les recommandations, son estimation pour le chauffage est :
 
-13.2.2.4 Calcul des puissances nominales
+$$
+P_{\mathrm{ch}}=\frac{1,2\,GV(19-T_{\mathrm{base}})}{1000\times0,95^3}
+$$
 
-Lorsque les puissances des générateurs à combustion individuels ne sont pas connues et pour les recommandations,
-il est possible d’en faire une estimation selon la méthode suivante :
+$P_{\mathrm{ch}}$ est en kW ; $GV$ représente les déperditions par enveloppe
+et renouvellement d'air en W/K ; $T_{\mathrm{base}}$ est la température
+extérieure de base en °C, selon zone et altitude (§18.1).
 
-                                                     1,2 ∗ 𝐺𝑉 ∗ (19 − 𝑇𝑏𝑎𝑠𝑒)
-                                           𝑃𝑐ℎ =
-                                                           1000 ∗ 0,953
+### Appartement alimenté par un chauffage collectif — p.90
 
-Avec :
+$$
+GV_{\mathrm{immeuble}}
+=GV_{\mathrm{appartement}}\frac{Sh_{\mathrm{immeuble}}}{Sh_{\mathrm{appartement}}},
+\qquad
+P_{\mathrm{ch,immeuble}}
+=\frac{1,2\,GV_{\mathrm{immeuble}}(19-T_{\mathrm{base}})}
+{1000\times0,95^3}
+$$
 
-    -    Pch : puissance nominale du générateur pour le chauffage (kW)
+### Appartement généré depuis l'immeuble, chauffage individuel homogène — p.90–91
 
-    -    Tbase : température extérieure de base selon la zone climatique et l’altitude (°C) (voir paragraphe 18.1)
+Pour $N$ logements dans l'immeuble :
 
-    -    GV : déperditions à travers l’enveloppe et par renouvellement d’air (W/K)
+$$
+P_{\mathrm{ch}}
+=\frac{1,2\,(GV/N)(19-T_{\mathrm{base}})}{1000\times0,95^3}
+$$
 
-Dans le cas de la réalisation d’un DPE à l’échelle de l’appartement, et lorsque celui-ci est alimenté par une installation
-collective, le calcul de la puissance nominale du générateur collectif Pchimmeuble (kW) est :
+### Générateurs ne chauffant qu'une partie du logement — p.91
 
-                                                     1,2 ∗ 𝐺𝑉𝑖𝑚𝑚𝑒𝑢𝑏𝑙𝑒 ∗ (19 − 𝑇𝑏𝑎𝑠𝑒)
-                                  𝑃𝑐ℎ𝑖𝑚𝑚𝑒𝑢𝑏𝑙𝑒 =
-                                                               1000 ∗ 0,953
+Pour deux surfaces $Sh_1+Sh_2=Sh_{\mathrm{tot}}$ :
 
-Avec :
+$$
+P_{\mathrm{ch},i}
+=\frac{Sh_i}{Sh_{\mathrm{tot}}}
+\frac{1,2\,GV(19-T_{\mathrm{base}})}{1000\times0,95^3},
+\quad i\in\{1,2\}
+$$
 
-    -    GVimmeuble : déperditions à travers l’enveloppe et par renouvellement d’air pour l’immeuble (W/K) :
-                                                                        𝑆ℎ𝑖𝑚𝑚𝑒𝑢𝑏𝑙𝑒
-                                    𝐺𝑉𝑖𝑚𝑚𝑒𝑢𝑏𝑙𝑒 = 𝐺𝑉𝑎𝑝𝑝𝑎𝑟𝑡𝑒𝑚𝑒𝑛𝑡 ∗
-                                                                       𝑆ℎ𝑎𝑝𝑝𝑎𝑟𝑡𝑒𝑚𝑒𝑛𝑡
+### Puissance nécessaire pour l'ECS — p.91
 
-    -    Tbase : température extérieure de base selon la zone climatique et l’altitude (°C) (voir paragraphe 18.1)
+$V_s$ est le volume de stockage en litres.
 
-Dans le cas de la réalisation d’un DPE à l’échelle de l’appartement à partir des données de l’immeuble (voir §17.2.2),
-et lorsque le chauffage est individuel et géré de manière homogène, le calcul de la puissance nominale du générateur
-de chaque appartement Pch (kW) est :
+| Type de production | Volume de stockage | $P_{\mathrm{ecs}}$ (kW) |
+|---|---|---|
+| Instantanée | $V_s=0$ | $21$ |
+| Semi-instantanée | $0<V_s\leq20$ | $21-0,8V_s$ |
+| Semi-accumulation | $20<V_s\leq150$ | $5-1,751(V_s-20)/65$ |
+| Accumulation | $V_s>150$ | $(7,14V_s+428)/1000$ |
 
-                                                          𝐺𝑉
-                                                     1,2 ∗ 𝑁 ∗ (19 − 𝑇𝑏𝑎𝑠𝑒)
-                                            𝑃𝑐ℎ =
-                                                          1000 ∗ 0,953
+La puissance de dimensionnement est :
 
+$$
+P_{\mathrm{dim}}=\max(P_{\mathrm{ch}};P_{\mathrm{ecs}})
+$$
 
-Avec :
+### Puissance nominale des chaudières — p.91
 
-    -    Pch : puissance nominale du générateur pour le chauffage (kW)
+Les intitulés temporels sont ceux du PDF.
 
-    -    Tbase : température extérieure de base selon la zone climatique et l’altitude (°C) (voir paragraphe 18.1)
+| $P_{\mathrm{dim}}$ (kW) | Murales installées avant 2005 ou chaudières sur sol : $P_n$ (kW) | Murales installées à partir de 2006 : $P_n$ (kW) |
+|---|---:|---:|
+| $\leq5$ | 18 | 5 |
+| $5<P_{\mathrm{dim}}\leq10$ | 18 | 10 |
+| $10<P_{\mathrm{dim}}\leq13$ | 18 | 13 |
+| $13<P_{\mathrm{dim}}\leq18$ | 18 | 18 |
+| $18<P_{\mathrm{dim}}\leq24$ | 24 | 24 |
+| $24<P_{\mathrm{dim}}\leq28$ | 28 | 28 |
+| $28<P_{\mathrm{dim}}\leq32$ | 32 | 32 |
+| $32<P_{\mathrm{dim}}\leq40$ | 40 | 40 |
+| $>40$ | $(\lfloor P_{\mathrm{dim}}/5\rfloor+1)\times5$ | $(\lfloor P_{\mathrm{dim}}/5\rfloor+1)\times5$ |
 
-    -    GV : déperditions à travers l’enveloppe et par renouvellement d’air (W/K)
+### Logement chauffé par n radiateurs à gaz — p.92
 
-    -    N : nombre de logements dans l’immeuble
+La puissance de chaque radiateur est :
 
-Si le générateur n'alimente qu'une partie du logement, il est nécessaire de proratiser cette puissance Pch.
+$$
+P_n=\frac{P_{\mathrm{ch}}}{n}
+$$
 
-Dans le cas de 2 générateurs alimentant pour le premier une surface Sh1 et pour le second une surface Sh2 (Sh1 +
-Sh2 = Sh avec Sh la surface du logement) :
-                                              𝑆ℎ1     1,2 ∗ 𝐺𝑉 ∗ (19 − 𝑇𝑏𝑎𝑠𝑒)
-                                    𝑃𝑐ℎ1 =          ∗
-                                             𝑆ℎ𝑡𝑜𝑡          1000 ∗ 0,953
-                                                𝑆ℎ2    1,2 ∗ 𝐺𝑉 ∗ (19 − 𝑇𝑏𝑎𝑠𝑒)
-                                      𝑃𝑐ℎ2 =         ∗
-                                               𝑆ℎ𝑡𝑜𝑡         1000 ∗ 0,953
-Avec :
+## Repères d'implémentation — hors transcription réglementaire
 
-    -    Pch1 la puissance nominale du générateur pour le chauffage (kW) pour la surface Sh1
-
-    -    Pch2 la puissance nominale du générateur pour le chauffage (kW) pour la surface Sh2
-
-
-La puissance nécessaire pour la production d’eau chaude sanitaire (Pecs) dépend du type de production et donc du
-volume de stockage :
-
-            Type de production d’ECS       Volume de stockage (L)      Puissance de dimensionnement (kW)
-                   Instantanée                      Vs = 0                           𝑃𝑒𝑐𝑠 = 21
-                Semi-instantanée                  0 < Vs ≤ 20                𝑃𝑒𝑐𝑠 = 21 − 0,8 ∗ 𝑉𝑠
-                                                                                                  𝑉𝑠 − 20
-                Semi-accumulation               20 < Vs ≤ 150              𝑃𝑒𝑐𝑠 = 5 − 1,751 ∗       65
-                                                                                      7,14 ∗ 𝑉𝑠 + 428
-                  Accumulation                     150 < Vs                 𝑃𝑒𝑐𝑠 =
-                                                                                            1000
-
-La puissance de dimensionnement du générateur est :
-                                         𝑃𝑑𝑖𝑚 = max(𝑃𝑐ℎ ; 𝑃𝑒𝑐𝑠)
-
-La puissance nominale Pn (kW) des chaudières est déterminée à partir de Pdim :
-
-                                 CHAUDIERES MURALES INSTALLEES           CHAUDIERES MURALES INSTALLEES
-                                  avant 2005 ou chaudières sur sol              à partir de 2006
-               Pdim (kW)                      Pn (kW)                               Pn (kW)
-                  ≤5                            18                                      5
-                5< ≤10                          18                                     10
-                10< ≤13                         18                                     13
-                13< ≤18                         18                                     18
-                18< ≤24                         24                                     24
-                24< ≤28                         28                                     28
-                28< ≤32                         32                                     32
-                32< ≤40                         40                                     40
-                                                                      𝑃𝑑𝑖𝑚
-                  40<                                (𝑃𝑎𝑟𝑡𝑖𝑒 𝑒𝑛𝑡𝑖è𝑟𝑒 (     ) + 1) ∗ 5
-                                                                       5
-Dans le cas d’un logement chauffé avec n radiateurs gaz, la puissance de chaque radiateur gaz est Pn (kW) tel que :
-
-                                                               𝑃𝑐ℎ
-                                                        𝑃𝑛 =
-                                                                𝑛
-```
-
-## TODO digitalisation
-
-### Balises XML produites par cette section
-- `pn`
-- `qp0`
-- `rpn`
-- `rpint`
-
-### Reformatages requis
-- [ ] Reformater les formules en LaTeX (`$$ … $$` ou `$`)
-- [ ] Vérifier les indices et exposants (texte verbatim peut perdre la mise en forme)
-- [ ] Référencer les annexes citées (§18.x)
+- Les formules de pertes utilisent des puissances homogènes : la table bois
+  donne $QP_0$ en kW, tandis que les sorties XML de pertes à l'arrêt sont en W.
+- Pour la cellule bois bûche/plaquette 2004–2012 tronquée, le moteur complète
+  l'expression avec Open3CL/engine, src/tv.js, révision
+  aa78053f549b93509009d195b9332ac85f33fb4d : $0,085P_n(P_n)^{-0,4}$.
+  Ce complément ne prétend pas être une lecture de la cellule du PDF.
+- Les caractéristiques des granulés à condensation après 2024 proviennent
+  des lignes ADEME 94–97 du modèle 2.7, séparément datées dans les tables PHP.
+  Elles ne sont pas insérées rétroactivement dans la table bois de 2021.
+- Le dimensionnement collectif et la virtualisation renvoient aussi au §17.
+  Les conventions d'arrondi non concordantes des références restent
+  documentées dans TASKS_DONE.md / TASK-K31 ; cette transcription ne les résout pas.

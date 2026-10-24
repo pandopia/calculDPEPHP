@@ -28,18 +28,20 @@ use DOMElement;
  *   2 = ECS solaire seule sup 5 ans          → fecs_maison_gt5 / fecs_collectif_gt5
  *   3 = ECS solaire seule inf 5 ans          → fecs_maison_le5 / fecs_collectif_le5
  *   4 = chauffage + ECS solaire              → fecs_combi (maison uniquement)
+ *   5 = ECS solaire seule (modèle 2.7)        → table ADEME 2027 dédiée
  *
  * Le type bâtiment est "maison" pour `enum_methode_application_dpe_log_id` ∈ {1,14,18}
- * (et appartement 2,3,4,5,31,32,35,36,37 → traité comme maison côté ECS).
- * Sinon "immeuble".
+ * Sinon "immeuble", y compris pour un appartement décrit individuellement.
  *
  * @spec-section 18.4
  * @spec-pages   143
  * @spec-source  resources/specsplitted/18-annexes/04-facteur-couverture-solaire/00-texte.md
+ * @spec-source  editeur/public/schemas/DPEv2.7.xsd
+ * @spec-source  https://gitlab.com/observatoire-dpe/observatoire-dpe/-/blob/05aabba7/modele_donnee/valeur_tables.xlsx (facteur_couverture_solaire A50:H65)
  * @xml-input    installation_ecs.donnee_entree.{enum_type_installation_solaire_id, fecs_saisi}
  * @xml-output   installation_ecs.donnee_intermediaire.fecs
  * @depends-on   \CalculDpePHP\Ecs\BesoinEcsCalculator
- * @tables       ecs/tv_facteur_couverture_solaire
+ * @tables       ecs/tv_facteur_couverture_solaire, ecs/tv_facteur_couverture_solaire_2027
  */
 final class FacteurCouvertureSolaireEcsCalculator implements CalculatorInterface
 {
@@ -65,8 +67,14 @@ final class FacteurCouvertureSolaireEcsCalculator implements CalculatorInterface
         $accessor = new NodeAccessor($context->document);
 
         $typeSolaire = $accessor->getIntOrNull('./donnee_entree/enum_type_installation_solaire_id', $node);
-        if ($typeSolaire === null || $typeSolaire < 1 || $typeSolaire > 4) {
+        if ($typeSolaire === null || $typeSolaire < 1 || $typeSolaire > 5) {
             return; // Pas de système solaire couplé
+        }
+        if ($typeSolaire === 5) {
+            $version = $accessor->getStringOrNull('//administratif/enum_version_id');
+            if ($version === null || version_compare($version, '2.7', '<')) {
+                throw new \CalculDpePHP\Engine\UnsupportedDpeModelException('enum_type_installation_solaire_id=5 requiert le modèle DPE 2.7.');
+            }
         }
 
         // 1. Valeur saisie
@@ -79,14 +87,16 @@ final class FacteurCouvertureSolaireEcsCalculator implements CalculatorInterface
                 return;
             }
 
-            $table = $context->tables->load('ecs/tv_facteur_couverture_solaire');
+            $table = $context->tables->load($typeSolaire === 5 ? 'ecs/tv_facteur_couverture_solaire_2027' : 'ecs/tv_facteur_couverture_solaire');
             $row   = $table[(string)$zoneId] ?? $table[$zoneId] ?? null;
             if ($row === null) {
                 return;
             }
 
             $isMaison = $this->isMaisonOuAppt($node, $accessor);
-            $fecs = $this->resolveFecs($row, $typeSolaire, $isMaison);
+            $fecs = $typeSolaire === 5
+                ? (float)$row[$isMaison ? 'maison' : 'immeuble']
+                : $this->resolveFecs($row, $typeSolaire, $isMaison);
         }
 
         if ($fecs === null || $fecs <= 0.0) {

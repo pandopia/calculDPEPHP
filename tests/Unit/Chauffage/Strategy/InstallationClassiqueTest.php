@@ -21,6 +21,30 @@ final class InstallationClassiqueTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
     private const TOL = 1e-3;
 
+    public function testLesAuxiliairesHybridesRecoiventLaPartDeBesoinDeChaqueGenerateur(): void
+    {
+        foreach (['1' => 0.80, '4' => 0.83, '8' => 0.88] as $zone => $partPac) {
+            [$doc, $inst] = $this->buildXml(1000, 1200, 250, 100, 100, 2.5, 1, 1, 1, 1, 1, 1, 0.9, 0.95, 0.9, 0.8, 3);
+            $pac = $doc->getElementsByTagName('generateur_chauffage')->item(0);
+            $de = $doc->createElement('donnee_entree');
+            $de->appendChild($doc->createElement('enum_type_generateur_ch_id', '147'));
+            $pac->insertBefore($de, $pac->firstChild);
+            $boiler = $pac->cloneNode(true);
+            $boiler->getElementsByTagName('enum_type_generateur_ch_id')->item(0)->textContent = '149';
+            $boiler->getElementsByTagName('rendement_generation')->item(0)->textContent = '0.8';
+            $pac->parentNode->appendChild($boiler);
+            $ctx = new CalculationContext($doc, new TableRepository(self::PROJECT_ROOT . '/resources/tables'), zoneClimatique: (string)$zone);
+            $ctx->set('chauffage.besoin_ch', 1000.0);
+            $ctx->set('chauffage.besoin_ch_depensier', 1200.0);
+            $ctx->set('chauffage.gv', 250.0);
+            (new InstallationClassique())->calculate($inst, $ctx);
+            $parts = $ctx->get(\CalculDpePHP\Chauffage\PartBesoinGenerateur::CLE_CONTEXTE, []);
+            self::assertEqualsWithDelta($partPac, $parts[$pac->getNodePath()] ?? -1, 1e-12);
+            self::assertEqualsWithDelta(1 - $partPac, $parts[$boiler->getNodePath()] ?? -1, 1e-12);
+            self::assertEqualsWithDelta(1, array_sum($parts), 1e-12);
+        }
+    }
+
     /**
      * Construit un document XML complet avec installation_chauffage
      * et les données nécessaires pour InstallationClassique.

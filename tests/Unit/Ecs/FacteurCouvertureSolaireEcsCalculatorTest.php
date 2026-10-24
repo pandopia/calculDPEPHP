@@ -19,6 +19,41 @@ final class FacteurCouvertureSolaireEcsCalculatorTest extends TestCase
 {
     private const PROJECT_ROOT = __DIR__ . '/../../..';
 
+    #[DataProvider('solaires27')]
+    public function testLeSolaireEcsSeul27GardeLaBonneColonne(int $zone, int $mode, float $expected, ?float $saisie): void
+    {
+        [$doc, $inst, $ctx] = $this->buildInstallation(5, $mode, $zone, 2000, $saisie);
+        $root = $doc->documentElement;
+        $dpe = $doc->createElement('dpe');
+        $admin = $doc->createElement('administratif');
+        $admin->appendChild($doc->createElement('enum_version_id', '2.7'));
+        $doc->removeChild($root);
+        $doc->appendChild($dpe);
+        $dpe->appendChild($admin);
+        $dpe->appendChild($root);
+        (new FacteurCouvertureSolaireEcsCalculator())->calculate($inst, $ctx);
+        self::assertEqualsWithDelta($saisie ?? $expected, (float)$inst->getElementsByTagName('fecs')->item(0)?->textContent, 1e-12);
+    }
+
+    public static function solaires27(): iterable
+    {
+        // Valeurs ADEME indépendantes de la table PHP, lignes 49–64.
+        foreach ([1 => [0.63, 0.38], 2 => [0.64, 0.40], 3 => [0.68, 0.45], 4 => [0.66, 0.41], 5 => [0.69, 0.46], 6 => [0.74, 0.50], 7 => [0.77, 0.56], 8 => [0.80, 0.58]] as $zone => [$maison, $immeuble]) {
+            foreach ([1, 14, 18, 2, 3, 5, 6, 10, 25, 31] as $mode) {
+                foreach ([null, 0.42] as $saisie) {
+                    yield "$zone mode $mode saisie " . ($saisie ?? 'forfait') => [$zone, $mode, in_array($mode, [1, 14, 18], true) ? $maison : $immeuble, $saisie];
+                }
+            }
+        }
+    }
+
+    public function testLeTypeSolaire27NestPasAccepteSansVersionCompatible(): void
+    {
+        [$doc, $inst, $ctx] = $this->buildInstallation(5, 1, 1);
+        $this->expectException(\CalculDpePHP\Engine\UnsupportedDpeModelException::class);
+        (new FacteurCouvertureSolaireEcsCalculator())->calculate($inst, $ctx);
+    }
+
     private function buildInstallation(int $typeSolaire, int $modeApp, int $zoneId, ?float $becs = null, ?float $fecsSaisi = null): array
     {
         $fecsTag = $fecsSaisi !== null ? "<fecs_saisi>$fecsSaisi</fecs_saisi>" : '';
