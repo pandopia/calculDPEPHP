@@ -19,6 +19,29 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K06/K83 — Huit sondages « autre thermodynamique » non intégrés (24/10/2026)
+
+- Sélection publique avant calcul : huit résultats les plus récents de
+  `type_generateur_n1_installation_n1:*thermodynamique*`, sur 110 résultats
+  ADEME. XML officiels récupérés sans retouche, Licence Ouverte 2.0.
+- Les huit déclarent une seule installation ECS mais publient son besoin
+  exactement ×1 000 par rapport à `sortie/apport_et_besoin/besoin_ecs` :
+  `2549E1250357S/1250366B/1250385U` : 900 174,638321 contre 900,174638321 ;
+  `2549E1406058F/1406059G` : 1 060 333,0144894 contre 1 060,3330144894 ;
+  `2659E0942385B` : 1 106 086,1276955 contre 1 106,0861276955 ;
+  `2659E0949193X` : 1 107 068,0788335 contre 1 107,0680788335 ;
+  `2659E0949540G` : 1 112 591,5539848 contre 1 112,5915539848.
+  Les deux champs sont documentés en kWh par le XSD. Tous sont des exports
+  8.0.2 ; même contradiction que 2676E2269868T, déjà écarté du corpus.
+- Sondage hors corpus : 530 numériques hors tolérance, 77 supplémentaires,
+  aucun manque, aucun crash. Le SCOP propre est déjà saisi en méthode 6 et
+  conservé ; les premiers écarts de besoin sont en amont (récupération des
+  pertes de stockage, cas K83, puis apports et enveloppe). Aucun forfait de
+  PAC et aucune suppression des récupérations ne sont inférés de ces cas.
+- Pas d'intégration ni d'initialisation de budgets pour ces références
+  contradictoires. Rouvrir sur un export corrigé aux unités cohérentes ou
+  une règle réglementaire explicitant leur condition de récupération.
+
 ### TASK-K57 — Cinq puissances de ventilation résiduelles (24/10/2026)
 
 Contrôle sur 710 cas : cinq `pvent_moy` divergents hors défauts de référence
