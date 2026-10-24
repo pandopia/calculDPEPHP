@@ -19,6 +19,22 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K95 — QP0 calculé directement sur Pe (24/10/2026)
+
+- A/B en mémoire sur `0b075a7`, même corpus 670 cas, aucun fichier `src/`
+  non commité, bandes de puissance bois corrigées dans les deux variantes.
+  Seul QP0 change : `a × QP0(Pn_collectif)` devient `QP0(Pe)`, conformément
+  à la lecture littérale du tableau §17.2.1.1 p.112.
+- Numériques hors tolérance **17 843 → 18 058** (+215), classes 44 → 52
+  (+8), manquantes 688 et supplémentaires 2 355 inchangées. Aucun écart
+  résolu, 223 nouveaux ; huit cas dégradés, aucun amélioré. Les hausses de
+  budget moteur seraient respectivement +40, +19, +40, +39, +1, +16, +16,
+  +36 sur 2400E0007293Q, 2401E0490195V, 2600E1626587G, 2600E1932292D,
+  2606E0021556N, 2606E0147011S, 2606E0835323G et 2613E2419802A.
+- La variante est retirée, sans relever les budgets. Reprendre avec une
+  clarification du calcul des pertes du générateur virtuel ou des exports
+  permettant de départager QP0 physique et QP0 équivalent (suite K95).
+
 ### TASK-K96 — Condition d'inertie du sélecteur climatique global (24/10/2026)
 
 - A/B isolé en mémoire sur l'arbre `42f819a`, 670 cas, aucun fichier `src/`

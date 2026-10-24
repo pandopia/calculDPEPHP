@@ -253,6 +253,8 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
 
             $row = $entry($pnBuildingKw, $e, $f);
             // pn stocké = part du logement ; qp0/pveilleuse proportionnels si collectif
+            // Convention historique à départager en K95 : §17.2.1.1 décrit
+            // QP0(Pe), qui diffère de a×QP0(Pn) pour les lois non linéaires.
             $row['pn']    = $pnApartmentW;
             $row['qp0']   = ($row['qp0']   ?? 0.0) * ($ratioForCharacteristics < 1.0 ? $ratioForCharacteristics : 1.0);
             $row['pveil'] = ($row['pveil']  ?? 0.0) * ($ratioForCharacteristics < 1.0 ? $ratioForCharacteristics : 1.0);

@@ -54,6 +54,17 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase K — Conformité au corpus ADEME
 
+### TASK-K95 — QP0 non linéaire du générateur équivalent
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- §17.2.1.1 p.112 prescrit QP0 calculé à partir de Pe. Le moteur conserve
+  actuellement `a × QP0(Pn_collectif)`, différent pour les formules non
+  linéaires gaz/fioul/bois ; Rpn et Rpint sont bien évalués sur Pn collectif.
+- Avec la correction des bandes de puissance bois déjà en place, la variante
+  `QP0(Pe)` ajoute 215 numériques et 8 classes sur les mêmes 670 cas, huit
+  cas dégradés, aucun amélioré. Départager les exports et la règle de QP0
+  avant application ; mesure archivée dans TASKS_DONE.md, aucun budget relevé.
+
 ### TASK-K96 — Sollicitations anciennes : drapeau et classe d'inertie
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
