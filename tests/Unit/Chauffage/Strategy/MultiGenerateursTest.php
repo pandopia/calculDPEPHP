@@ -56,6 +56,9 @@ final class MultiGenerateursTest extends TestCase
         // chaudière électrique (106) en est une au même titre qu'une chaudière
         // à combustion.
         yield 'relève par chaudière électrique' => [7, 106, '1', 0.8, false, 1.0];
+        yield 'relève par chaudière granulés' => [7, 74, '1', 0.8, false, 1.0];
+        yield 'hybride granulés en H2' => [147, 153, '4', 0.83, false, 1.0];
+        yield 'hybride granulés condensation récente' => [178, 182, '8', 0.88, true, 1.0];
     }
 
     /**

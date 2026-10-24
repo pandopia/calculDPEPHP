@@ -206,7 +206,7 @@ final class MultiGenerateurs implements CalculatorInterface
             return 'pac';
         }
 
-        return ($normalise >= 55 && $normalise <= 68)
+        return ($normalise >= 55 && $normalise <= 74)
             || ($normalise >= 75 && $normalise <= 97)
             || $normalise === self::CHAUDIERE_ELECTRIQUE ? 'chaudiere' : null;
     }
