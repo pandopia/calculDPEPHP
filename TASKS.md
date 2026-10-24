@@ -568,7 +568,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K63 — Modèle DPE 2.7 : EPBD, nouvelles technologies, pef élec
 
-- [ ] Owner: __ | Phase: K | Priorité: haute
+- [~CB] Owner: CB | Phase: K | Priorité: haute
 - L'ADEME a publié le **2026-10-16** `DPEv2.7.xsd` (V10.0.0), copié dans
   `editeur/public/schemas/` avec `enums.json`, `CHANGELOG.md` et consorts
   (`SOURCE.md` porte la date de synchronisation). `enum_version_id` = 2.7 vaut
