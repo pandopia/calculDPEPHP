@@ -1,0 +1,292 @@
+{
+  "corpus": "ademe-combustion-rare-2026-10",
+  "organisme": "ADEME",
+  "jeu_de_donnees": "DPE Logements existants (depuis juillet 2021)",
+  "portail": "https://data.ademe.fr/datasets/dpe03existant",
+  "api_selection": "https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/lines",
+  "api_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/%s/xml",
+  "licence": "Licence Ouverte / Open Licence v2.0",
+  "statut": "Substitut public ADEME, pas un jeu officiel CSTB.",
+  "genere_le": "2026-10-24T22:25:00Z",
+  "echantillonnage": "Douze premiers résultats de chacune des trois requêtes, par date décroissante. Les 36 XML sont sélectionnés et téléchargés avant calcul, sans sélection selon leur score.",
+  "selections": [
+    {
+      "famille": "air-chaud",
+      "qs": "type_generateur_n1_installation_n1:*air*chaud*",
+      "sort": "-date_etablissement_dpe",
+      "size": 12,
+      "total": 2244,
+      "selected_before_calculation": true
+    },
+    {
+      "famille": "bouilleur",
+      "qs": "type_generateur_n1_installation_n1:*bouilleur*",
+      "sort": "-date_etablissement_dpe",
+      "size": 12,
+      "total": 13082,
+      "selected_before_calculation": true
+    },
+    {
+      "famille": "radiateur-gaz",
+      "qs": "type_generateur_n1_installation_n1:*radiateur*gaz*",
+      "sort": "-date_etablissement_dpe",
+      "size": 12,
+      "total": 30621,
+      "selected_before_calculation": true
+    }
+  ],
+  "cases": [
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2674E2646897U",
+      "type_generateur_n1_installation_n1": "générateur à air chaud à combustion avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2674E2646897U/xml",
+      "branche_cible": "air-chaud"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2601E2643956W",
+      "type_generateur_n1_installation_n1": "générateur à air chaud à combustion avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2601E2643956W/xml",
+      "branche_cible": "air-chaud"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2674E2641151U",
+      "type_generateur_n1_installation_n1": "générateur à air chaud à combustion avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2674E2641151U/xml",
+      "branche_cible": "air-chaud"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2614E2628369W",
+      "type_generateur_n1_installation_n1": "générateur à air chaud à combustion avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2614E2628369W/xml",
+      "branche_cible": "air-chaud"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2662E2622764D",
+      "type_generateur_n1_installation_n1": "générateur à air chaud à combustion avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2662E2622764D/xml",
+      "branche_cible": "air-chaud"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2614E2599572H",
+      "type_generateur_n1_installation_n1": "générateur à air chaud à combustion avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2614E2599572H/xml",
+      "branche_cible": "air-chaud"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2602E2598066X",
+      "type_generateur_n1_installation_n1": "générateur à air chaud à combustion standard a partir de 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2602E2598066X/xml",
+      "branche_cible": "air-chaud"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2621E2596032K",
+      "type_generateur_n1_installation_n1": "générateur à air chaud à combustion à condensation a partir de 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2621E2596032K/xml",
+      "branche_cible": "air-chaud"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2613E2590753B",
+      "type_generateur_n1_installation_n1": "générateur à air chaud à combustion avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2613E2590753B/xml",
+      "branche_cible": "air-chaud"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2613E2590894M",
+      "type_generateur_n1_installation_n1": "générateur à air chaud à combustion avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2613E2590894M/xml",
+      "branche_cible": "air-chaud"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2669E2571041B",
+      "type_generateur_n1_installation_n1": "générateur à air chaud à combustion avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2669E2571041B/xml",
+      "branche_cible": "air-chaud"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2669E2571001N",
+      "type_generateur_n1_installation_n1": "générateur à air chaud à combustion avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2669E2571001N/xml",
+      "branche_cible": "air-chaud"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2650E2663816P",
+      "type_generateur_n1_installation_n1": "poêle à bois bouilleur bûche installé avant 2012",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2650E2663816P/xml",
+      "branche_cible": "bouilleur"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2637E2665944Y",
+      "type_generateur_n1_installation_n1": "poêle à bois bouilleur bûche installé avant 2012",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2637E2665944Y/xml",
+      "branche_cible": "bouilleur"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2611E2664481R",
+      "type_generateur_n1_installation_n1": "poêle à bois bouilleur granulés installé à partir de 2012",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2611E2664481R/xml",
+      "branche_cible": "bouilleur"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2656E2661240T",
+      "type_generateur_n1_installation_n1": "poêle à bois bouilleur bûche installé avant 2012",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2656E2661240T/xml",
+      "branche_cible": "bouilleur"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2643E2666181H",
+      "type_generateur_n1_installation_n1": "poêle à bois bouilleur bûche installé à partir de 2012",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2643E2666181H/xml",
+      "branche_cible": "bouilleur"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2607E2661603V",
+      "type_generateur_n1_installation_n1": "poêle à bois bouilleur bûche installé à partir de 2012",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2607E2661603V/xml",
+      "branche_cible": "bouilleur"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2601E2666757V",
+      "type_generateur_n1_installation_n1": "poêle à bois bouilleur bûche installé avant 2012",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2601E2666757V/xml",
+      "branche_cible": "bouilleur"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2663E2668177V",
+      "type_generateur_n1_installation_n1": "poêle à bois bouilleur bûche installé avant 2012",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2663E2668177V/xml",
+      "branche_cible": "bouilleur"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2685E2664703B",
+      "type_generateur_n1_installation_n1": "poêle à bois bouilleur granulés installé à partir de 2012",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2685E2664703B/xml",
+      "branche_cible": "bouilleur"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2691E2664770W",
+      "type_generateur_n1_installation_n1": "poêle à bois bouilleur granulés installé à partir de 2012",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2691E2664770W/xml",
+      "branche_cible": "bouilleur"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2643E2657283B",
+      "type_generateur_n1_installation_n1": "poêle à bois bouilleur granulés installé à partir de 2012",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2643E2657283B/xml",
+      "branche_cible": "bouilleur"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2605E2654977X",
+      "type_generateur_n1_installation_n1": "poêle à bois bouilleur granulés installé avant 2012",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2605E2654977X/xml",
+      "branche_cible": "bouilleur"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2693E2660103L",
+      "type_generateur_n1_installation_n1": "radiateur à gaz indépendant ou autonome après 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2693E2660103L/xml",
+      "branche_cible": "radiateur-gaz"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2659E2663785T",
+      "type_generateur_n1_installation_n1": "radiateur à gaz indépendant ou autonome après 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2659E2663785T/xml",
+      "branche_cible": "radiateur-gaz"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2613E2666229Z",
+      "type_generateur_n1_installation_n1": "radiateur à gaz indépendant ou autonome avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2613E2666229Z/xml",
+      "branche_cible": "radiateur-gaz"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2638E2668211E",
+      "type_generateur_n1_installation_n1": "radiateur à gaz indépendant ou autonome avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2638E2668211E/xml",
+      "branche_cible": "radiateur-gaz"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2659E2659921D",
+      "type_generateur_n1_installation_n1": "radiateur à gaz indépendant ou autonome après 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2659E2659921D/xml",
+      "branche_cible": "radiateur-gaz"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2638E2667365Q",
+      "type_generateur_n1_installation_n1": "radiateur à gaz indépendant ou autonome avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2638E2667365Q/xml",
+      "branche_cible": "radiateur-gaz"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2638E2668105C",
+      "type_generateur_n1_installation_n1": "radiateur à gaz indépendant ou autonome avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2638E2668105C/xml",
+      "branche_cible": "radiateur-gaz"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2610E2660394L",
+      "type_generateur_n1_installation_n1": "radiateur à gaz indépendant ou autonome avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2610E2660394L/xml",
+      "branche_cible": "radiateur-gaz"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2669E2666516E",
+      "type_generateur_n1_installation_n1": "radiateur à gaz indépendant ou autonome après 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2669E2666516E/xml",
+      "branche_cible": "radiateur-gaz"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2610E2659421A",
+      "type_generateur_n1_installation_n1": "radiateur à gaz indépendant ou autonome avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2610E2659421A/xml",
+      "branche_cible": "radiateur-gaz"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2613E2666586S",
+      "type_generateur_n1_installation_n1": "radiateur à gaz indépendant ou autonome avant 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2613E2666586S/xml",
+      "branche_cible": "radiateur-gaz"
+    },
+    {
+      "version_dpe": 2.6,
+      "numero_dpe": "2659E2665965P",
+      "type_generateur_n1_installation_n1": "radiateur à gaz indépendant ou autonome après 2006",
+      "source_xml": "https://api-externe.ademe.fr/api/v1/pub/dpe/2659E2665965P/xml",
+      "branche_cible": "radiateur-gaz"
+    }
+  ]
+}
