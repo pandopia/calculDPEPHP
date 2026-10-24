@@ -180,6 +180,11 @@ final class DpeEngine
         foreach ($options as [$balise, $champ, $maximum]) {
             foreach ($document->getElementsByTagName($balise) as $equipement) {
                 $valeur = $accessor->getFloatOrNull('./donnee_entree/' . $champ, $equipement);
+                if ($balise === 'emetteur_chauffage' && $champ === 'enum_equipement_intermittence_id'
+                    && $valeur === 8.0 && $version !== null && version_compare($version, '2.7', '>=')) {
+                    \CalculDpePHP\Intermittence\IntermittenceCalculator::assertPredictiveInput($equipement, $accessor);
+                    continue;
+                }
                 // La période 4 décrit les CET depuis 2027. Les nouveaux
                 // enums 135-138 et l'« autre thermodynamique » 82 sont couverts
                 // par la feuille officielle scop (lignes 108-113). Les anciens

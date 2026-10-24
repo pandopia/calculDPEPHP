@@ -275,6 +275,32 @@ final class DpeEngineTest extends TestCase
         $this->expectNotToPerformAssertions();
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('regulationsPredictivesNonCouvertes')]
+    public function testUneCombinaisonPredictiveNonPublieeEstRefuseeAvantPurge(string $version, int $type, int $chauffage, int $regulation, int $emetteur): void
+    {
+        $doc = new \DOMDocument();
+        $doc->loadXML('<dpe><administratif><enum_version_id>' . $version . '</enum_version_id></administratif><logement><caracteristique_generale><enum_methode_application_dpe_log_id>3</enum_methode_application_dpe_log_id></caracteristique_generale><installation_chauffage_collection><installation_chauffage><donnee_entree><enum_type_installation_id>' . $type . '</enum_type_installation_id></donnee_entree><emetteur_chauffage_collection><emetteur_chauffage><donnee_entree><enum_type_chauffage_id>' . $chauffage . '</enum_type_chauffage_id><enum_type_regulation_id>' . $regulation . '</enum_type_regulation_id><enum_equipement_intermittence_id>8</enum_equipement_intermittence_id><enum_type_emission_distribution_id>' . $emetteur . '</enum_type_emission_distribution_id></donnee_entree></emetteur_chauffage></emetteur_chauffage_collection></installation_chauffage></installation_chauffage_collection><sortie><temoin>123</temoin></sortie></logement></dpe>');
+        $before = $doc->saveXML();
+        try {
+            $this->engine()->calculateDocument($doc);
+            self::fail('La configuration ne figure pas dans les lignes prédictives applicables.');
+        } catch (UnsupportedDpeModelException $exception) {
+            self::assertSame($before, $doc->saveXML());
+        }
+    }
+
+    public static function regulationsPredictivesNonCouvertes(): iterable
+    {
+        yield 'ancien modèle' => ['2.6', 2, 2, 2, 2];
+        yield 'mixte non déterminé' => ['2.7', 4, 2, 2, 2];
+        yield 'collectif divisé' => ['2.7', 2, 1, 2, 2];
+        yield 'individuel sans régulation par pièce' => ['2.7', 1, 2, 1, 2];
+        yield 'radiateur électrique exclu du central' => ['2.7', 2, 2, 2, 19];
+        yield 'type chauffage absent' => ['2.7', 2, 0, 2, 2];
+        yield 'régulation absente' => ['2.7', 2, 2, 0, 2];
+        yield 'émetteur absent' => ['2.7', 2, 2, 2, 0];
+    }
+
     /** Les bornes du modèle 2.6 restent calculables. */
     public function testLesBornesDu26RestentAcceptees(): void
     {

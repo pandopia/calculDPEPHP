@@ -5,6 +5,11 @@
  * Source : https://github.com/Open3CL/engine/blob/38dfc9c4156ecc859d74a3157872643677513ff8/src/tv.js
  * Open3CL, licence MIT. Valeurs de la méthode 3CL §8 p.57.
  * Aucun résultat calculé du diagnostic n’est utilisé.
+ * @spec-section 8
+ * @spec-pages 57
+ * @spec-source resources/specsplitted/08-intermittence/00-calcul.md
+ * @spec-source https://gitlab.com/observatoire-dpe/observatoire-dpe/-/blob/05aabba7/modele_donnee/valeur_tables.xlsx (intermittence A214:P229)
+ * @generated-on 2026-10-24
  */
 return [
     151 => [
@@ -271,6 +276,119 @@ return [
         'enum_equipement_intermittence_id' => [7],
         'enum_type_regulation_id' => [2],
         'enum_type_emission_distribution_id' => [6, 7, 15, 16, 17, 18, 44],
+        'comptage' => 'present',
+    ],
+    // ADEME 05aabba7, intermittence lignes 213–228 : régulation prédictive.
+    213 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [2],
+        'enum_type_emission_distribution_id' => [5, 42, 46, 47, 48, 49, 50],
+        'comptage' => 'absent',
+    ],
+    214 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [2],
+        'enum_type_emission_distribution_id' => [1, 2, 3, 4, 10, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 45],
+        'comptage' => 'absent',
+    ],
+    215 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [2],
+        'enum_type_emission_distribution_id' => [6, 7, 15, 16, 17, 18, 44],
+        'comptage' => 'absent',
+    ],
+    216 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [2],
+        'enum_type_emission_distribution_id' => [8, 9, 11, 12, 13, 14, 43],
+        'comptage' => 'absent',
+    ],
+    217 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [2],
+        'enum_type_emission_distribution_id' => [5, 42, 46, 47, 48, 49, 50],
+        'comptage' => 'present',
+    ],
+    218 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [2],
+        'enum_type_emission_distribution_id' => [1, 2, 3, 4, 10, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 45],
+        'comptage' => 'present',
+    ],
+    219 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [2],
+        'enum_type_emission_distribution_id' => [6, 7, 15, 16, 17, 18, 44],
+        'comptage' => 'present',
+    ],
+    220 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [2],
+        'enum_type_emission_distribution_id' => [8, 9, 11, 12, 13, 14, 43],
+        'comptage' => 'present',
+    ],
+    221 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [1],
+        'enum_type_emission_distribution_id' => [5, 42, 46, 47, 48, 49, 50],
+        'comptage' => 'absent',
+    ],
+    222 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [1],
+        'enum_type_emission_distribution_id' => [1, 2, 3, 4, 10, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 45],
+        'comptage' => 'absent',
+    ],
+    223 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [1],
+        'enum_type_emission_distribution_id' => [6, 7, 15, 16, 17, 18, 44],
+        'comptage' => 'absent',
+    ],
+    224 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [1],
+        'enum_type_emission_distribution_id' => [8, 9, 11, 12, 13, 14, 43],
+        'comptage' => 'absent',
+    ],
+    225 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [1],
+        'enum_type_emission_distribution_id' => [5, 42, 46, 47, 48, 49, 50],
+        'comptage' => 'present',
+    ],
+    226 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [1],
+        'enum_type_emission_distribution_id' => [1, 2, 3, 4, 10, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 45],
+        'comptage' => 'present',
+    ],
+    227 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [1],
+        'enum_type_emission_distribution_id' => [6, 7, 15, 16, 17, 18, 44],
+        'comptage' => 'present',
+    ],
+    228 => [
+        'enum_type_chauffage_id' => [2],
+        'enum_equipement_intermittence_id' => [8],
+        'enum_type_regulation_id' => [1],
+        'enum_type_emission_distribution_id' => [8, 9, 11, 12, 13, 14, 43],
         'comptage' => 'present',
     ],
 ];

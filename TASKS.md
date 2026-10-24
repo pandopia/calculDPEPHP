@@ -595,7 +595,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K63 — Modèle DPE 2.7 : technologies et ENR restant à couvrir
 
-- [~CB] Owner: CB | Phase: K | Priorité: haute
+- [ ] Owner: — | Phase: K | Priorité: haute
 - Sources : `editeur/public/schemas/DPEv2.7.xsd` (V10.0.0, ADEME du
   16/10/2026) et `resources/textes/arrete-2026-06-11-epbd.pdf`
   (JO du 13/08/2026, texte 23, entrée en vigueur au 01/01/2027).
@@ -617,11 +617,16 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   auxiliaires bois. Les types sans condensation 183/184 et 145/146 sont
   absents du classeur 05aabba7 : ne pas leur recopier ces performances.
 - **Nouvelles modalités** : bouclage ECS 4 (module thermique d'appartement),
-  intermittence 8 (régulation prédictive), solaire 5
+  solaire 5
   (« ECS solaire seule » ; 2 et 3 ne sont plus admis en 2.7).
   Comme RCEG, `scf_saisi` et `couverture_pac_hybride_saisi`, elles sont
   désormais refusées explicitement avant purge, pas ignorées. Lever chaque
   garde uniquement avec son calcul sourcé et ses tests.
+- La régulation prédictive 8 est couverte par les 40 lignes ADEME 189–228,
+  en 2.7 seulement, avec comptage contrôlé contre les critères de l'émetteur.
+  Une combinaison absente de la table est refusée avant purge. Le type
+  d'installation 4 collectif-individuel reste refusé avec cet équipement :
+  qualifier le périmètre de la partie pilotée avant de choisir sa table.
 - **Grandeurs à implémenter** : RCEG (`presence_rceg`, `fech_saisi`,
   `ftrans_saisi` → `fecs_rceg`, `besoin_ecs_rceg`), commande intelligente
   (`scf_saisi` → `scf`), `couverture_pac_hybride_saisi`.
