@@ -105,15 +105,10 @@ final class BuildingCalculation
                     $assumptions[] = 'Refroidissement supposé homogène : répartition selon les besoins froid des logements (§17.2.2.4).';
                     if ($sumCooling <= 0) { $assumptions[] = 'Besoins froid simplifiés nuls : clé surfacique utilisée.'; }
                 }
-                // §16.2 p.104 : les capteurs collectifs sont proratisés à la
-                // surface habitable. Le nombre de modules original est conservé.
-                foreach ($xp->query('//panneaux_pv') as $panel) {
-                    $area = $a->getFloatOrNull('./surface_totale_capteurs', $panel);
-                    if ($area === null || $area <= 0) {
-                        $area = 1.6 * ($a->getIntOrNull('./nombre_module', $panel) ?? 0);
-                    }
-                    $a->setChildValue($panel, 'surface_totale_capteurs', $area * $apt->surface / $surface);
-                }
+                // §16.2 p.104 : le moteur applique le prorata PV du lot.
+                // Conserver les capteurs de l'immeuble dans l'entrée, comme
+                // les XML ADEME générés : écrire une surface déjà proratisée
+                // ici la réduirait deux fois, puis encore à chaque recalcul.
                 $results[$apt->reference] = new CalculationDocument(CalculDpePHP::calculate($doc->saveXML()));
             } catch (Throwable $e) {
                 $results[$apt->reference] = new CalculationDocument(null, $e->getMessage());

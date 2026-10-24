@@ -121,21 +121,38 @@ final class ApartmentApproximationTest extends TestCase
         self::assertStringContainsString('hors de', $invalid->apartments['bas']->error);
     }
 
-    public function test_la_surface_photovoltaique_collective_est_repartie_une_seule_fois(): void
+    public static function capteursCollectifs(): iterable
+    {
+        yield 'surface connue' => ['<surface_totale_capteurs>12</surface_totale_capteurs>', 12.0, null];
+        yield 'modules seulement' => ['<nombre_module>12</nombre_module>', null, 12];
+        yield 'surface et modules' => ['<surface_totale_capteurs>12</surface_totale_capteurs><nombre_module>6</nombre_module>', 12.0, 6];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('capteursCollectifs')]
+    public function test_la_surface_photovoltaique_collective_est_repartie_une_seule_fois(string $capteurs, ?float $surfaceAttendue, ?int $modulesAttendus): void
     {
         $input = $this->input();
         $doc = (new XmlReader())->loadString($input->xml);
         foreach (iterator_to_array($doc->getElementsByTagName('production_elec_enr')) as $old) { $old->parentNode->removeChild($old); }
         $fragment = $doc->createDocumentFragment();
-        $fragment->appendXML('<production_elec_enr><donnee_entree><presence_production_pv>1</presence_production_pv></donnee_entree><panneaux_pv_collection><panneaux_pv><surface_totale_capteurs>12</surface_totale_capteurs><tv_coef_orientation_pv_id>1</tv_coef_orientation_pv_id><enum_orientation_pv_id>1</enum_orientation_pv_id><enum_inclinaison_pv_id>1</enum_inclinaison_pv_id></panneaux_pv></panneaux_pv_collection></production_elec_enr>');
+        $fragment->appendXML('<production_elec_enr><donnee_entree><presence_production_pv>1</presence_production_pv></donnee_entree><panneaux_pv_collection><panneaux_pv>' . $capteurs . '<tv_coef_orientation_pv_id>1</tv_coef_orientation_pv_id><enum_orientation_pv_id>1</enum_orientation_pv_id><enum_inclinaison_pv_id>1</enum_inclinaison_pv_id></panneaux_pv></panneaux_pv_collection></production_elec_enr>');
         $doc->getElementsByTagName('logement')->item(0)->appendChild($fragment);
         $result = CalculDpePHP::calculateBuilding(new BuildingInput($doc->saveXML(), $input->apartments, 2, 0));
         $sum = 0.0;
         foreach ($result->apartments as $apt) {
             self::assertNull($apt->error);
             $a = new NodeAccessor((new XmlReader())->loadString($apt->xml));
-            self::assertEqualsWithDelta(4, $a->getFloatOrNull('//surface_totale_capteurs'), 1e-9);
+            // Les entrées conservent les capteurs collectifs. Le prorata
+            // appartient au moteur, pas à une réécriture de la géométrie.
+            self::assertSame($surfaceAttendue, $a->getFloatOrNull('//surface_totale_capteurs'));
+            self::assertSame($modulesAttendus, $a->getIntOrNull('//nombre_module'));
             $sum += $a->getFloatOrNull('//production_elec_enr/donnee_intermediaire/production_pv');
+            $recalcule = new NodeAccessor((new XmlReader())->loadString(CalculDpePHP::calculate($apt->xml)));
+            self::assertEqualsWithDelta(
+                $a->getFloatOrNull('//production_elec_enr/donnee_intermediaire/production_pv'),
+                $recalcule->getFloatOrNull('//production_elec_enr/donnee_intermediaire/production_pv'),
+                1e-8,
+            );
         }
         $building = new NodeAccessor((new XmlReader())->loadString($result->building->xml));
         self::assertGreaterThan(0, $sum);
