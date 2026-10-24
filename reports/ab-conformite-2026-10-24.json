@@ -10,6 +10,13 @@
         "case_counts_equal": true,
         "case_deltas_equal": true
     },
+    "post_ab_guard_verification": {
+        "implementation_revision": "1db9be7",
+        "change": "Refus avant purge de sept options 2.7 non implémentées ; huit cas de refus et un cas de compatibilité ajoutés aux tests.",
+        "cases": 670,
+        "summary_equal_to_after": true,
+        "all_compared_values_equal_to_after": true
+    },
     "before_revision": {
         "head": "5f3cfe8",
         "dirty": "",
