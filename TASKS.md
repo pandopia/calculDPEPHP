@@ -271,7 +271,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K06 — Écarts résiduels de génération ECS
 
-- [~CB] Owner: CB  | Phase: K  | Estimation: 4h  | Priorité: moyenne
+- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
 - Acquis : `rendement_stockage` n'est plus écrit sans ballon ; les puissances
   saisies en `donnee_intermediaire` sont préservées et utilisées ; un chauffe-eau
   thermodynamique ne publie plus de `rendement_generation` séparé, son `cop`
@@ -309,6 +309,12 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   les départager demanderait de refaire le calcul, pas de lire le fichier.
 - Objectif : famille « Génération ECS » au-dessus de 92 % en profil strict
   (84,62 % actuellement).
+- **Deux générateurs dans un même bloc ECS** : aucun exemple dans les 670
+  cas retenus. Trois exports anciens récupérés le 24/10 recopient le total
+  d'installation dans chacun des deux générateurs, sans répartition exploitable
+  (preuves dans TASKS_DONE.md). Sourcer la distinction systèmes/cascade avant
+  de partager Becs ; le partage doit précéder Rs, Rg et les auxiliaires, pas
+  seulement diviser Cecs après coup. Ne pas utiliser ces exports pour calibrer.
 
 ### TASK-K26 — §17.1.2 : répartition des visites entre sous-ensembles ECS
 

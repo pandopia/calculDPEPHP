@@ -19,6 +19,34 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K06 — Sondage ADEME des blocs ECS à deux générateurs (24/10/2026)
+
+- Aucun bloc à plusieurs générateurs ECS parmi les 670 cas du corpus. Le
+  filtre public DataFair `type_generateur_n2_ecs_n1:*` indexe 807 DPE,
+  tous antérieurs au 19/07/2022 dans la sélection triée par date décroissante ;
+  zéro en 2026. Trois XML ont été récupérés par `bin/fetch-dpe`, sans retouche.
+- Ils recopient tous `conso_ecs` de l'installation dans chacun de ses deux
+  générateurs : 117 558,135673123 kWh sur `2160E0981223R` (gaz/gaz),
+  59 821,5344301015 sur `2193E0977090Z` (gaz/CET), 3 104,14284610104 sur
+  `2276E1627094N` (gaz/bois). La sortie EF ne reprend qu'une fois ce total.
+  Les trois déclarent cfg ECS 1, ratio 1 sur les deux générateurs ; les
+  moteurs sont `3CL_BBSSlama_1.0.0.0` et `3CL_BBSSlama_1.1.0.0`.
+- Le XSD décrit pourtant Cecs comme la consommation annuelle **du générateur**
+  et le ratio comme 0,5 en présence de deux générateurs. Ces copies ne peuvent
+  départager systèmes indépendants et cascade/appoint. Ne pas les utiliser
+  pour choisir le partage de §11.4 p.73, ni diviser une consommation déjà
+  calculée sans reprendre les besoins de Rs, Rg et des auxiliaires.
+- Les six fichiers d'investigation (input et référence) sont conservés hors
+  du corpus, dans `/tmp/calculdpe-ecs-probes-KAHR3G/`. Aucun ancien cas n'est
+  exclu, aucun compteur ni budget des 670 cas n'est modifié par ce sondage.
+  SHA256 des références : `2160…` =
+  `fe64e8f19df55d9a68de7bcd350dd71d6df3fe9d01bc3a2ba7f39a2ec23db994`,
+  `2193…` = `0361325017e44ef725b3f6a12e744749174225759a7cc2d45807a67b9ac932ed`,
+  `2276…` = `694540cfc3d52d420ba4a26d7f899a26fd51634d0a259045b3dc3c22118356c8`.
+- Rouvrir sur un export cohérent ou une clarification du modèle de cascade
+  ECS. Le calcul multi-générateurs reste à instruire en K06 ; aucun correctif
+  de calcul ECS n'est livré sur la seule base de ces trois références.
+
 ### TASK-K95 — QP0 calculé directement sur Pe (24/10/2026)
 
 - A/B en mémoire sur `0b075a7`, même corpus 670 cas, aucun fichier `src/`

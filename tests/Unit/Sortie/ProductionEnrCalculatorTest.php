@@ -70,7 +70,8 @@ final class ProductionEnrCalculatorTest extends TestCase
         foreach ($xp->query('.//xs:enumeration', $element) as $enumeration) {
             $type = (int)$enumeration->getAttribute('value');
             $libelle = $libelles[$type];
-            $pac = str_starts_with($libelle, 'pac ') || str_contains($libelle, 'partie pompe à chaleur');
+            $pac = str_starts_with($libelle, 'pac ') || str_contains($libelle, 'partie pompe à chaleur')
+                || $libelle === 'autre système thermodynamique électrique';
             $geothermique = $pac && preg_match('/eau\/eau|eau glycolée\/eau|géothermique/u', $libelle) === 1;
             yield "$type : $libelle" => [$type, $pac, $geothermique];
         }
@@ -103,7 +104,8 @@ final class ProductionEnrCalculatorTest extends TestCase
         $maximum = (int)$xp->evaluate('string(.//xs:maxInclusive/@value)', $element);
         foreach (range($minimum, $maximum) as $type) {
             $libelle = $libelles[$type];
-            yield "$type : $libelle" => [$type, str_starts_with($libelle, 'cet ') || str_starts_with($libelle, 'pac double service')];
+            yield "$type : $libelle" => [$type, str_starts_with($libelle, 'cet ') || str_starts_with($libelle, 'pac double service')
+                || $libelle === 'autre système thermodynamique électrique'];
         }
     }
 
