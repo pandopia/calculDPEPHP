@@ -23,6 +23,16 @@
         "before_changed_cases_outside_tolerance": 0,
         "after_changed_cases_outside_tolerance": 0
     },
+    "final_phpunit_verification": {
+        "engine_code_revision": "1db9be7",
+        "tests": 3959,
+        "assertions": 15419,
+        "failures": 0,
+        "existing_php85_deprecations": 4,
+        "covered_lines": 10462,
+        "executable_lines": 11424,
+        "line_coverage_percent": 91.58
+    },
     "before_revision": {
         "head": "5f3cfe8",
         "dirty": "",
