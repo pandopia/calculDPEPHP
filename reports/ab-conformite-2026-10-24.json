@@ -4,6 +4,12 @@
     "implementation_revision": "5f3cfe8",
     "tolerance_profile": "strict",
     "cases": 670,
+    "independent_baseline_check": {
+        "method": "Chargement du moteur et des tables complets exportés depuis 423b896, sans substitution de classes, sur les mêmes fichiers d'entrée et de référence.",
+        "summary_equal": true,
+        "case_counts_equal": true,
+        "case_deltas_equal": true
+    },
     "before_revision": {
         "head": "5f3cfe8",
         "dirty": "",
@@ -87,6 +93,85 @@
     "improved_cases": 57,
     "degraded_cases": 0,
     "higher_case_budgets": [],
+    "new_failing_details": [
+        {
+            "case": "2400E0575636Z.xml",
+            "path": "dpe/logement/sortie/ef_conso/conso_5_usages",
+            "expected": "158768.9748470319",
+            "before": "158651.64801126",
+            "after": "158313.46073187"
+        },
+        {
+            "case": "2400E0575636Z.xml",
+            "path": "dpe/logement/sortie/ef_conso/conso_5_usages_m2",
+            "expected": "275",
+            "before": "275",
+            "after": "274"
+        },
+        {
+            "case": "2600E0083964P.xml",
+            "path": "dpe/logement/sortie/cout/cout_ch",
+            "expected": "293.756835922019",
+            "before": "293.627298869",
+            "after": "294.33021504063"
+        },
+        {
+            "case": "2600E0083964P.xml",
+            "path": "dpe/logement/sortie/sortie_par_energie_collection/sortie_par_energie[enum_type_energie_id=1]/cout_ch",
+            "expected": "236.26228773609557",
+            "before": "236.1326806741",
+            "after": "236.83559684573"
+        },
+        {
+            "case": "2400E0856203A.xml",
+            "path": "dpe/logement/sortie/emission_ges/emission_ges_5_usages_m2",
+            "expected": "14",
+            "before": "14",
+            "after": "13"
+        },
+        {
+            "case": "2400E0856203A.xml",
+            "path": "dpe/logement/sortie/ep_conso/classe_bilan_dpe",
+            "expected": "E",
+            "before": "E",
+            "after": "D"
+        },
+        {
+            "case": "2601E0299209H.xml",
+            "path": "dpe/logement/sortie/emission_ges/emission_ges_5_usages_m2",
+            "expected": "25.9",
+            "before": "26",
+            "after": "25"
+        },
+        {
+            "case": "2406E0400266F.xml",
+            "path": "dpe/logement/sortie/ep_conso/classe_bilan_dpe",
+            "expected": "D",
+            "before": "D",
+            "after": "E"
+        },
+        {
+            "case": "2606E0835323G.xml",
+            "path": "dpe/logement/sortie/cout/cout_ch",
+            "expected": "511",
+            "before": "510.97073175531",
+            "after": "493.90683195227"
+        },
+        {
+            "case": "2401E2153502E.xml",
+            "path": "dpe/logement/sortie/sortie_par_energie_collection/sortie_par_energie[enum_type_energie_id=1]/cout_ch",
+            "expected": "674.596193424391",
+            "before": "674.81129809082",
+            "after": "675.37551241073"
+        },
+        {
+            "case": "2675E2152874Y.xml",
+            "path": "dpe/logement/sortie/emission_ges/emission_ges_5_usages",
+            "expected": "407.93399218659141",
+            "before": "408.09544213054",
+            "after": "406.46400317403"
+        }
+    ],
     "case_failing_deltas": {
         "2600E1932292D.xml": -47,
         "2401E2379844Q.xml": -46,
