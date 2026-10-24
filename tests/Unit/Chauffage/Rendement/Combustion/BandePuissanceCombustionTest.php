@@ -37,7 +37,7 @@ final class BandePuissanceCombustionTest extends TestCase
                 }
             }
         }
-        foreach ([[46,47,48,49], [65,66,67,68]] as $famille) {
+        foreach ([[46,47,48,49], [65,66,67,68], [94,95,96,97]] as $famille) {
             foreach ($famille as $id) {
                 foreach ([20.0, 20.001, 70.0, 70.001, 400.0, 400.001] as $pn) {
                     $attendu = $pn <= 20 ? $famille[0] : ($pn <= 70 ? $famille[1] : ($pn <= 400 ? $famille[2] : $famille[3]));

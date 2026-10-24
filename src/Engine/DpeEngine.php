@@ -208,7 +208,8 @@ final class DpeEngine
      * chauffage (172 à 184) et douze d'ECS (135 à 146) : pompes à chaleur et
      * chauffe-eau thermodynamiques à partir de 2027, chaudières bois granulés
      * après 2024, ballons à commande intelligente. Les quatre CET 135-138
-     * et les neuf PAC 172-176/178-181 sont couverts par le classeur ADEME
+     * et les neuf PAC 172-176/178-181, ainsi que les chaudières à condensation
+     * CH 177/182 et ECS 139/144, sont couverts par le classeur ADEME
      * 05aabba7 ; les autres restent
      * refusés tant que toutes leurs caractéristiques ne sont pas digitalisées.
      *
@@ -230,11 +231,11 @@ final class DpeEngine
                     continue;
                 }
                 $type = $accessor->getIntOrNull('./donnee_entree/' . $champ, $generateur);
-                if ($balise === 'generateur_ecs' && in_array($type, [135, 136, 137, 138], true)
+                if ($balise === 'generateur_ecs' && in_array($type, [135, 136, 137, 138, 139, 144], true)
                     && $version !== null && version_compare($version, '2.7', '>=')) {
                     continue;
                 }
-                if ($balise === 'generateur_chauffage' && in_array($type, [172, 173, 174, 175, 176, 178, 179, 180, 181], true)
+                if ($balise === 'generateur_chauffage' && in_array($type, [172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182], true)
                     && $version !== null && version_compare($version, '2.7', '>=')) {
                     continue;
                 }

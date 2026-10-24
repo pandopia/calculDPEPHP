@@ -30,6 +30,9 @@ final class CombustionCalculatorTest extends TestCase
         $xp = new \DOMXPath($doc);
         self::assertEqualsWithDelta($qp0, $xp->evaluate('number(./donnee_intermediaire/qp0)', $gen), 1e-9);
         $rpn = $xp->evaluate('number(./donnee_intermediaire/rpn)', $gen);
+        if (in_array($type, [139, 144], true)) {
+            self::assertEqualsWithDelta($pnKw <= 70 ? (91 + 2 * log10($pnKw)) / 100 : 0.96, $rpn, 1e-12);
+        }
         self::assertEqualsWithDelta(1 / (1 / $rpn + 1790 * $qp0 / 2000000), $xp->evaluate('number(./donnee_intermediaire/rendement_generation)', $gen), 1e-12);
     }
 
@@ -40,7 +43,7 @@ final class CombustionCalculatorTest extends TestCase
             [[15, 22, 29, 85], 0.08, 0.73, 1800, 1100],
             [[16, 23, 30, 86], 0.07, 0.70, 1400, 800],
             [[17, 18, 19, 20, 21, 24, 25, 26, 27, 28, 31, 32, 33, 34,
-                87, 88, 89, 90, 91], 0.085, 0.60, 1100, 500],
+                87, 88, 89, 90, 91, 139, 144], 0.085, 0.60, 1100, 500],
         ];
         foreach ($families as [$types, $coefficient, $exposant, $medium, $large]) {
             foreach ($types as $type) {

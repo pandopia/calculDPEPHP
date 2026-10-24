@@ -53,6 +53,9 @@ final class GenerateurChAlias
         // conserve l'enum original et sa table dédiée tv_scop_2027.
         172 => 3, 173 => 7, 174 => 11, 175 => 15, 176 => 19,
         178 => 7, 179 => 11, 180 => 15, 181 => 19,
+        // Même profil de charge bois ; caractéristiques Rpn/Rpint/QP0
+        // spécifiques conservées par ChaudiereDefautCalculator (lignes 94-97).
+        177 => 74, 182 => 74,
 
         // PAC hybride : partie chaudière (groupes 96|138|148|160, 97|139|149|161, …)
         144 => 96,                                    // générique (supprimé de l'XSD)
@@ -211,7 +214,7 @@ final class GenerateurChAlias
     public static function isHybride(?int $genId): bool
     {
         return $genId !== null && (($genId >= 143 && $genId <= 170)
-            || in_array($genId, [178, 179, 180, 181], true));
+            || in_array($genId, [178, 179, 180, 181, 182], true));
     }
 
     /**

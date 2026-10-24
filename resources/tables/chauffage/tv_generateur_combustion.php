@@ -19,7 +19,7 @@ declare(strict_types=1);
  *             sans ventouse: E=2.5, F=-0.8
  *             avec ventouse: E=1.75, F=-0.55
  *
- * Formules de référence open3cl tv.js (source de vérité) :
+ * Référence complémentaire open3cl tv.js (la méthode reste la source de vérité) :
  *   Gaz classique 1991-2000 (ID 4) :
  *     rpn=(84+2×log10(Pn))/100, rpint=(80+3×log10(Pn))/100, qp0=1.2%×Pn, pveil=120
  *   Condensation gaz ≥2016, Pn≤70 (ID 13) :
@@ -31,8 +31,13 @@ declare(strict_types=1);
  * @spec-pages   86-95
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
  * @spec-source  resources/specsplitted/14-rendement-ecs-generateurs/01-combustion.md
+ * @spec-source  https://gitlab.com/observatoire-dpe/observatoire-dpe/-/blob/05aabba7/modele_donnee/valeur_tables.xlsx
  * @generated-on 2026-04-30
- * @status       complete — **93 lignes, sans trou de 1 à 93.** Les IDs 70 à 93
+ * @status       complete — 97 lignes, sans trou de 1 à 97 (modèle 2.7).
+ *               Les lignes 94-97 viennent de la feuille generateur_combustion,
+ *               A95:J98, révision 05aabba7, SHA-256
+ *               50d1189e0df8b47aad006a3e525564ae33fab041c3f389d7b407c99fa5546c81.
+ *               Les IDs 70 à 93
  *               ont été ajoutés le 2026-10-18 : générateurs d'air chaud à partir
  *               de 2006 (§13.2.2.1), radiateurs à gaz (§13.2.2.2), accumulateurs
  *               gaz (§14.1.3) et chauffe-eau gaz instantanés (§14.1.1).
@@ -1218,4 +1223,25 @@ return [
             'pveil' => 0.0,
         ];
     },
+
+    // ADEME 2.7 : granulés à condensation après 2024, CH 177/182, ECS 139/144.
+    // QP0 en kW absolus dans le classeur, convertis en W (pas un % de Pn).
+    94 => static fn(float $pnKw, float $e, float $f): array => [
+        'pn' => $pnKw * 1000, 'rpn' => (91 + 2 * log10($pnKw)) / 100,
+        'rpint' => (100 + 2 * log10($pnKw)) / 100,
+        'qp0' => 85 * $pnKw ** 0.6, 'pveil' => 0.0,
+    ], // Pn ≤ 20 kW, ligne 95
+    95 => static fn(float $pnKw, float $e, float $f): array => [
+        'pn' => $pnKw * 1000, 'rpn' => (91 + 2 * log10($pnKw)) / 100,
+        'rpint' => (101 + 2 * log10($pnKw)) / 100,
+        'qp0' => 85 * $pnKw ** 0.6, 'pveil' => 0.0,
+    ], // 20 < Pn ≤ 70 kW, ligne 96
+    96 => static fn(float $pnKw, float $e, float $f): array => [
+        'pn' => $pnKw * 1000, 'rpn' => 0.96, 'rpint' => 1.04,
+        'qp0' => 1100.0, 'pveil' => 0.0,
+    ], // 70 < Pn ≤ 400 kW, ligne 97
+    97 => static fn(float $pnKw, float $e, float $f): array => [
+        'pn' => $pnKw * 1000, 'rpn' => 0.96, 'rpint' => 1.04,
+        'qp0' => 500.0, 'pveil' => 0.0,
+    ], // Pn > 400 kW, ligne 98
 ];

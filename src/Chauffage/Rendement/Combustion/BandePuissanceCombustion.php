@@ -48,6 +48,7 @@ final class BandePuissanceCombustion
     private const FAMILLES_QUATRE_BANDES = [
         [46, 47, 48, 49], // bois bûches/plaquettes après 2019 — p.89
         [65, 66, 67, 68], // granulés après 2019 — p.90
+        [94, 95, 96, 97], // granulés condensation après 2024 — ADEME 05aabba7, lignes 95-98
     ];
 
     /**

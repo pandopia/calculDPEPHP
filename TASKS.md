@@ -595,12 +595,12 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K63 — Modèle DPE 2.7 : technologies et ENR restant à couvrir
 
-- [~CB] Owner: CB | Phase: K | Priorité: haute
+- [ ] Owner: — | Phase: K | Priorité: haute
 - Sources : `editeur/public/schemas/DPEv2.7.xsd` (V10.0.0, ADEME du
   16/10/2026) et `resources/textes/arrete-2026-06-11-epbd.pdf`
   (JO du 13/08/2026, texte 23, entrée en vigueur au 01/01/2027).
   L'éditeur prend déjà en charge le schéma 2.7 ; ne pas refaire ce raccordement.
-- **Tables encore incomplètes** : CH 177/182–184 et ECS 139–146
+- **Tables encore incomplètes** : CH 183–184 et ECS 140–143/145–146
   (chaudières granulés après 2024, ballons avec commande intelligente).
   Le moteur refuse ces types tant qu'ils ne sont pas couverts : conserver ce
   garde et sourcer chaque nouvelle valeur avant de le lever.
@@ -612,6 +612,10 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   ADEME), leur classification de famille et leur répartition hybride.
   Les groupes d'émission du classeur sont sélectionnés uniquement en 2.7
   ou pour ces nouveaux types ; les anciennes colonnes restent inchangées.
+- Les granulés à condensation après 2024 CH 177/182 et ECS 139/144
+  utilisent les quatre bandes ADEME 94–97, avant virtualisation, avec
+  auxiliaires bois. Les types sans condensation 183/184 et 145/146 sont
+  absents du classeur 05aabba7 : ne pas leur recopier ces performances.
 - **Nouvelles modalités** : bouclage ECS 4 (module thermique d'appartement),
   intermittence 8 (régulation prédictive), solaire 5
   (« ECS solaire seule » ; 2 et 3 ne sont plus admis en 2.7).

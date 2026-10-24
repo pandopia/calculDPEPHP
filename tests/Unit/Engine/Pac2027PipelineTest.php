@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
 final class Pac2027PipelineTest extends TestCase
 {
     #[DataProvider('typesRecents')]
-    public function testLeParcoursCompletConsommeLesPerformancesRecentes(int $type, float $expectedScop): void
+    public function testLeParcoursCompletConsommeLesPerformancesRecentes(int $type, float $expectedScop, int $boilerType = 149): void
     {
         $root = dirname(__DIR__, 3);
         $doc = new DOMDocument();
@@ -34,7 +34,10 @@ final class Pac2027PipelineTest extends TestCase
         if ($type >= 178) {
             $boiler = $gen->cloneNode(true);
             $entry = $xp->query('./donnee_entree', $boiler)->item(0);
-            $this->set($entry, 'enum_type_generateur_ch_id', '149');
+            $this->set($entry, 'enum_type_generateur_ch_id', (string)$boilerType);
+            if ($boilerType === 182) {
+                $this->set($entry, 'enum_type_energie_id', '5');
+            }
             $this->set($entry, 'reference', 'chaudiere-hybride-2027');
             $gen->parentNode->appendChild($boiler);
         }
@@ -45,8 +48,8 @@ final class Pac2027PipelineTest extends TestCase
             $this->set($entry, 'enum_type_emission_distribution_id', $type === 172 ? '42' : '14');
         }
         foreach ($xp->query('//generateur_ecs/donnee_entree') as $entry) {
-            $this->set($entry, 'enum_type_generateur_ecs_id', '136');
-            $this->set($entry, 'enum_type_energie_id', '1');
+            $this->set($entry, 'enum_type_generateur_ecs_id', $boilerType === 182 ? '144' : '136');
+            $this->set($entry, 'enum_type_energie_id', $boilerType === 182 ? '5' : '1');
             $this->set($entry, 'volume_stockage', '200');
             $this->set($entry, 'enum_type_stockage_ecs_id', '3');
         }
@@ -59,8 +62,19 @@ final class Pac2027PipelineTest extends TestCase
         self::assertEqualsWithDelta($expectedScop, $xr->evaluate('number((//generateur_chauffage)[1]/donnee_intermediaire/scop)'), 1e-12);
         self::assertGreaterThan(0, $xr->evaluate('number((//generateur_chauffage)[1]/donnee_intermediaire/conso_ch)'));
         self::assertSame(0.0, $xr->evaluate('count((//generateur_chauffage)[1]/donnee_intermediaire/rendement_generation)'));
-        self::assertEqualsWithDelta(2.7, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/cop)'), 1e-12);
-        self::assertSame(0.0, $xr->evaluate('count(//generateur_ecs/donnee_intermediaire/rendement_stockage)'));
+        if ($boilerType === 182) {
+            self::assertGreaterThan(1, $xr->evaluate('number((//generateur_chauffage)[2]/donnee_intermediaire/rpint)'));
+            self::assertGreaterThan(0, $xr->evaluate('number((//generateur_chauffage)[2]/donnee_intermediaire/qp0)'));
+            self::assertGreaterThan(0, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/rendement_generation)'));
+            self::assertGreaterThan(0, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/qp0)'));
+        } else {
+            self::assertEqualsWithDelta(2.7, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/cop)'), 1e-12);
+        }
+        if ($boilerType === 182) {
+            self::assertGreaterThan(0, $xr->evaluate('number((//generateur_ecs)[1]/donnee_intermediaire/rendement_stockage)'));
+        } else {
+            self::assertSame(0.0, $xr->evaluate('count(//generateur_ecs/donnee_intermediaire/rendement_stockage)'));
+        }
         self::assertGreaterThan(0, $xr->evaluate('number(//prod_enr_totale)'));
         self::assertSame([], XsdVocabulary::unknownElements((new ValueExtractor())->extract($result), $root . '/editeur/public/schemas/DPEv2.7.xsd'));
         $this->validateTechnologyBlocks($result, $root . '/editeur/public/schemas/DPEv2.7.xsd');
@@ -72,6 +86,7 @@ final class Pac2027PipelineTest extends TestCase
         foreach ([172 => 3.2, 173 => 3.4, 174 => 3.5, 175 => 3.5, 176 => 3.5, 178 => 3.4, 179 => 3.5, 180 => 3.5, 181 => 3.5] as $type => $scop) {
             yield (string)$type => [$type, $scop];
         }
+        yield 'PAC et chaudière granulés condensation récentes' => [178, 3.4, 182];
     }
 
     private function set(DOMElement $entry, string $name, string $value): void

@@ -27,7 +27,8 @@ declare(strict_types=1);
  * @spec-source  resources/specsplitted/14-rendement-ecs-generateurs/01-combustion.md
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
  * @generated-on 2026-04-30
- * @status partial — manque QP0 des hybrides bois et poêles bouilleurs (TASK-K06)
+ * @spec-source https://gitlab.com/observatoire-dpe/observatoire-dpe/-/blob/05aabba7/modele_donnee/valeur_tables.xlsx (generateur_combustion A95:J98)
+ * @status partial — manque QP0 des anciens hybrides bois 124-131 et poêles bouilleurs (TASK-K06)
  * @source       open3cl tv.js (IDs 79-93 du tableau generateur_combustion)
  */
 
@@ -423,11 +424,21 @@ $table = [
 // révision aa78053f549b93509009d195b9332ac85f33fb4d.
 // Les hybrides et poêles bouilleurs restent à qualifier (TASK-K06).
 // [enums ECS, coefficient, exposant, QP0 70..400 kW, QP0 >400 kW].
+// Modèle 2.7 : granulés à condensation après 2024, avec/sans relève PAC.
+// Table ADEME 05aabba7, lignes 94-97 : même Rpn sous et au-dessus de 20 kW.
+foreach ([139, 144] as $type) {
+    $table[$type] = [
+        ['pn_max_kw' => 20.0, 'rpn' => $e91_2, 'qp0_pct' => null, 'pveil' => 0.0],
+        ['pn_max_kw' => 70.0, 'rpn' => $e91_2, 'qp0_pct' => null, 'pveil' => 0.0],
+        ['pn_max_kw' => 400.0, 'rpn' => 0.96, 'qp0_pct' => null, 'pveil' => 0.0],
+        ['pn_max_kw' => INF, 'rpn' => 0.96, 'qp0_pct' => null, 'pveil' => 0.0],
+    ];
+}
 $pertesBois = [
     [[15, 22, 29, 85], 0.08, 0.73, 1.8, 1.1], // avant 1978, p.89
     [[16, 23, 30, 86], 0.07, 0.70, 1.4, 0.8], // 1978-1994, p.89
     [[17, 18, 19, 20, 21, 24, 25, 26, 27, 28, 31, 32, 33, 34,
-      87, 88, 89, 90, 91], 0.085, 0.60, 1.1, 0.5], // depuis 1995, p.89-90
+      87, 88, 89, 90, 91, 139, 144], 0.085, 0.60, 1.1, 0.5], // p.89-90 ; condensation : ADEME 94-97
 ];
 foreach ($pertesBois as [$types, $coefficient, $exposant, $moyenne, $grande]) {
     foreach ($types as $type) {
