@@ -14,7 +14,8 @@ use RuntimeException;
  * Facteur solaire Sw du vitrage — §6.2.1 p.45-46.
  *
  * Algorithme :
- *   1. Si `<sw_1>` est présent (saisie directe) → lecture directe.
+ *   1. Double fenêtre : Sw = Sw1 × Sw2 (§6.2.1 p.46).
+ *      Sinon `<sw_1>` présent (saisie directe) → lecture directe.
  *   2. Si `enum_type_baie_id` ∈ {1, 2} (brique de verre) ou `enum_type_materiaux_menuiserie_id` = 2
  *      ou `enum_type_baie_id` = 3 (polycarbonate) → Sw = 0,4.
  *   3. Sinon : lookup `tv_sw` par
@@ -34,7 +35,7 @@ use RuntimeException;
  * @spec-section 6.2.1
  * @spec-pages 45-46
  * @spec-source resources/specsplitted/06-apports-gratuits/02-surface-sud-equivalente/01-facteur-solaire.md
- * @xml-input  baie_vitree.donnee_entree.{sw_1, enum_type_baie_id, enum_type_materiaux_menuiserie_id,
+ * @xml-input  baie_vitree.donnee_entree.{sw_1, sw_2, double_fenetre, enum_type_baie_id, enum_type_materiaux_menuiserie_id,
  *             enum_type_vitrage_id, vitrage_vir, enum_type_pose_id}
  * @xml-output baie_vitree.donnee_intermediaire.sw
  * @tables tv_sw
@@ -74,6 +75,32 @@ final class SwCalculator implements CalculatorInterface
     }
 
     private function resolveSw(DOMElement $entree, NodeAccessor $accessor, CalculationContext $context): ?float
+    {
+        $s1 = $this->singleWindowSw($entree, $accessor, $context);
+        if ($accessor->getIntOrNull('./double_fenetre', $entree) !== 1) {
+            return $s1;
+        }
+
+        $s2 = $accessor->getFloatOrNull('./sw_2', $entree);
+        if ($s1 === null || $s2 === null || !is_finite($s1) || !is_finite($s2)
+            || $s1 < 0.0 || $s1 > 1.0 || $s2 < 0.0 || $s2 > 1.0) {
+            throw new RuntimeException('Sw de double fenêtre : les deux facteurs doivent être caractérisés entre zéro et un (§6.2.1 p.46).');
+        }
+
+        return $this->doubleWindowSw($s1, $s2);
+    }
+
+    /**
+     * §6.2.1 p.46 : Sw = Sw1 × Sw2 pour deux fenêtres superposées.
+     *
+     * @spec-formula F-6.2.1-double-fenetre
+     */
+    private function doubleWindowSw(float $s1, float $s2): float
+    {
+        return $s1 * $s2;
+    }
+
+    private function singleWindowSw(DOMElement $entree, NodeAccessor $accessor, CalculationContext $context): ?float
     {
         // 1. Saisie directe
         $direct = $accessor->getFloatOrNull('./sw_1', $entree);
