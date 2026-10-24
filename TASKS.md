@@ -292,6 +292,12 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - Remonter d'abord aux caractéristiques amont (Pn, Rpn, QP0) : suites K85
   et K95 ; variantes déjà instruites dans les archives K31/K56. Les verdicts
   COP et sérialisation sont dans TASKS_DONE.md, pas à réinstruire.
+- **QP0 bois ECS n'est pas implémenté dans la table**, qui met les pertes à
+  zéro par simplification. §14.1.2 p.94 renvoie pourtant à §13.2.2.3 p.89–90.
+  Prototype mesuré sur 694 cas : +3 numériques et +1 classe, quatre budgets
+  dépassés d'un écart, aucun relevé. Qualifier d'abord les huit nouveaux
+  exports `ademe-ecs-bois-hybride-2026-10`, dont plusieurs publient les
+  caractéristiques gaz pour une chaudière bois. Mesure dans TASKS_DONE.md.
 - **Échelle à qualifier** : 2400E0669495Y et
   2400E0669425G : ils déclarent `nombre_appartement = 1` pour un immeuble de
   822 m² desservi par sept installations d'ECS. L'échelle est le suspect, pas

@@ -19,6 +19,30 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K06 — Pertes à l'arrêt bois ECS : variante isolée non activée (24/10/2026)
+
+Le zéro systématique de `qp0_pct = null` dans la table ECS bois n'est pas
+justifié : §14.1.2 p.94 renvoie aux caractéristiques de §13.2.2.3 p.89–90.
+Prototype : pertes absolues `1000 × c × Pn^a` sous 70 kW, puis forfaits
+des bandes 70–400 et >400 kW, chaudières simples et parties hybrides,
+évaluées au périmètre réel avant éventuelle quote-part. Rpn et Pn inchangés.
+249 cas synthétiques de calcul, bornes et saisies passent sur le prototype.
+
+A/B isolé sur 694 cas, même HEAD `ec36cd0`, un seul fichier `src/` non
+commité dans les deux runs : 18 568 → 18 571 numériques (+3), 49 → 50
+chaînes (+1), 0 amélioration de compteur, 4 cas dégradés d'un écart chacun.
+Les 732 manquantes et 2 475 supplémentaires restent identiques. Aucun budget
+relevé. Les nouveaux écarts sont des arrondis de consommations/GES et deux
+classes (GES A→B pour 2511E2519899U, DPE D→E pour 2669E2598817J), pas QP0
+qui était déjà faux dans les deux versions.
+
+Ces références déclarent une chaudière bois hybride mais publient souvent
+`QP0 = 0,5 % Pn` et `Rpn = 91 + 3 logPn` (ligne gaz, pas bois). Il reste à
+qualifier leurs caractéristiques et l'association CH/ECS avant d'activer la
+correction complète, sans attribuer leurs classes au défaut de référence sur
+le seul désaccord moteur. Ne pas réexécuter ce prototype global sans élément
+nouveau. La tâche K06 reste ouverte sur cette racine démontrée.
+
 ### TASK-K97 — Conversion PV historique EF→EP non retenue (24/10/2026)
 
 Après correction de la pondération des autoconsommations, variante isolée

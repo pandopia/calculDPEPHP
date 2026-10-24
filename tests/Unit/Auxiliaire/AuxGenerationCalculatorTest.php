@@ -180,6 +180,26 @@ XML;
         }
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('chaudieresBoisHybridesEcs')]
+    public function testLaPartieChaudiereBoisHybrideGardeSaLigneDAuxiliaires(int $type, int $ventouse): void
+    {
+        [$doc, $logement, $context] = $this->buildDoc('<logement><installation_ecs_collection><installation_ecs><donnee_intermediaire><besoin_ecs>1000</besoin_ecs><besoin_ecs_depensier>2000</besoin_ecs_depensier></donnee_intermediaire><generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>' . $type . '</enum_type_generateur_ecs_id><presence_ventouse>' . $ventouse . '</presence_ventouse></donnee_entree><donnee_intermediaire><pn>20000</pn></donnee_intermediaire></generateur_ecs></installation_ecs></installation_ecs_collection></logement>');
+        (new AuxGenerationCalculator())->calculate($logement, $context);
+        // §15.1 p.97 : chaudière bois, pas la partie PAC (auxiliaires nuls).
+        $expected = $ventouse === 1 ? (73.3 + 10.5 * 20) * 1000 / 20000 : 0.0;
+        self::assertEqualsWithDelta($expected, $this->efValue($doc, 'conso_auxiliaire_generation_ecs'), 1e-12);
+        self::assertEqualsWithDelta(2 * $expected, $this->efValue($doc, 'conso_auxiliaire_generation_ecs_depensier'), 1e-12);
+    }
+
+    public static function chaudieresBoisHybridesEcs(): iterable
+    {
+        foreach (range(124, 131) as $type) {
+            foreach ([0, 1] as $ventouse) {
+                yield "$type ventouse $ventouse" => [$type, $ventouse];
+            }
+        }
+    }
+
     public function testGasBoilerBatMode(): void
     {
         // bat_post2026 profile: Paux=84W, Pn=40kW, besoin_ch=21632.74, besoin_ecs=22349.06
