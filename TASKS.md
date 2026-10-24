@@ -271,7 +271,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K06 — Écarts résiduels de génération ECS
 
-- [ ] Owner: __  | Phase: K  | Estimation: 4h  | Priorité: moyenne
+- [~CB] Owner: CB  | Phase: K  | Estimation: 4h  | Priorité: moyenne
 - Acquis : `rendement_stockage` n'est plus écrit sans ballon ; les puissances
   saisies en `donnee_intermediaire` sont préservées et utilisées ; un chauffe-eau
   thermodynamique ne publie plus de `rendement_generation` séparé, son `cop`
