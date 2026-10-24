@@ -1,0 +1,100 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use CalculDpePHP\CalculDpePHP;
+use CalculDpePHP\Conformite\CorpusLocator;
+use CalculDpePHP\Conformite\OutputSchemaValidator;
+
+require __DIR__ . '/../vendor/autoload.php';
+
+$options = getopt('h', ['help', 'input:', 'corpus:', 'filter:', 'limit:', 'reference']);
+if (isset($options['h']) || isset($options['help'])) {
+    fwrite(STDOUT, <<<TXT
+    Usage : php bin/check-output-schema [options]
+
+      --input=XML        Audite ce XML déjà calculé, sans le recalculer
+      --corpus=NOM       Restreint les cas ADEME à ce jeu
+      --filter=TEXTE     Restreint les noms de cas
+      --limit=N          N premiers cas (entier strictement positif)
+      --reference        Audite les références au lieu du résultat du moteur
+
+    JSON sur stdout. Codes : 0 aucun bloc invalide ; 1 blocs invalides ;
+    2 erreur de lecture/calcul/schéma ou sélection vide.
+    Seuls les blocs donnee_intermediaire/sortie présents sous logement sont
+    contrôlés avec le XSD exact du modèle. Ce n'est pas une validation des
+    entrées ni de la complétude du document entier. Aucun compteur du rapport
+    de conformité ni aucune tolérance ne sont modifiés.
+
+    TXT);
+    exit(0);
+}
+
+$root = dirname(__DIR__);
+try {
+    if (isset($options['input']) && (isset($options['reference']) || isset($options['corpus']) || isset($options['filter']))) {
+        throw new InvalidArgumentException('--input ne se combine pas avec --reference, --corpus ou --filter.');
+    }
+    if (isset($options['limit']) && (!ctype_digit((string)$options['limit']) || (int)$options['limit'] < 1)) {
+        throw new InvalidArgumentException('--limit attend un entier strictement positif.');
+    }
+    $cases = isset($options['input'])
+        ? [['name' => basename((string)$options['input']), 'input' => (string)$options['input'], 'expected' => (string)$options['input']]]
+        : (new CorpusLocator($root))->locate($options['corpus'] ?? null, $options['filter'] ?? null);
+    if (isset($options['limit'])) {
+        $cases = array_slice($cases, 0, (int)$options['limit']);
+    }
+    if ($cases === []) {
+        throw new RuntimeException('Aucun cas trouvé.');
+    }
+} catch (Throwable $error) {
+    fwrite(STDERR, $error->getMessage() . "\n");
+    exit(2);
+}
+
+$validator = new OutputSchemaValidator($root . '/editeur/public/schemas');
+$reference = isset($options['reference']);
+$result = [
+    'generated_at' => gmdate('c'),
+    'kind' => isset($options['input']) ? 'existing_xml' : ($reference ? 'reference' : 'engine'),
+    'summary' => ['cases' => 0, 'validated_blocks' => 0, 'invalid_blocks' => 0, 'crashed' => 0],
+    'cases' => [],
+];
+foreach ($cases as $case) {
+    try {
+        $path = $reference ? $case['expected'] : $case['input'];
+        if (!is_file($path) || !is_readable($path)) {
+            throw new RuntimeException('XML absent ou illisible.');
+        }
+        $xml = file_get_contents($path);
+        if ($xml === false) {
+            throw new RuntimeException('Lecture XML impossible.');
+        }
+        $document = new DOMDocument();
+        $previous = libxml_use_internal_errors(true);
+        libxml_clear_errors();
+        try {
+            $loaded = $document->loadXML($xml, LIBXML_NONET);
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
+        if (!$loaded) {
+            throw new RuntimeException('XML non parsable.');
+        }
+        if (!isset($options['input']) && !$reference) {
+            $document->loadXML(CalculDpePHP::calculate($xml));
+        }
+        $audit = $validator->validate($document);
+        $result['summary']['validated_blocks'] += $audit['validated_blocks'];
+        $result['summary']['invalid_blocks'] += count($audit['issues']);
+        $result['cases'][] = ['name' => $case['name']] + $audit;
+    } catch (Throwable $error) {
+        $result['summary']['crashed']++;
+        $result['cases'][] = ['name' => $case['name'], 'error' => $error->getMessage()];
+    }
+    $result['summary']['cases']++;
+}
+fwrite(STDOUT, json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
+exit($result['summary']['crashed'] > 0 ? 2 : ($result['summary']['invalid_blocks'] > 0 ? 1 : 0));
