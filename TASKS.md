@@ -583,7 +583,7 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ### TASK-K63 — Modèle DPE 2.7 : technologies et ENR restant à couvrir
 
-- [~CB] Owner: CB | Phase: K | Priorité: haute
+- [ ] Owner: __ | Phase: K | Priorité: haute
 - Sources : `editeur/public/schemas/DPEv2.7.xsd` (V10.0.0, ADEME du
   16/10/2026) et `resources/textes/arrete-2026-06-11-epbd.pdf`
   (JO du 13/08/2026, texte 23, entrée en vigueur au 01/01/2027).
@@ -614,16 +614,14 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
   Ce type est refusé avant purge pour le modèle 2.7 uniquement. Sourcer la
   nouvelle répartition ventilation/aération et ses sorties avant de lever le
   garde ; ne pas écraser les valeurs historiques des anciens modèles.
-- **ENR réseau** : `prod_enr_rcfu` reste à 0. Les taux ENR/récupération sont
-  désormais extraits exhaustivement du classeur ADEME (six éditions, 5 643
-  lignes, source figée et SHA-256 dans `reference/tv_reseau_chaleur_enr`).
-  `ReseauChaleurFactorResolver::resolveRenewableShare()` distingue zéro,
-  absence et taux invalide, sans déduire le taux du CO₂ ni réutiliser un ancien
-  taux pour un réseau retiré. Reste à brancher les consommations CH/ECS/froid
-  au bon périmètre et au bon régime, avec propagation des taux indisponibles.
-  Qualifier aussi l'efficacité du réseau pour `mention_a0` (L.711-4).
-  Un réseau absent de l'annexe 7 n'est pas efficace par défaut (annexe 2 §1.1
-  du nouvel arrêté). Identifiants 2.7 : `[0-9]{4}C` et `[0-9]{4}F`.
+- **ENR réseau restant** : le chauffage et l'ECS sont raccordés aux taux
+  officiels, au bon millésime et au périmètre immeuble puis logement. Un taux
+  indisponible ou invalide refuse le total au lieu d'inventer zéro. Restent
+  le froid (avec ses conversions EF/EP/GES/coûts), les chaufferies/PAC
+  multi-bâtiment et la qualification d'efficacité pour `mention_a0`
+  (L.711-4). Le calcul de part ENR ne suffit pas à donner A0. Un réseau
+  absent de l'annexe 7 n'est pas efficace par défaut (annexe 2 §1.1).
+  Identifiants 2.7 : `[0-9]{4}C` et `[0-9]{4}F`.
 - **Plusieurs hybrides dans un même bloc** : le forfait ENR zonal utilise le
   Cch du système hybride. Si plusieurs parties PAC partagent une installation
   sans total individuel, conserver leurs consommations PAC individualisées

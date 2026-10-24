@@ -55,6 +55,7 @@ use DOMElement;
  * @spec-source  https://agirpourlatransition.ademe.fr/particuliers/amenager-maison/chauffer/pompe-chaleur
  * @xml-input    installation_chauffage.generateur_chauffage.donnee_intermediaire.{conso_ch, scop},
  *               installation_ecs.generateur_ecs.donnee_intermediaire.{conso_ecs, cop},
+ *               installation_{chauffage,ecs}.generateur_{chauffage,ecs}.donnee_entree.{enum_type_energie_id, identifiant_reseau_chaleur, date_arrete_reseau_chaleur},
  *               production_elec_enr.donnee_intermediaire.{production_pv, conso_elec_ac},
  *               sortie.ef_conso.conso_5_usages,
  *               sortie.apport_et_besoin.{besoin_ch, besoin_ecs}
@@ -66,7 +67,7 @@ use DOMElement;
  * @depends-on   \CalculDpePHP\ProductionElec\ProductionPvCalculator
  * @depends-on   \CalculDpePHP\Chauffage\Strategy\ChauffageSolaire
  * @depends-on   \CalculDpePHP\Chauffage\Strategy\SolaireInsertPoele
- * @tables       (aucune — les coefficients sont dans l'arrêté)
+ * @tables       reference/tv_reseau_chaleur_enr, reference/tv_arrete_reseau_chaleur
  */
 final class ProductionEnrCalculator implements CalculatorInterface
 {
@@ -148,7 +149,7 @@ final class ProductionEnrCalculator implements CalculatorInterface
             'prod_enr_chaleur_ambiante_pac' => $this->chaleurCaptee($accessor, $node, $context, geothermique: false),
             'prod_enr_geothermie_pac'       => $this->chaleurCaptee($accessor, $node, $context, geothermique: true),
             'prod_enr_chaleur_ambiante_cet' => $this->chaleurCapteeCet($accessor, $node),
-            'prod_enr_rcfu'                 => (float) ($context->get('enr.reseau_chaleur') ?? 0.0),
+            'prod_enr_rcfu'                 => $this->productionReseaux($accessor, $node, $context),
             'prod_enr_bois'                 => $this->consommationBois($accessor, $node),
         ];
 
@@ -441,6 +442,54 @@ final class ProductionEnrCalculator implements CalculatorInterface
         $ratio = $accessor->getFloatOrNull('./donnee_entree/ratio_virtualisation', $installation) ?? 1.0;
 
         return max(1e-9, $nbAppartements * $ratio / max(1.0, $sommeEchantillon));
+    }
+
+    /**
+     * Annexe 2 §1.2.6 p.7 (JO 13/08/2026) : la part renouvelable livrée
+     * est la consommation du réseau multipliée par son taux EnR&R publié.
+     * Somme des usages conventionnels en kWh EF, sans auxiliaires électriques
+     * ni consommations dépensières. La multiplicité reconstitue l'immeuble ;
+     * le prorata ENR logement/bâtiment est appliqué une seule fois ensuite.
+     * Ce calcul ne qualifie pas le réseau d'efficace pour la mention A0.
+     *
+     * @spec-formula F-ENR-reseau-consommation-taux
+     */
+    private function productionReseaux(
+        NodeAccessor $accessor,
+        DOMElement $logement,
+        CalculationContext $context,
+    ): float {
+        $total = 0.0;
+        foreach (['generateur_chauffage' => 'conso_ch', 'generateur_ecs' => 'conso_ecs'] as $balise => $consommation) {
+            foreach ($logement->getElementsByTagName($balise) as $generateur) {
+                if (!$generateur instanceof DOMElement
+                    || $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $generateur) !== 8) {
+                    continue;
+                }
+                $conso = $accessor->getFloatOrNull('./donnee_intermediaire/' . $consommation, $generateur) ?? 0.0;
+                if ($conso <= 0.0) {
+                    continue;
+                }
+                $taux = ReseauChaleurFactorResolver::resolveRenewableShare($generateur, $accessor, $context);
+                if ($taux === null) {
+                    // Un taux non publié ne signifie pas zéro renouvelable.
+                    // Ne jamais livrer un total ENR partiel comme un résultat.
+                    throw new \RuntimeException('Production renouvelable réseau : taux ENR indisponible ou invalide pour ' . $generateur->getNodePath() . '.');
+                }
+                $total += $conso * $this->multipliciteInstallation($generateur, $accessor) * $taux;
+            }
+        }
+
+        // Les réseaux de froid restent refusés en amont par DpeEngine :
+        // leurs conversions EF/EP/GES/coûts ne sont pas encore couvertes.
+        // Même en appel isolé, ne pas transformer leur absence en zéro ENR.
+        foreach ($logement->getElementsByTagName('climatisation') as $climatisation) {
+            if ($climatisation instanceof DOMElement
+                && $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $climatisation) === 15) {
+                throw new \RuntimeException('Production renouvelable réseau de froid non prise en charge : conversions EF/EP/GES/coûts à qualifier.');
+            }
+        }
+        return $total;
     }
 
     private function modele27(NodeAccessor $accessor): bool

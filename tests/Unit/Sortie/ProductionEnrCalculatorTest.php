@@ -23,6 +23,102 @@ final class ProductionEnrCalculatorTest extends TestCase
 {
     private const PROJECT_ROOT = __DIR__ . '/../../..';
 
+    #[DataProvider('perimetresReseaux')]
+    public function testLaProductionReseauSommeLesUsagesAvantLeProrataUnique(string $format, int $mode): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<XML
+            <dpe version="$format"><administratif><enum_version_id>2.7</enum_version_id><date_etablissement_dpe>2027-01-01</date_etablissement_dpe></administratif><logement>
+              <caracteristique_generale><enum_methode_application_dpe_log_id>$mode</enum_methode_application_dpe_log_id><surface_habitable_immeuble>1000</surface_habitable_immeuble><surface_habitable_logement>100</surface_habitable_logement></caracteristique_generale>
+              <installation_chauffage_collection><installation_chauffage><donnee_entree><rdim>2</rdim><cle_repartition_ch>0.7</cle_repartition_ch></donnee_entree>
+                <generateur_chauffage_collection><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>107</enum_type_generateur_ch_id><enum_type_energie_id>8</enum_type_energie_id><identifiant_reseau_chaleur>0103C</identifiant_reseau_chaleur></donnee_entree><donnee_intermediaire><conso_ch>1000</conso_ch><conso_ch_depensier>9000</conso_ch_depensier></donnee_intermediaire></generateur_chauffage></generateur_chauffage_collection>
+              </installation_chauffage></installation_chauffage_collection>
+              <installation_ecs_collection><installation_ecs><donnee_entree><rdim>3</rdim><cle_repartition_ecs>0.8</cle_repartition_ecs></donnee_entree>
+                <generateur_ecs_collection><generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>72</enum_type_generateur_ecs_id><enum_type_energie_id>8</enum_type_energie_id><identifiant_reseau_chaleur>0103C</identifiant_reseau_chaleur></donnee_entree><donnee_intermediaire><conso_ecs>200</conso_ecs></donnee_intermediaire></generateur_ecs></generateur_ecs_collection>
+              </installation_ecs></installation_ecs_collection>
+              <sortie><ef_conso><conso_5_usages>400</conso_5_usages></ef_conso><ep_conso><classe_bilan_dpe>A</classe_bilan_dpe></ep_conso></sortie>
+            </logement></dpe>
+            XML);
+        $ctx = new CalculationContext($doc, new TableRepository(self::PROJECT_ROOT . '/resources/tables'));
+        // L'ancien canal non alimenté ne doit ni écraser ni ajouter le calcul.
+        $ctx->set('enr.reseau_chaleur', 999999);
+        (new ProductionEnrCalculator())->calculate($doc->getElementsByTagName('logement')->item(0), $ctx);
+        $part = in_array($mode, [10, 11, 12, 13, 33, 34, 38, 39, 40], true) ? 0.1 : 1.0;
+        $enr = (1000 * 2 + 200 * 3) * 0.857 * $part;
+        $xp = new \DOMXPath($doc);
+        self::assertEqualsWithDelta($enr, $xp->evaluate('number(//prod_enr_rcfu)'), 1e-9);
+        self::assertEqualsWithDelta($enr, $xp->evaluate('number(//prod_enr_totale)'), 1e-9);
+        self::assertEqualsWithDelta($enr / 400, $xp->evaluate('number(//prod_enr_pourcentage)'), 1e-9);
+        self::assertSame('0', $xp->evaluate('string(//mention_a0)'));
+    }
+
+    public static function perimetresReseaux(): iterable
+    {
+        foreach (['2', '0.1.0'] as $format) {
+            foreach ([1, 8, 9, 10, 11, 12, 13, 33, 34, 38, 39, 40] as $mode) { yield "$format, mode $mode" => [$format, $mode]; }
+        }
+    }
+
+    #[DataProvider('tauxReseauxDisponibles')]
+    public function testLaProductionReseauSuitLaDateEtLeVraiZero(string $date, string $id, float $expected): void
+    {
+        $sortie = $this->sortie('2.7', '<installation_chauffage_collection><installation_chauffage><generateur_chauffage_collection><generateur_chauffage><donnee_entree><enum_type_energie_id>8</enum_type_energie_id><identifiant_reseau_chaleur>' . $id . '</identifiant_reseau_chaleur><date_arrete_reseau_chaleur>' . $date . '</date_arrete_reseau_chaleur></donnee_entree><donnee_intermediaire><conso_ch>1000</conso_ch></donnee_intermediaire></generateur_chauffage></generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection>');
+        self::assertEqualsWithDelta($expected, (float)$this->valeur($sortie, 'prod_enr_rcfu'), 1e-9);
+    }
+
+    public static function tauxReseauxDisponibles(): iterable
+    {
+        yield 'taux 2021 explicite' => ['2021-10-21', '0103C', 715.0];
+        yield 'taux 2026 explicite' => ['2026-03-30', '0103C', 857.0];
+        yield 'zéro officiel' => ['2026-03-30', '0611C', 0.0];
+        yield 'autre réseau chaleur sans taux historique' => ['2026-03-30', '9999C', 0.0];
+    }
+
+    #[DataProvider('tauxReseauxIndisponibles')]
+    public function testUnTauxIndisponibleNEstPasUnZero(string $id, string $date, string $type): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('taux ENR');
+        $this->sortie('2.7', '<installation_ecs_collection><installation_ecs><generateur_ecs_collection><generateur_ecs><donnee_entree><enum_type_energie_id>8</enum_type_energie_id><identifiant_reseau_chaleur>' . $id . '</identifiant_reseau_chaleur><date_arrete_reseau_chaleur>' . $date . '</date_arrete_reseau_chaleur>' . $type . '</donnee_entree><donnee_intermediaire><conso_ecs>100</conso_ecs></donnee_intermediaire></generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection>');
+    }
+
+    public static function tauxReseauxIndisponibles(): iterable
+    {
+        yield 'identifiant absent' => ['', '2026-03-30', ''];
+        yield 'identifiant mal formé' => ['103C', '2026-03-30', ''];
+        yield 'ancienne édition sans taux' => ['0103C', '2020-10-12', ''];
+        yield 'anomalie officielle non plafonnée' => ['5415C', '2023-03-16', ''];
+        yield 'froid sans taux' => ['0606F', '2026-03-30', ''];
+        yield 'chaufferie multi bâtiment non qualifiée' => ['0103C', '2026-03-30', '<enum_type_generateur_ecs_id>74</enum_type_generateur_ecs_id>'];
+    }
+
+    public function testLeReseauDeFroidNonCouvertNEstPasSilencieusementIgnore(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('réseau de froid');
+        $this->sortie('2.7', '<climatisation_collection><climatisation><donnee_entree><enum_type_energie_id>15</enum_type_energie_id><identifiant_reseau_chaleur>0606F</identifiant_reseau_chaleur></donnee_entree><donnee_intermediaire><conso_fr>1000</conso_fr></donnee_intermediaire></climatisation></climatisation_collection>');
+    }
+
+    public function testUnReseauSansConsommationNeNecessitePasUnTauxInvente(): void
+    {
+        $sortie = $this->sortie('2.7', '<installation_ecs_collection><installation_ecs><generateur_ecs_collection><generateur_ecs><donnee_entree><enum_type_energie_id>8</enum_type_energie_id></donnee_entree><donnee_intermediaire><conso_ecs>0</conso_ecs></donnee_intermediaire></generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection>');
+        self::assertSame('0', $this->valeur($sortie, 'prod_enr_rcfu'));
+    }
+
+    public function testUnGenerateurGazAvecUnIdentifiantParasiteNEstPasUnReseau(): void
+    {
+        $sortie = $this->sortie('2.7', '<installation_ecs_collection><installation_ecs><generateur_ecs_collection><generateur_ecs><donnee_entree><enum_type_energie_id>2</enum_type_energie_id><identifiant_reseau_chaleur>0103C</identifiant_reseau_chaleur></donnee_entree><donnee_intermediaire><conso_ecs>1000</conso_ecs></donnee_intermediaire></generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection>');
+        self::assertSame('0', $this->valeur($sortie, 'prod_enr_rcfu'));
+    }
+
+    public function testLesAnciensModelesNeDemandentPasDeTauxEnr(): void
+    {
+        foreach (['2.4', '2.5', '2.6'] as $version) {
+            $sortie = $this->sortie($version, '<installation_ecs_collection><installation_ecs><generateur_ecs_collection><generateur_ecs><donnee_entree><enum_type_energie_id>8</enum_type_energie_id></donnee_entree><donnee_intermediaire><conso_ecs>1000</conso_ecs></donnee_intermediaire></generateur_ecs></generateur_ecs_collection></installation_ecs></installation_ecs_collection>');
+            self::assertNull($this->valeur($sortie, 'production_enr'));
+        }
+    }
+
     /**
      * @param array<string, string> $options version, classe, et les blocs
      */
@@ -472,10 +568,11 @@ final class ProductionEnrCalculatorTest extends TestCase
     #[DataProvider('casMentionA0')]
     public function testMentionA0(string $classe, int $energie, string $attendu): void
     {
+        $reseau = $energie === 8 ? '<identifiant_reseau_chaleur>0103C</identifiant_reseau_chaleur><date_arrete_reseau_chaleur>2026-03-30</date_arrete_reseau_chaleur>' : '';
         $sortie = $this->sortie('2.7', <<<XML
             <installation_chauffage_collection><installation_chauffage><generateur_chauffage_collection>
               <generateur_chauffage>
-                <donnee_entree><enum_type_generateur_ch_id>97</enum_type_generateur_ch_id><enum_type_energie_id>{$energie}</enum_type_energie_id></donnee_entree>
+                <donnee_entree><enum_type_generateur_ch_id>97</enum_type_generateur_ch_id><enum_type_energie_id>{$energie}</enum_type_energie_id>{$reseau}</donnee_entree>
                 <donnee_intermediaire><conso_ch>1000</conso_ch></donnee_intermediaire>
               </generateur_chauffage>
             </generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection>
