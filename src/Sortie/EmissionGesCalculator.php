@@ -21,7 +21,8 @@ use DOMElement;
  *   Électricité ECL  : 0.069  Électricité AUX   : 0.064
  *   Électricité FR   : 0.064
  *   Gaz naturel      : 0.227  Fioul domestique  : 0.324
- *   Bois (toutes formes) : 0.030  Propane : 0.272
+ *   Bois bûches/granulés : 0.030 ; plaquettes : 0.024 ; propane : 0.272
+ *   Autres combustibles fossiles : 0.324 (pas le facteur charbon 0.385)
  *   Réseau chaleur : contenu CO2 ACV de l'arrêté annuel, sinon 0.385
  *
  * Met à jour classe_bilan_dpe = WORST(classe_energie, classe_ges).
@@ -29,6 +30,8 @@ use DOMElement;
  * @spec-section  1
  * @spec-pages    6
  * @spec-source   resources/specsplitted/00-meta/01-methode-conventionnelle.md
+ * @spec-source   https://rt-re-batiment.developpement-durable.gouv.fr/IMG/pdf/consolide_annexes_arrete_du_31_03_2021_relatif_au_dpe_habitation.pdf (annexe 4)
+ * @spec-source   https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000043353421 (article 1, 9°)
  * @xml-input     sortie.ef_conso.*
  *                installation_chauffage.generateur_chauffage_collection.generateur_chauffage.donnee_entree.enum_type_energie_id
  *                installation_ecs.generateur_ecs_collection.generateur_ecs.donnee_entree.enum_type_energie_id
@@ -72,15 +75,15 @@ final class EmissionGesCalculator implements CalculatorInterface
         3 => 0.324,  // fioul domestique
         4 => 0.030,  // bois – bûches
         5 => 0.030,  // bois – granulés
-        6 => 0.030,  // bois – plaquettes forestières
-        7 => 0.030,  // bois – plaquettes d'industrie
+        6 => 0.024,  // bois – plaquettes forestières, annexe 4.1
+        7 => 0.024,  // bois – plaquettes d'industrie, annexe 4.1
         8 => 0.110,  // réseau de chauffage urbain
         9 => 0.272,  // propane
         10 => 0.272, // butane
         11 => 0.385, // charbon
         12 => 0.000, // électricité renouvelable utilisée dans le bâtiment
         13 => 0.272, // GPL
-        14 => 0.385, // autre combustible fossile
+        14 => 0.324, // autre combustible fossile, distinct du charbon
         15 => 0.000, // réseau de froid urbain (hors usages CH/ECS)
     ];
 

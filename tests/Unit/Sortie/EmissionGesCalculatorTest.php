@@ -24,6 +24,32 @@ final class EmissionGesCalculatorTest extends TestCase
 {
     private const PROJECT_ROOT = __DIR__ . '/../../..';
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('facteursCombustibles')]
+    public function testLeFacteurReglementaireEstLeMemeParUsageEtParEnergie(int $energy, float $factor): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML('<logement><caracteristique_generale><surface_habitable_logement>100</surface_habitable_logement></caracteristique_generale>'
+            . '<installation_chauffage_collection><installation_chauffage><donnee_intermediaire><conso_ch>1000</conso_ch></donnee_intermediaire><generateur_chauffage><donnee_entree><enum_type_energie_id>' . $energy . '</enum_type_energie_id></donnee_entree><donnee_intermediaire><conso_ch>1000</conso_ch></donnee_intermediaire></generateur_chauffage></installation_chauffage></installation_chauffage_collection>'
+            . '<installation_ecs_collection><installation_ecs><donnee_intermediaire><conso_ecs>2000</conso_ecs></donnee_intermediaire><generateur_ecs><donnee_entree><enum_type_energie_id>' . $energy . '</enum_type_energie_id></donnee_entree><donnee_intermediaire><conso_ecs>2000</conso_ecs></donnee_intermediaire></generateur_ecs></installation_ecs></installation_ecs_collection></logement>');
+        $ctx = $this->makeContext($doc);
+        (new EmissionGesCalculator())->calculate($doc->documentElement, $ctx);
+        (new \CalculDpePHP\Sortie\SortieParEnergieAggregator())->calculate($doc->documentElement, $ctx);
+        $xp = new \DOMXPath($doc);
+        foreach (['ch' => 1000, 'ecs' => 2000] as $usage => $conso) {
+            self::assertEqualsWithDelta($conso * $factor, $xp->evaluate('number(//emission_ges/emission_ges_' . $usage . ')'), 1e-10);
+            self::assertEqualsWithDelta($conso * $factor, $xp->evaluate('number(//sortie_par_energie[enum_type_energie_id=' . $energy . ']/emission_ges_' . $usage . ')'), 1e-10);
+        }
+    }
+
+    public static function facteursCombustibles(): iterable
+    {
+        // Annexe 4 habitation → annexe 4.1 du 15/09/2006, modifiée le 31/03/2021.
+        foreach ([2 => 0.227, 3 => 0.324, 4 => 0.030, 5 => 0.030, 6 => 0.024,
+            7 => 0.024, 9 => 0.272, 10 => 0.272, 11 => 0.385, 12 => 0.0, 13 => 0.272, 14 => 0.324] as $energy => $factor) {
+            yield 'energie ' . $energy => [$energy, $factor];
+        }
+    }
+
     private function makeContext(DOMDocument $doc, Period $period = Period::PRE_2026): CalculationContext
     {
         return new CalculationContext(
