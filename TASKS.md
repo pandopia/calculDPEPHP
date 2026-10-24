@@ -59,6 +59,18 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 
 ## Phase K — Conformité au corpus ADEME
 
+### TASK-K99 — Apports directs ETS sans association explicite
+
+- [ ] Owner: __ | Phase: K | Priorité: moyenne
+- §6.3 p.51–52 : Ssd est désormais compté pour les baies reliées par
+  `reference_lnc` à une référence ETS unique. Sans lien, conserver le
+  traitement historique de Sst jusqu'à qualification de l'association.
+- Le rattachement automatique au seul ETS améliore sept cas mais en dégrade
+  trois de +34/+43/+58 : 2507E4042846N, 2507E4042848P, 2507E4042850R.
+  Variante écartée, chiffres dans TASKS_DONE.md ; aucun budget relevé.
+- 2601E2428885X a deux ETS et deux baies sans lien : ne choisir ni le premier
+  ni un tri arbitraire. Les références ETS dupliquées sont aussi ambiguës.
+
 ### TASK-K98 — Activer `sw_saisi` sur les fenêtres simples
 
 - [ ] Owner: __ | Phase: K | Priorité: moyenne
@@ -621,6 +633,12 @@ Statuts : `[ ]` à faire ; `[~ABC]` en cours par l'agent ABC.
 - **Module thermique d'appartement** : bouclage ECS 4 encore refusé.
 - **RCEG** : presence_rceg, fech_saisi, ftrans_saisi → fecs_rceg et
   besoin_ecs_rceg ; trouver les textes datés, pas un mapping depuis un cas.
+  Source officielle complémentaire trouvée : dépôt ADEME 05aabba7,
+  `svc_controle_coherence/controle_coherence/controle_coherence.py`, lignes
+  2114–2288 : forfait 0,1104, méthode justifiée 0,92×Fech×Ftrans,
+  besoin ajusté Becs×(1−Fecs). Reste le texte paginé et le branchement de
+  tous les consommateurs (stockage, rendements, auxiliaires, solaire et
+  scénarios), pas seulement la publication de deux balises. Garde conservé.
 - **Couverture PAC hybride justifiée** : couverture_pac_hybride_saisi ;
   qualifier aussi son effet sur la charge de la chaudière et les ENR, pas
   seulement le partage final des consommations.

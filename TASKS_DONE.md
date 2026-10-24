@@ -19,6 +19,23 @@ une.
 
 ## Enquêtes closes
 
+### ETS — rattachement automatique au seul espace tampon non activé (24/10/2026, nuit)
+
+Après correction de l'index public des 21 transparences, A/B isolé sur les
+mêmes 750 cas, mêmes moteur et tables sauf le calcul de Ssd, même juge :
+appliquer §6.3 p.51–52 avec toutes les baies d'adjacence 10 au seul ETS,
+même sans `reference_lnc`, donne 20 476 → 20 354 numériques hors tolérance
+(−122), sept cas améliorés et trois dégradés. Les budgets à relever seraient
+2507E4042846N +34, 2507E4042848P +43 et 2507E4042850R +58. Variante retirée.
+
+Le calcul avec association explicite univoque donne 20 476 → 20 297 (−179),
+cinq cas améliorés, aucun dégradé et aucun budget relevé. Ses 186 valeurs
+résolues et sept nouveaux écarts restent séparés dans la preuve A/B ; aucune
+tolérance n'est modifiée. Ce périmètre conserve la relation d'entrée au lieu
+de choisir la première véranda. La suite sans lien ou à références dupliquées
+est TASK-K99 ; rouvrir le rattachement global sur une règle d'association
+documentée ou des entrées qui lèvent l'ambiguïté, pas selon le score.
+
 ### Thermodynamique gaz CH — six références sans SCOP propre (24/10/2026, nuit)
 
 Sélection publique avant calcul : `qs=type_generateur_n1_installation_n1:*thermodynamique*gaz*`,
