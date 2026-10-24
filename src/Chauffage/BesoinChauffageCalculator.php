@@ -110,20 +110,22 @@ final class BesoinChauffageCalculator implements CalculatorInterface
         // du générateur dépendent en plus du besoin du mois via Dperj.
         $fj19 = (array)$context->get('apport.fj_mensuel', array_fill(1, 12, $fraction19));
         $fj21 = (array)$context->get('apport.fj_mensuel_dep', array_fill(1, 12, $fraction21));
-        $besoinCh = $besoinChDepensier = 0.0;
+        $besoinsMensuels = $besoinsMensuelsDep = [];
         for ($j = 1; $j <= 12; $j++) {
             $row = $tvS[$j] ?? [];
             $ratio19 = $sumNref19 > 0 ? (float)($row['Nref19'] ?? 0) / $sumNref19 : 0.0;
             $ratio21 = $sumNref21 > 0 ? (float)($row['Nref21'] ?? 0) / $sumNref21 : 0.0;
-            $besoinCh += max(0.0,
+            $besoinsMensuels[$j] = max(0.0,
                 $gv * (float)($row['DH19'] ?? 0) * (1 - (float)($fj19[$j] ?? 0)) / 1000
                 - ($pertesDistribRecup + $pertesStockageRecup) * $ratio19 - $pertesGenRecup[$j]
             );
-            $besoinChDepensier += max(0.0,
+            $besoinsMensuelsDep[$j] = max(0.0,
                 $gv * (float)($row['DH21'] ?? 0) * (1 - (float)($fj21[$j] ?? 0)) / 1000
                 - ($pertesDistribRecupDep + $pertesStockageRecupDep) * $ratio21 - $pertesGenRecupDep[$j]
             );
         }
+        $besoinCh = array_sum($besoinsMensuels);
+        $besoinChDepensier = array_sum($besoinsMensuelsDep);
 
         // ── 6. Écriture dans sortie.apport_et_besoin ───────────────────────────
         $sortie         = $accessor->ensureSortie($node);
@@ -134,6 +136,11 @@ final class BesoinChauffageCalculator implements CalculatorInterface
         // Stocker pour les calculators de consommation chauffage (§9.x)
         $context->set('chauffage.besoin_ch',          $besoinCh);
         $context->set('chauffage.besoin_ch_depensier', $besoinChDepensier);
+        // §9.8 p.65 : Bch_basej se calcule sur Bchj, après les apports et
+        // récupérations du mois, pas sur Bch annuel réparti au prorata de DH.
+        // Canal interne uniquement : ces tableaux ne sont pas des balises XSD.
+        $context->set('chauffage.besoin_ch_mensuel', $besoinsMensuels);
+        $context->set('chauffage.besoin_ch_mensuel_depensier', $besoinsMensuelsDep);
         $context->set('chauffage.gv',                 $gv);
         $context->set('ecs.pertes_stockage_recup',    $pertesStockageRecup);
     }

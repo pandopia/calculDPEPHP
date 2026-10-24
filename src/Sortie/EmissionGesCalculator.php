@@ -21,7 +21,8 @@ use DOMElement;
  *   Électricité ECL  : 0.069  Électricité AUX   : 0.064
  *   Électricité FR   : 0.064
  *   Gaz naturel      : 0.227  Fioul domestique  : 0.324
- *   Bois (toutes formes) : 0.030  Propane : 0.272
+ *   Bois bûches/granulés : 0.030 ; plaquettes : 0.024 ; propane : 0.272
+ *   Autres combustibles fossiles : 0.324 (pas le facteur charbon 0.385)
  *   Réseau chaleur : contenu CO2 ACV de l'arrêté annuel, sinon 0.385
  *
  * Met à jour classe_bilan_dpe = WORST(classe_energie, classe_ges).
@@ -29,6 +30,8 @@ use DOMElement;
  * @spec-section  1
  * @spec-pages    6
  * @spec-source   resources/specsplitted/00-meta/01-methode-conventionnelle.md
+ * @spec-source   https://rt-re-batiment.developpement-durable.gouv.fr/IMG/pdf/consolide_annexes_arrete_du_31_03_2021_relatif_au_dpe_habitation.pdf (annexe 4)
+ * @spec-source   https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000043353421 (article 1, 9°)
  * @xml-input     sortie.ef_conso.*
  *                installation_chauffage.generateur_chauffage_collection.generateur_chauffage.donnee_entree.enum_type_energie_id
  *                installation_ecs.generateur_ecs_collection.generateur_ecs.donnee_entree.enum_type_energie_id
@@ -72,15 +75,15 @@ final class EmissionGesCalculator implements CalculatorInterface
         3 => 0.324,  // fioul domestique
         4 => 0.030,  // bois – bûches
         5 => 0.030,  // bois – granulés
-        6 => 0.030,  // bois – plaquettes forestières
-        7 => 0.030,  // bois – plaquettes d'industrie
+        6 => 0.024,  // bois – plaquettes forestières, annexe 4.1
+        7 => 0.024,  // bois – plaquettes d'industrie, annexe 4.1
         8 => 0.110,  // réseau de chauffage urbain
         9 => 0.272,  // propane
         10 => 0.272, // butane
         11 => 0.385, // charbon
         12 => 0.000, // électricité renouvelable utilisée dans le bâtiment
         13 => 0.272, // GPL
-        14 => 0.385, // autre combustible fossile
+        14 => 0.324, // autre combustible fossile, distinct du charbon
         15 => 0.000, // réseau de froid urbain (hors usages CH/ECS)
     ];
 
@@ -122,7 +125,6 @@ final class EmissionGesCalculator implements CalculatorInterface
         // ── 2. Chauffage GES ─────────────────────────────────────────────────
         [$gesChTotal, $gesChDepTotal, $cleRepartitionCh] =
             $this->aggregateChGes($accessor, $node, $nbreAppt, $context);
-        $cleRepartitionCh = GeneratedApartment::heatingShare($node, $accessor, $cleRepartitionCh);
 
         $gesConsoChEf    = $isZone ? $gesChTotal * $cleRepartitionCh : $gesChTotal;
         // GES dépensier chauffage = GES conventionnel (même convention que l'EP :
@@ -260,7 +262,7 @@ final class EmissionGesCalculator implements CalculatorInterface
 
         $totalGes    = 0.0;
         $totalGesDep = 0.0;
-        $cleRepartition = 1.0;
+        $isZone = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement) !== null;
 
         foreach ($collection->childNodes as $install) {
             if (!$install instanceof DOMElement || $install->nodeName !== 'installation_chauffage') {
@@ -273,16 +275,13 @@ final class EmissionGesCalculator implements CalculatorInterface
 
             $gesFact = $this->facteurGesPondereParGenerateur($accessor, $install, $conso, $context);
 
-            $totalGes    += $conso    * $rdimEff * $gesFact;
-            $totalGesDep += $consoDep * $rdimEff * $gesFact;
-
             $cle = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ch', $install);
-            if ($cle !== null && $cle > 0.0) {
-                $cleRepartition = $cle;
-            }
+            $part = $isZone ? GeneratedApartment::heatingShare($logement, $accessor, $cle !== null && $cle > 0.0 ? $cle : 1.0) : 1.0;
+            $totalGes    += $conso    * $rdimEff * $gesFact * $part;
+            $totalGesDep += $consoDep * $rdimEff * $gesFact * $part;
         }
 
-        return [$totalGes, $totalGesDep, $cleRepartition];
+        return [$totalGes, $totalGesDep, 1.0];
     }
 
     /**
@@ -309,7 +308,7 @@ final class EmissionGesCalculator implements CalculatorInterface
 
         $totalGes    = 0.0;
         $totalGesDep = 0.0;
-        $cleRepartition = 1.0;
+        $isZone = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement) !== null;
 
         foreach ($collection->childNodes as $install) {
             if (!$install instanceof DOMElement || $install->nodeName !== 'installation_ecs') {
@@ -334,16 +333,13 @@ final class EmissionGesCalculator implements CalculatorInterface
                 $installGesDep += $consoDep * $gesFact;
             }
 
-            $totalGes    += $installGes    * $rdimEff;
-            $totalGesDep += $installGesDep * $rdimEff;
-
             $cle = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
-            if ($cle !== null && $cle > 0.0) {
-                $cleRepartition = $cle;
-            }
+            $part = $isZone && $cle !== null && $cle > 0.0 ? GeneratedApartment::hotWaterShare($logement, $accessor, $cle) : 1.0;
+            $totalGes    += $installGes    * $rdimEff * $part;
+            $totalGesDep += $installGesDep * $rdimEff * $part;
         }
 
-        return [$totalGes, $totalGesDep, $cleRepartition];
+        return [$totalGes, $totalGesDep, 1.0];
     }
 
     /**

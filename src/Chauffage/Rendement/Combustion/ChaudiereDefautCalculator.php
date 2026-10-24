@@ -24,10 +24,12 @@ use DOMElement;
  *
  * Ne s'applique qu'aux générateurs à combustion (IDs 20-97 excl. PAC et électrique).
  *
- * @spec-section 13.2.2
- * @spec-pages   86-92
+ * @spec-section 13.2.2, 17.2.1.1
+ * @spec-pages   86-92, 112
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
+ * @spec-source  resources/specsplitted/17-collectif/02-appartement.md
  * @xml-input    generateur_chauffage.donnee_entree.{enum_type_generateur_ch_id, tv_generateur_combustion_id, enum_methode_saisie_carac_sys_id, pn, presence_ventouse}
+ * @xml-input    generateur_chauffage.donnee_intermediaire.pn, installation_chauffage.donnee_entree.ratio_virtualisation
  * @xml-output   generateur_chauffage.donnee_intermediaire.{pn, rpn, rpint, qp0, pveilleuse}
  * @depends-on   \CalculDpePHP\Enveloppe\EnveloppeAggregator, \CalculDpePHP\Ventilation\VentilationAggregator
  * @tables       chauffage/tv_generateur_combustion
@@ -223,8 +225,14 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
         if ($entry instanceof \Closure) {
             // Pour les installations collectives, rpn est évalué à la puissance du bâtiment
             // (après plafonnement), mais pn stocké = puissance du logement (× ratio_virt).
-            // Pour pn saisi (non calculé), pas de virtualisation (ratio=1 implicite).
-            $pnBuildingKw = $pnKw;
+            // §17.2.1.1 p.112 : pn désigne Pe = a × Pn_collectif dans le
+            // générateur équivalent. Même saisi, Pe ne sert pas à évaluer
+            // Rpn/Rpint : ces rendements restent ceux du générateur collectif.
+            // Retrouver Pn_collectif ici ne modifie jamais la puissance saisie
+            // publiée. QP0 est ensuite rapporté au logement une seule fois.
+            $pnBuildingKw = ($pnSaisi !== null && $ratioForCharacteristics > 0.0 && $ratioForCharacteristics < 1.0)
+                ? $pnKw / $ratioForCharacteristics
+                : $pnKw;
             $pnApartmentW = $pnW;
             if ($ratioForCharacteristics > 0.0 && $ratioForCharacteristics < 1.0 && $pnSaisi === null) {
                 // pnW ici = pn_bâtiment (déjà plafonné après la table Pdim → Pn)
@@ -245,6 +253,8 @@ final class ChaudiereDefautCalculator implements CalculatorInterface
 
             $row = $entry($pnBuildingKw, $e, $f);
             // pn stocké = part du logement ; qp0/pveilleuse proportionnels si collectif
+            // Convention historique à départager en K95 : §17.2.1.1 décrit
+            // QP0(Pe), qui diffère de a×QP0(Pn) pour les lois non linéaires.
             $row['pn']    = $pnApartmentW;
             $row['qp0']   = ($row['qp0']   ?? 0.0) * ($ratioForCharacteristics < 1.0 ? $ratioForCharacteristics : 1.0);
             $row['pveil'] = ($row['pveil']  ?? 0.0) * ($ratioForCharacteristics < 1.0 ? $ratioForCharacteristics : 1.0);

@@ -17,6 +17,144 @@ final class AuxDistributionCalculatorTest extends TestCase
 {
     private const PROJECT_ROOT = __DIR__ . '/../../..';
 
+    private function circuitDocument(float $surfaceBatiment, float $surfaceCircuit, float $rdim = 1.0): DOMDocument
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<XML
+            <logement><caracteristique_generale>
+              <enum_methode_application_dpe_log_id>7</enum_methode_application_dpe_log_id>
+              <surface_habitable_immeuble>$surfaceBatiment</surface_habitable_immeuble><nombre_appartement>10</nombre_appartement>
+            </caracteristique_generale><installation_chauffage_collection><installation_chauffage>
+              <donnee_entree><surface_chauffee>$surfaceCircuit</surface_chauffee><rdim>$rdim</rdim>
+                <enum_methode_calcul_conso_id>1</enum_methode_calcul_conso_id><enum_type_installation_id>1</enum_type_installation_id>
+                <enum_cfg_installation_ch_id>3</enum_cfg_installation_ch_id><nombre_niveau_installation_ch>1</nombre_niveau_installation_ch>
+              </donnee_entree>
+              <emetteur_chauffage_collection>
+                <emetteur_chauffage><donnee_entree><surface_chauffee>$surfaceCircuit</surface_chauffee>
+                  <enum_type_emission_distribution_id>5</enum_type_emission_distribution_id><enum_temp_distribution_ch_id>1</enum_temp_distribution_ch_id>
+                  <enum_lien_generateur_emetteur_id>1</enum_lien_generateur_emetteur_id></donnee_entree>
+                  <donnee_intermediaire><i0>1</i0><rendement_emission>1</rendement_emission><rendement_distribution>1</rendement_distribution><rendement_regulation>1</rendement_regulation></donnee_intermediaire>
+                </emetteur_chauffage>
+                <emetteur_chauffage><donnee_entree><surface_chauffee>$surfaceCircuit</surface_chauffee>
+                  <enum_type_emission_distribution_id>21</enum_type_emission_distribution_id><enum_temp_distribution_ch_id>1</enum_temp_distribution_ch_id>
+                  <enum_lien_generateur_emetteur_id>2</enum_lien_generateur_emetteur_id></donnee_entree>
+                  <donnee_intermediaire><i0>1</i0><rendement_emission>1</rendement_emission><rendement_distribution>1</rendement_distribution><rendement_regulation>1</rendement_regulation></donnee_intermediaire>
+                </emetteur_chauffage>
+              </emetteur_chauffage_collection>
+              <generateur_chauffage_collection>
+                <generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>3</enum_type_generateur_ch_id>
+                  <enum_lien_generateur_emetteur_id>1</enum_lien_generateur_emetteur_id></donnee_entree>
+                  <donnee_intermediaire><scop>3</scop></donnee_intermediaire></generateur_chauffage>
+                <generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>39</enum_type_generateur_ch_id>
+                  <enum_lien_generateur_emetteur_id>2</enum_lien_generateur_emetteur_id></donnee_entree>
+                  <donnee_intermediaire><rendement_generation>0.7</rendement_generation></donnee_intermediaire></generateur_chauffage>
+              </generateur_chauffage_collection>
+            </installation_chauffage></installation_chauffage_collection></logement>
+            XML);
+        return $doc;
+    }
+
+    /** §15.2.1 p.98-99, réseau aéraulique : ΔP=35, Fcot=0,802, Δθ=15. */
+    private function consoCircuitAttendue(float $surface, float $gv, float $part = 1.0): float
+    {
+        $lem = 5 * 0.802 * (1 + sqrt($surface));
+        $qvem = 0.001 * $gv * (20 + 9.5) * $part / (1.163 * 15);
+        $shFactor = max(1, $surface / 400);
+        return max(30, 6.44 * ((0.15 * $lem + 35) * $qvem / $shFactor) ** 0.676 * $shFactor) * 5792 / 1000;
+    }
+
+    public function testUnCircuitNeGranditPasAvecLesAutresPartiesDuBatiment(): void
+    {
+        foreach ([1000.0, 2000.0] as $surfaceBatiment) {
+            $doc = $this->circuitDocument($surfaceBatiment, 400.0);
+            $ctx = $this->buildCtx($doc, ['enveloppe.dp_parois' => $surfaceBatiment * 5]);
+            (new AuxDistributionCalculator())->calculate($doc->documentElement, $ctx);
+            // Le circuit reste à 400 m² et GV_circuit=2 000 W/K.
+            self::assertEqualsWithDelta($this->consoCircuitAttendue(400, 2000), $this->efValue($doc, 'conso_auxiliaire_distribution_ch'), 1e-8);
+        }
+    }
+
+    public function testLaSurfaceDuCircuitEstDiviseeParSaMultipliciteUneSeuleFois(): void
+    {
+        $doc = $this->circuitDocument(1000, 400, 4);
+        $ctx = $this->buildCtx($doc, ['enveloppe.dp_parois' => 5000]);
+        (new AuxDistributionCalculator())->calculate($doc->documentElement, $ctx);
+        self::assertEqualsWithDelta(4 * $this->consoCircuitAttendue(100, 500), $this->efValue($doc, 'conso_auxiliaire_distribution_ch'), 1e-8);
+    }
+
+    public static function bilansDeCircuit(): iterable
+    {
+        yield 'liens complets' => ['complet', 0.75];
+        yield 'ordre des générateurs inversé' => ['ordre_generateurs', 0.75];
+        yield 'ordre des émetteurs inversé' => ['ordre_emetteurs', 0.75];
+        yield 'aucune part publiée' => ['sans_parts', 1.0];
+        yield 'une part manque' => ['part_manquante', 1.0];
+        yield 'lien générateur absent' => ['lien_generateur_manquant', 1.0];
+        yield 'lien émetteur absent' => ['lien_emetteur_manquant', 1.0];
+        yield 'type émetteur inconnu' => ['type_emetteur_inconnu', 1.0];
+        yield 'tous les émetteurs sur réseau' => ['sans_appoint_autonome', 1.0];
+        yield 'circuit jamais sollicité' => ['circuit_inutilise', 0.0];
+        yield 'générateurs absents' => ['sans_generateurs', 1.0];
+    }
+
+    #[DataProvider('bilansDeCircuit')]
+    public function testLeDebitSuitSeulementLeBesoinDesGenerateursReliesAuReseau(string $variante, float $partAttendue): void
+    {
+        $doc = $this->circuitDocument(200, 200);
+        $ctx = $this->buildCtx($doc, ['enveloppe.dp_parois' => 1000]);
+        $xp = new DOMXPath($doc);
+        foreach (['ordre_generateurs' => 'generateur_chauffage_collection', 'ordre_emetteurs' => 'emetteur_chauffage_collection'] as $cas => $collection) {
+            if ($variante === $cas) {
+                $noeud = $doc->getElementsByTagName($collection)->item(0);
+                $noeud->appendChild($noeud->firstElementChild);
+            }
+        }
+        $aRetirer = match ($variante) {
+            'lien_generateur_manquant' => '//generateur_chauffage[1]/donnee_entree/enum_lien_generateur_emetteur_id',
+            'lien_emetteur_manquant' => '//emetteur_chauffage[1]/donnee_entree/enum_lien_generateur_emetteur_id',
+            'sans_generateurs' => '//generateur_chauffage_collection',
+            default => null,
+        };
+        if ($aRetirer !== null) {
+            $noeud = $xp->query($aRetirer)->item(0);
+            $noeud->parentNode->removeChild($noeud);
+        }
+        if (in_array($variante, ['type_emetteur_inconnu', 'sans_appoint_autonome'], true)) {
+            $xp->query('//emetteur_chauffage[2]/donnee_entree/enum_type_emission_distribution_id')->item(0)->textContent
+                = $variante === 'type_emetteur_inconnu' ? '999' : '37';
+        }
+        foreach ($doc->getElementsByTagName('generateur_chauffage') as $gen) {
+            $principal = $xp->evaluate('string(./donnee_entree/enum_type_generateur_ch_id)', $gen) === '3';
+            if ($variante === 'sans_parts' || ($variante === 'part_manquante' && !$principal)) {
+                continue;
+            }
+            $part = $variante === 'circuit_inutilise' ? ($principal ? 0.0 : 1.0) : ($principal ? 0.75 : 0.25);
+            \CalculDpePHP\Chauffage\PartBesoinGenerateur::publier($ctx, $gen, $part);
+        }
+        if ($variante === 'sans_generateurs') {
+            $ctx->set(\CalculDpePHP\Chauffage\PartBesoinGenerateur::CLE_CONTEXTE, ['autre installation' => 1.0]);
+        }
+        (new AuxDistributionCalculator())->calculate($doc->documentElement, $ctx);
+        $attendu = $partAttendue === 0.0 ? 0.0 : $this->consoCircuitAttendue(200, 1000, $partAttendue);
+        self::assertEqualsWithDelta($attendu, $this->efValue($doc, 'conso_auxiliaire_distribution_ch'), 1e-8);
+    }
+
+    public function testLePipelineCalculeLePartageAvantLeCirculateur(): void
+    {
+        $doc = $this->circuitDocument(200, 200);
+        $ctx = $this->buildCtx($doc, [
+            'enveloppe.dp_parois' => 1000,
+            'chauffage.gv' => 1000,
+            'chauffage.besoin_ch' => 10000,
+            'chauffage.besoin_ch_depensier' => 12000,
+        ]);
+        $pipeline = new \CalculDpePHP\Engine\CalculatorPipeline();
+        $pipeline->add(new AuxDistributionCalculator());
+        $pipeline->add(new \CalculDpePHP\Chauffage\Strategy\InsertPoeleAppoint());
+        $pipeline->run($doc, $ctx);
+        self::assertEqualsWithDelta($this->consoCircuitAttendue(200, 1000, 0.75), $this->efValue($doc, 'conso_auxiliaire_distribution_ch'), 1e-8);
+    }
+
     private function buildCtx(DOMDocument $doc, array $contextValues = []): CalculationContext
     {
         $ctx = new CalculationContext(
@@ -411,7 +549,7 @@ XML;
         $this->assertEqualsWithDelta(0.0, $val, 1e-9);
     }
 
-    public function testZoneModeScalesResult(): void
+    public function testAppartementGenereScalesResult(): void
     {
         // Zone mode: surface_habitable_logement present → isZone = true
         // cle_repartition_ecs = 0.056227 → result × 0.056227
@@ -424,7 +562,7 @@ XML;
 <?xml version="1.0"?>
 <logement>
   <caracteristique_generale>
-    <enum_methode_application_dpe_log_id>5</enum_methode_application_dpe_log_id>
+    <enum_methode_application_dpe_log_id>11</enum_methode_application_dpe_log_id>
     <surface_habitable_logement>62.86</surface_habitable_logement>
     <surface_habitable_immeuble>1034.74</surface_habitable_immeuble>
   </caracteristique_generale>
@@ -456,6 +594,7 @@ XML;
 
         (new AuxDistributionCalculator())->calculate($doc->documentElement, $ctx);
 
+        // Clé réservée par le XSD à l'appartement généré, pas au mode direct 5.
         // Building-level ≈ 200.24 kWh × cle_repartition_ecs = 200.24 × 0.056227 ≈ 11.26
         // Expected from verif: 11.491 kWh (also ~2% higher)
         $this->assertEqualsWithDelta(11.26, $this->efValue($doc, 'conso_auxiliaire_distribution_ecs'), 0.2);
@@ -762,6 +901,54 @@ XML);
             $this->efValue($doc, 'conso_auxiliaire_distribution_ecs'),
             1e-6,
         );
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('plusieursReseauxEcs')]
+    public function testLesTraceursEcsPortentLeursClesPropres(?int $mode, bool $inverse): void
+    {
+        $installations = [];
+        foreach ([[1000, 0.2], [2000, 0.3]] as [$besoin, $cle]) {
+            $installations[] = '<installation_ecs><donnee_entree><enum_type_installation_id>2</enum_type_installation_id><enum_bouclage_reseau_ecs_id>3</enum_bouclage_reseau_ecs_id><cle_repartition_ecs>' . $cle . '</cle_repartition_ecs></donnee_entree><donnee_intermediaire><besoin_ecs>' . $besoin . '</besoin_ecs></donnee_intermediaire></installation_ecs>';
+        }
+        $modeXml = $mode === null ? '' : '<enum_methode_application_dpe_log_id>' . $mode . '</enum_methode_application_dpe_log_id>';
+        $surface = $mode === 6 ? '' : '<surface_habitable_logement>50</surface_habitable_logement>';
+        $doc = new DOMDocument();
+        $doc->loadXML('<dpe version="2"><logement><caracteristique_generale>' . $modeXml . $surface . '</caracteristique_generale><installation_ecs_collection>' . implode('', $inverse ? array_reverse($installations) : $installations) . '</installation_ecs_collection></logement></dpe>');
+        (new AuxDistributionCalculator())->calculate($doc->getElementsByTagName('logement')->item(0), $this->buildCtx($doc));
+        $expected = $mode === null || $mode === 10 ? 0.14 * (1000 * 0.2 + 2000 * 0.3) : 0.14 * 3000;
+        self::assertEqualsWithDelta($expected, $this->efValue($doc, 'conso_auxiliaire_distribution_ecs'), 1e-10);
+    }
+
+    public static function plusieursReseauxEcs(): iterable
+    {
+        foreach ([null, 5, 6, 10] as $mode) {
+            foreach ([false, true] as $inverse) {
+                yield ($mode ?? 'minimal') . ' ordre ' . (int)$inverse => [$mode, $inverse];
+            }
+        }
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('unitesTraceur')]
+    public function testLeTraceurConvertitLeBesoinXmlEnKwh(string $format, int $mode, ?float $becs): void
+    {
+        $besoinXml = $becs === null ? '' : '<besoin_ecs>' . ($becs * ($format === '0.1.0' ? 1000 : 1)) . '</besoin_ecs>';
+        $surface = $mode === 6 ? '' : '<surface_habitable_logement>50</surface_habitable_logement>';
+        $doc = new DOMDocument();
+        $doc->loadXML('<dpe version="' . $format . '"><logement><caracteristique_generale><enum_methode_application_dpe_log_id>' . $mode . '</enum_methode_application_dpe_log_id>' . $surface . '</caracteristique_generale><installation_ecs_collection><installation_ecs><donnee_entree><enum_type_installation_id>2</enum_type_installation_id><enum_bouclage_reseau_ecs_id>3</enum_bouclage_reseau_ecs_id><cle_repartition_ecs>0.2</cle_repartition_ecs></donnee_entree><donnee_intermediaire>' . $besoinXml . '</donnee_intermediaire></installation_ecs></installation_ecs_collection></logement></dpe>');
+        (new AuxDistributionCalculator())->calculate($doc->getElementsByTagName('logement')->item(0), $this->buildCtx($doc));
+        $expected = 0.14 * ($becs ?? 0) * ($mode === 10 ? 0.2 : 1.0);
+        self::assertEqualsWithDelta($expected, $this->efValue($doc, 'conso_auxiliaire_distribution_ecs'), 1e-10);
+    }
+
+    public static function unitesTraceur(): iterable
+    {
+        foreach (['2', '0.1.0'] as $format) {
+            foreach ([5, 6, 10] as $mode) {
+                foreach ([null, 0.0, 2000.0] as $becs) {
+                    yield "$format mode $mode besoin " . ($becs ?? 'absent') => [$format, $mode, $becs];
+                }
+            }
+        }
     }
 
     /** Un réseau non bouclé et sans traceur n'appelle aucun auxiliaire. */

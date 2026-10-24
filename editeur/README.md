@@ -23,9 +23,15 @@ npm run test:corpus  # + aller-retour sur le corpus local resources/XML (s'il es
 `editeur/` (tests, puis `ng build --base-href /calculDPEPHP/`). Prérequis
 côté dépôt : *Settings › Pages › Source = GitHub Actions*.
 
-Prérequis : Node 20.19 ou plus récent (Angular 20). Le build produit un site
+Prérequis : Node 24 LTS (Angular 21, Vitest 4). La CI vérifie les contraintes
+de runtime avec `npm ci --ignore-scripts --engine-strict`. Le build produit un site
 statique (≈ 350 ko de JavaScript, plus les XSD et le validateur WebAssembly
 chargés à la demande) ; aucun serveur applicatif n'est nécessaire.
+
+Le correctif transitif `undici` 7.30.1 est imposé uniquement sous
+`@angular/build` : Angular 21.2.28 verrouille encore 7.29.1, touché notamment
+par [GHSA-xjj6-f33q-929c](https://github.com/advisories/GHSA-xjj6-f33q-929c).
+Retirer cet override dès que le builder dépend d'une version corrigée.
 
 ## Analyse du format
 

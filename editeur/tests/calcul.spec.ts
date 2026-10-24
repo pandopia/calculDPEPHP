@@ -7,7 +7,7 @@ import { MoteurPandopia, RapportPdfPandopia } from '../src/app/core/calcul/moteu
 import { buildModel } from '../src/app/core/metier/model';
 import { indexedPath, parseXml } from '../src/app/core/xml/safe-xml';
 import { semanticDiff } from '../src/app/core/xml/semantic-compare';
-import { FIXTURES_DIR, fixture, nodeSchemas } from './helpers';
+import { FIXTURES_DIR, blobResponse, fixture, nodeSchemas } from './helpers';
 
 // réponse réelle du moteur Pandopia pour ce DPE, enregistrée (pas d'appel réseau en test)
 const CALCULE = readFileSync(join(FIXTURES_DIR, '2600E0083091A.calcule.xml'), 'utf8');
@@ -78,8 +78,8 @@ describe('intégration du calcul', () => {
 });
 
 describe('rapport PDF', () => {
-  const pdf = (body: BodyInit, status = 200, type = 'application/pdf') =>
-    (async () => new Response(body, { status, headers: { 'Content-Type': type } })) as unknown as typeof fetch;
+  const pdf = (body: string, status = 200, type = 'application/pdf') =>
+    (async () => blobResponse(body, { status, headers: { 'Content-Type': type } })) as unknown as typeof fetch;
 
   it('renvoie le PDF produit par le service', async () => {
     const blob = await new RapportPdfPandopia('https://exemple.test/pdf', 1000, pdf('%PDF-1.7\n…')).generer('<dpe/>');

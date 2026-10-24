@@ -30,12 +30,14 @@ use DOMElement;
  *
  * GV_building : voir `resolveGvBuilding()`.
  *
- * @spec-section 13.2.2.2, 13.2.3-13.2.4
- * @spec-pages   88, 92
+ * @spec-section 13.2.2.2, 13.2.3-13.2.4, 17.1.2
+ * @spec-pages   88, 92, 108-109
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/02-valeurs-defaut-gaz-fioul.md
  * @spec-source  resources/specsplitted/13-rendement-combustion/02-chaudieres/04-rendement-annuel-moyen.md
+ * @spec-source  resources/specsplitted/17-collectif/01-immeuble-collectif.md
  * @xml-input    generateur_chauffage.donnee_intermediaire.{pn, rpn, rpint, qp0, pveilleuse, temp_fonc_100, temp_fonc_30}
  * @xml-input    generateur_chauffage.donnee_entree.{enum_type_energie_id, presence_regulation_combustion}
+ * @xml-input    installation_chauffage.donnee_entree.surface_chauffee
  * @xml-output   generateur_chauffage.donnee_intermediaire.rendement_generation
  * @depends-on   \CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereProfilChargeCalculator
  * @depends-on   \CalculDpePHP\Chauffage\Rendement\Combustion\ChaudiereDefautCalculator
@@ -701,12 +703,41 @@ final class RendementAnnuelMoyenCalculator implements CalculatorInterface
      * un rapport de 0,9995. C'est pourquoi leur grosse chaudière sort avec un
      * **meilleur** rendement que les petites — son `Rpn` est meilleur — quand
      * un Cdimref proportionnel à sa puissance lui donnait le pire.
+     *
+     * §17.1.2 p.108-109 : à population cohérente avec le GV moyen,
+     * Pn_comb_moy = Σ(Pn_comb_i × Sh_i) / ΣSh_i. Les logements sans
+     * combustion ont Pn_comb_i = 0, sans disparaître de cette population.
+     *
+     * @spec-formula F-17.1.2-pn-comb-moy-zone
      */
     private function puissanceDuGenerateurMoyen(
         DOMElement $node,
         NodeAccessor $accessor,
         CalculationContext $context,
     ): float {
+        // §17.1.2 p.108-109 : les sous-ensembles représentent des nombres
+        // différents de logements moyens. N_i/N = Sh_i/Sh, donc la puissance
+        // de combustion ramenée à cette même population est Σ(Pn_i × Sh_i)/ΣSh_i.
+        // Une installation sans combustion contribue 0 au numérateur, mais
+        // ses logements restent dans le dénominateur du GV moyen. Compter
+        // seulement les chaudières surévaluait la puissance installée moyenne.
+        $puissancePonderee = $surfaceTotale = 0.0;
+        $surfacesCompletes = true;
+        foreach ($context->document->getElementsByTagName('installation_chauffage') as $installation) {
+            $surface = $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $installation);
+            if ($surface === null || $surface <= 0.0) {
+                $surfacesCompletes = false;
+                break;
+            }
+            $puissancePonderee += $this->puissanceCombustionCumulee($accessor, $context, $installation) * $surface;
+            $surfaceTotale += $surface;
+        }
+        if ($surfacesCompletes && $surfaceTotale > 0.0) {
+            return $puissancePonderee / $surfaceTotale;
+        }
+
+        // Exports incomplets : ne pas inventer les poids manquants, garder
+        // le repli arithmétique des générateurs connus.
         $total = $this->puissanceCombustionCumulee($accessor, $context, null);
         $nombre = 0;
         foreach ($context->document->getElementsByTagName('generateur_chauffage') as $gen) {

@@ -22,6 +22,35 @@ final class EfConsoCalculatorTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../..';
     private const TOL = 1e-3;
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('clesEtOrdres')]
+    public function testLesClesDifferentesSontAppliqueesAvantLaSomme(bool $inverse, bool $zone): void
+    {
+        $ch = $ecs = [];
+        foreach ([[1000, 0.2], [2000, 0.3]] as [$conso, $cle]) {
+            $ch[] = '<installation_chauffage><donnee_entree><rdim>1</rdim><cle_repartition_ch>' . $cle . '</cle_repartition_ch></donnee_entree><donnee_intermediaire><conso_ch>' . $conso . '</conso_ch><conso_ch_depensier>' . (2 * $conso) . '</conso_ch_depensier></donnee_intermediaire></installation_chauffage>';
+            $ecs[] = '<installation_ecs><donnee_entree><rdim>1</rdim><cle_repartition_ecs>' . $cle . '</cle_repartition_ecs></donnee_entree><generateur_ecs><donnee_intermediaire><conso_ecs>' . $conso . '</conso_ecs><conso_ecs_depensier>' . (2 * $conso) . '</conso_ecs_depensier></donnee_intermediaire></generateur_ecs></installation_ecs>';
+        }
+        $surfaceLogement = $zone ? '<surface_habitable_logement>50</surface_habitable_logement>' : '';
+        $doc = new DOMDocument();
+        $doc->loadXML('<logement><caracteristique_generale>' . $surfaceLogement . '<surface_habitable_immeuble>1000</surface_habitable_immeuble></caracteristique_generale><installation_chauffage_collection>' . implode('', $inverse ? array_reverse($ch) : $ch)
+            . '</installation_chauffage_collection><installation_ecs_collection>' . implode('', $inverse ? array_reverse($ecs) : $ecs) . '</installation_ecs_collection></logement>');
+        (new EfConsoCalculator())->calculate($doc->documentElement, $this->makeContext($doc));
+        $ef = $doc->getElementsByTagName('ef_conso')->item(0);
+        foreach (['ch', 'ecs'] as $usage) {
+            self::assertEqualsWithDelta($zone ? 800.0 : 3000.0, (float)$ef->getElementsByTagName('conso_' . $usage)->item(0)->textContent, 1e-12);
+            self::assertEqualsWithDelta($zone ? 1600.0 : 6000.0, (float)$ef->getElementsByTagName('conso_' . $usage . '_depensier')->item(0)->textContent, 1e-12);
+        }
+    }
+
+    public static function clesEtOrdres(): iterable
+    {
+        foreach ([false, true] as $inverse) {
+            foreach ([false, true] as $zone) {
+                yield 'ordre ' . (int)$inverse . ' zone ' . (int)$zone => [$inverse, $zone];
+            }
+        }
+    }
+
     private function makeContext(DOMDocument $doc, array $contextVars = []): CalculationContext
     {
         $ctx = new CalculationContext(

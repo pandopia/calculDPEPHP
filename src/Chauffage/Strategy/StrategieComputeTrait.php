@@ -315,10 +315,22 @@ trait StrategieComputeTrait
         \CalculDpePHP\Chauffage\PartBesoinGenerateur::publier($context, $generateur, $part);
     }
 
+    /**
+     * §8 p.55 : G = GV / (Hsp × Sh). Pour un DPE à l'appartement,
+     * §17.2.1.1 p.111 impose l'enveloppe et le besoin du logement : la
+     * surface de l'immeuble n'est pas le volume associé à ce GV.
+     * Le repli historique des autres périmètres reste inchangé.
+     */
     private function getShImmeuble(NodeAccessor $accessor, DOMElement $installNode): float
     {
         $logement = $installNode->parentNode?->parentNode;
-        $sh = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement)
+        $mode = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $logement);
+        // XSD : appartements décrits directement, hors appartements générés
+        // depuis les données d'un immeuble (dont le GV demeure à cette échelle).
+        $sh = in_array($mode, [2, 3, 4, 5, 31, 32, 35, 36, 37], true)
+            ? $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement)
+            : null;
+        $sh ??= $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_immeuble', $logement)
             ?? $accessor->getFloatOrNull('./donnee_entree/surface_chauffee', $installNode)
             ?? 1.0;
         return max(1.0, $sh);

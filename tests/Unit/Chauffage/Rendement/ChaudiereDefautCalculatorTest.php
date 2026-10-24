@@ -19,6 +19,77 @@ final class ChaudiereDefautCalculatorTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
     private const TOL = 1e-5;
 
+    #[DataProvider('granules1978')]
+    public function testLeCoefficientQp0Granules1978EstSeptCentiemes(float $pnKw, float $qp0): void
+    {
+        [$doc, $gen] = $this->buildGenerator(70, 53, 2, ['pn' => 1000 * $pnKw]);
+        (new ChaudiereDefautCalculator())->calculate($gen, $this->makeContext($doc));
+        self::assertEqualsWithDelta($qp0, (float)$gen->getElementsByTagName('qp0')->item(0)->textContent, 1e-8);
+    }
+
+    public static function granules1978(): iterable
+    {
+        // §13.2.2.3 p.89, granulés 1978–1994 : 0,07 × Pn × Pn^-0,3.
+        yield '10 kW' => [10.0, 70 * 10 ** 0.7];
+        yield 'borne 70 kW' => [70.0, 70 * 70 ** 0.7];
+        yield 'au-dessus de 70' => [70.001, 1400.0];
+        yield 'au-dessus de 400' => [400.001, 800.0];
+    }
+
+    /** §17.2.1.1 p.112 : Pe est conservée, Rpn/Rpint restent ceux du collectif. */
+    #[DataProvider('puissancesVirtualiseesSaisies')]
+    public function testLaPuissanceSaisieVirtualiseeNeReduitPasLeRendementDeLaChaudiere(
+        int $type, int $tv, float $pnCollectif, float $ratio, float $rpn, float $rpint, ?float $qp0,
+    ): void {
+        foreach (['donnee_entree', 'donnee_intermediaire'] as $origine) {
+            $pe = $pnCollectif * $ratio;
+            [$doc, $node] = $this->buildGenerator($type, $tv, 2, $origine === 'donnee_entree' ? ['pn' => $pe] : null);
+            if ($origine === 'donnee_intermediaire') {
+                $di = $doc->createElement('donnee_intermediaire');
+                $di->appendChild($doc->createElement('pn', (string)$pe));
+                $node->appendChild($di);
+            }
+            $installation = $node->parentNode->parentNode;
+            $de = $doc->createElement('donnee_entree');
+            $de->appendChild($doc->createElement('enum_type_installation_id', '2'));
+            $de->appendChild($doc->createElement('ratio_virtualisation', (string)$ratio));
+            $installation->appendChild($de);
+            $calc = new ChaudiereDefautCalculator();
+            $ctx = $this->makeContext($doc);
+            $calc->calculate($node, $ctx);
+            foreach (['pn' => $pe, 'rpn' => $rpn, 'rpint' => $rpint, 'qp0' => $qp0] as $tag => $attendu) {
+                if ($attendu !== null) {
+                    self::assertEqualsWithDelta($attendu, (float)$node->getElementsByTagName($tag)->item(0)->textContent, self::TOL, $origine . ':' . $tag);
+                }
+            }
+            $avant = $doc->saveXML();
+            \CalculDpePHP\Xml\OutputPurger::purge($doc);
+            $calc->calculate($node, $ctx);
+            self::assertSame($avant, $doc->saveXML(), 'une seconde exécution ne virtualise pas de nouveau Pe');
+        }
+    }
+
+    public static function puissancesVirtualiseesSaisies(): iterable
+    {
+        yield 'gaz classique 180 kW, part 1 %' => [85, 1, 180000.0, 0.01, (84 + 2 * log10(180)) / 100, (80 + 3 * log10(180)) / 100, 72.0];
+        yield 'gaz condensation, bande physique supérieure à 70' => [97, 13, 100000.0, 0.01, 0.96, 1.06, 3.0];
+        yield 'granulés récents 49 kW, au-dessus de 20' => [74, 65, 49000.0, 0.1, (92 + 2 * log10(49)) / 100, (89 + 2 * log10(49)) / 100, null];
+        yield 'granulés récents 10 kW, retour à la petite bande' => [74, 66, 10000.0, 0.1, 0.93, 0.90, null];
+        yield 'ratio unitaire inchangé' => [89, 5, 24000.0, 1.0, (84 + 2 * log10(24)) / 100, (80 + 3 * log10(24)) / 100, 240.0];
+    }
+
+    public function testLaVirtualisationNecrasePasLesCaracteristiquesExplicitementSaisies(): void
+    {
+        [$doc, $node] = $this->buildGenerator(85, 1, 4, ['pn' => 1800, 'rpn' => 0.91, 'rpint' => 0.93, 'qp0' => 17]);
+        $de = $doc->createElement('donnee_entree');
+        $de->appendChild($doc->createElement('ratio_virtualisation', '0.01'));
+        $node->parentNode->parentNode->appendChild($de);
+        (new ChaudiereDefautCalculator())->calculate($node, $this->makeContext($doc));
+        foreach (['pn' => 1800, 'rpn' => 0.91, 'rpint' => 0.93, 'qp0' => 17] as $tag => $attendu) {
+            self::assertEqualsWithDelta($attendu, (float)$node->getElementsByTagName($tag)->item(0)->textContent, self::TOL);
+        }
+    }
+
     private function buildGenerator(int $genTypeId, int $tvId, int $methode = 1, ?array $realValues = null): array
     {
         $realTags = '';

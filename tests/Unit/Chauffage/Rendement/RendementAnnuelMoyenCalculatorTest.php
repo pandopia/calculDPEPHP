@@ -14,6 +14,61 @@ final class RendementAnnuelMoyenCalculatorTest extends TestCase
 {
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
 
+    /** §17.1.2 p.108-109 : pondération par la population des sous-ensembles. */
+    #[\PHPUnit\Framework\Attributes\DataProvider('sousEnsemblesPourPuissanceMoyenne')]
+    public function testLaPuissanceMoyenneInclutLesLogementsSansCombustion(array $groupes, float $puissanceMoyenne): void
+    {
+        $controle = $this->rendementAvecSousEnsembles([[97, 24000, 400]], 400 * 24000 / $puissanceMoyenne);
+        foreach ([$groupes, array_reverse($groupes)] as $ordre) {
+            $actuel = $this->rendementAvecSousEnsembles($ordre, 400.0);
+            self::assertEqualsWithDelta($controle[0], $actuel[0], 1e-12);
+            self::assertEqualsWithDelta($controle[1], $actuel[1], 1e-12);
+        }
+    }
+
+    public static function sousEnsemblesPourPuissanceMoyenne(): iterable
+    {
+        yield 'deux chaudieres et logements electriques' => [[[97, 24000, 200], [97, 12000, 100], [100, 8000, 100]], 15000.0];
+        yield 'une chaudiere et logements electriques' => [[[97, 24000, 240], [100, 8000, 160]], 14400.0];
+        yield 'deux tailles de sous ensembles combustion' => [[[97, 24000, 300], [97, 12000, 100]], 21000.0];
+        yield 'surfaces absentes repli arithmetique' => [[[97, 24000, null], [97, 12000, null]], 18000.0];
+        yield 'une surface absente repli integral' => [[[97, 24000, 300], [97, 12000, null]], 18000.0];
+        yield 'surface nulle repli integral' => [[[97, 24000, 0], [97, 12000, 100]], 18000.0];
+        yield 'surface negative repli integral' => [[[97, 24000, -1], [97, 12000, 100]], 18000.0];
+    }
+
+    /** @return array{float, float} */
+    private function rendementAvecSousEnsembles(array $groupes, float $gv): array
+    {
+        $installations = '';
+        $premier24 = false;
+        foreach ($groupes as [$type, $puissance, $surface]) {
+            $reference = $puissance === 24000 && !$premier24 ? 'cible' : 'autre-' . strlen($installations);
+            $premier24 = $premier24 || $puissance === 24000;
+            $installations .= '<installation_chauffage><donnee_entree><enum_type_installation_id>1</enum_type_installation_id>'
+                . '<enum_methode_calcul_conso_id>4</enum_methode_calcul_conso_id><rdim>1</rdim>'
+                . ($surface === null ? '' : '<surface_chauffee>' . $surface . '</surface_chauffee>')
+                . '</donnee_entree><generateur_chauffage_collection><generateur_chauffage><donnee_entree>'
+                . '<reference>' . $reference . '</reference><enum_type_generateur_ch_id>' . $type . '</enum_type_generateur_ch_id><enum_type_energie_id>'
+                . ($type === 100 ? '1' : '2') . '</enum_type_energie_id></donnee_entree><donnee_intermediaire><pn>' . $puissance . '</pn>'
+                . '<rpn>0.95</rpn><rpint>0.98</rpint><qp0>240</qp0><temp_fonc_30>35</temp_fonc_30><temp_fonc_100>55</temp_fonc_100>'
+                . '</donnee_intermediaire></generateur_chauffage></generateur_chauffage_collection></installation_chauffage>';
+        }
+        $document = new DOMDocument();
+        $document->loadXML('<logement><caracteristique_generale><enum_methode_application_dpe_log_id>10</enum_methode_application_dpe_log_id>'
+            . '<nombre_appartement>4</nombre_appartement><surface_habitable_immeuble>400</surface_habitable_immeuble>'
+            . '</caracteristique_generale><installation_chauffage_collection>' . $installations . '</installation_chauffage_collection></logement>');
+        $context = new CalculationContext($document, new TableRepository(self::PROJECT_ROOT . '/resources/tables'), zoneClimatique: '1', classeAltitude: '1');
+        $context->set('chauffage.gv', $gv);
+        $generator = (new \DOMXPath($document))->query('//generateur_chauffage[donnee_entree/reference="cible"]')->item(0);
+        (new RendementAnnuelMoyenCalculator())->calculate($generator, $context);
+
+        return [
+            (float)$generator->getElementsByTagName('rendement_generation')->item(0)?->textContent,
+            $context->get('chauffage.rendement_generation_depensier')['cible'],
+        ];
+    }
+
     /**
      * §13.2.2.2 p.88 puis §13.2.4 p.92 : sans pertes fixes, le rapport
      * QPx/Px est constant. Le résultat ne dépend ni de Pn ni de GV et ne

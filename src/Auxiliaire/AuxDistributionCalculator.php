@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\Auxiliaire;
 
+use CalculDpePHP\Chauffage\PartBesoinGenerateur;
 use CalculDpePHP\Common\ClimaticSolicitations;
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Engine\CalculationContext;
@@ -40,19 +42,31 @@ use DOMElement;
  *
  * Mode ZONE : résultat multiplié par cle_repartition_ch / cle_repartition_ecs.
  *
- * @spec-section 15.2, 17.2.2.2
- * @spec-pages   98-102, 115-116
+ * @spec-section 15.2, 17.1.2, 17.2.2.2
+ * @spec-pages   98-102, 107, 115-116
  * @spec-source  resources/specsplitted/15-auxiliaires/02-aux-distribution.md
  * @spec-source  resources/specsplitted/17-collectif/02-appartement.md
+ * @spec-source  resources/specsplitted/17-collectif/01-immeuble-collectif.md
  * @xml-input    installation_chauffage.donnee_entree.{surface_chauffee, nombre_niveau_installation_ch,
  *               cle_repartition_ch}
  *               installation_chauffage.emetteur_chauffage.donnee_entree.{enum_type_emission_distribution_id,
- *               enum_temp_distribution_ch_id}
+ *               enum_temp_distribution_ch_id, enum_lien_generateur_emetteur_id}
+ *               installation_chauffage.generateur_chauffage.donnee_entree.enum_lien_generateur_emetteur_id
  *               installation_ecs.donnee_entree.{surface_habitable, nombre_niveau_installation_ecs,
  *               enum_type_installation_id, reseau_distribution_isole, cle_repartition_ecs}
  * @xml-output   sortie.ef_conso.{conso_auxiliaire_distribution_ch, conso_auxiliaire_distribution_ecs}
  * @depends-on   \CalculDpePHP\Chauffage\BesoinChauffageCalculator,
  *               \CalculDpePHP\Ecs\BesoinEcsCalculator
+ * @depends-on   \CalculDpePHP\Chauffage\Strategy\InstallationClassique
+ * @depends-on   \CalculDpePHP\Chauffage\Strategy\AppointInsertElecSdb
+ * @depends-on   \CalculDpePHP\Chauffage\Strategy\ChaudiereReleve
+ * @depends-on   \CalculDpePHP\Chauffage\Strategy\ChauffageSolaire
+ * @depends-on   \CalculDpePHP\Chauffage\Strategy\InsertPoeleAppoint
+ * @depends-on   \CalculDpePHP\Chauffage\Strategy\ConvecteurBijonction
+ * @depends-on   \CalculDpePHP\Chauffage\Strategy\MultiGenerateurs
+ * @depends-on   \CalculDpePHP\Chauffage\Strategy\InsertElecSdb
+ * @depends-on   \CalculDpePHP\Chauffage\Strategy\SolaireInsertPoele
+ * @depends-on   \CalculDpePHP\Chauffage\Strategy\CollectifBaseAppoint
  * @tables       reference/tv_sollicitations
  */
 final class AuxDistributionCalculator implements CalculatorInterface
@@ -138,6 +152,19 @@ final class AuxDistributionCalculator implements CalculatorInterface
         return [
             '\CalculDpePHP\Chauffage\BesoinChauffageCalculator',
             '\CalculDpePHP\Ecs\BesoinEcsCalculator',
+            // Les stratégies publient les parts de besoin des générateurs,
+            // nécessaires pour ne pas dimensionner le réseau d'un système
+            // principal sur le besoin de son appoint autonome (§15.2.1).
+            '\CalculDpePHP\Chauffage\Strategy\InstallationClassique',
+            '\CalculDpePHP\Chauffage\Strategy\AppointInsertElecSdb',
+            '\CalculDpePHP\Chauffage\Strategy\ChaudiereReleve',
+            '\CalculDpePHP\Chauffage\Strategy\ChauffageSolaire',
+            '\CalculDpePHP\Chauffage\Strategy\InsertPoeleAppoint',
+            '\CalculDpePHP\Chauffage\Strategy\ConvecteurBijonction',
+            '\CalculDpePHP\Chauffage\Strategy\MultiGenerateurs',
+            '\CalculDpePHP\Chauffage\Strategy\InsertElecSdb',
+            '\CalculDpePHP\Chauffage\Strategy\SolaireInsertPoele',
+            '\CalculDpePHP\Chauffage\Strategy\CollectifBaseAppoint',
         ];
     }
 
@@ -170,7 +197,7 @@ final class AuxDistributionCalculator implements CalculatorInterface
         $pnc = 1e-3 * $gvTotal * (20.0 - $tbase);
 
         // ── CH distribution ───────────────────────────────────────────────────
-        [$cauxDistCh, $cleRepCh] = $this->computeChDistribution($accessor, $node, $pnc, $nref, $isZone);
+        [$cauxDistCh, $cleRepCh] = $this->computeChDistribution($accessor, $node, $pnc, $nref, $isZone, $context);
 
         // ── ECS distribution ──────────────────────────────────────────────────
         [$cauxDistEcs, $cleRepEcs] = $this->computeEcsDistribution($accessor, $node, $context);
@@ -190,6 +217,10 @@ final class AuxDistributionCalculator implements CalculatorInterface
     }
 
     /**
+     * §15.2.1 p.98-99 : Pcircem sur la surface du circuit et le débit
+     * Pnc×rat/(1,163×δθdim), puis §15.2.2 : Caux=Pcircem×Nref.
+     *
+     * @spec-formula F-15.2.1-pcircem
      * @return array{float, float} [caux_dist_ch_kWh, cle_repartition_ch]
      */
     private function computeChDistribution(
@@ -198,6 +229,7 @@ final class AuxDistributionCalculator implements CalculatorInterface
         float        $pnc,
         float        $nref,
         bool         $isZone,
+        CalculationContext $context,
     ): array {
         $collection = $this->getChild($logement, 'installation_chauffage_collection');
         if ($collection === null) {
@@ -281,10 +313,16 @@ final class AuxDistributionCalculator implements CalculatorInterface
             $rdimInstall = $rdimInstall > 0.0 ? $rdimInstall : 1.0;
             $isIndividuelMultiplie = ($typeInstall === 1 && $rdimInstall > 1.0);
 
-            $shCalcEff = $isIndividuelMultiplie ? ($shCalc / $rdimInstall) : $shCalc;
+            // §15.2.1 dimensionne le circuit de cette installation ; §17.1.2
+            // le rapporte à un appartement moyen si plusieurs systèmes sont
+            // représentés. Une autre installation indépendante n'allonge pas
+            // ce réseau. Pour un groupe individuel échantillonné, cela donne
+            // bien Sh_groupe/Nblgt_groupe = Sh_immeuble/Nblgt_immeuble.
+            $surfaceCircuit = $surfChauffee > 0.0 ? min($shCalc, $surfChauffee) : $shCalc;
+            $shCalcEff = $isIndividuelMultiplie ? ($surfaceCircuit / $rdimInstall) : $surfaceCircuit;
             $pncEff    = $isIndividuelMultiplie ? ($pnc / $rdimInstall)    : $pnc;
 
-            // Spec §15.2.1 / open3cl 15_conso_aux.js : Lem et shFactor à l'échelle bâtiment
+            // §15.2.1 : Lem et shFactor au même périmètre que le circuit.
             $lem       = 5.0 * $fcot * ($niv + sqrt($shCalcEff / $niv));
             $deltaPnom = 0.15 * $lem + $deltaP;
 
@@ -292,6 +330,11 @@ final class AuxDistributionCalculator implements CalculatorInterface
             // (= 1.0 pour maison/appartement individuel ; < 1 pour immeuble multi-installations)
             $ratioSurf = ($surfChauffee > 0.0 && $shCalc > 0.0) ? min(1.0, $surfChauffee / $shCalc) : 1.0;
 
+            $partCircuit = $this->partDuBesoinDistribue($accessor, $install, $context);
+            if ($partCircuit <= 0.0) {
+                continue;
+            }
+            $ratioSurf *= $partCircuit;
             $qvem = $dtDim > 0.0 ? ($pncEff * $ratioSurf / (1.163 * $dtDim)) : 0.0;
 
             $shFactor  = max(1.0, $shCalcEff / 400.0);
@@ -312,6 +355,62 @@ final class AuxDistributionCalculator implements CalculatorInterface
     }
 
     /**
+     * §15.2.1 p.99 : rat est la part du besoin couverte par l'équipement,
+     * pas celle de l'installation entière quand un appoint sans réseau
+     * assure le complément (§9.3 p.63 et §9.6 p.65).
+     *
+     * Les stratégies publient ces parts avant les auxiliaires. Les liens
+     * explicites du XSD relient le générateur à son émission ; sans lien ou
+     * sans bilan complet, ne pas inventer une répartition.
+     *
+     * @spec-formula F-15.2.1-rat-circuit
+     */
+    private function partDuBesoinDistribue(
+        NodeAccessor $accessor,
+        DOMElement $installation,
+        CalculationContext $context,
+    ): float {
+        $parts = (array)$context->get(PartBesoinGenerateur::CLE_CONTEXTE, []);
+        if ($parts === []) {
+            return 1.0;
+        }
+        $liensReseaux = [];
+        $appointAutonome = false;
+        foreach ($installation->getElementsByTagName('emetteur_chauffage') as $emetteur) {
+            $type = $accessor->getIntOrNull('./donnee_entree/enum_type_emission_distribution_id', $emetteur);
+            $lien = $accessor->getIntOrNull('./donnee_entree/enum_lien_generateur_emetteur_id', $emetteur);
+            if ($lien === null || $type === null || !isset(self::EMETTEUR_TYPE[$type])) {
+                return 1.0;
+            }
+            if (self::EMETTEUR_TYPE[$type] === 'none') {
+                $appointAutonome = true;
+            } else {
+                $liensReseaux[$lien] = true;
+            }
+        }
+        if (!$appointAutonome || $liensReseaux === []) {
+            return 1.0;
+        }
+
+        $part = 0.0;
+        $generateurs = $installation->getElementsByTagName('generateur_chauffage');
+        if ($generateurs->length === 0) {
+            return 1.0;
+        }
+        foreach ($generateurs as $generateur) {
+            $lien = $accessor->getIntOrNull('./donnee_entree/enum_lien_generateur_emetteur_id', $generateur);
+            if ($lien === null || !array_key_exists($generateur->getNodePath(), $parts)) {
+                return 1.0;
+            }
+            if (isset($liensReseaux[$lien])) {
+                $part += (float)$parts[$generateur->getNodePath()];
+            }
+        }
+
+        return max(0.0, min(1.0, $part));
+    }
+
+    /**
      * @return array{float, float} [caux_dist_ecs_kWh, cle_repartition_ecs]
      */
     private function computeEcsDistribution(
@@ -325,7 +424,7 @@ final class AuxDistributionCalculator implements CalculatorInterface
         }
 
         $totalCaux = 0.0;
-        $cle       = 1.0;
+        $isZone = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement) !== null;
 
         // DPE appartement autonome (modes 2-4, 31-32, 35-37) : la conso d'aux de
         // distribution ECS collective est portée par l'immeuble — LICIEL ne la
@@ -367,13 +466,14 @@ final class AuxDistributionCalculator implements CalculatorInterface
                 continue;
             }
 
-            if ($bouclage === self::BOUCLAGE_TRACEUR) {
-                $totalCaux += $this->consommationDuTraceur($accessor, $install);
+            // §17.2.2.5 p.118 : chaque réseau conserve sa clé ECS ; celle
+            // du dernier ne répartit pas les auxiliaires des autres réseaux.
+            $cleDeclaree = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
+            $partLogement = $isZone && $cleDeclaree !== null && $cleDeclaree > 0.0
+                ? GeneratedApartment::hotWaterShare($logement, $accessor, $cleDeclaree) : 1.0;
 
-                $cleTrac = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
-                if ($cleTrac !== null && $cleTrac > 0.0) {
-                    $cle = $cleTrac;
-                }
+            if ($bouclage === self::BOUCLAGE_TRACEUR) {
+                $totalCaux += $this->consommationDuTraceur($accessor, $install, $context) * $partLogement;
                 continue;
             }
 
@@ -404,15 +504,10 @@ final class AuxDistributionCalculator implements CalculatorInterface
             $deltaPb = 0.2 * $lb + 10.0;
 
             $qcirb = $this->computeBouclageAnnuel($becsCalc, $shCalc, $deltaPb, $isolated);
-            $totalCaux += $qcirb * ($isVirtualized ? $ratioVirt : 1.0) / 1000.0;
-
-            $cleInst = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
-            if ($cleInst !== null && $cleInst > 0.0) {
-                $cle = $cleInst;
-            }
+            $totalCaux += $qcirb * ($isVirtualized ? $ratioVirt : 1.0) / 1000.0 * $partLogement;
         }
 
-        return [$totalCaux, $cle];
+        return [$totalCaux, 1.0];
     }
 
     /**
@@ -461,11 +556,15 @@ final class AuxDistributionCalculator implements CalculatorInterface
      * @spec-source  resources/specsplitted/15-auxiliaires/02-aux-distribution.md
      * @spec-formula F-15.2.3-Qtrac
      */
-    private function consommationDuTraceur(NodeAccessor $accessor, DOMElement $install): float
+    private function consommationDuTraceur(NodeAccessor $accessor, DOMElement $install, CalculationContext $context): float
     {
         $becs = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs', $install);
 
-        return $becs !== null && $becs > 0.0 ? self::PART_TRACEUR * $becs : 0.0;
+        // Le format ADEME natif publie ce besoin en Wh, mais les sorties
+        // d'auxiliaires restent en kWh, comme dans le format historique.
+        return $becs !== null && $becs > 0.0
+            ? self::PART_TRACEUR * $becs / IntermediateEnergyUnit::xmlPerKwh($context->document)
+            : 0.0;
     }
 
     /**

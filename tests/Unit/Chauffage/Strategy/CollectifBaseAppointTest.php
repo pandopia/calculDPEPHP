@@ -22,6 +22,122 @@ final class CollectifBaseAppointTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
     private const TOL = 1e-2;
 
+    public function testDh14EtTextDesParoisAnciennesExigentUneInertieLourde(): void
+    {
+        foreach ([0, 1] as $anciens) {
+            foreach ([1, 2, 3, 4] as $inertie) {
+                [$doc, $ctx, $node] = $this->buildXml(
+                    bch: 10000, gv: 200, surface: 80, sh: 80, hsp: 2.5,
+                    rdim: 1, pnW: 1000, rgBase: 1, reBase: 1, rdBase: 1, rrBase: 1, i0Base: 1,
+                    rgAppoint: 1, reAppoint: 1, rdAppoint: 1, rrAppoint: 1, i0Appoint: 1,
+                    matAnciensId: $anciens, inertieId: $inertie,
+                );
+                $mensuels = array_fill(1, 12, 0.0);
+                $mensuels[1] = 10000.0;
+                $ctx->set('chauffage.besoin_ch_mensuel', $mensuels);
+
+                $ilpa = $anciens === 1 && $inertie <= 2 ? 1 : 0;
+                $dh = $ctx->tables->load('chauffage/dh14_base_appoint')[$ilpa][1];
+                $text = $ctx->tables->load('chauffage/text_mensuel_base_appoint')[$ilpa][1][1][1];
+                $nref = \CalculDpePHP\Common\ClimaticSolicitations::heating($ctx, 1, 1)[1]['Nref19'];
+                $t = 14 - array_sum(array_column($dh, 1)) / 10000;
+                $x = 0.5 * ($t + 9.5) / ($text + 9.5);
+                $dht = max(0.0, $nref * ($text + 9.5) * $x ** 5 * (14 - 28 * $x + 20 * $x ** 2 - 5 * $x ** 3));
+                $attendu = min(10000.0, 10000 * max(0.0, 1 - $dht / $dh[1][1]));
+
+                // Vérifie aussi le repli XML lors d'un appel isolé, sans
+                // InertieCalculator : la classe est portée par l'enveloppe.
+                if ($inertie % 2 === 0) {
+                    $ctx->set('inertie.classe_id', $inertie);
+                }
+                (new CollectifBaseAppoint())->calculate($node, $ctx);
+                $xp = new \DOMXPath($doc);
+                self::assertEqualsWithDelta(
+                    $attendu,
+                    $xp->evaluate('number(//generateur_chauffage[1]/donnee_intermediaire/conso_ch)'),
+                    1e-7,
+                    "matériaux anciens=$anciens, classe ADEME=$inertie",
+                );
+            }
+        }
+    }
+
+    public function testLeVolumeDIntermittenceSuitLePerimetreDuBesoin(): void
+    {
+        foreach ([32 => 80.0, 7 => 800.0] as $mode => $surfaceReference) {
+            [$doc, $ctx, $node] = $this->buildXml(
+                bch: 10000, gv: 200, surface: $surfaceReference, sh: 800, hsp: 2.5,
+                rdim: 1, pnW: 0, rgBase: 1, reBase: 1, rdBase: 1, rrBase: 1, i0Base: 1,
+                rgAppoint: 1, reAppoint: 1, rdAppoint: 1, rrAppoint: 1, i0Appoint: 1,
+            );
+            $carac = $doc->getElementsByTagName('caracteristique_generale')->item(0);
+            $carac->appendChild($doc->createElement('enum_methode_application_dpe_log_id', (string)$mode));
+            $carac->appendChild($doc->createElement('surface_habitable_logement', '80'));
+            (new CollectifBaseAppoint())->calculate($node, $ctx);
+            $xp = new \DOMXPath($doc);
+            $attendu = 10000 / (1 + 0.1 * (200 / (2.5 * $surfaceReference) - 1));
+            self::assertEqualsWithDelta($attendu, $xp->evaluate('number(//installation_chauffage/donnee_intermediaire/conso_ch)'), 1e-7);
+        }
+    }
+
+    public function testLeDepensierUtiliseSonBesoinEtSesRendements(): void
+    {
+        [$doc, $ctx, $node] = $this->buildXml(
+            bch: 10000, gv: 200, surface: 80, sh: 80, hsp: 2.5,
+            rdim: 1, pnW: 0, rgBase: 0.8, reBase: 1, rdBase: 1, rrBase: 1, i0Base: 1,
+            rgAppoint: 0.9, reAppoint: 1, rdAppoint: 1, rrAppoint: 1, i0Appoint: 1,
+        );
+        $ctx->set('chauffage.besoin_ch_depensier', 15000.0);
+        $ctx->set('chauffage.rendement_generation_depensier', ['base' => 0.9, 'appoint' => 0.95]);
+        foreach ($doc->getElementsByTagName('generateur_chauffage') as $i => $gen) {
+            $de = $doc->createElement('donnee_entree');
+            $de->appendChild($doc->createElement('reference', $i === 0 ? 'base' : 'appoint'));
+            $gen->appendChild($de);
+        }
+        (new CollectifBaseAppoint())->calculate($node, $ctx);
+
+        $xp = new \DOMXPath($doc);
+        self::assertEqualsWithDelta(10000.0, $xp->evaluate('number(//installation_chauffage/donnee_intermediaire/besoin_ch)'), 1e-8);
+        self::assertEqualsWithDelta(15000.0, $xp->evaluate('number(//installation_chauffage/donnee_intermediaire/besoin_ch_depensier)'), 1e-8);
+        foreach ([['', 5000 / 0.8, 5000 / 0.9], ['_depensier', 7500 / 0.9, 7500 / 0.95]] as [$suffixe, $base, $appoint]) {
+            self::assertEqualsWithDelta($base, $xp->evaluate('number(//generateur_chauffage[1]/donnee_intermediaire/conso_ch' . $suffixe . ')'), 1e-7);
+            self::assertEqualsWithDelta($appoint, $xp->evaluate('number(//generateur_chauffage[2]/donnee_intermediaire/conso_ch' . $suffixe . ')'), 1e-7);
+            self::assertEqualsWithDelta($base + $appoint, $xp->evaluate('number(//installation_chauffage/donnee_intermediaire/conso_ch' . $suffixe . ')'), 1e-7);
+        }
+    }
+
+    public function testLeProfilMensuelReelPrimeSurLeProrataDesDegresHeures(): void
+    {
+        $bases = [];
+        foreach ([1, 4] as $mois) {
+            [$doc, $ctx, $node] = $this->buildXml(
+                bch: 20000, gv: 400, surface: 80, sh: 160, hsp: 2.5,
+                rdim: 1, pnW: 1000, rgBase: 1, reBase: 1, rdBase: 1, rrBase: 1, i0Base: 1,
+                rgAppoint: 1, reAppoint: 1, rdAppoint: 1, rrAppoint: 1, i0Appoint: 1,
+            );
+            $mensuels = array_fill(1, 12, 0.0);
+            $mensuels[$mois] = 20000.0;
+            $ctx->set('chauffage.besoin_ch_mensuel', $mensuels);
+            $ctx->set('chauffage.besoin_ch_mensuel_depensier', $mensuels);
+            (new CollectifBaseAppoint())->calculate($node, $ctx);
+
+            $tables = $ctx->tables;
+            $dh = $tables->load('chauffage/dh14_base_appoint')[0][1];
+            $text = $tables->load('chauffage/text_mensuel_base_appoint')[0][1][$mois][1];
+            $nref = \CalculDpePHP\Common\ClimaticSolicitations::heating($ctx, 1, 1)[$mois]['Nref19'];
+            $t = 14 - array_sum(array_column($dh, 1)) / 10000;
+            $x = 0.5 * ($t + 9.5) / ($text + 9.5);
+            $dht = max(0.0, $nref * ($text + 9.5) * $x ** 5 * (14 - 28 * $x + 20 * $x ** 2 - 5 * $x ** 3));
+            $attendu = 10000 * max(0.0, 1 - $dht / $dh[$mois][1]);
+            $xp = new \DOMXPath($doc);
+            $base = $xp->evaluate('number(//generateur_chauffage[1]/donnee_intermediaire/conso_ch)');
+            self::assertEqualsWithDelta($attendu, $base, 1e-7, 'besoin mensuel proratisé une seule fois à la surface desservie');
+            self::assertEqualsWithDelta(10000.0, $xp->evaluate('number(//installation_chauffage/donnee_intermediaire/conso_ch)'), 1e-7);
+            $bases[] = $base;
+        }
+        self::assertNotEqualsWithDelta($bases[0], $bases[1], 1e-3, 'un même besoin annuel ne définit pas le partage mensuel');
+    }
+
     private function buildXml(
         float $bch,
         float $gv,
@@ -51,16 +167,14 @@ final class CollectifBaseAppointTest extends TestCase
     <meteo>
         <enum_zone_climatique_id>$zoneId</enum_zone_climatique_id>
         <enum_classe_altitude_id>$altId</enum_classe_altitude_id>
+        <batiment_materiaux_anciens>$matAnciensId</batiment_materiaux_anciens>
     </meteo>
     <caracteristique_generale>
         <hsp>$hsp</hsp>
         <surface_habitable_immeuble>$sh</surface_habitable_immeuble>
         <nombre_appartement>1</nombre_appartement>
-        <batiment_materiaux_anciens>$matAnciensId</batiment_materiaux_anciens>
     </caracteristique_generale>
-    <donnee_intermediaire>
-        <enum_classe_inertie_id>$inertieId</enum_classe_inertie_id>
-    </donnee_intermediaire>
+    <enveloppe><inertie><enum_classe_inertie_id>$inertieId</enum_classe_inertie_id></inertie></enveloppe>
     <installation_chauffage_collection>
         <installation_chauffage>
             <donnee_entree>

@@ -25,6 +25,7 @@ declare(strict_types=1);
  * @spec-pages   93-95
  * @spec-source  resources/specsplitted/14-rendement-ecs-generateurs/01-combustion.md
  * @generated-on 2026-04-30
+ * @status partial — manque QP0 des chaudières bois et assimilées (TASK-K06)
  * @source       open3cl tv.js (IDs 79-93 du tableau generateur_combustion)
  */
 

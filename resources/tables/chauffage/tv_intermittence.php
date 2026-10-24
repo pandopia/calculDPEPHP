@@ -23,7 +23,7 @@ declare(strict_types=1);
  *     plancher    : 8, 9, 11, 12, 13, 14, 43
  *     radiateur   : tous les autres (1-4, 10, 19-41, 45)
  *
- * inertie : 'legere_moyenne' (enum_classe_inertie_id 1-2) | 'lourde' (3-4)
+ * inertie : 'legere_moyenne' (enum_classe_inertie_id 3-4) | 'lourde' (1-2)
  *
  * Pour maison/collectif_individuel :
  *   equipement : 1=absent, 2=central_sans, 3=central_avec, 4=ppp_avec, 5=ppp_detection

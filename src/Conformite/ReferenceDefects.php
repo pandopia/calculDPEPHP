@@ -203,6 +203,7 @@ final class ReferenceDefects
             $suspects += self::agregatIncompatibleAvecSaVentilation($referenceDoc);
             $suspects += self::mesureDEtancheiteDeclareeMaisIgnoree($referenceDoc);
             $suspects += self::productionSolaireIncompatibleAvecSaConso($referenceDoc);
+            $suspects += self::autoconsommationPvNulleMalgreProduction($referenceDoc);
             $suspects += self::doublageDeMurDeclareMaisIgnore($referenceDoc);
             $suspects += self::copForfaitaireHorsTable($referenceDoc);
             $suspects += self::pontThermiqueTabuleIncoherent($referenceDoc);
@@ -713,21 +714,65 @@ final class ReferenceDefects
     private const SAISIES_Q4PA_MESUREES = [2, 3];
 
     /**
-     * `production_ch_solaire` que la consommation du même bloc contredit.
+     * §16.2 p.104-106 : l'usage mobilier est toujours électrique, avec
+     * U >= 27×Sh et Taplp_autres=0,45. Posons W=Σ(Taplp_i×Celec_i).
+     * Alors AC_autres=Ppv×0,45×U/(Ppv+W), donc strictement positif.
      *
-     * §9.2 p.62 et §9.6 p.65 écrivent les deux grandeurs sur le même produit :
+     * Pour ne pas imputer un zéro d'arrondi, utiliser une borne indépendante
+     * du moteur : chaque Taplp<=0,5, U<=29×Sh et la consommation électrique
+     * brute des cinq usages <= Cef_5+Ppv (même si Cef_5 est déjà net du PV).
+     * D'où AC_autres >= Ppv×0,45×27×Sh /
+     *                   [Ppv+0,5×(Cef_5+Ppv+29×Sh)].
+     * Ne signaler que si cette borne dépasse 1 kWh. L'autoconsommation totale
+     * et Tap sont alors aussi positifs, quelle que soit leur unité EF/EP.
+     * Les appartements générés sont exclus de cette preuve : leur DI peut
+     * garder le périmètre immeuble tandis que la sortie est celle du lot.
      *
-     *   Cch  = Bch × (1 − Fch) × Σ_i (part_i × INT_i × Ich_i)
-     *   Prod = Bch ×      Fch  × Σ_i (part_i × INT_i × Ich_i)
-     *
-     * La somme, les rendements et le besoin s'éliminent entre les deux : il
-     * reste `Prod / Cch = Fch / (1 − Fch)`, quelle que soit l'installation.
-     * Les trois valeurs étant publiées côte à côte dans la même
-     * `donnee_intermediaire`, la contradiction se démontre sur le seul fichier
-     * de référence, sans aucun calcul de notre moteur.
-     *
-     * Huit installations du corpus sur les dix qui publient les trois balises
-     * la violent, dans les deux sens — de 0,52 à 3,32 fois le rapport imposé.
+     * @spec-source resources/specsplitted/16-eclairage-prod-elec/02-prod-electricite.md
+     * @return array<string, string>
+     */
+    private static function autoconsommationPvNulleMalgreProduction(DOMDocument $doc): array
+    {
+        $xp = new DOMXPath($doc);
+        $suspects = [];
+        foreach ($xp->query('//logement') as $logement) {
+            $methode = self::nombreEnfant($xp, './caracteristique_generale/enum_methode_application_dpe_log_id', $logement);
+            $maison = in_array($methode, [1.0, 14.0, 18.0], true);
+            $immeuble = in_array($methode, [6.0, 7.0, 8.0, 9.0, 26.0, 27.0, 28.0, 29.0, 30.0], true);
+            if (!$maison && !$immeuble) { continue; }
+            $surface = self::nombreEnfant($xp, './caracteristique_generale/' . ($maison ? 'surface_habitable_logement' : 'surface_habitable_immeuble'), $logement);
+            $present = self::nombreEnfant($xp, './production_elec_enr/donnee_entree/presence_production_pv', $logement);
+            $production = self::nombreEnfant($xp, './production_elec_enr/donnee_intermediaire/production_pv', $logement);
+            $conso = self::nombreEnfant($xp, './sortie/ef_conso/conso_5_usages', $logement);
+            if ($present !== 1.0 || $surface === null || $surface <= 0.0
+                || $production === null || $production <= 0.0 || $conso === null || $conso < 0.0) { continue; }
+            $borne = $production * 0.45 * 27.0 * $surface
+                / ($production + 0.5 * ($conso + $production + 29.0 * $surface));
+            if (!is_finite($borne) || $borne <= 1.0) { continue; }
+            foreach ([
+                './production_elec_enr/donnee_intermediaire/conso_elec_ac',
+                './production_elec_enr/donnee_intermediaire/taux_autoproduction',
+                './sortie/production_electricite/conso_elec_ac',
+                './sortie/production_electricite/conso_elec_ac_autre_usage',
+            ] as $path) {
+                if (self::nombreEnfant($xp, $path, $logement) !== 0.0) { continue; }
+                $element = $xp->query($path, $logement)->item(0);
+                $suspects[self::cheminDpe($element->getNodePath())] = sprintf(
+                    'la référence publie une autoconsommation PV nulle malgré Ppv=%.2f kWh, Sh=%.2f m² '
+                    . 'et Cef_5=%.2f kWh : §16.2 p.104-106 impose aux seuls usages mobiliers '
+                    . 'une autoconsommation supérieure à %.2f kWh (borne conservatrice, sans notre moteur)',
+                    $production, $surface, $conso, $borne,
+                );
+            }
+        }
+        return $suspects;
+    }
+
+    /**
+     * §9.2 p.62 et §9.6 p.65 : Cch=Bch×(1−Fch)×Σ(part×INT×Ich)
+     * et Prod=Bch×Fch×Σ(part×INT×Ich), d'où Prod/Cch=Fch/(1−Fch).
+     * Les trois valeurs publiées côte à côte suffisent à démontrer la
+     * contradiction, sans aucun calcul de notre moteur.
      *
      * @return array<string, string>
      */

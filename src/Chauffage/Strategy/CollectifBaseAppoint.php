@@ -31,11 +31,15 @@ use DOMElement;
  *
  * Conventionnellement l'appoint couvre 50% du besoin (Pn_appoint = 50% du dimensionnement).
  *
- * @spec-section  9.8
- * @spec-pages    65-66
+ * @spec-section  8, 9.1.1, 9.8, 17.2.1.1, 18.3
+ * @spec-pages    55-59, 65-66, 111-112, 136-137
+ * @spec-source   resources/specsplitted/08-intermittence/00-calcul.md
+ * @spec-source   resources/specsplitted/09-conso-chauffage/01-installation-seule/01-conso.md
  * @spec-source   resources/specsplitted/09-conso-chauffage/08-collectif-base-appoint.md
+ * @spec-source   resources/specsplitted/18-annexes/03-inertie-lourde/00-overview.md
  * @xml-input     installation_chauffage.donnee_entree.{enum_cfg_installation_ch_id=10, surface_chauffee, rdim,
- *                    enum_methode_calcul_conso_id, batiment_materiaux_anciens}
+ *                    enum_methode_calcul_conso_id}
+ *                logement.meteo.batiment_materiaux_anciens, logement.enveloppe.inertie.enum_classe_inertie_id
  *                generateur_chauffage[0].donnee_intermediaire.{pn, rendement_generation}
  *                emetteur_chauffage[0,1].donnee_intermediaire.{i0, rendement_emission, rendement_distribution, rendement_regulation}
  * @xml-output    installation_chauffage.donnee_intermediaire.{besoin_ch, conso_ch}
@@ -101,10 +105,23 @@ final class CollectifBaseAppoint implements CalculatorInterface
 
     public function calculate(DOMElement $node, CalculationContext $context): void
     {
+        $this->calculerScenario($node, $context, false);
+        $this->calculerScenario($node, $context, true);
+    }
+
+    /**
+     * §9.1.1 p.57 et §9.8 p.65-66 : appliquer le bilan base/appoint à
+     * chaque consigne (19 °C ou 21 °C) avec ses besoins mensuels propres.
+     *
+     * @spec-formula F-9.8-bch-base-mensuel
+     */
+    private function calculerScenario(DOMElement $node, CalculationContext $context, bool $depensier): void
+    {
         $accessor = new NodeAccessor($context->document);
+        $suffixe = $depensier ? '_depensier' : '';
 
         // ── 1. Contexte bâtiment ──────────────────────────────────────────────
-        $bch   = (float)$context->get('chauffage.besoin_ch', 0.0);
+        $bch   = (float)$context->get('chauffage.besoin_ch' . $suffixe, 0.0);
         $gv    = (float)$context->get('chauffage.gv', 1.0);
         if ($bch <= 0.0) {
             return;
@@ -128,10 +145,14 @@ final class CollectifBaseAppoint implements CalculatorInterface
         }
 
         // ── 3. ilpa : parois anciennes + inertie lourde ───────────────────────
-        $matAnciensRaw = $accessor->getIntOrNull('./donnee_entree/batiment_materiaux_anciens', $logementNode) ?? 0;
-        $inertieId     = (int) ($context->get('inertie.classe_id') ?? 1);
-        // PHP enum: 1=légère, 2=moyenne, 3=lourde, 4=très lourde
-        $ilpa = ($matAnciensRaw === 1 && $inertieId >= 3) ? 1 : 0;
+        $matAnciensRaw = $accessor->getIntOrNull('./meteo/batiment_materiaux_anciens', $logementNode) ?? 0;
+        $inertieId = (int) $context->get(
+            'inertie.classe_id',
+            $accessor->getIntOrNull('./enveloppe/inertie/enum_classe_inertie_id', $logementNode) ?? 1,
+        );
+        // §18.3 : parois anciennes ET inertie lourde. Le XSD numérote
+        // 1=très lourde, 2=lourde, 3=moyenne, 4=légère.
+        $ilpa = ($matAnciensRaw === 1 && in_array($inertieId, [1, 2], true)) ? 1 : 0;
 
         // ── 4. Tables climatiques ─────────────────────────────────────────────
         $tvS    = ClimaticSolicitations::heating($context, $zoneId, $altId);
@@ -157,7 +178,9 @@ final class CollectifBaseAppoint implements CalculatorInterface
         // logement seul, le diviseur est la surface du logement et la part
         // vaut 1. `partSurfacique` porte cette distinction pour les dix autres
         // stratégies : la dupliquer ici reviendrait à la laisser diverger.
-        $bch1 = $bch * $this->partSurfacique($accessor, $node);
+        $partSurface = $this->partSurfacique($accessor, $node);
+        $bch1 = $bch * $partSurface;
+        $besoinsMensuels = (array)$context->get('chauffage.besoin_ch_mensuel' . $suffixe, []);
 
         // ── 8. DH14 saison complète (Σ mois) ─────────────────────────────────
         $dh14Saison = 0.0;
@@ -173,12 +196,15 @@ final class CollectifBaseAppoint implements CalculatorInterface
             $t = -9999.0;  // sentinel : bch_base_j = 0.5 × bch_j
         }
 
-        // ── 10. Besoin mensuel proportionnel à DH19 ────────────────────────────
-        $sumDH19 = 0.0;
+        // Repli pour un contexte construit sans BesoinChauffageCalculator
+        // (appel isolé). Le pipeline fournit toujours les douze Bchj réels.
+        $colonneDh = $depensier ? 'DH21' : 'DH19';
+        $colonneNref = $depensier ? 'Nref21' : 'Nref19';
+        $sommeDh = 0.0;
         for ($j = 1; $j <= 12; $j++) {
             $row = $tvS[$j] ?? null;
-            if ($row !== null && isset($row['DH19']) && $row['DH19'] !== null) {
-                $sumDH19 += (float)$row['DH19'];
+            if ($row !== null && isset($row[$colonneDh]) && $row[$colonneDh] !== null) {
+                $sommeDh += (float)$row[$colonneDh];
             }
         }
 
@@ -188,11 +214,12 @@ final class CollectifBaseAppoint implements CalculatorInterface
             $rowS    = $tvS[$j] ?? null;
             $dh14j   = (float)(($tvDH14[$j] ?? [])[$zoneId] ?? 0.0);
             $textj   = (float)(($tvText[$j] ?? [])[$zoneId] ?? 0.0);
-            $nref19j = (float)(($rowS !== null ? ($rowS['Nref19'] ?? 0) : 0));
-            $dh19j   = (float)(($rowS !== null ? ($rowS['DH19']   ?? 0.0) : 0.0));
+            $nrefj = (float)(($rowS !== null ? ($rowS[$colonneNref] ?? 0) : 0));
+            $dhj   = (float)(($rowS !== null ? ($rowS[$colonneDh] ?? 0.0) : 0.0));
 
-            // Besoin mensuel proportionnel au DH19 mensuel
-            $bchJ = ($sumDH19 > 0.0) ? $bch1 * $dh19j / $sumDH19 : 0.0;
+            $bchJ = $besoinsMensuels !== []
+                ? (float)($besoinsMensuels[$j] ?? 0.0) * $partSurface
+                : (($sommeDh > 0.0) ? $bch1 * $dhj / $sommeDh : 0.0);
 
             if ($t < -999.0) {
                 // Convention 50%
@@ -220,7 +247,7 @@ final class CollectifBaseAppoint implements CalculatorInterface
                     $x3 = $x2 * $xj;
                     $x5 = $x2 * $x3;
                     $poly = 14.0 - 28.0 * $xj + 20.0 * $x2 - 5.0 * $x3;
-                    $dhtj = $nref19j * ($textj - $tbase) * $x5 * $poly;
+                    $dhtj = $nrefj * ($textj - $tbase) * $x5 * $poly;
                     $dhtj = max(0.0, $dhtj);
 
                     $ratioDh = ($dh14j > 0.0) ? 1.0 - $dhtj / $dh14j : 0.0;
@@ -233,14 +260,20 @@ final class CollectifBaseAppoint implements CalculatorInterface
         $bchBase = max(0.0, min($bchBase, $bch1));
 
         // ── 12. Intermittences ─────────────────────────────────────────────────
-        $g = ($hsp * $shImmeuble) > 0.0 ? $gv / ($hsp * $shImmeuble) : 1.0;
+        // §8 : GV et Hsp × Sh décrivent la même enveloppe. §17.2.1.1
+        // calcule le besoin d'un DPE à l'appartement sur ce logement seul.
+        $modeDpe = $accessor->getIntOrNull('./caracteristique_generale/enum_methode_application_dpe_log_id', $logementNode);
+        $shG = in_array($modeDpe, self::MODES_LOGEMENT_SEUL, true)
+            ? ($accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logementNode) ?? $shImmeuble)
+            : $shImmeuble;
+        $g = ($hsp * $shG) > 0.0 ? $gv / ($hsp * $shG) : 1.0;
         $i0Base    = $accessor->getFloatOrNull('./donnee_intermediaire/i0', $emBase)    ?? 1.0;
         $i0Appoint = $accessor->getFloatOrNull('./donnee_intermediaire/i0', $emAppoint) ?? $i0Base;
         $intBase    = $i0Base    / (1.0 + 0.1 * ($g - 1.0));
         $intAppoint = $i0Appoint / (1.0 + 0.1 * ($g - 1.0));
 
         // ── 13. Rendements base ────────────────────────────────────────────────
-        $rgBase = RendementGenerateur::lire($accessor, $genBase) ?? 1.0;
+        $rgBase = $this->rendementScenario($accessor, $genBase, $context, $depensier);
         $denomBase = max(1e-9, $rgBase * $reBase * $rdBase * $rrBase);
         $consoBase = $bchBase * $intBase / $denomBase;
 
@@ -248,7 +281,7 @@ final class CollectifBaseAppoint implements CalculatorInterface
         $rdApp = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_distribution', $emAppoint) ?? 1.0;
         $rrApp = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_regulation',   $emAppoint) ?? 1.0;
         $reApp = $accessor->getFloatOrNull('./donnee_intermediaire/rendement_emission',     $emAppoint) ?? 1.0;
-        $rgApp = RendementGenerateur::lire($accessor, $genAppoint) ?? 1.0;
+        $rgApp = $this->rendementScenario($accessor, $genAppoint, $context, $depensier);
         $denomApp = max(1e-9, $rgApp * $reApp * $rdApp * $rrApp);
         $consoApp = max(0.0, $bch1 - $bchBase) * $intAppoint / $denomApp;
 
@@ -256,10 +289,8 @@ final class CollectifBaseAppoint implements CalculatorInterface
 
         // ── 15. Écriture dans installation.donnee_intermediaire ────────────────
         $di = $accessor->ensureDonneeIntermediaire($node);
-        $accessor->setChildValue($di, 'besoin_ch',          $bch1);
-        $accessor->setChildValue($di, 'besoin_ch_depensier', $bch1);
-        $accessor->setChildValue($di, 'conso_ch',           $consoTotal);
-        $accessor->setChildValue($di, 'conso_ch_depensier', $consoTotal);
+        $accessor->setChildValue($di, 'besoin_ch' . $suffixe, $bch1);
+        $accessor->setChildValue($di, 'conso_ch' . $suffixe, $consoTotal);
 
         // ── 16. Écriture dans chaque générateur ───────────────────────────────
         // §15.1.1 p.97 : chaque générateur n'appelle ses auxiliaires que sur
@@ -268,16 +299,33 @@ final class CollectifBaseAppoint implements CalculatorInterface
         $partBase = $bch1 > 0.0 ? $bchBase / $bch1 : 1.0;
         if ($genBase !== null) {
             $genDi = $accessor->ensureDonneeIntermediaire($genBase);
-            $accessor->setChildValue($genDi, 'conso_ch',           $consoBase);
-            $accessor->setChildValue($genDi, 'conso_ch_depensier', $consoBase);
-            \CalculDpePHP\Chauffage\PartBesoinGenerateur::publier($context, $genBase, $partBase);
+            $accessor->setChildValue($genDi, 'conso_ch' . $suffixe, $consoBase);
+            if (!$depensier) {
+                \CalculDpePHP\Chauffage\PartBesoinGenerateur::publier($context, $genBase, $partBase);
+            }
         }
         if ($genAppoint !== null) {
             $genDi = $accessor->ensureDonneeIntermediaire($genAppoint);
-            $accessor->setChildValue($genDi, 'conso_ch',           $consoApp);
-            $accessor->setChildValue($genDi, 'conso_ch_depensier', $consoApp);
-            \CalculDpePHP\Chauffage\PartBesoinGenerateur::publier($context, $genAppoint, max(0.0, 1.0 - $partBase));
+            $accessor->setChildValue($genDi, 'conso_ch' . $suffixe, $consoApp);
+            if (!$depensier) {
+                \CalculDpePHP\Chauffage\PartBesoinGenerateur::publier($context, $genAppoint, max(0.0, 1.0 - $partBase));
+            }
         }
+    }
+
+    private function rendementScenario(NodeAccessor $accessor, ?DOMElement $generateur, CalculationContext $context, bool $depensier): float
+    {
+        if ($generateur === null) {
+            return 1.0;
+        }
+        if ($depensier) {
+            $rendements = (array)$context->get('chauffage.rendement_generation_depensier', []);
+            $reference = $accessor->getStringOrNull('./donnee_entree/reference', $generateur);
+            if ($reference !== null && isset($rendements[$reference])) {
+                return (float)$rendements[$reference];
+            }
+        }
+        return RendementGenerateur::lire($accessor, $generateur) ?? 1.0;
     }
 
     /**

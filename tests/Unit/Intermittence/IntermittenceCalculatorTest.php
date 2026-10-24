@@ -243,6 +243,45 @@ XML;
         $this->assertEqualsWithDelta(1.03, $i0, self::TOL);
     }
 
+    public function testUneMaisonSurReseauCollectifGardeLaTableMaisonChauffageCentral(): void
+    {
+        foreach ([1, 14, 18, 25] as $mode) {
+            foreach ([2, 3] as $typeInstallation) {
+                foreach ([1, 2] as $typeChauffage) {
+                    foreach ([1 => 0.90, 4 => 0.88] as $inertie => $attendu) {
+                        $doc = new DOMDocument();
+                        $doc->loadXML(<<<XML
+<logement>
+  <caracteristique_generale><enum_methode_application_dpe_log_id>$mode</enum_methode_application_dpe_log_id></caracteristique_generale>
+  <installation_chauffage_collection><installation_chauffage>
+    <donnee_entree><enum_type_installation_id>$typeInstallation</enum_type_installation_id></donnee_entree>
+    <emetteur_chauffage_collection><emetteur_chauffage><donnee_entree>
+      <enum_type_chauffage_id>$typeChauffage</enum_type_chauffage_id>
+      <enum_type_regulation_id>2</enum_type_regulation_id>
+      <enum_equipement_intermittence_id>1</enum_equipement_intermittence_id>
+      <enum_type_emission_distribution_id>37</enum_type_emission_distribution_id>
+    </donnee_entree></emetteur_chauffage></emetteur_chauffage_collection>
+  </installation_chauffage></installation_chauffage_collection>
+</logement>
+XML);
+                        $ctx = $this->makeContext($doc, $inertie, $mode);
+                        if ($mode === 14) {
+                            $ctx->set('logement.methode_application_dpe_log_id', null);
+                        }
+                        $emetteur = $doc->getElementsByTagName('emetteur_chauffage')->item(0);
+                        (new IntermittenceCalculator())->calculate($emetteur, $ctx);
+                        self::assertEqualsWithDelta(
+                            $attendu,
+                            (float)$emetteur->getElementsByTagName('i0')->item(0)->textContent,
+                            1e-10,
+                            "mode=$mode, installation=$typeInstallation, chauffage=$typeChauffage, inertie=$inertie",
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     public function testMixedHeatingModeUsesIndividualMeteringConvention(): void
     {
         $xml = <<<'XML'

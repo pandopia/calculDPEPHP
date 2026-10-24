@@ -153,4 +153,31 @@ final class ConsoParEnergieCollectorTest extends TestCase
 
         self::assertEqualsWithDelta(100.0, $collecte['byEnergie'][2][0], 1e-9);
     }
+
+    public static function totalInstallationOptionnel(): iterable
+    {
+        foreach (['chauffage' => 'ch', 'ecs' => 'ecs'] as $usage => $champ) {
+            yield $usage . ' absent' => [$usage, $champ, null, 500.0];
+            yield $usage . ' zéro explicite' => [$usage, $champ, 0.0, 0.0];
+            yield $usage . ' total prioritaire' => [$usage, $champ, 2000.0, 1000.0];
+        }
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('totalInstallationOptionnel')]
+    public function testGenerateurUniqueEnRepliSeulementSiTotalAbsent(string $usage, string $champ, ?float $total, float $attendu): void
+    {
+        $installation = 'installation_' . $usage;
+        $generateur = 'generateur_' . $usage;
+        $cle = 'cle_repartition_' . $champ;
+        $conso = 'conso_' . $champ;
+        $di = $total === null ? '' : '<donnee_intermediaire><' . $conso . '>' . $total . '</' . $conso . '></donnee_intermediaire>';
+        $doc = new DOMDocument();
+        $doc->loadXML('<logement><caracteristique_generale><surface_habitable_logement>100</surface_habitable_logement></caracteristique_generale>'
+            . '<' . $installation . '_collection><' . $installation . '><donnee_entree><rdim>2</rdim><' . $cle . '>0.25</' . $cle . '></donnee_entree>' . $di
+            . '<' . $generateur . '_collection><' . $generateur . '><donnee_entree><enum_type_energie_id>1</enum_type_energie_id></donnee_entree><donnee_intermediaire><' . $conso . '>1000</' . $conso . '></donnee_intermediaire></' . $generateur . '></' . $generateur . '_collection>'
+            . '</' . $installation . '></' . $installation . '_collection></logement>');
+        $resultat = ConsoParEnergieCollector::collecter(new NodeAccessor($doc), $doc->documentElement, $installation, $generateur, $conso,
+            new CalculationContext($doc, new TableRepository(self::PROJECT_ROOT . '/resources/tables')));
+        self::assertEqualsWithDelta($attendu, $resultat['byEnergie'][1][0], 1e-9);
+    }
 }

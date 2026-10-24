@@ -7,7 +7,7 @@ import {
   ConfigImmeuble, configVide, contexteImmeuble, controler, empreinte, lireReponse, liaisonsUtiles, logementsManquants,
   parois, preRemplir, requete, resultats, synthese,
 } from '../src/app/core/immeuble/logements';
-import { fixture, nodeSchemas } from './helpers';
+import { blobResponse, fixture, nodeSchemas } from './helpers';
 
 // DPE immeuble réel (chauffage et ECS collectifs, 48 appartements) du moteur PHP
 const IMMEUBLE = readFileSync(join(__dirname, '..', '..', 'tests', 'Fixtures', 'comparatif-collectif.xml'), 'utf8');
@@ -184,7 +184,7 @@ describe('DPE des logements générés depuis l\'immeuble (§17.2.2)', () => {
     const ok = new ServiceLogementsPandopia('https://api.test/api/calculdpe', 1000, (async (url: string, init: RequestInit) => {
       calls.push({ url, body: String(init.body) });
       return url.endsWith('pdflogement')
-        ? new Response('%PDF-1.7 x', { status: 200, headers: { 'Content-Type': 'application/pdf' } })
+        ? blobResponse('%PDF-1.7 x', { status: 200, headers: { 'Content-Type': 'application/pdf' } })
         : new Response(JSON.stringify({ batiment: { erreur: null, xml: null }, logements: [] }), { status: 200 });
     }) as unknown as typeof fetch);
     expect(await ok.calculer({ a: 1 })).toEqual({ batiment: { erreur: null, xml: null }, logements: [] });

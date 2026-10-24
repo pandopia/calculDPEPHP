@@ -19,6 +19,120 @@ final class CombustionCalculatorTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
     private const TOL = 0.0001;
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('referencesMixtesLibres')]
+    public function testLaReferenceMixteEstDuTextePasUneExpressionXpath(string $reference, string $field): void
+    {
+        $ref = htmlspecialchars($reference, ENT_XML1);
+        $doc = new DOMDocument();
+        $doc->loadXML('<logement><installation_chauffage><generateur_chauffage><donnee_entree><' . $field . '>' . $ref . '</' . $field . '></donnee_entree><donnee_intermediaire><pn>20000</pn><rpn>0.9</rpn><qp0>100</qp0></donnee_intermediaire></generateur_chauffage></installation_chauffage>'
+            . '<installation_ecs><donnee_intermediaire><besoin_ecs>2000</besoin_ecs></donnee_intermediaire><generateur_ecs><donnee_entree><enum_type_energie_id>2</enum_type_energie_id><enum_type_generateur_ecs_id>49</enum_type_generateur_ecs_id><enum_methode_saisie_carac_sys_id>4</enum_methode_saisie_carac_sys_id><reference_generateur_mixte>' . $ref . '</reference_generateur_mixte></donnee_entree><donnee_intermediaire><pn>10000</pn><rpn>0.75</rpn><qp0>0</qp0></donnee_intermediaire></generateur_ecs></installation_ecs></logement>');
+        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        (new CombustionCalculator())->calculate($gen, $this->makeContext($doc));
+        $xp = new \DOMXPath($doc);
+        self::assertSame(20000.0, $xp->evaluate('number(./donnee_intermediaire/pn)', $gen));
+        self::assertSame(100.0, $xp->evaluate('number(./donnee_intermediaire/qp0)', $gen));
+        self::assertEqualsWithDelta(1 / (1 / 0.9 + 1790 * 100 / 2000000), $xp->evaluate('number(./donnee_intermediaire/rendement_generation)', $gen), 1e-12);
+    }
+
+    public static function referencesMixtesLibres(): iterable
+    {
+        foreach (['chaudiere-1', "chaudière d'été", 'chaudière "principale"', 'l\'été "A"', 'annexe\\chaudiere', 'A & B <mixte>'] as $ref) {
+            foreach (['reference', 'reference_generateur_mixte'] as $field) {
+                yield $field . ': ' . $ref => [$ref, $field];
+            }
+        }
+    }
+
+    public function testUneReferenceDirectePrimeSurUneCleMixteCommune(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML('<logement><installation_chauffage><generateur_chauffage><donnee_entree><reference_generateur_mixte>cible</reference_generateur_mixte></donnee_entree><donnee_intermediaire><pn>30000</pn><rpn>0.8</rpn></donnee_intermediaire></generateur_chauffage><generateur_chauffage><donnee_entree><reference>cible</reference></donnee_entree><donnee_intermediaire><pn>20000</pn><rpn>0.9</rpn></donnee_intermediaire></generateur_chauffage></installation_chauffage><installation_ecs><generateur_ecs><donnee_entree><enum_type_energie_id>2</enum_type_energie_id><reference_generateur_mixte>cible</reference_generateur_mixte></donnee_entree></generateur_ecs></installation_ecs></logement>');
+        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        (new CombustionCalculator())->calculate($gen, $this->makeContext($doc));
+        self::assertSame(20000.0, (new \DOMXPath($doc))->evaluate('number(./donnee_intermediaire/pn)', $gen));
+    }
+
+    public static function veilleusesSaisies(): iterable
+    {
+        foreach (['2', '0.1.0'] as $format) {
+            foreach ([0.0, 50.0] as $puissance) {
+                foreach (['intermediaire', 'entree', 'chauffage_mixte'] as $origine) {
+                    yield "$format, $puissance W, $origine" => [$format, $puissance, $origine];
+                }
+            }
+        }
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('veilleusesSaisies')]
+    public function testLaVeilleuseDuneChaudiereAjoute6970HeuresDeDemiPuissance(
+        string $format,
+        float $puissance,
+        string $origine,
+    ): void {
+        $becs = $format === '0.1.0' ? 1000000 : 1000;
+        $refMixte = $origine === 'chauffage_mixte' ? '<reference_generateur_mixte>mixte-test</reference_generateur_mixte>' : '';
+        $puissanceEntree = $origine === 'entree' ? "<pveil>$puissance</pveil>" : '';
+        $puissanceDi = $origine === 'intermediaire' ? "<pveilleuse>$puissance</pveilleuse>" : '';
+        $chauffage = $origine === 'chauffage_mixte' ? <<<XML
+            <installation_chauffage_collection><installation_chauffage><generateur_chauffage_collection><generateur_chauffage>
+              <donnee_entree><reference>mixte-test</reference></donnee_entree>
+              <donnee_intermediaire><pn>20000</pn><rpn>0.9</rpn><qp0>100</qp0><pveilleuse>$puissance</pveilleuse></donnee_intermediaire>
+            </generateur_chauffage></generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection>
+            XML : '';
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<XML
+            <dpe version="$format"><logement>$chauffage<installation_ecs_collection><installation_ecs>
+              <donnee_intermediaire><besoin_ecs>$becs</besoin_ecs></donnee_intermediaire>
+              <generateur_ecs_collection><generateur_ecs>
+                <donnee_entree><enum_type_energie_id>2</enum_type_energie_id><enum_type_generateur_ecs_id>49</enum_type_generateur_ecs_id>
+                  <enum_methode_saisie_carac_sys_id>4</enum_methode_saisie_carac_sys_id>$refMixte$puissanceEntree</donnee_entree>
+                <donnee_intermediaire><pn>20000</pn><rpn>0.9</rpn><qp0>100</qp0>$puissanceDi</donnee_intermediaire>
+              </generateur_ecs></generateur_ecs_collection>
+            </installation_ecs></installation_ecs_collection></logement></dpe>
+            XML);
+        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        $ctx = $this->makeContext($doc);
+        (new CombustionCalculator())->calculate($gen, $ctx);
+        // §14.1.2 p.94 : 6970 multiplie (0,5×Pveil/Becs), il ne
+        // divise pas Pveil. Becs est converti en Wh dans les deux formats.
+        $attendu = 1 / (1 / 0.9 + 1790 * 100 / 1000000 + 6970 * 0.5 * $puissance / 1000000);
+        $xp = new \DOMXPath($doc);
+        self::assertEqualsWithDelta($attendu, $xp->evaluate('number(./donnee_intermediaire/rendement_generation)', $gen), 1e-12);
+    }
+
+    public static function veilleusesForfaitairesEtSaisies(): iterable
+    {
+        yield 'pas de déclaration de présence' => [null, null, 0.0];
+        yield 'absence déclarée, ancien format' => [0, null, 0.0];
+        yield 'présence déclarée, ancien format' => [1, null, 240.0];
+        yield 'saisie méthode 2 prime sur 240 W forfaitaires' => [null, 50.0, 50.0];
+        yield 'saisie nulle ne réactive pas le forfait' => [1, 0.0, 0.0];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('veilleusesForfaitairesEtSaisies')]
+    public function testLaPuissanceDeVeilleuseSaisiePrimeDesLaMethodeDeux(?int $presence, ?float $saisie, float $puissanceAttendue): void
+    {
+        $flag = $presence === null ? '' : "<presence_veilleuse>$presence</presence_veilleuse>";
+        $puissance = $saisie === null ? '' : "<pveilleuse>$saisie</pveilleuse>";
+        $doc = new DOMDocument();
+        $doc->loadXML(<<<XML
+            <logement><installation_ecs_collection><installation_ecs><donnee_entree>$flag</donnee_entree>
+              <donnee_intermediaire><besoin_ecs>1000</besoin_ecs></donnee_intermediaire>
+              <generateur_ecs_collection><generateur_ecs><donnee_entree>
+                <enum_type_energie_id>2</enum_type_energie_id><enum_type_generateur_ecs_id>45</enum_type_generateur_ecs_id>
+                <enum_methode_saisie_carac_sys_id>2</enum_methode_saisie_carac_sys_id>
+                </donnee_entree><donnee_intermediaire><pn>20000</pn>$puissance</donnee_intermediaire>
+              </generateur_ecs></generateur_ecs_collection>
+            </installation_ecs></installation_ecs_collection></logement>
+            XML);
+        $gen = $doc->getElementsByTagName('generateur_ecs')->item(0);
+        (new CombustionCalculator())->calculate($gen, $this->makeContext($doc));
+        $rpn = (84 + 2 * log10(20)) / 100;
+        $attendu = 1 / (1 / $rpn + 1790 * 800 / 1000000 + 6970 * 0.5 * $puissanceAttendue / 1000000);
+        $xp = new \DOMXPath($doc);
+        self::assertEqualsWithDelta($attendu, $xp->evaluate('number(./donnee_intermediaire/rendement_generation)', $gen), 1e-12);
+    }
+
     private function buildElectricGen(int $genTypeId = 71, float $becsKwh = 22349.057): array
     {
         $xml = <<<XML

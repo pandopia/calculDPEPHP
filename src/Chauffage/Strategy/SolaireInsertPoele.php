@@ -146,6 +146,9 @@ final class SolaireInsertPoele implements CalculatorInterface
         $accessor->setChildValue($di, 'fch',                 $fch);
         // §9.6 p.65 : Prod = Bch × Fch × (0,75 INT1 Ich1 + 0,25 INT2 Ich2)
         $accessor->setChildValue($di, 'production_ch_solaire', $besoin * $fch * $sommePonderee);
+        \CalculDpePHP\Common\ProductionSolaireThermique::publier(
+            $context, $node, $besoin * $fch * $sommePonderee * $rdimEffective,
+        );
     }
 
     /**

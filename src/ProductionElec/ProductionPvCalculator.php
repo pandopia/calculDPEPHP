@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace CalculDpePHP\ProductionElec;
 
+use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Engine\CalculationContext;
 use CalculDpePHP\Engine\CalculatorInterface;
+use CalculDpePHP\Sortie\ConsoParEnergieCollector;
 use CalculDpePHP\Xml\NodeAccessor;
 use DOMElement;
 use RuntimeException;
 
 /**
- * Production photovoltaïque et électricité autoconsommée (§16.2 p.103-105).
+ * Production photovoltaïque et électricité autoconsommée (§16.2 p.103-106).
  *
  * Si `presence_production_pv ≠ 1` : aucun calcul.
  * Si `presence_production_pv = 1` :
@@ -26,7 +28,7 @@ use RuntimeException;
  * après ce calcul, avant que EmissionGesCalculator ne calcule les classes DPE.
  *
  * @spec-section 16.2
- * @spec-pages   103-105
+ * @spec-pages   103-106
  * @spec-source  resources/specsplitted/16-eclairage-prod-elec/02-prod-electricite.md
  * @xml-input    logement.production_elec_enr.donnee_entree.{presence_production_pv, panneaux_pv_collection}
  * @xml-input    logement.sortie.ef_conso.{conso_ch, conso_ecs, conso_fr, conso_eclairage, conso_totale_auxiliaire}
@@ -130,6 +132,12 @@ final class ProductionPvCalculator implements CalculatorInterface
 
         // ── 5. Production PV totale Ppv (kWh/an) ───────────────────────────
         $ppv = $this->computePpv($pvNode, $accessor, $ePvByMonth, $coefOrTable);
+        // §16.2 p.104 : les capteurs collectifs d'un appartement généré
+        // sont ramenés au lot au prorata des surfaces habitables. Conserver
+        // aussi le bâtiment pour le bilan ENR 2.7, qui applique son prorata
+        // global à toutes les productions une seule fois.
+        $context->set('pv.production_pv_immeuble', $ppv);
+        $ppv *= GeneratedApartment::surfaceShare($node, $accessor) ?? 1.0;
 
         // ── 6. Lire les consommations électriques depuis la sortie ──────────
         $sortie = null;
@@ -143,7 +151,7 @@ final class ProductionPvCalculator implements CalculatorInterface
             return;
         }
 
-        [$consoElecCh, $consoElecEcs] = $this->readConsoElecFromGenerators($node, $accessor);
+        [$consoElecCh, $consoElecEcs] = $this->readConsoElecFromGenerators($node, $accessor, $context);
 
         $efNode   = $this->getChild($sortie, 'ef_conso');
         $consoFr  = $efNode ? ($accessor->getFloatOrNull('./conso_fr',                $efNode) ?? 0.0) : 0.0;
@@ -197,6 +205,7 @@ final class ProductionPvCalculator implements CalculatorInterface
         $acAuxVent   = $tapl > 0.0 ? $celecAc * (self::TAPLPI['auxiliaire_ventilation'] * $consoAuxVent / $celecTot) / $tapl : 0.0;
         $acAuxDistCh = $tapl > 0.0 ? $celecAc * (self::TAPLPI['auxiliaire_distribution'] * $consoAuxDistCh / $celecTot) / $tapl : 0.0;
         $acAuxDistEcs = $tapl > 0.0 ? $celecAc * (self::TAPLPI['auxiliaire_distribution'] * $consoAuxDistEcs / $celecTot) / $tapl : 0.0;
+        $acAutres    = $tapl > 0.0 ? $celecAc * (self::TAPLPI['autres'] * $celecAu / $celecTot) / $tapl : 0.0;
 
         $acAux = $acAuxGenCh + $acAuxGenEcs + $acAuxDistCh + $acAuxDistEcs + $acAuxVent;
 
@@ -207,11 +216,19 @@ final class ProductionPvCalculator implements CalculatorInterface
         $context->set('pv.production_pv',      $ppv);
         $context->set('pv.conso_elec_ac',      $celecAc);
         $context->set('pv.taux_autoproduction', $tap);
-        $context->set('pv.ac_ch',              $acCh + $acAuxGenCh);
-        $context->set('pv.ac_ecs',             $acEcs + $acAuxGenEcs);
+        // §16.2 p.105-106 : l'auxiliaire de génération est pondéré avec son
+        // usage, mais reste un auxiliaire dans les agrégats EF/EP/GES/coûts.
+        // Le déduire aussi du chauffage/ECS compterait deux fois son énergie,
+        // même lorsque le générateur chauffe au gaz ou au bois.
+        $context->set('pv.ac_ch',              $acCh);
+        $context->set('pv.ac_ecs',             $acEcs);
         $context->set('pv.ac_fr',              $acFr);
         $context->set('pv.ac_eclairage',       $acEcl);
         $context->set('pv.ac_auxiliaire',      $acAux);
+        $context->set('pv.autoconsommation', [
+            'ch' => $acCh, 'ecs' => $acEcs, 'fr' => $acFr,
+            'eclairage' => $acEcl, 'auxiliaire' => $acAux, 'autre_usage' => $acAutres,
+        ]);
 
         // ── 13. Réduire ef_conso dans le sortie (autoconsommation déduite) ──
         if ($efNode !== null && $sh > 0.0) {
@@ -285,47 +302,22 @@ final class ProductionPvCalculator implements CalculatorInterface
     }
 
     /**
-     * Lit conso_ch et conso_ecs pour l'électricité (energie_id=1 ou 12) depuis les générateurs.
-     * Lit directement depuis installation_chauffage/generateur_chauffage et installation_ecs/generateur_ecs.
+     * §16.2 p.104-106 : Celec_tot_i est la consommation de la cible calculée,
+     * pas celle d'un générateur représentatif. Reprendre la collecte de §17
+     * utilisée par les coûts et la ventilation par énergie : multiplicité et
+     * clé d'appartement sont propres à chaque installation.
      *
      * @return array{float, float} [conso_ch_elec, conso_ecs_elec]
      */
-    private function readConsoElecFromGenerators(DOMElement $logement, NodeAccessor $accessor): array
+    private function readConsoElecFromGenerators(DOMElement $logement, NodeAccessor $accessor, CalculationContext $context): array
     {
-        $consoChElec  = 0.0;
-        $consoEcsElec = 0.0;
-
-        foreach ($logement->childNodes as $child) {
-            if (!$child instanceof DOMElement) {
-                continue;
-            }
-            // Générateurs de chauffage
-            if ($child->nodeName === 'installation_chauffage_collection') {
-                foreach ($child->getElementsByTagName('generateur_chauffage') as $gen) {
-                    if (!$gen instanceof DOMElement) {
-                        continue;
-                    }
-                    $eId = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $gen);
-                    if ($eId === 1 || $eId === 12) {
-                        $consoChElec += $accessor->getFloatOrNull('./donnee_intermediaire/conso_ch', $gen) ?? 0.0;
-                    }
-                }
-            }
-            // Générateurs ECS
-            if ($child->nodeName === 'installation_ecs_collection') {
-                foreach ($child->getElementsByTagName('generateur_ecs') as $gen) {
-                    if (!$gen instanceof DOMElement) {
-                        continue;
-                    }
-                    $eId = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $gen);
-                    if ($eId === 1 || $eId === 12) {
-                        $consoEcsElec += $accessor->getFloatOrNull('./donnee_intermediaire/conso_ecs', $gen) ?? 0.0;
-                    }
-                }
-            }
+        $totaux = [];
+        foreach ([['installation_chauffage', 'generateur_chauffage', 'conso_ch'], ['installation_ecs', 'generateur_ecs', 'conso_ecs']] as [$installation, $generateur, $champ]) {
+            $parEnergie = ConsoParEnergieCollector::collecter($accessor, $logement, $installation, $generateur, $champ, $context)['byEnergie'];
+            $totaux[] = ($parEnergie[1][0] ?? 0.0) + ($parEnergie[12][0] ?? 0.0);
         }
 
-        return [$consoChElec, $consoEcsElec];
+        return $totaux;
     }
 
     /**

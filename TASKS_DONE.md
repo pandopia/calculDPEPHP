@@ -19,6 +19,186 @@ une.
 
 ## Enquêtes closes
 
+### TASK-K06 — Pertes à l'arrêt bois ECS : variante isolée non activée (24/10/2026)
+
+Le zéro systématique de `qp0_pct = null` dans la table ECS bois n'est pas
+justifié : §14.1.2 p.94 renvoie aux caractéristiques de §13.2.2.3 p.89–90.
+Prototype : pertes absolues `1000 × c × Pn^a` sous 70 kW, puis forfaits
+des bandes 70–400 et >400 kW, chaudières simples et parties hybrides,
+évaluées au périmètre réel avant éventuelle quote-part. Rpn et Pn inchangés.
+249 cas synthétiques de calcul, bornes et saisies passent sur le prototype.
+
+A/B isolé sur 694 cas, même HEAD `ec36cd0`, un seul fichier `src/` non
+commité dans les deux runs : 18 568 → 18 571 numériques (+3), 49 → 50
+chaînes (+1), 0 amélioration de compteur, 4 cas dégradés d'un écart chacun.
+Les 732 manquantes et 2 475 supplémentaires restent identiques. Aucun budget
+relevé. Les nouveaux écarts sont des arrondis de consommations/GES et deux
+classes (GES A→B pour 2511E2519899U, DPE D→E pour 2669E2598817J), pas QP0
+qui était déjà faux dans les deux versions.
+
+Ces références déclarent une chaudière bois hybride mais publient souvent
+`QP0 = 0,5 % Pn` et `Rpn = 91 + 3 logPn` (ligne gaz, pas bois). Il reste à
+qualifier leurs caractéristiques et l'association CH/ECS avant d'activer la
+correction complète, sans attribuer leurs classes au défaut de référence sur
+le seul désaccord moteur. Ne pas réexécuter ce prototype global sans élément
+nouveau. La tâche K06 reste ouverte sur cette racine démontrée.
+
+### TASK-K97 — Conversion PV historique EF→EP non retenue (24/10/2026)
+
+Après correction de la pondération des autoconsommations, variante isolée
+sur les mêmes 686 cas : multiplier les huit champs de
+`sortie/production_electricite` par le coefficient électrique de la période
+(2,3 avant 2026, 1,9 ensuite), comme leur documentation XSD le suggère.
+18 115 → 18 203 numériques hors tolérance : **+88**, 23 cas dégradés,
+aucun amélioré, aucun autre code ni tolérance modifié. La ventilation
+physique reste en kWh EF conformément à §16.2 p.104–106 ; le contrat de
+sérialisation est à clarifier, pas à déduire d'un seul export.
+
+Rouvrir sur un erratum de documentation ou un export dont les unités sont
+cohérentes et explicites. La variante n'est pas activée, aucun budget relevé.
+
+### TASK-K06 — Verdicts historiques COP et sérialisation, à conserver
+
+- Mesure historique, pas un nouveau décompte des 670 cas : sur 45 écarts de
+  Rg ECS, 43 avaient déjà une caractéristique Pn/Rpn/QP0 divergente. Les deux
+  isolés étaient la chaudière électrique (corrigée à 0,97, §12.4.1 p.76) et
+  la référence lacunaire K35. Les puissances amont restent en K85/K95.
+- Rs sans ballon : 10 références l'écrivaient à 1, mais sa publication aurait
+  créé 191 balises supplémentaires. Ne pas le publier sans stockage. Les
+  12 Rg supplémentaires alors recensés étaient des générateurs à combustion,
+  pas des CET, dont le COP inclut le stockage selon le XSD.
+- COP : §14.2 p.95 donne 2,5 sur 2400E0020849A (type 3 H1a), 2,2 sur
+  2401E0359228Q (type 2 H1c), 2,3 sur 2601E0981468A (type 12 H1c). Leurs
+  références publient respectivement 2,8, 2,5 et 2,6, des valeurs d'autres
+  lignes. 2600E0099076V et 2400E4097217K déclarent tous deux H2c, type 6,
+  période 3, forfait, mais publient 3,8 et 3,2. Les valeurs 3,8, 3,2 et
+  3,07 sont déjà imputées par `copForfaitaireHorsTable()` car absentes de
+  toute la table ; ne pas ajouter les autres en refaisant notre calcul.
+- Ne rouvrir ces verdicts qu'avec une nouvelle règle ou une entrée permettant
+  de départager les références, jamais pour relever le COP forfaitaire.
+
+### TASK-K06 — Sondage ADEME des blocs ECS à deux générateurs (24/10/2026)
+
+- Aucun bloc à plusieurs générateurs ECS parmi les 670 cas du corpus. Le
+  filtre public DataFair `type_generateur_n2_ecs_n1:*` indexe 807 DPE,
+  tous antérieurs au 19/07/2022 dans la sélection triée par date décroissante ;
+  zéro en 2026. Trois XML ont été récupérés par `bin/fetch-dpe`, sans retouche.
+- Ils recopient tous `conso_ecs` de l'installation dans chacun de ses deux
+  générateurs : 117 558,135673123 kWh sur `2160E0981223R` (gaz/gaz),
+  59 821,5344301015 sur `2193E0977090Z` (gaz/CET), 3 104,14284610104 sur
+  `2276E1627094N` (gaz/bois). La sortie EF ne reprend qu'une fois ce total.
+  Les trois déclarent cfg ECS 1, ratio 1 sur les deux générateurs ; les
+  moteurs sont `3CL_BBSSlama_1.0.0.0` et `3CL_BBSSlama_1.1.0.0`.
+- Le XSD décrit pourtant Cecs comme la consommation annuelle **du générateur**
+  et le ratio comme 0,5 en présence de deux générateurs. Ces copies ne peuvent
+  départager systèmes indépendants et cascade/appoint. Ne pas les utiliser
+  pour choisir le partage de §11.4 p.73, ni diviser une consommation déjà
+  calculée sans reprendre les besoins de Rs, Rg et des auxiliaires.
+- Les six fichiers d'investigation (input et référence) sont conservés hors
+  du corpus, dans `/tmp/calculdpe-ecs-probes-KAHR3G/`. Aucun ancien cas n'est
+  exclu, aucun compteur ni budget des 670 cas n'est modifié par ce sondage.
+  SHA256 des références : `2160…` =
+  `fe64e8f19df55d9a68de7bcd350dd71d6df3fe9d01bc3a2ba7f39a2ec23db994`,
+  `2193…` = `0361325017e44ef725b3f6a12e744749174225759a7cc2d45807a67b9ac932ed`,
+  `2276…` = `694540cfc3d52d420ba4a26d7f899a26fd51634d0a259045b3dc3c22118356c8`.
+- Rouvrir sur un export cohérent ou une clarification du modèle de cascade
+  ECS. Le calcul multi-générateurs reste à instruire en K06 ; aucun correctif
+  de calcul ECS n'est livré sur la seule base de ces trois références.
+
+### TASK-K95 — QP0 calculé directement sur Pe (24/10/2026)
+
+- A/B en mémoire sur `0b075a7`, même corpus 670 cas, aucun fichier `src/`
+  non commité, bandes de puissance bois corrigées dans les deux variantes.
+  Seul QP0 change : `a × QP0(Pn_collectif)` devient `QP0(Pe)`, conformément
+  à la lecture littérale du tableau §17.2.1.1 p.112.
+- Numériques hors tolérance **17 843 → 18 058** (+215), classes 44 → 52
+  (+8), manquantes 688 et supplémentaires 2 355 inchangées. Aucun écart
+  résolu, 223 nouveaux ; huit cas dégradés, aucun amélioré. Les hausses de
+  budget moteur seraient respectivement +40, +19, +40, +39, +1, +16, +16,
+  +36 sur 2400E0007293Q, 2401E0490195V, 2600E1626587G, 2600E1932292D,
+  2606E0021556N, 2606E0147011S, 2606E0835323G et 2613E2419802A.
+- La variante est retirée, sans relever les budgets. Reprendre avec une
+  clarification du calcul des pertes du générateur virtuel ou des exports
+  permettant de départager QP0 physique et QP0 équivalent (suite K95).
+
+### TASK-K96 — Condition d'inertie du sélecteur climatique global (24/10/2026)
+
+- A/B isolé en mémoire sur l'arbre `42f819a`, 670 cas, aucun fichier `src/`
+  non commité : imposer une classe ADEME 1 ou 2 en plus de
+  `batiment_materiaux_anciens=1` porte les numériques hors tolérance de
+  **17 843 à 18 291** (+448), les classes de 44 à 46 (+2). Manquantes 688
+  et supplémentaires 2 355 inchangées ; aucune tolérance modifiée.
+- §18.3 p.136 exprime bien les deux conditions, mais 14 références sur les
+  51 à matériaux anciens publient une classe moyenne ou légère. Le sélecteur
+  commun actuel et open3cl suivent le drapeau seul. Cette mesure ne permet
+  pas d'inventer une qualification différente pour ces seuls fichiers.
+- Ne pas rejouer cette variante sans clarification de la sémantique du
+  drapeau, des classes publiées ou export corrigé. La suite actionnable est
+  conservée en K96 ; aucun changement du sélecteur global n'est livré.
+
+### TASK-K67 — Besoin ancien incompatible avec ses propres apports (24/10/2026)
+
+- `2242E2979513I`, modèle 2.2 du 06/04/2022 : ni erreur d'échelle ni
+  rendement de réseau à corriger. Le fichier est bien à l'immeuble (mode 26,
+  5 180 m²) ; Rg et tous les rendements d'émission/distribution/régulation
+  concordent. Le premier écart est Bch : 97 539,920 contre 117 543,045 kWh.
+- GV, Sse, Nadeq et apports annuels sont reproduits. Mais la référence
+  publie F=0,639, GV=5 439,117 W/K, zone H1c <400 m (ΣDH19=57 673 °Ch),
+  5 836,298 kWh de pertes récupérées, zéro stockage/génération récupéré.
+  §6.1 et §9.1.1 imposent
+  `Σ max(0, GV×DHj×(1−Fj)/1000−Lrecj) ≥ GV×ΣDH×(1−F) /1000−ΣLrec`.
+  Même en majorant F à **0,640**, cette borne vaut **107 092,172 kWh**,
+  supérieure de 9 552,252 à son Bch. Il faudrait au moins F=0,670451.
+- La pondération annuelle de Fj par GV×DHj est aussi celle d'open3cl
+  (`9_besoin_ch.js`, lignes 198–206). La référence recopie en outre 0,639
+  dans le scénario dépensier malgré les DH21 et besoins différents.
+- Aucun moteur modifié, aucune nouvelle imputation ni exclusion : les
+  compteurs bruts restent inchangés. Ne pas abaisser artificiellement le
+  besoin pour reproduire ce fichier. Rouvrir sur export corrigé ou donnée
+  mensuelle/clarification de la sémantique du F publié permettant de lever
+  cette contradiction.
+
+### TASK-K94 — Variante globale de volume G non retenue (24/10/2026)
+
+- A/B isolé sur l'arbre `3868d54`, même corpus 670 cas et un fichier `src/`
+  non commité, substitution en mémoire du seul trait : 18 301 → 18 045
+  numériques hors tolérance (−256), 44 → 40 classes, 688 manquantes et
+  2 355 supplémentaires inchangées. Quinze cas gagnent, quatre perdent.
+- Les budgets qui augmenteraient sont `2400E0856203A` (+1, GES/m²),
+  `2401E0473146C` (+1, GES/m²), `2601E1280780A` (+1, coût ECS) et
+  `2611E1951763L` (+2, coûts auxiliaires). Aucun budget n'est relevé.
+- Le sous-périmètre des appartements décrits directement apporte −41
+  numériques, aucun nouveau défaut et aucun cas dégradé ; il est livré
+  séparément. Ne pas rejouer la généralisation aux maisons sans avoir
+  départagé les quatre résidus d'aval (suite actionnable K94).
+
+### TASK-K85 — Variantes de périmètre GV déjà écartées
+
+- Conserver ces chiffres historiques, sans les présenter comme des mesures
+  du corpus actuel : abandonner la réduction du GV pour les modes 6/8 a coûté
+  **+2 075 écarts sur 541 cas**, 3 cas améliorés contre 82 dégradés, malgré
+  un gain local de 29 sur `2400E0669882V`. Pas de généralisation possible.
+- Le diviseur « nombre de systèmes » non borné par Nblgt a coûté **+537
+  écarts sur 23 cas**. La borne protège le périmètre de l'appartement moyen.
+- Un Rg juste ne prouve pas que chaque Pn de la zone est juste : des erreurs
+  se compensent. La suite actionnable sur les Pn amont demeure en K85.
+- Réouverture de ces variantes uniquement sur clarification du périmètre
+  réglementaire ou nouvelle donnée d'entrée départageant ces cas.
+
+### TASK-K93 — Variantes globales de colonne Joule écartées (23/10/2026)
+
+- A/B en mémoire, même arbre `70ca91e`, 646 cas, profil strict, aucun fichier
+  `src/` modifié. La réplication sans variante reproduit exactement le rapport
+  officiel : 17 247 hors tolérance, 626 manquantes, 2 230 supplémentaires.
+- Dès qu'un générateur Joule existe : **17 451**, soit +204 ; même résultat
+  en ne considérant que les générateurs liés à la génération principale.
+- Joule seulement si tous les générateurs connus sont Joule : **17 347** (+100).
+- Majorité surfacique ≥50 %, convention de `open3cl/src/utils.js` : **17 300** (+53).
+- Le bug d'ordre est réel, mais ni §3.2 p.12 ni les guides publics consultés
+  n'établissent un seuil de majorité pour ce calcul. Rien n'est codé ni aucun
+  budget relevé. La suite actionnable demeure dans TASKS.md ; ne pas refaire
+  ces quatre variantes sans une donnée ou clarification réglementaire nouvelle.
+
 ### TASK-K71 — Froid H1c 400-800 m : la référence ajoute `2,03 × Sse_mai`
 
 - Enquête close sans changement de code, 20 octobre 2026, corpus 646 cas.

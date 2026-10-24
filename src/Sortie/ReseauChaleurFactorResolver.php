@@ -84,8 +84,8 @@ final class ReseauChaleurFactorResolver
      * `date_arrete_reseau_chaleur` désigne le millésime sans ambiguïté quand
      * l'export la renseigne — le XSD la définit comme « la date de l'arrêté
      * qui modifie l'annexe 7 ». À défaut, la date d'établissement du DPE est
-     * cherchée dans les plages, prises de la plus récente à la plus ancienne
-     * parce que l'amont les laisse se chevaucher d'un mois entre 2021 et 2022.
+     * cherchée dans les plages réglementaires d'entrée en vigueur. Les alias
+     * de déclaration ADEME sont acceptés sans changer ces bornes.
      *
      * Un DPE antérieur au premier arrêté retombe sur le millésime le plus
      * ancien : la méthode 3CL ne s'applique que depuis le 1er juillet 2021,
@@ -99,7 +99,7 @@ final class ReseauChaleurFactorResolver
         if ($dateArrete !== null && $dateArrete !== '') {
             $jour = substr($dateArrete, 0, 10);
             foreach ($arretes as $arrete) {
-                if ($arrete['date_arrete'] === $jour) {
+                if ($arrete['date_arrete'] === $jour || in_array($jour, $arrete['dates_declaration_aliases'] ?? [], true)) {
                     return (int) $arrete['millesime'];
                 }
             }
@@ -167,5 +167,58 @@ final class ReseauChaleurFactorResolver
         return str_ends_with($reseauId, 'F')
             ? self::AUTRE_RESEAU_FROID
             : self::AUTRE_RESEAU_CHALEUR;
+    }
+
+    /**
+     * Annexe 7 de l'arrêté du 15/09/2006, colonne « Taux EnR&R » : fraction
+     * renouvelable/récupération publiée, distincte du contenu carbone.
+     *
+     * Ce taux ne qualifie PAS le réseau d'« efficace » au sens de L.711-4.
+     * Il prépare le calcul de l'annexe 2 §1.2.6 (JO 13/08/2026, p.7), sans
+     * autoriser à lui seul la mention A0 ni le pictogramme correspondant.
+     *
+     * `null` : taux absent, anomalie source hors [0,1], identifiant absent ou
+     * chaudière/PAC multi-bâtiment. Le vrai zéro publié reste zéro. Un réseau
+     * de chaleur absent de l'édition prend la ligne « autres réseaux » (0),
+     * pas le taux d'une ancienne édition ; pour le froid cette ligne ne
+     * publie pas de taux. Aucune déduction depuis le contenu CO2.
+     *
+     * @tables reference/tv_reseau_chaleur_enr, reference/tv_arrete_reseau_chaleur
+     */
+    public static function resolveRenewableShare(
+        DOMElement $network,
+        NodeAccessor $accessor,
+        CalculationContext $context,
+    ): ?float {
+        $typeCh = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ch_id', $network);
+        $typeEcs = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_ecs_id', $network);
+        if (in_array($typeCh, [109, 110, 111, 112, 171], true)
+            || in_array($typeEcs, [74, 75, 76, 77, 134], true)) {
+            return null;
+        }
+
+        $millesime = self::millesime(
+            $accessor->getStringOrNull('./donnee_entree/date_arrete_reseau_chaleur', $network),
+            $accessor->getStringOrNull('//date_etablissement_dpe', $network),
+            $context,
+        );
+        // La feuille 2020 ne publie aucun taux et utilise l'ancien index.
+        if ($millesime === self::MILLESIME_PAR_IDENTIFIANT_OBSOLETE) {
+            return null;
+        }
+        $id = $accessor->getStringOrNull('./donnee_entree/identifiant_reseau_chaleur', $network);
+        if ($id === null || !preg_match('/^[0-9]{4}[CF]$/D', $id)) {
+            return null;
+        }
+
+        $table = $context->tables->load('reference/tv_reseau_chaleur_enr');
+        if (!array_key_exists($id, $table[$millesime])) {
+            return str_ends_with($id, 'C') ? 0.0 : null;
+        }
+        $rate = $table[$millesime][$id];
+
+        return $rate !== null && is_finite((float)$rate) && $rate >= 0.0 && $rate <= 1.0
+            ? (float)$rate
+            : null;
     }
 }

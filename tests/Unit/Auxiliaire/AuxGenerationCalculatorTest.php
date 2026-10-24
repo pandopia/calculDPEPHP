@@ -149,6 +149,60 @@ XML;
         }
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('ecsClesEtOrdres')]
+    public function testChaqueInstallationEcsConserveSaCle(bool $inverse, bool $zone, ?int $mode = null): void
+    {
+        $installations = [];
+        foreach ([[1000, 0.2], [2000, 0.3]] as [$besoin, $cle]) {
+            $installations[] = '<installation_ecs><donnee_entree><cle_repartition_ecs>' . $cle . '</cle_repartition_ecs><rdim>1</rdim></donnee_entree>'
+                . '<donnee_intermediaire><besoin_ecs>' . $besoin . '</besoin_ecs><besoin_ecs_depensier>' . ($besoin * 2) . '</besoin_ecs_depensier></donnee_intermediaire>'
+                . '<generateur_ecs_collection><generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>57</enum_type_generateur_ecs_id></donnee_entree>'
+                . '<donnee_intermediaire><pn>20000</pn></donnee_intermediaire></generateur_ecs></generateur_ecs_collection></installation_ecs>';
+        }
+        $surfaceLogement = $zone ? '<surface_habitable_logement>50</surface_habitable_logement>' : '';
+        $modeXml = $mode === null ? '' : '<enum_methode_application_dpe_log_id>' . $mode . '</enum_methode_application_dpe_log_id>';
+        [$doc, $logement, $context] = $this->buildDoc('<logement><caracteristique_generale>' . $modeXml . $surfaceLogement . '<surface_habitable_immeuble>1000</surface_habitable_immeuble></caracteristique_generale><installation_ecs_collection>'
+            . implode('', $inverse ? array_reverse($installations) : $installations) . '</installation_ecs_collection></logement>');
+
+        (new AuxGenerationCalculator())->calculate($logement, $context);
+
+        // Paux = 20 + 1,6 × 20 = 52 W. Les clés ne sont jamais globales.
+        $expected = 52 / 20000 * ($zone && $mode !== 2 ? 1000 * 0.2 + 2000 * 0.3 : 3000);
+        self::assertEqualsWithDelta($expected, $this->efValue($doc, 'conso_auxiliaire_generation_ecs'), 1e-12);
+        self::assertEqualsWithDelta(2 * $expected, $this->efValue($doc, 'conso_auxiliaire_generation_ecs_depensier'), 1e-12);
+    }
+
+    public static function ecsClesEtOrdres(): iterable
+    {
+        yield 'appartement direct, pas de seconde cle' => [false, true, 2];
+        yield 'appartement genere, cle par installation' => [false, true, 10];
+        foreach ([false, true] as $inverse) {
+            foreach ([false, true] as $zone) {
+                yield 'ordre ' . (int)$inverse . ' zone ' . (int)$zone => [$inverse, $zone];
+            }
+        }
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('chaudieresBoisHybridesEcs')]
+    public function testLaPartieChaudiereBoisHybrideGardeSaLigneDAuxiliaires(int $type, int $ventouse): void
+    {
+        [$doc, $logement, $context] = $this->buildDoc('<logement><installation_ecs_collection><installation_ecs><donnee_intermediaire><besoin_ecs>1000</besoin_ecs><besoin_ecs_depensier>2000</besoin_ecs_depensier></donnee_intermediaire><generateur_ecs><donnee_entree><enum_type_generateur_ecs_id>' . $type . '</enum_type_generateur_ecs_id><presence_ventouse>' . $ventouse . '</presence_ventouse></donnee_entree><donnee_intermediaire><pn>20000</pn></donnee_intermediaire></generateur_ecs></installation_ecs></installation_ecs_collection></logement>');
+        (new AuxGenerationCalculator())->calculate($logement, $context);
+        // §15.1 p.97 : chaudière bois, pas la partie PAC (auxiliaires nuls).
+        $expected = $ventouse === 1 ? (73.3 + 10.5 * 20) * 1000 / 20000 : 0.0;
+        self::assertEqualsWithDelta($expected, $this->efValue($doc, 'conso_auxiliaire_generation_ecs'), 1e-12);
+        self::assertEqualsWithDelta(2 * $expected, $this->efValue($doc, 'conso_auxiliaire_generation_ecs_depensier'), 1e-12);
+    }
+
+    public static function chaudieresBoisHybridesEcs(): iterable
+    {
+        foreach (range(124, 131) as $type) {
+            foreach ([0, 1] as $ventouse) {
+                yield "$type ventouse $ventouse" => [$type, $ventouse];
+            }
+        }
+    }
+
     public function testGasBoilerBatMode(): void
     {
         // bat_post2026 profile: Paux=84W, Pn=40kW, besoin_ch=21632.74, besoin_ecs=22349.06

@@ -18,6 +18,32 @@ final class BesoinChauffageCalculatorTest extends TestCase
     private const PROJECT_ROOT = __DIR__ . '/../../..';
     private const TOL = 0.5; // kWh tolerance
 
+    public function testLesBesoinsMensuelsRestentDansLeContexteEtSommentLeBilanAnnuel(): void
+    {
+        $doc = $this->buildLogement();
+        $fractions = array_fill(1, 12, 0.2);
+        $fractions[2] = 1.0;
+        $ctx = $this->makeContext($doc, '1', '1', [
+            'enveloppe.dp_parois' => 500.0,
+            'apport.fj_mensuel' => $fractions,
+            'apport.fj_mensuel_dep' => array_fill(1, 12, 0.1),
+            'ecs.pertes_distribution_recup' => 100.0,
+            'ecs.pertes_distribution_recup_dep' => 150.0,
+        ]);
+        (new BesoinChauffageCalculator())->calculate($doc->documentElement, $ctx);
+
+        foreach (['', '_depensier'] as $suffixe) {
+            $mensuels = $ctx->get('chauffage.besoin_ch_mensuel' . $suffixe);
+            self::assertCount(12, $mensuels);
+            self::assertSame(range(1, 12), array_keys($mensuels));
+            self::assertGreaterThanOrEqual(0.0, min($mensuels));
+            self::assertEqualsWithDelta($ctx->get('chauffage.besoin_ch' . $suffixe), array_sum($mensuels), 1e-10);
+        }
+        self::assertSame(0.0, $ctx->get('chauffage.besoin_ch_mensuel')[2], 'le surplus de février ne compense pas un autre mois');
+        self::assertGreaterThan(0.0, $ctx->get('chauffage.besoin_ch_mensuel_depensier')[2]);
+        self::assertSame(0, $doc->getElementsByTagName('besoin_ch_mensuel')->length, 'pas de balise hors schéma');
+    }
+
     private function makeContext(
         DOMDocument $doc,
         ?string $zoneId = '1',

@@ -17,14 +17,14 @@ use DOMElement;
  *
  * | PB lourd | PH lourd | PV lourde | Classe        |
  * |----------|----------|-----------|---------------|
- * |   oui    |   oui    |   oui     | 4 très lourde |
- * |    -     |   oui    |   oui     | 3 lourde      |
- * |   oui    |    -     |   oui     | 3 lourde      |
- * |   oui    |   oui    |    -      | 3 lourde      |
- * |    -     |    -     |   oui     | 2 moyenne     |
- * |    -     |   oui    |    -      | 2 moyenne     |
- * |   oui    |    -     |    -      | 2 moyenne     |
- * |    -     |    -     |    -      | 1 légère      |
+ * |   oui    |   oui    |   oui     | 1 très lourde |
+ * |    -     |   oui    |   oui     | 2 lourde      |
+ * |   oui    |    -     |   oui     | 2 lourde      |
+ * |   oui    |   oui    |    -      | 2 lourde      |
+ * |    -     |    -     |   oui     | 3 moyenne     |
+ * |    -     |   oui    |    -      | 3 moyenne     |
+ * |   oui    |    -     |    -      | 3 moyenne     |
+ * |    -     |    -     |    -      | 4 légère      |
  *
  * Règles par défaut (§7.1-§7.3) :
  *   - PH inconnu → léger (défaut)
@@ -40,7 +40,6 @@ use DOMElement;
  * celle des surfaces majoritaires. On prend donc la surface pondérée lourde
  * vs non-lourde (si `paroi_lourde` absent, on applique les défauts ci-dessus).
  *
- * Le résultat est écrit dans le contexte (clé `inertie.classe_id`) **et** dans
  * Le résultat est publié dans le contexte sous `inertie.classe_id` ; il n'est
  * pas écrit dans le XML (voir `writeResult()`).
  *

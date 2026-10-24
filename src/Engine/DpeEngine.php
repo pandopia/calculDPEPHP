@@ -108,6 +108,86 @@ final class DpeEngine
         }
 
         $this->assertTechnologiesConnues($accessor, $document);
+        $this->assertOptionsConnues($accessor, $document);
+        $this->assertFroidElectrique($accessor, $document);
+    }
+
+    /**
+     * EP, GES, coûts et ventilation par énergie du froid ne couvrent pour
+     * l'instant que l'électricité du réseau. XSD 2.6/2.7 : le type 21 est un
+     * système thermodynamique gaz ; le modèle 2.7 ajoute le réseau de froid 23.
+     * Une performance EER valide ne rend pas leurs conversions électriques.
+     * L'énergie absente/nil conserve le fonctionnement électrique historique.
+     *
+     * @spec-source editeur/public/schemas/DPEv2.7.xsd
+     * @throws UnsupportedDpeModelException
+     */
+    private function assertFroidElectrique(NodeAccessor $accessor, DOMDocument $document): void
+    {
+        foreach ($document->getElementsByTagName('climatisation') as $climatisation) {
+            $type = $accessor->getIntOrNull('./donnee_entree/enum_type_generateur_fr_id', $climatisation);
+            $energie = $accessor->getIntOrNull('./donnee_entree/enum_type_energie_id', $climatisation);
+            if ($type === 21 || ($type !== null && $type > 22) || ($energie !== null && $energie !== 1)) {
+                throw new UnsupportedDpeModelException(sprintf(
+                    'refroidissement non couvert (enum_type_generateur_fr_id=%s, enum_type_energie_id=%s) : '
+                    . 'seul le froid électrique du réseau est implémenté pour les conversions EP/GES/coûts. '
+                    . 'Le fichier est refusé avant purge — voir TASK-K63.',
+                    $type ?? 'absent', $energie ?? 'absent',
+                ));
+            }
+        }
+    }
+
+    /**
+     * Domaine des options dont les calculateurs implémentent la méthode.
+     *
+     * @spec-source editeur/public/schemas/DPEv2.7.xsd
+     * Les appinfo des champs ci-dessous introduisent solaire ECS seule (5),
+     * MTA (4), régulation prédictive (8), période thermo 2027 (4), RCEG et
+     * deux coefficients saisis. Leur simple présence ne suffit pas à rendre
+     * leur calcul disponible. Refuser avant purge, comme les générateurs.
+     * Un maximum null signifie qu'aucune valeur saisie n'est encore traitée.
+     *
+     * @throws UnsupportedDpeModelException
+     */
+    private function assertOptionsConnues(NodeAccessor $accessor, DOMDocument $document): void
+    {
+        // ADEME 05aabba7, feuille debits_ventilation : en 2.7 le type 1
+        // utilise qvaerat_conv=1.2 et qvarep_conv=0, contre qvarep=1.2
+        // historiquement. Tant que la nouvelle séparation aération/ventilation
+        // n'est pas implémentée, ne pas produire les anciens intermédiaires.
+        $version = $accessor->getStringOrNull('//administratif/enum_version_id');
+        if ($version !== null && version_compare($version, '2.7', '>=')) {
+            foreach ($document->getElementsByTagName('ventilation') as $ventilation) {
+                if ($accessor->getIntOrNull('./donnee_entree/enum_type_ventilation_id', $ventilation) === 1) {
+                    throw new UnsupportedDpeModelException(
+                        'aération par ouverture des fenêtres : la séparation ventilation/aération du modèle DPE 2.7 '
+                        . 'n’est pas encore implémentée. Le fichier est refusé avant purge — voir TASK-K63.',
+                    );
+                }
+            }
+        }
+        $options = [
+            ['installation_ecs', 'enum_type_installation_solaire_id', 4],
+            ['installation_ecs', 'enum_bouclage_reseau_ecs_id', 3],
+            ['emetteur_chauffage', 'enum_equipement_intermittence_id', 7],
+            ['generateur_ecs', 'enum_periode_installation_ecs_thermo_id', 3],
+            ['installation_ecs', 'presence_rceg', 0],
+            ['generateur_ecs', 'scf_saisi', null],
+            ['installation_chauffage', 'couverture_pac_hybride_saisi', null],
+        ];
+        foreach ($options as [$balise, $champ, $maximum]) {
+            foreach ($document->getElementsByTagName($balise) as $equipement) {
+                $valeur = $accessor->getFloatOrNull('./donnee_entree/' . $champ, $equipement);
+                if ($valeur !== null && ($maximum === null || $valeur > $maximum)) {
+                    throw new UnsupportedDpeModelException(sprintf(
+                        '%s/%s=%s : option du modèle DPE 2.7 non encore implémentée — voir TASK-K63. '
+                        . 'Le fichier est refusé avant purge plutôt que de calculer en ignorant cette option.',
+                        $balise, $champ, $valeur,
+                    ));
+                }
+            }
+        }
     }
 
     /**

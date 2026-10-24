@@ -51,6 +51,68 @@ final class ProductionPvCalculatorTest extends TestCase
         return $doc;
     }
 
+    /** §16.2 p.105-106 : chaque kWh autoconsommé appartient à un seul poste. */
+    public function testCanalAutoconsommationSepareUsagesEtAuxiliairesDeGeneration(): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML('<logement><caracteristique_generale><surface_habitable_logement>100</surface_habitable_logement></caracteristique_generale>'
+            . '<production_elec_enr><donnee_entree><presence_production_pv>1</presence_production_pv></donnee_entree>'
+            . '<panneaux_pv_collection><panneaux_pv><surface_totale_capteurs>20</surface_totale_capteurs><enum_orientation_pv_id>3</enum_orientation_pv_id><enum_inclinaison_pv_id>2</enum_inclinaison_pv_id></panneaux_pv></panneaux_pv_collection></production_elec_enr>'
+            . '<sortie><ef_conso><conso_ch>5000</conso_ch><conso_ecs>2000</conso_ecs><conso_fr>100</conso_fr><conso_eclairage>300</conso_eclairage><conso_totale_auxiliaire>400</conso_totale_auxiliaire>'
+            . '<conso_auxiliaire_generation_ch>100</conso_auxiliaire_generation_ch><conso_auxiliaire_generation_ecs>50</conso_auxiliaire_generation_ecs><conso_auxiliaire_distribution_ch>100</conso_auxiliaire_distribution_ch><conso_auxiliaire_distribution_ecs>50</conso_auxiliaire_distribution_ecs><conso_auxiliaire_ventilation>100</conso_auxiliaire_ventilation>'
+            . '<conso_5_usages>7800</conso_5_usages></ef_conso></sortie></logement>');
+        $context = $this->makeContext($doc);
+        (new ProductionPvCalculator())->calculate($doc->documentElement, $context);
+        $parts = $context->get('pv.autoconsommation');
+        self::assertIsArray($parts);
+        self::assertEqualsWithDelta((float)$context->get('pv.conso_elec_ac'), array_sum($parts), 1e-9);
+        self::assertSame(0.0, $parts['ch'], 'Aucun chauffage électrique : les auxiliaires ne sont pas une consommation du générateur.');
+        self::assertSame(0.0, $parts['ecs']);
+        self::assertGreaterThan(0.0, $parts['auxiliaire']);
+        self::assertGreaterThan(0.0, $parts['autre_usage']);
+        self::assertSame($parts['ch'], $context->get('pv.ac_ch'));
+        self::assertSame($parts['ecs'], $context->get('pv.ac_ecs'));
+        self::assertSame($parts['auxiliaire'], $context->get('pv.ac_auxiliaire'));
+    }
+
+    public static function perimetresPhotovoltaiques(): iterable
+    {
+        yield 'appartement direct, plusieurs systèmes' => [2, 3.0, 0.1, 6000.0, 1.0];
+        yield 'appartement généré, clé explicite' => [10, 3.0, 0.1, 600.0, 0.1];
+        yield 'appartement généré, clé surfacique implicite' => [13, 1.0, 1.0, 200.0, 0.1];
+        yield 'immeuble, plusieurs systèmes' => [9, 3.0, 0.1, 6000.0, 1.0];
+    }
+
+    #[DataProvider('perimetresPhotovoltaiques')]
+    public function testPvUtiliseLesConsommationsEtCapteursDuMemePerimetre(int $methode, float $rdim, float $cle, float $consoLocale, float $partCapteurs): void
+    {
+        $document = static function (int $mode, float $multiplicite, float $part, float $surfacePv, float $consoInstallation, float $consoGenerateur, float $consoEf): DOMDocument {
+            $surface = $mode === 9
+                ? '<surface_habitable_immeuble>100</surface_habitable_immeuble>'
+                : '<surface_habitable_logement>100</surface_habitable_logement><surface_habitable_immeuble>1000</surface_habitable_immeuble>';
+            $doc = new DOMDocument();
+            $doc->loadXML('<logement><caracteristique_generale><enum_methode_application_dpe_log_id>' . $mode . '</enum_methode_application_dpe_log_id><nombre_appartement>10</nombre_appartement>' . $surface . '</caracteristique_generale>'
+                . '<production_elec_enr><donnee_entree><presence_production_pv>1</presence_production_pv></donnee_entree><panneaux_pv_collection><panneaux_pv><surface_totale_capteurs>' . $surfacePv . '</surface_totale_capteurs><enum_orientation_pv_id>3</enum_orientation_pv_id><enum_inclinaison_pv_id>2</enum_inclinaison_pv_id></panneaux_pv></panneaux_pv_collection></production_elec_enr>'
+                . '<installation_chauffage_collection><installation_chauffage><donnee_entree><rdim>' . $multiplicite . '</rdim><cle_repartition_ch>' . $part . '</cle_repartition_ch></donnee_entree><donnee_intermediaire><conso_ch>' . $consoInstallation . '</conso_ch></donnee_intermediaire>'
+                . '<generateur_chauffage_collection><generateur_chauffage><donnee_entree><enum_type_energie_id>1</enum_type_energie_id></donnee_entree><donnee_intermediaire><conso_ch>' . $consoGenerateur . '</conso_ch></donnee_intermediaire></generateur_chauffage></generateur_chauffage_collection></installation_chauffage></installation_chauffage_collection>'
+                . '<sortie><ef_conso><conso_ch>' . $consoEf . '</conso_ch><conso_eclairage>200</conso_eclairage><conso_totale_auxiliaire>100</conso_totale_auxiliaire><conso_auxiliaire_ventilation>100</conso_auxiliaire_ventilation></ef_conso></sortie></logement>');
+            return $doc;
+        };
+        // Le générateur ne publie que 1000, l'installation complète 2000
+        // (cas bi-jonction) ; rdim et la clé portent ensuite sur ce total.
+        $cible = $document($methode, $rdim, $cle, 20.0, 2000.0, 1000.0, $consoLocale);
+        $temoin = $document(2, 1.0, 1.0, 20.0 * $partCapteurs, $consoLocale, $consoLocale, $consoLocale);
+        $ctxCible = $this->makeContext($cible);
+        $ctxTemoin = $this->makeContext($temoin);
+        (new ProductionPvCalculator())->calculate($cible->documentElement, $ctxCible);
+        (new ProductionPvCalculator())->calculate($temoin->documentElement, $ctxTemoin);
+        foreach ($ctxTemoin->get('pv.autoconsommation') as $usage => $attendu) {
+            self::assertEqualsWithDelta($attendu, $ctxCible->get('pv.autoconsommation')[$usage], 1e-8, $usage);
+        }
+        self::assertEqualsWithDelta($ctxTemoin->get('pv.production_pv'), $ctxCible->get('pv.production_pv'), 1e-8);
+        self::assertEqualsWithDelta($ctxCible->get('pv.production_pv'), $ctxCible->get('pv.production_pv_immeuble') * $partCapteurs, 1e-8);
+    }
+
     /**
      * Sans PV (presence_production_pv=0) : aucun donnee_intermediaire écrit.
      */

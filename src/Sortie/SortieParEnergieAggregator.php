@@ -22,8 +22,10 @@ use DOMElement;
  *     élec_éclairage 0.069, élec_auxiliaire 0.064, fioul 0.324, etc.
  *   - Coûts : mêmes fonctions que CoutCalculator (Annexe 7 mars 2021).
  *
- * @spec-section  Annexe 5, Annexe 7
+ * @spec-section  Annexe 4, Annexe 7
  * @spec-source   resources/specsplitted/00-meta/01-methode-conventionnelle.md
+ * @spec-source   editeur/public/schemas/DPEv2.7.xsd
+ * @spec-source   https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000043353421 (article 1, 9° ; renvoi par l'annexe 4 habitation)
  * @xml-input     installation_chauffage.generateur_chauffage.{donnee_entree.enum_type_energie_id,
  *                    donnee_intermediaire.{conso_ch, conso_ch_depensier}}
  *                installation_ecs.generateur_ecs.{donnee_entree.enum_type_energie_id,
@@ -43,6 +45,7 @@ final class SortieParEnergieAggregator implements CalculatorInterface
         'gaz_naturel'      => 0.227,
         'fioul'            => 0.324,
         'charbon'          => 0.385,
+        'autre_fossile'    => 0.324,
         'propane'          => 0.272,
         'butane'           => 0.272,
         'gpl'              => 0.272,
@@ -70,6 +73,7 @@ final class SortieParEnergieAggregator implements CalculatorInterface
         11 => 'charbon',
         12 => 'elec_renouv',
         13 => 'gpl',
+        14 => 'autre_fossile',
     ];
 
     private const GES_KEY_ECS = [
@@ -86,6 +90,7 @@ final class SortieParEnergieAggregator implements CalculatorInterface
         11 => 'charbon',
         12 => 'elec_renouv',
         13 => 'gpl',
+        14 => 'autre_fossile',
     ];
 
     public function id(): string
@@ -182,8 +187,11 @@ final class SortieParEnergieAggregator implements CalculatorInterface
             $consoEclE   = 0.0;
             $consoAuxE   = 0.0;
 
-            // Électricité (id=1 ou id=12) reçoit éclairage + auxiliaires + fr
-            if ($eId === 1 || $eId === 12) {
+            // Les usages électriques non ventilés par générateur sont déjà
+            // nets de l'autoconsommation (§16.2 p.104-106). Ils appartiennent
+            // à l'électricité achetée (1), jamais une seconde fois à l'énergie
+            // renouvelable sur site (12, libellé XSD). Sinon Σ lignes > EF.
+            if ($eId === 1) {
                 $consoEclE = $consoEcl;
                 $consoAuxE = $consoAux;
                 $consoFrE    = $consoFr;
@@ -216,7 +224,7 @@ final class SortieParEnergieAggregator implements CalculatorInterface
             $gesEcsE = $eId === 8 ? ($ecsReseauGes[$eId] ?? 0.0) : $consoEcsE * $gesCoefEcs;
             $ges5E   = $gesChE + $gesEcsE;
 
-            if ($eId === 1 || $eId === 12) {
+            if ($eId === 1) {
                 $ges5E += $consoEclE * self::GES['elec_eclairage']
                         + $consoAuxE * self::GES['elec_auxiliaire']
                         + $consoFrE  * self::GES['elec_fr'];

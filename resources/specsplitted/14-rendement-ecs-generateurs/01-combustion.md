@@ -12,6 +12,32 @@ status: "verbatim"
 
 > Source : `resources/spec.pdf` p.93-95
 > Extraction verbatim via `pdftotext -layout`. À digitaliser : tables en pipe-markdown, formules en LaTeX.
+> Correction de transcription vérifiée visuellement sur le PDF p.94 le 24/10/2026 :
+> dans §14.1.2 et §14.1.3, **6970 multiplie la fraction Pveil/Becs** ; il
+> n'appartient pas à son dénominateur. Les deux formules corrigées ci-dessous
+> prévalent sur la disposition ambiguë de l'extraction texte historique.
+
+## Formules vérifiées sur la page 94
+
+### §14.1.2 — Chaudière mixte
+
+$$
+R_g R_s = \left[
+  \frac{1}{R_{pn}} + \frac{1790 QP_0 + Q_{g,w}}{B_{ecs}}
+  + 6970\frac{0{,}5 P_{veil}}{B_{ecs}}
+\right]^{-1}
+$$
+
+### §14.1.3 — Accumulateur gaz
+
+$$
+R_g R_s = \left[
+  \frac{1}{R_{pn}} + \frac{8592 QP_0 + Q_{g,w}}{B_{ecs}}
+  + 6970\frac{P_{veil}}{B_{ecs}}
+\right]^{-1}
+$$
+
+Dans ces expressions, Becs et Qg,w sont en Wh ; QP0 et Pveil sont en W.
 
 ## Texte verbatim
 

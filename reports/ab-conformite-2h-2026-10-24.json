@@ -1,0 +1,599 @@
+{
+    "description": "Session de deux heures : A/B strict, mêmes 694 cas, même juge courant ; moteur ET tables du commit de départ contre la version finale. Les 24 cas ajoutés sont présents aux deux passages.",
+    "session_started_at_utc": "2026-10-24T09:53:47Z",
+    "base_engine_revision": "56320ff9093e84a5d49c6b68b7fecb11d7633ef5",
+    "implementation_revision": "f89a6cd",
+    "before_revision": {
+        "head": "f89a6cd",
+        "dirty": ""
+    },
+    "after_revision": {
+        "head": "f89a6cd",
+        "dirty": ""
+    },
+    "tolerance_profile": "strict",
+    "corpus": {
+        "cases": 694,
+        "added_this_session": 24,
+        "by_corpus": {
+            "ademe-2026-09": 120,
+            "ademe-branches-2026-10": 76,
+            "ademe-ecs-bois-hybride-2026-10": 8,
+            "ademe-emetteurs-2026-10": 68,
+            "ademe-puissances-2026-10": 24,
+            "ademe-pv-collectif-2026-10": 16,
+            "ademe-ventilations-2026-10": 36,
+            "ademe-observatoire-local": 346
+        },
+        "input_and_expected_pairs_sha256": "c14309a31811bca0acccf7e1f17362399e455bc56475048ac2a25f145c97e7cc"
+    },
+    "fixed_judge": {
+        "files_sha256": {
+            "bin/official-test-report": "39f7954b17e6bd63333bb0c9fe3877999f300710ca5abbc5eb25345dccb0fff5",
+            "resources/ademe_DPE.xsd": "d8a154288442ea9c321756a24fa71b21e0aba78eb7d2c45924f35f43eb79500d",
+            "src/Conformite/CaseComparator.php": "d33b8ce1f58d49e1d7e8cc556a2b9a7ce43245d63a8d3c3069e20b95fc755a3c",
+            "src/Conformite/ComparisonStatus.php": "2751e59346efa6a5eb32ba3cae0bc9c0c0521a7610894a2ffc274d157f53b691",
+            "src/Conformite/ConformityReport.php": "c3adbf7fc0bc2a04ce682e6da8f7b9b74846f1bfc126ada16df4469e4eb2c26b",
+            "src/Conformite/CorpusLocator.php": "e469c17dea3c000355c43c65800d796056699198cb9248cbb332ae7914b0accf",
+            "src/Conformite/MarkdownRenderer.php": "08e8ac0d540e5a028cd16cc7a06b624a352797d5beef49ebbd647e2e4205c0d9",
+            "src/Conformite/ReferenceDefects.php": "f965f3de414d47b0aea846d85b8cf7341c44f678dab8857404efcf6e44f88901",
+            "src/Conformite/TagFamily.php": "f0f8b2e75620fbb601d05d045c80d6da3e6e4429fccc9f49bf446173af5e0beb",
+            "src/Conformite/ToleranceProfile.php": "8e1bb81df86758131d20751e9292235c6b1deab142c7919d1de45c2979a5d958",
+            "src/Conformite/ValueExtractor.php": "7a6d8c402a2e7213c1d5529e3c8f34bed4c9fb19e09c62a5dacdf89877abe787",
+            "src/Conformite/XsdVocabulary.php": "30b24135a4534cd07595f77f59814ad151946de165f532e8e08f5c5de8777c2d",
+            "tests/tolerances.php": "e7f806f9a2bcad559992e02310dab5298090dcd4f8b403f4e3e1cdf79d3f3732"
+        },
+        "note": "ReferenceDefects courant identique aux deux passages ; les imputations ne retirent aucun écart brut."
+    },
+    "engine_and_tables": {
+        "before_tree_sha256": "e58f6c8cece5291640c9eb092c2a6be52103a0b7c064b26ade9d2f0969a313e1",
+        "after_tree_sha256": "c72905a6686c53a52d93189f7752bd7f0bab4a06cf5147a9176ed1d992e29ecb",
+        "changed_files_sha256": {
+            "resources/tables/chauffage/tv_generateur_combustion.php": {
+                "before": "3e9cb9df7136b0660e569c317c698cd702db23a0c982f5984b1bb44f6200e8df",
+                "after": "49b4b0de1e101c98d91ee0e8b76a98547520c8d935545a487c0b4818aeb10d4b"
+            },
+            "resources/tables/ecs/tv_generateur_combustion_ecs.php": {
+                "before": "cbd850e5dbe6d89507c74b4ae68643d1485a7b59610f8a25318a61407df8c203",
+                "after": "610c53ed8c40dc530d041690b0560481a246162e7b531de8c5fff14cd44edf63"
+            },
+            "resources/tables/froid/tv_seer.php": {
+                "before": "ce448f836c2d1548ddd16166dfca589e804224490269324eedaec918d368469c",
+                "after": "b52f1e9785396f9513bb621521bee8e5c81e0ef2261345f716f9f5affacbd4ef"
+            },
+            "resources/tables/reference/tv_arrete_reseau_chaleur.php": {
+                "before": "9b2ea87857abd0a29d0ec5633ba7946e282d854ae486b86695ed07d644510783",
+                "after": "bf16d27e241b9d4969c1841f422c106dff0f90cbb43e87157c879ad6fa3fde5e"
+            },
+            "src/Auxiliaire/AuxDistributionCalculator.php": {
+                "before": "9bf37ba599a959059a25fd5e393fec57b62a50094ea178acaf2589be95d71916",
+                "after": "5a585e57f8eed6ca207adc37efec3c4ff992b9af14a9708d0eec3fe221a1de70"
+            },
+            "src/Auxiliaire/AuxGenerationCalculator.php": {
+                "before": "ed9447bba60013c96f9e8fde5009c87c27bdcc465c43cdf4931c2c34d773556c",
+                "after": "f823bef3a930432b716670e9e49e35c41403ac047b7043b95f6b41d79a45daf3"
+            },
+            "src/Collectif/BuildingCalculation.php": {
+                "before": "7c112ef0b860af475ae1296f8a66d14d94a261970a76a542ef1131d94dd0a2f6",
+                "after": "12e5ed981ecf2e99d37abc13680ec4c4d389974b69a29ae03d3ce02508d969fb"
+            },
+            "src/Collectif/GeneratedApartment.php": {
+                "before": "ccc525cb38ac502b30ef0c42c6af99d7fbc7e41615375ae54609fee2b3bdec38",
+                "after": "79f1fb6ec0ff1c0ceea603b6306c15b11ef9b8776eb782651cfc92c25b9f6052"
+            },
+            "src/Ecs/Rendement/CombustionCalculator.php": {
+                "before": "ffca9194dc9402e58f221fd9ac3e71618b498f970e2284ec35c63cdc5284c91a",
+                "after": "514cd33468e2d27184a96c40b4edbcd95d06c691f001a278eef8cca7940f982e"
+            },
+            "src/Engine/DpeEngine.php": {
+                "before": "c2fd997e18e26349ad5e84e3be775dd14656869eb83bc81cf10a16c05cdd283f",
+                "after": "db90c53941fb3964f3fd1b858787bfab84b905668ccfa919b3d564ac61eb2143"
+            },
+            "src/Enveloppe/PlancherBas/UpbCalculator.php": {
+                "before": "2a6d9dd1458656500ecd52c3980771c74b1a85ed063d4483171eb7135ec75d34",
+                "after": "6164781c669724173966ebb1600aef2c3622c3dea613b89003c7be6f1ccd8b02"
+            },
+            "src/Enveloppe/PlancherHaut/UphCalculator.php": {
+                "before": "f20eb133f7cfffaae0761de4b1136fa5cef456189c3f2e13a8dc8cb225cf7220",
+                "after": "b8b0c1df9a78aee5daf10afcaf397fe65ec6f1598302ba3f13e3088fdfd6e640"
+            },
+            "src/Froid/ConsoFroidCalculator.php": {
+                "before": "14ae0d1ba5bec31536e51a31d4fe65b8822d6ca1dcf6ad313835da4dc16be0d6",
+                "after": "92201e4792360ce1bd179c31aea80a7a494a60954c511ffc961cce636a12fd0b"
+            },
+            "src/ProductionElec/ProductionPvCalculator.php": {
+                "before": "68a10a90f0f779863fe4c3daf984c7825406d7344cac9cad193e00229cac6109",
+                "after": "ed5a9a7758ab777bee072d22360df875e61e8675e0033ad7061e6940cafc76aa"
+            },
+            "src/Sortie/ConsoParEnergieCollector.php": {
+                "before": "dcd34e9f9bb8cb3a44d560e3e3c2303b9dc2f5f979d33ffc72410ebbe195202f",
+                "after": "808a7d0579177743cf3246cbb8c61ad02c7b6d39d878ea2906e8e6c58e111dae"
+            },
+            "src/Sortie/EfConsoCalculator.php": {
+                "before": "243de1974a146923c0b4e84322ec26a474e3d4e9d376e8d6bc417d4d08107921",
+                "after": "38d3779de36863d21055860657c6ba433867f841e8c7cc44de139defd79c3b8f"
+            },
+            "src/Sortie/EmissionGesCalculator.php": {
+                "before": "2cb47a391ea1b527521bfcf0784ba81d3c8d0513d1671c2f8bad43ac3fc149ed",
+                "after": "6265ca2327babf502f234db34a101c1a3d0aa2715efc0c72ecea1240bb40a081"
+            },
+            "src/Sortie/EpConsoCalculator.php": {
+                "before": "4538fb2e55de4371b8f06bf7f9613aebb4705ef8b1d26b7bdcd8d94ed27800eb",
+                "after": "9bb52816a7a1da938589974916ee7a99218854bb497fef578db4afb998e56116"
+            },
+            "src/Sortie/ProductionElectriciteCalculator.php": {
+                "before": "10efd8b517044de3e96c538c6f69d0ee5452b643a5cc5570ea06c5c8613d214d",
+                "after": "c5be809cff873dbca499f53e9b70be2ac2966a4882cea8625928a6217b6e4120"
+            },
+            "src/Sortie/ProductionEnrCalculator.php": {
+                "before": "43d4ddf9fbabc8bb650c5a11810597499605de780ee7a92f5aa5f81e1030b857",
+                "after": "4d5a9540d5bb567edaab7290b9d2304741b34588c737101468764525c71ef263"
+            },
+            "src/Sortie/ReseauChaleurFactorResolver.php": {
+                "before": "f7735c920fa672ae75a40fc0f22995598c6c4b5352ec076ee2edc270bf77402e",
+                "after": "3add0a7aa6111075c111f7d0357d3e42fb990a662d94e100cf90a4e57efdb0e5"
+            },
+            "src/Sortie/SortieParEnergieAggregator.php": {
+                "before": "f991c6c27a21deba8dde8bcfd8e6230512e5e90534d9d7fe9691f7c6959bc261",
+                "after": "6a559472cb148fe9ffd81bbf0b894bb38c33562918c8c2bca7996954ac853f95"
+            },
+            "resources/tables/reference/tv_reseau_chaleur_enr.php": {
+                "before": null,
+                "after": "f19d278003ff1c3f5b129df00b3684c3698196f42bacf018b3aca4543b66fcd3"
+            }
+        }
+    },
+    "independent_baseline": {
+        "method": "Chargement direct des classes et tables exportées depuis 56320ff, sans transformation de classe. Vérification de leurs chemins ReflectionClass, et même juge courant.",
+        "summary_and_case_deltas_equal": true
+    },
+    "summary_before": {
+        "cases_total": 694,
+        "cases_run": 694,
+        "cases_crashed": 0,
+        "cases_fully_conform": 1,
+        "cases_partially_conform": 693,
+        "values_compared": 216983,
+        "reference_suspect": 5483,
+        "exact": 162816,
+        "within_tolerance": 32142,
+        "out_of_tolerance": 18769,
+        "missing": 732,
+        "extra": 2475,
+        "string_mismatch": 49,
+        "reachable_percent": 92.38,
+        "conformity_percent": 89.85,
+        "progress_percent": 92.18
+    },
+    "summary_after": {
+        "cases_total": 694,
+        "cases_run": 694,
+        "cases_crashed": 0,
+        "cases_fully_conform": 1,
+        "cases_partially_conform": 693,
+        "values_compared": 216983,
+        "reference_suspect": 5475,
+        "exact": 162858,
+        "within_tolerance": 32301,
+        "out_of_tolerance": 18568,
+        "missing": 732,
+        "extra": 2475,
+        "string_mismatch": 49,
+        "reachable_percent": 92.47,
+        "conformity_percent": 89.94,
+        "progress_percent": 92.27
+    },
+    "motor_failing_before": 16542,
+    "motor_failing_after": 16349,
+    "improved_cases": 26,
+    "degraded_raw_cases": 2,
+    "case_raw_failure_changes": {
+        "2575E3987049C.xml": -20,
+        "2575E3987011Q.xml": -19,
+        "2659E2640007F.xml": -19,
+        "2659E2642728W.xml": -19,
+        "2575E3987071Y.xml": -17,
+        "2659E2641300Y.xml": -16,
+        "2575E3987094V.xml": -12,
+        "2659E2639611Z.xml": -12,
+        "2558E4028846A.xml": -7,
+        "2631E2644064E.xml": -6,
+        "2501E3345317G.xml": -6,
+        "2400E1027746V.xml": -5,
+        "2401E1474278E.xml": -5,
+        "2401E1088890O.xml": -5,
+        "2602E0450993E.xml": -4,
+        "2659E2639542I.xml": -4,
+        "2659E2639771D.xml": -4,
+        "2659E2641041Z.xml": -4,
+        "2601E0368541X.xml": -4,
+        "2601E0874987P.xml": -4,
+        "2651E0229108A.xml": -4,
+        "2601E0981468A.xml": -2,
+        "2601E2578208C.xml": -2,
+        "2600E0130851Y.xml": -1,
+        "2576E4044988O.xml": -1,
+        "2576E4045305T.xml": -1,
+        "2601E0011359D.xml": 1,
+        "2401E0196811V.xml": 1
+    },
+    "higher_motor_budgets": [],
+    "resolved_values": 213,
+    "new_failing_values": {
+        "2601E0011359D.xml:dpe/logement/sortie/production_electricite/conso_elec_ac_autre_usage": {
+            "path": "dpe/logement/sortie/production_electricite/conso_elec_ac_autre_usage",
+            "tag": "conso_elec_ac_autre_usage",
+            "famille": "PV",
+            "expected": "0",
+            "actual": "1498.6041133785",
+            "delta_abs": 1498.6041133785,
+            "delta_percent": null,
+            "note": "référence=0 alors que le moteur est non nul",
+            "status": "out_of_tolerance",
+            "reference_suspect": "la référence publie une autoconsommation PV nulle malgré Ppv=14939.82 kWh, Sh=133.29 m² et Cef_5=6584.27 kWh : §16.2 p.104-106 impose aux seuls usages mobiliers une autoconsommation supérieure à 875.52 kWh (borne conservatrice, sans notre moteur)"
+        },
+        "2401E0196811V.xml:dpe/logement/sortie/production_electricite/conso_elec_ac_autre_usage": {
+            "path": "dpe/logement/sortie/production_electricite/conso_elec_ac_autre_usage",
+            "tag": "conso_elec_ac_autre_usage",
+            "famille": "PV",
+            "expected": "0",
+            "actual": "1468.9470423527",
+            "delta_abs": 1468.9470423527,
+            "delta_percent": null,
+            "note": "référence=0 alors que le moteur est non nul",
+            "status": "out_of_tolerance",
+            "reference_suspect": "la référence publie une autoconsommation PV nulle malgré Ppv=5361.58 kWh, Sh=184.78 m² et Cef_5=21125.54 kWh : §16.2 p.104-106 impose aux seuls usages mobiliers une autoconsommation supérieure à 565.54 kWh (borne conservatrice, sans notre moteur)"
+        },
+        "2575E3987011Q.xml:dpe/logement/production_elec_enr/donnee_intermediaire/production_pv": {
+            "path": "dpe/logement/production_elec_enr/donnee_intermediaire/production_pv",
+            "tag": "production_pv",
+            "famille": "PV",
+            "expected": "18461.167425000003",
+            "actual": "2158.9521631242",
+            "delta_abs": 16302.215261875803,
+            "delta_percent": 88.30544074801814,
+            "note": null,
+            "status": "out_of_tolerance"
+        },
+        "2575E3987049C.xml:dpe/logement/production_elec_enr/donnee_intermediaire/production_pv": {
+            "path": "dpe/logement/production_elec_enr/donnee_intermediaire/production_pv",
+            "tag": "production_pv",
+            "famille": "PV",
+            "expected": "18461.167425000003",
+            "actual": "1829.3937525185",
+            "delta_abs": 16631.773672481504,
+            "delta_percent": 90.09058468295376,
+            "note": null,
+            "status": "out_of_tolerance"
+        },
+        "2575E3987071Y.xml:dpe/logement/production_elec_enr/donnee_intermediaire/production_pv": {
+            "path": "dpe/logement/production_elec_enr/donnee_intermediaire/production_pv",
+            "tag": "production_pv",
+            "famille": "PV",
+            "expected": "15999.678435000002",
+            "actual": "1555.4153753668",
+            "delta_abs": 14444.263059633202,
+            "delta_percent": 90.27845852223967,
+            "note": null,
+            "status": "out_of_tolerance"
+        },
+        "2575E3987094V.xml:dpe/logement/production_elec_enr/donnee_intermediaire/production_pv": {
+            "path": "dpe/logement/production_elec_enr/donnee_intermediaire/production_pv",
+            "tag": "production_pv",
+            "famille": "PV",
+            "expected": "9845.9559600000011",
+            "actual": "1147.2271652745",
+            "delta_abs": 8698.7287947255,
+            "delta_percent": 88.34823992779162,
+            "note": null,
+            "status": "out_of_tolerance"
+        },
+        "2576E4044988O.xml:dpe/logement/sortie/production_electricite/conso_elec_ac_autre_usage": {
+            "path": "dpe/logement/sortie/production_electricite/conso_elec_ac_autre_usage",
+            "tag": "conso_elec_ac_autre_usage",
+            "famille": "PV",
+            "expected": "0.0",
+            "actual": "12350.528202171",
+            "delta_abs": 12350.528202171,
+            "delta_percent": null,
+            "note": "référence=0 alors que le moteur est non nul",
+            "status": "out_of_tolerance",
+            "reference_suspect": "la référence publie une autoconsommation PV nulle malgré Ppv=22084.39 kWh, Sh=2594.00 m² et Cef_5=272243.30 kWh : §16.2 p.104-106 impose aux seuls usages mobiliers une autoconsommation supérieure à 3364.75 kWh (borne conservatrice, sans notre moteur)"
+        },
+        "2576E4045305T.xml:dpe/logement/sortie/production_electricite/conso_elec_ac_autre_usage": {
+            "path": "dpe/logement/sortie/production_electricite/conso_elec_ac_autre_usage",
+            "tag": "conso_elec_ac_autre_usage",
+            "famille": "PV",
+            "expected": "0.0",
+            "actual": "16963.855302451",
+            "delta_abs": 16963.855302451,
+            "delta_percent": null,
+            "note": "référence=0 alors que le moteur est non nul",
+            "status": "out_of_tolerance",
+            "reference_suspect": "la référence publie une autoconsommation PV nulle malgré Ppv=37727.50 kWh, Sh=2690.00 m² et Cef_5=263910.20 kWh : §16.2 p.104-106 impose aux seuls usages mobiliers une autoconsommation supérieure à 5418.85 kWh (borne conservatrice, sans notre moteur)"
+        },
+        "2659E2639611Z.xml:dpe/logement/production_elec_enr/donnee_intermediaire/production_pv": {
+            "path": "dpe/logement/production_elec_enr/donnee_intermediaire/production_pv",
+            "tag": "production_pv",
+            "famille": "PV",
+            "expected": "15753.529536000004",
+            "actual": "181.23797834115",
+            "delta_abs": 15572.291557658853,
+            "delta_percent": 98.84954049232596,
+            "note": null,
+            "status": "out_of_tolerance"
+        },
+        "2659E2640007F.xml:dpe/logement/production_elec_enr/donnee_intermediaire/production_pv": {
+            "path": "dpe/logement/production_elec_enr/donnee_intermediaire/production_pv",
+            "tag": "production_pv",
+            "famille": "PV",
+            "expected": "15753.529536000004",
+            "actual": "276.55837018494",
+            "delta_abs": 15476.971165815065,
+            "delta_percent": 98.24446725063773,
+            "note": null,
+            "status": "out_of_tolerance"
+        },
+        "2659E2641300Y.xml:dpe/logement/production_elec_enr/donnee_intermediaire/production_pv": {
+            "path": "dpe/logement/production_elec_enr/donnee_intermediaire/production_pv",
+            "tag": "production_pv",
+            "famille": "PV",
+            "expected": "15753.529536000004",
+            "actual": "84.367219002905",
+            "delta_abs": 15669.162316997099,
+            "delta_percent": 99.46445513172074,
+            "note": null,
+            "status": "out_of_tolerance"
+        },
+        "2659E2642728W.xml:dpe/logement/production_elec_enr/donnee_intermediaire/production_pv": {
+            "path": "dpe/logement/production_elec_enr/donnee_intermediaire/production_pv",
+            "tag": "production_pv",
+            "famille": "PV",
+            "expected": "15753.529536000004",
+            "actual": "265.89082009477",
+            "delta_abs": 15487.638715905234,
+            "delta_percent": 98.31218255256921,
+            "note": null,
+            "status": "out_of_tolerance"
+        }
+    },
+    "new_failures_note": "Les deux cas dont le total brut augmente de 1 publient des autoconsommations PV nulles incompatibles avec leur production, selon une borne physique indépendante du moteur. Le détail des douze nouvelles comparaisons est conservé ici ; aucun budget n’est relevé.",
+    "by_famille_out_of_tolerance": {
+        "Enveloppe": {
+            "before": 964,
+            "after": 957,
+            "delta": -7
+        },
+        "Ventilation": {
+            "before": 98,
+            "after": 98,
+            "delta": 0
+        },
+        "Apports": {
+            "before": 544,
+            "after": 542,
+            "delta": -2
+        },
+        "Besoin chauffage": {
+            "before": 687,
+            "after": 687,
+            "delta": 0
+        },
+        "Besoin ECS": {
+            "before": 76,
+            "after": 76,
+            "delta": 0
+        },
+        "Génération chauffage": {
+            "before": 2530,
+            "after": 2529,
+            "delta": -1
+        },
+        "Génération ECS": {
+            "before": 1836,
+            "after": 1836,
+            "delta": 0
+        },
+        "Auxiliaires": {
+            "before": 3842,
+            "after": 3822,
+            "delta": -20
+        },
+        "Froid": {
+            "before": 484,
+            "after": 484,
+            "delta": 0
+        },
+        "PV": {
+            "before": 224,
+            "after": 134,
+            "delta": -90
+        },
+        "Sorties énergie finale": {
+            "before": 878,
+            "after": 850,
+            "delta": -28
+        },
+        "Sorties énergie primaire": {
+            "before": 1159,
+            "after": 1137,
+            "delta": -22
+        },
+        "GES": {
+            "before": 1920,
+            "after": 1898,
+            "delta": -22
+        },
+        "Coûts": {
+            "before": 3012,
+            "after": 3003,
+            "delta": -9
+        },
+        "Confort d'été": {
+            "before": 280,
+            "after": 280,
+            "delta": 0
+        },
+        "Autre": {
+            "before": 235,
+            "after": 235,
+            "delta": 0
+        }
+    },
+    "by_perimetre_out_of_tolerance": {
+        "immeuble_collectif": {
+            "before": 5340,
+            "after": 5306,
+            "delta": -34
+        },
+        "maison_individuelle": {
+            "before": 6026,
+            "after": 5993,
+            "delta": -33
+        },
+        "appartement_issu_immeuble": {
+            "before": 3673,
+            "after": 3539,
+            "delta": -134
+        },
+        "appartement_individuel": {
+            "before": 3730,
+            "after": 3730,
+            "delta": 0
+        }
+    },
+    "by_regime_out_of_tolerance": {
+        "post_2026": {
+            "before": 9990,
+            "after": 9886,
+            "delta": -104
+        },
+        "pre_2026": {
+            "before": 8779,
+            "after": 8682,
+            "delta": -97
+        }
+    },
+    "budgets": {
+        "existing_lowered": 13,
+        "existing_raised": 0,
+        "new_cases_initialized": 24
+    },
+    "idempotence": {
+        "numeric_comparison_relative_threshold": 1.0e-9,
+        "results": {
+            "before": {
+                "cases": 694,
+                "exact_changed_cases": 4,
+                "changed_cases": 0
+            },
+            "after": {
+                "cases": 694,
+                "exact_changed_cases": 4,
+                "changed_cases": 0
+            }
+        },
+        "final_post_network_and_aeration_check": "Les modifications des dates et le garde aération ne changent aucune valeur du corpus ; voir les deux A/B isolés."
+    },
+    "isolated_network_date_fix": {
+        "before_revision": {
+            "head": "d7db6b8",
+            "dirty": "1 fichier(s) src/ non commités"
+        },
+        "after_revision": {
+            "head": "d7db6b8",
+            "dirty": "1 fichier(s) src/ non commités"
+        },
+        "all_case_comparisons_equal": true,
+        "out_of_tolerance_before": 18568,
+        "out_of_tolerance_after": 18568,
+        "new_failing_values": 0,
+        "source": "Bornes consolidées de l’annexe 7 : 22/04/2023, 10/08/2024, 26/05/2025, 25/05/2026 ; alias ADEME de publication 2026 conservé."
+    },
+    "district_network_enr_table_verification": {
+        "xlsx_sha256": "50d1189e0df8b47aad006a3e525564ae33fab041c3f389d7b407c99fa5546c81",
+        "rows_verified": 5643,
+        "different_rows": 0,
+        "by_edition": {
+            "2020": {
+                "total": 797,
+                "numeric": 0,
+                "null": 797
+            },
+            "2021": {
+                "total": 870,
+                "numeric": 838,
+                "null": 32
+            },
+            "2022": {
+                "total": 895,
+                "numeric": 860,
+                "null": 35
+            },
+            "2023": {
+                "total": 963,
+                "numeric": 923,
+                "null": 40
+            },
+            "2024": {
+                "total": 1032,
+                "numeric": 990,
+                "null": 42
+            },
+            "2025": {
+                "total": 1086,
+                "numeric": 1039,
+                "null": 47
+            }
+        }
+    },
+    "isolated_aeration_guard": {
+        "before_revision": {
+            "head": "3003057",
+            "dirty": "1 fichier(s) src/ non commités"
+        },
+        "after_revision": {
+            "head": "3003057",
+            "dirty": "1 fichier(s) src/ non commités"
+        },
+        "all_case_comparisons_equal": true,
+        "new_failing_values": 0,
+        "scope": "Refus avant purge du type ventilation 1 pour le modèle 2.7 ; fonctionnement historique conservé."
+    },
+    "public_api_smoke_test": {
+        "case": "2659E2640007F.xml",
+        "cli_and_public_api_equal": true,
+        "pv_self_consumption_balance_error_kwh": -1.3926637620897964e-12,
+        "unsupported_gas_cooling_cli_exit_code": 2,
+        "refused_output_file_created": false
+    },
+    "ecs_installation_order_audit": {
+        "multi_installation_cases": 120,
+        "changed_cases": 41,
+        "changed_global_outputs": 26,
+        "follow_up": "TASK-K26 : association des visites et sous-ensembles de stockage manquante, ne pas substituer un tri arbitraire."
+    },
+    "rejected_wood_qp0_candidate": {
+        "numeric_failure_delta": 3,
+        "string_failure_delta": 1,
+        "higher_case_budgets": 4,
+        "decision": "Non activé ; mesures et condition de réouverture dans TASKS_DONE.md / TASK-K06."
+    },
+    "dependency_audit": {
+        "checked_at_utc": "2026-10-24T11:50:37Z",
+        "scope": "Fichiers verrouillés, dépendances de développement incluses ; aucune installation ni modification des paquets.",
+        "npm_vulnerabilities_total": 0,
+        "composer_advisories": 0,
+        "composer_abandoned_packages": 0,
+        "note": "Le message GitHub au push porte sur la branche main ; ces résultats portent sur la branche de PR."
+    },
+    "phpunit": {
+        "tests": 4460,
+        "assertions": 16918,
+        "failures": 0,
+        "existing_php85_deprecations": 4,
+        "covered_lines": 10515,
+        "executable_lines": 11463,
+        "line_coverage_percent": 91.73
+    }
+}

@@ -103,7 +103,7 @@ final class UphCalculator implements CalculatorInterface
             3, 4    => $this->byEpaisseur($uph0, $accessor->getFloatOrNull('./epaisseur_isolation', $entree)),
             5, 6    => $this->byResistance($uph0, $accessor->getFloatOrNull('./resistance_isolation', $entree)),
             9, 10   => $accessor->getFloatOrNull('./u_saisi', $entree) ?? $uph0,
-            2, 7, 8 => $this->lookupUphTab($uph0, $entree, $accessor, $context),
+            2, 7, 8 => $this->lookupUphTab($uph0, $entree, $accessor, $context, $methode),
             default => $uph0,
         };
     }
@@ -123,16 +123,26 @@ final class UphCalculator implements CalculatorInterface
         return 1.0 / (1.0 / $uph0 + $r);
     }
 
+    /**
+     * §3.2.3.1 p.21 : isolation connue, année inconnue et construction ≤1974
+     * → année conventionnelle 1975-1977. La branche « isolation inconnue »
+     * (méthode 2) ne passe pas par ce repli et garde sa période d'origine.
+     * @spec-formula F-3.2.3-annee-isolation-conventionnelle
+     */
     private function lookupUphTab(
         float $uph0,
         DOMElement $entree,
         NodeAccessor $accessor,
         CalculationContext $context,
+        int $methode,
     ): float {
         $zone = $context->zoneGroupe;
         $energie = $context->energieChauffagePrincipale;
-        $periode = $accessor->getIntOrNull('./enum_periode_isolation_id', $entree)
-            ?? $context->periodeConstructionId;
+        $periodeSaisie = $accessor->getIntOrNull('./enum_periode_isolation_id', $entree);
+        $periode = $periodeSaisie ?? $context->periodeConstructionId;
+        if ($methode === 8 && $periodeSaisie === null && $periode !== null && $periode <= 2) {
+            $periode = 3;
+        }
 
         if ($zone === null || $energie === null || $periode === null) {
             return $uph0;
@@ -170,7 +180,8 @@ final class UphCalculator implements CalculatorInterface
      *       description mentionne « comble »                          → 'combles'
      *       sinon type_plancher_haut ∈ TYPE_PH_COMBLES                → 'combles'
      *       sinon                                                     → 'terrasse'
-     *   • toute autre adjacence (local non chauffé adjacent)        → 'combles'
+     *   • toute autre adjacence (local non chauffé ou non résidentiel)
+     *     → 'terrasse', prescription explicite en bas de la p.21
      */
     private function resolveConfig(?int $adjacence, ?int $typePlancherHaut, ?string $description): string
     {
@@ -188,7 +199,7 @@ final class UphCalculator implements CalculatorInterface
             $adjacence === 22 && in_array($typePlancherHaut, self::TYPE_PH_COMBLES, true) => 'combles',
             $adjacence === 22                                      => 'terrasse',
             $adjacence === null                                    => 'terrasse',
-            default                                                 => 'combles',
+            default                                                 => 'terrasse',
         };
     }
 }

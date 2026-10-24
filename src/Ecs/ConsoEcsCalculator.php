@@ -70,6 +70,7 @@ final class ConsoEcsCalculator implements CalculatorInterface
     public function calculate(DOMElement $node, CalculationContext $context): void
     {
         $accessor = new NodeAccessor($context->document);
+        \CalculDpePHP\Common\ProductionSolaireThermique::publier($context, $node, 0.0);
 
         // Données de l'installation
         $xmlPerKwh = IntermediateEnergyUnit::xmlPerKwh($context->document);
@@ -88,6 +89,7 @@ final class ConsoEcsCalculator implements CalculatorInterface
 
         $totalConso    = 0.0;
         $totalConsoDep = 0.0;
+        $productionSolaire = 0.0;
 
         foreach ($node->getElementsByTagName('generateur_ecs') as $gen) {
             if (!$gen instanceof DOMElement) {
@@ -113,6 +115,12 @@ final class ConsoEcsCalculator implements CalculatorInterface
 
             $conso    = $becsConv > 0.0 ? ($becsConv * $solarFactor) / ($rsConv * $rd * $rgConv) : 0.0;
             $consoDep = $becsDep  > 0.0 ? ($becsDep  * $solarFactor) / ($rsDep  * $rd * $rgDep)  : 0.0;
+            // Annexe 10, §1.2.4 (arrêté du 11/06/2026, p.7) :
+            // Becs × Fecs × Iecs. La forme directe reste définie à Fecs=1,
+            // contrairement à Cecs × Fecs / (1−Fecs).
+            $productionSolaire += $becsConv > 0.0
+                ? $becsConv * min(1.0, max(0.0, $fecs)) / ($rsConv * $rd * $rgConv)
+                : 0.0;
 
             $di = $this->ensureDi($context->document, $gen);
             $accessor->setChildValue($di, 'conso_ecs',           $conso);
@@ -131,6 +139,8 @@ final class ConsoEcsCalculator implements CalculatorInterface
         $instDi = $this->ensureDi($context->document, $node);
         $accessor->setChildValue($instDi, 'conso_ecs',           $totalConso);
         $accessor->setChildValue($instDi, 'conso_ecs_depensier', $totalConsoDep);
+        $rdimSolaire = max(1.0, $accessor->getFloatOrNull('./donnee_entree/rdim', $node) ?? 1.0);
+        \CalculDpePHP\Common\ProductionSolaireThermique::publier($context, $node, $productionSolaire * $rdimSolaire);
 
         $this->ecrireProductionSolaire($accessor, $node, $instDi, $totalConso, $xmlPerKwh);
     }

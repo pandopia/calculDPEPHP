@@ -64,7 +64,7 @@ function fetchXml(string $numAdeme, array $accounts): string
         $headerSize = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
         $httpCode   = curl_getinfo($curl, CURLINFO_HTTP_CODE);
         $body       = substr($raw, $headerSize);
-        curl_close($curl);
+        unset($curl);
 
         if ($httpCode === 404) {
             throw new RuntimeException("DPE $numAdeme introuvable sur l'observatoire (404).");

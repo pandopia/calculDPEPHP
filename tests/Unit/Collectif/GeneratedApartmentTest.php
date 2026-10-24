@@ -70,4 +70,25 @@ XML, $method));
         }
         yield 'document minimal sans methode' => [null, 0.2, 0.2];
     }
+
+    #[DataProvider('methodesEcs')]
+    public function testLaCleEcsNeSeSubstituePasParUneCleSurfacique(?int $method, float $key, float $expected): void
+    {
+        $doc = new DOMDocument();
+        $mode = $method === null ? '' : '<enum_methode_application_dpe_log_id>' . $method . '</enum_methode_application_dpe_log_id>';
+        $doc->loadXML('<logement><caracteristique_generale>' . $mode . '<surface_habitable_logement>50</surface_habitable_logement><surface_habitable_immeuble>1000</surface_habitable_immeuble></caracteristique_generale></logement>');
+        self::assertSame($expected, GeneratedApartment::hotWaterShare($doc->documentElement, new NodeAccessor($doc), $key));
+    }
+
+    public static function methodesEcs(): iterable
+    {
+        foreach ([1, 2, 3, 4, 5, 6, 14, 18, 31, 32, 35, 36, 37] as $method) {
+            yield 'direct ' . $method => [$method, 0.2, 1.0];
+        }
+        foreach ([10, 11, 12, 13, 33, 34, 38, 39, 40] as $method) {
+            yield 'genere ' . $method => [$method, 0.2, 0.2];
+            yield 'genere unite ' . $method => [$method, 1.0, 1.0];
+        }
+        yield 'minimal' => [null, 0.2, 0.2];
+    }
 }

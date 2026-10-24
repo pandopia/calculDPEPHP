@@ -38,7 +38,7 @@ final class ReseauChaleurFactorResolverTest extends TestCase
     /** @return iterable<string, array{string, float}> */
     public static function datesEtMillesimes(): iterable
     {
-        // Millésime 2021, arrêté du 21 octobre 2021 : 2022-01-18 → 2023-04-23.
+        // Millésime 2021, puis entrée en vigueur du suivant le 22/04/2023.
         // Avant cette borne, `identifiant_reseau_chaleur` n'existe pas encore
         // au schéma : un fichier qui en porterait un malgré tout ne peut pas
         // être résolu sur le millésime 2020, indexé par numéro de ligne, et
@@ -46,15 +46,33 @@ final class ReseauChaleurFactorResolverTest extends TestCase
         yield 'veille de la bascule, identifiant hors de son temps' => ['2022-01-17', 0.385];
         yield 'jour de la bascule vers 2021' => ['2022-01-18', 0.109];
         yield '2242E2979513I' => ['2022-04-06', 0.109];
-        // Millésime 2022, arrêté du 16 mars 2023 : 2023-03-16 → 2024-09-20.
-        yield 'jour de la bascule vers 2022' => ['2023-03-16', 0.075];
+        yield 'signature 2023, pas encore applicable' => ['2023-03-16', 0.109];
+        yield 'veille de la bascule vers 2022' => ['2023-04-21', 0.109];
+        yield 'jour de la bascule vers 2022' => ['2023-04-22', 0.075];
         yield 'ete 2024, toujours le millesime 2022' => ['2024-07-04', 0.075];
-        // Millésime 2023, arrêté du 5 juillet 2024.
-        yield 'jour de la bascule vers 2023' => ['2024-07-05', 0.075];
-        // Millésime 2024, arrêté du 11 avril 2025.
-        yield 'jour de la bascule vers 2024' => ['2025-04-11', 0.069];
-        // Millésime 2025, arrêté du 25 avril 2026, applicable au 10 mai.
-        yield 'jour de la bascule vers 2025' => ['2026-05-10', 0.048];
+        yield 'veille de la bascule vers 2023' => ['2024-08-09', 0.075];
+        yield 'jour de la bascule vers 2023' => ['2024-08-10', 0.075];
+        yield 'signature 2025, pas encore applicable' => ['2025-04-11', 0.075];
+        yield 'veille de la bascule vers 2024' => ['2025-05-25', 0.075];
+        yield 'jour de la bascule vers 2024' => ['2025-05-26', 0.069];
+        yield 'ancienne borne ADEME 2026 anticipée' => ['2026-05-10', 0.069];
+        yield 'veille de la bascule vers 2025' => ['2026-05-24', 0.069];
+        yield 'jour de la bascule vers 2025' => ['2026-05-25', 0.048];
+    }
+
+    public function testDateSignature2026EtAliasDePublicationAdeme(): void
+    {
+        foreach (['2026-03-30', '2026-04-25'] as $declaration) {
+            self::assertEqualsWithDelta(0.048, $this->resolve('', '4211C', dateArrete: $declaration), 1e-9);
+        }
+    }
+
+    public function testLesPlagesNeSeChevauchentPlusEtNeLaissentPasDeTrou(): void
+    {
+        $editions = (new TableRepository(self::PROJECT_ROOT . '/resources/tables'))->load('reference/tv_arrete_reseau_chaleur');
+        foreach (array_slice($editions, 1) as $index => $ancienne) {
+            self::assertSame($editions[$index]['valid_from'], $ancienne['valid_to']);
+        }
     }
 
     /**

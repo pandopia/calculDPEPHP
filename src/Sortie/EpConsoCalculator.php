@@ -77,7 +77,6 @@ final class EpConsoCalculator implements CalculatorInterface
         // ── 2. Chauffage EP ──────────────────────────────────────────────────
         [$epChTotal, $epChDepTotal, $cleRepartitionCh] =
             $this->aggregateChEp($accessor, $node, $nbreAppt, $epElec);
-        $cleRepartitionCh = GeneratedApartment::heatingShare($node, $accessor, $cleRepartitionCh);
 
         $epConsoChEf    = $isZone ? $epChTotal * $cleRepartitionCh : $epChTotal;
         // EP dépensier chauffage = EP conventionnel (la méthode 3CL utilise toujours
@@ -197,7 +196,7 @@ final class EpConsoCalculator implements CalculatorInterface
 
         $totalEp    = 0.0;
         $totalEpDep = 0.0;
-        $cleRepartition = 1.0;
+        $isZone = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement) !== null;
 
         foreach ($collection->childNodes as $install) {
             if (!$install instanceof DOMElement || $install->nodeName !== 'installation_chauffage') {
@@ -210,16 +209,13 @@ final class EpConsoCalculator implements CalculatorInterface
 
             $epCoeff = $this->coefficientPondereParGenerateur($accessor, $install, $conso, $epElec);
 
-            $totalEp    += $conso    * $rdimEff * $epCoeff;
-            $totalEpDep += $consoDep * $rdimEff * $epCoeff;
-
             $cle = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ch', $install);
-            if ($cle !== null && $cle > 0.0) {
-                $cleRepartition = $cle;
-            }
+            $part = $isZone ? GeneratedApartment::heatingShare($logement, $accessor, $cle !== null && $cle > 0.0 ? $cle : 1.0) : 1.0;
+            $totalEp    += $conso    * $rdimEff * $epCoeff * $part;
+            $totalEpDep += $consoDep * $rdimEff * $epCoeff * $part;
         }
 
-        return [$totalEp, $totalEpDep, $cleRepartition];
+        return [$totalEp, $totalEpDep, 1.0];
     }
 
     /**
@@ -252,7 +248,7 @@ final class EpConsoCalculator implements CalculatorInterface
 
         $totalEp    = 0.0;
         $totalEpDep = 0.0;
-        $cleRepartition = 1.0;
+        $isZone = $accessor->getFloatOrNull('./caracteristique_generale/surface_habitable_logement', $logement) !== null;
 
         foreach ($collection->childNodes as $install) {
             if (!$install instanceof DOMElement || $install->nodeName !== 'installation_ecs') {
@@ -277,16 +273,13 @@ final class EpConsoCalculator implements CalculatorInterface
                 $installEpDep += $consoDep * $epCoeff;
             }
 
-            $totalEp    += $installEp    * $rdimEff;
-            $totalEpDep += $installEpDep * $rdimEff;
-
             $cle = $accessor->getFloatOrNull('./donnee_entree/cle_repartition_ecs', $install);
-            if ($cle !== null && $cle > 0.0) {
-                $cleRepartition = $cle;
-            }
+            $part = $isZone && $cle !== null && $cle > 0.0 ? GeneratedApartment::hotWaterShare($logement, $accessor, $cle) : 1.0;
+            $totalEp    += $installEp    * $rdimEff * $part;
+            $totalEpDep += $installEpDep * $rdimEff * $part;
         }
 
-        return [$totalEp, $totalEpDep, $cleRepartition];
+        return [$totalEp, $totalEpDep, 1.0];
     }
 
     /**
