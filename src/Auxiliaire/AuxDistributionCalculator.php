@@ -6,6 +6,7 @@ namespace CalculDpePHP\Auxiliaire;
 
 use CalculDpePHP\Chauffage\PartBesoinGenerateur;
 use CalculDpePHP\Common\ClimaticSolicitations;
+use CalculDpePHP\Common\IntermediateEnergyUnit;
 use CalculDpePHP\Engine\CalculatorInterface;
 use CalculDpePHP\Collectif\GeneratedApartment;
 use CalculDpePHP\Engine\CalculationContext;
@@ -472,7 +473,7 @@ final class AuxDistributionCalculator implements CalculatorInterface
                 ? GeneratedApartment::hotWaterShare($logement, $accessor, $cleDeclaree) : 1.0;
 
             if ($bouclage === self::BOUCLAGE_TRACEUR) {
-                $totalCaux += $this->consommationDuTraceur($accessor, $install) * $partLogement;
+                $totalCaux += $this->consommationDuTraceur($accessor, $install, $context) * $partLogement;
                 continue;
             }
 
@@ -555,11 +556,15 @@ final class AuxDistributionCalculator implements CalculatorInterface
      * @spec-source  resources/specsplitted/15-auxiliaires/02-aux-distribution.md
      * @spec-formula F-15.2.3-Qtrac
      */
-    private function consommationDuTraceur(NodeAccessor $accessor, DOMElement $install): float
+    private function consommationDuTraceur(NodeAccessor $accessor, DOMElement $install, CalculationContext $context): float
     {
         $becs = $accessor->getFloatOrNull('./donnee_intermediaire/besoin_ecs', $install);
 
-        return $becs !== null && $becs > 0.0 ? self::PART_TRACEUR * $becs : 0.0;
+        // Le format ADEME natif publie ce besoin en Wh, mais les sorties
+        // d'auxiliaires restent en kWh, comme dans le format historique.
+        return $becs !== null && $becs > 0.0
+            ? self::PART_TRACEUR * $becs / IntermediateEnergyUnit::xmlPerKwh($context->document)
+            : 0.0;
     }
 
     /**

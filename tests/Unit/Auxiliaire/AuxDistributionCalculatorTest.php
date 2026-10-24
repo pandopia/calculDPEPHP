@@ -928,6 +928,29 @@ XML);
         }
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('unitesTraceur')]
+    public function testLeTraceurConvertitLeBesoinXmlEnKwh(string $format, int $mode, ?float $becs): void
+    {
+        $besoinXml = $becs === null ? '' : '<besoin_ecs>' . ($becs * ($format === '0.1.0' ? 1000 : 1)) . '</besoin_ecs>';
+        $surface = $mode === 6 ? '' : '<surface_habitable_logement>50</surface_habitable_logement>';
+        $doc = new DOMDocument();
+        $doc->loadXML('<dpe version="' . $format . '"><logement><caracteristique_generale><enum_methode_application_dpe_log_id>' . $mode . '</enum_methode_application_dpe_log_id>' . $surface . '</caracteristique_generale><installation_ecs_collection><installation_ecs><donnee_entree><enum_type_installation_id>2</enum_type_installation_id><enum_bouclage_reseau_ecs_id>3</enum_bouclage_reseau_ecs_id><cle_repartition_ecs>0.2</cle_repartition_ecs></donnee_entree><donnee_intermediaire>' . $besoinXml . '</donnee_intermediaire></installation_ecs></installation_ecs_collection></logement></dpe>');
+        (new AuxDistributionCalculator())->calculate($doc->getElementsByTagName('logement')->item(0), $this->buildCtx($doc));
+        $expected = 0.14 * ($becs ?? 0) * ($mode === 10 ? 0.2 : 1.0);
+        self::assertEqualsWithDelta($expected, $this->efValue($doc, 'conso_auxiliaire_distribution_ecs'), 1e-10);
+    }
+
+    public static function unitesTraceur(): iterable
+    {
+        foreach (['2', '0.1.0'] as $format) {
+            foreach ([5, 6, 10] as $mode) {
+                foreach ([null, 0.0, 2000.0] as $becs) {
+                    yield "$format mode $mode besoin " . ($becs ?? 'absent') => [$format, $mode, $becs];
+                }
+            }
+        }
+    }
+
     /** Un réseau non bouclé et sans traceur n'appelle aucun auxiliaire. */
     public function testReseauNonBoucleNAppellePasDAuxiliaire(): void
     {
