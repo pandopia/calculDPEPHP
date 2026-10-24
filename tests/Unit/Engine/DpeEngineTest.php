@@ -19,6 +19,22 @@ final class DpeEngineTest extends TestCase
 {
     private const PROJECT_ROOT = __DIR__ . '/../../..';
 
+    public function testUnAutreThermodynamiqueSansScopJustifieEstRefuseAvantPurge(): void
+    {
+        foreach ([117, 118] as $type) {
+            $doc = new \DOMDocument();
+            $doc->loadXML('<dpe><logement><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>' . $type . '</enum_type_generateur_ch_id><enum_methode_saisie_carac_sys_id>1</enum_methode_saisie_carac_sys_id></donnee_entree><donnee_intermediaire><scop>3.15</scop></donnee_intermediaire></generateur_chauffage><sortie><temoin>123</temoin></sortie></logement></dpe>');
+            $before = $doc->saveXML();
+            try {
+                $this->engine()->calculateDocument($doc);
+                self::fail('Un ancien SCOP non justifié ne remplace pas un forfait absent.');
+            } catch (UnsupportedDpeModelException $exception) {
+                self::assertStringContainsString('SCOP', $exception->getMessage());
+                self::assertSame($before, $doc->saveXML());
+            }
+        }
+    }
+
     private function engine(): DpeEngine
     {
         return new DpeEngine(

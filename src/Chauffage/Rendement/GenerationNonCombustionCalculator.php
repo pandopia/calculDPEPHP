@@ -30,6 +30,7 @@ use DOMElement;
  * @spec-section 12.4
  * @spec-pages   76-78
  * @spec-source  resources/specsplitted/12-rendements-installations/04-generation-non-combustion.md
+ * @spec-source  editeur/public/schemas/DPEv2.7.xsd
  * @xml-input    generateur_chauffage.donnee_entree.{enum_type_generateur_ch_id, enum_methode_saisie_carac_sys_id, scop}
  * @xml-input    generateur_chauffage.donnee_intermediaire.scop (saisie méthode 6)
  * @xml-input    emetteur_chauffage.donnee_entree.enum_type_emission_distribution_id
@@ -138,6 +139,17 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
             return;
         }
 
+        if (in_array($genId, [117, 118], true)) {
+            // Le type « autre thermodynamique » ne décrit ni une source ni
+            // un millésime permettant de choisir le forfait d'une PAC connue.
+            $scop = self::otherThermoScop($node, $accessor);
+            if ($scop === null) {
+                throw new \CalculDpePHP\Engine\UnsupportedDpeModelException('Générateur thermodynamique ' . $genId . ' : SCOP propre connu et justifié requis, aucun forfait défini pour cette famille.');
+            }
+            $accessor->setChildValue($accessor->ensureDonneeIntermediaire($node), 'scop', $scop);
+            return;
+        }
+
         // PAC hybride partie PAC (143, 145-147, 162-170) → SCOP de la PAC équivalente
         $typeOriginal = $genId;
         $recent = in_array($typeOriginal, self::PAC_2027, true);
@@ -158,6 +170,22 @@ final class GenerationNonCombustionCalculator implements CalculatorInterface
         }
 
         // Combustion et autres : rendement_generation non écrit ici
+    }
+
+    /**
+     * §12.4.2 p.77 et XSD, méthode 6 : le SCOP réel de ce générateur.
+     * Une fiche globale non associée ne permet pas d'identifier le SCOP
+     * d'une technologie inconnue parmi plusieurs PAC.
+     */
+    public static function otherThermoScop(DOMElement $node, NodeAccessor $accessor): ?float
+    {
+        $scop = $accessor->getFloatOrNull('./donnee_entree/scop', $node);
+        if ($scop !== null && is_finite($scop) && $scop > 0.0) { return $scop; }
+        if ($accessor->getIntOrNull('./donnee_entree/enum_methode_saisie_carac_sys_id', $node) === 6) {
+            $scop = $accessor->getFloatOrNull('./donnee_intermediaire/scop', $node);
+            if ($scop !== null && is_finite($scop) && $scop > 0.0) { return $scop; }
+        }
+        return null;
     }
 
     private function writeRg(DOMElement $node, NodeAccessor $accessor, CalculationContext $context, float $rg): void

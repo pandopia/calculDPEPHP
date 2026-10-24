@@ -177,7 +177,7 @@ final class ChaudiereReleve implements CalculatorInterface
         if ($normalise === null) {
             return null;
         }
-        if ($normalise >= 1 && $normalise <= 19) {
+        if (($normalise >= 1 && $normalise <= 19) || in_array($normalise, [117, 118], true)) {
             return 1;
         }
         if (($normalise >= 55 && $normalise <= 97) || $normalise === 106) {

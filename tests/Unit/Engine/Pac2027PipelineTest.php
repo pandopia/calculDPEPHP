@@ -43,7 +43,13 @@ final class Pac2027PipelineTest extends TestCase
         }
         $entry = $xp->query('./donnee_entree', $gen)->item(0);
         $this->set($entry, 'enum_type_generateur_ch_id', (string)$type);
-        $this->set($entry, 'enum_type_energie_id', '1');
+        $this->set($entry, 'enum_type_energie_id', $type === 118 ? '2' : '1');
+        if (in_array($type, [117, 118], true)) {
+            $this->set($entry, 'enum_methode_saisie_carac_sys_id', '6');
+            $di = $xp->query('./donnee_intermediaire', $gen)->item(0);
+            if (!$di instanceof DOMElement) { $di = $gen->appendChild($doc->createElement('donnee_intermediaire')); }
+            $this->set($di, 'scop', (string)$expectedScop);
+        }
         foreach ($xp->query('//emetteur_chauffage/donnee_entree') as $entry) {
             $this->set($entry, 'enum_type_emission_distribution_id', $type === 172 ? '42' : '14');
             $this->set($entry, 'basse_temperature', $type === 172 ? '0' : '1');
@@ -106,6 +112,8 @@ final class Pac2027PipelineTest extends TestCase
         yield 'PAC et chaudière granulés condensation récentes' => [178, 3.4, 182];
         yield 'PAC récente avec régulation prédictive' => [173, 3.4, 149, true];
         yield 'PAC récente et ECS solaire 2.7' => [173, 3.4, 149, false, true];
+        yield 'autre thermodynamique électrique justifié' => [117, 3.15];
+        yield 'autre thermodynamique gaz justifié' => [118, 1.5];
     }
 
     private function set(DOMElement $entry, string $name, string $value): void

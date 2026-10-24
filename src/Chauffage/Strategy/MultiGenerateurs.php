@@ -202,7 +202,7 @@ final class MultiGenerateurs implements CalculatorInterface
         if ($normalise === null) {
             return null;
         }
-        if ($normalise >= 1 && $normalise <= 19) {
+        if (($normalise >= 1 && $normalise <= 19) || in_array($normalise, [117, 118], true)) {
             return 'pac';
         }
 

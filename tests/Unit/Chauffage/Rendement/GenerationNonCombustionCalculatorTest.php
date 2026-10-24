@@ -23,6 +23,32 @@ final class GenerationNonCombustionCalculatorTest extends TestCase
 {
     private const PROJECT_ROOT = __DIR__ . '/../../../..';
 
+    #[DataProvider('autresThermodynamiques')]
+    public function testLesAutresThermodynamiquesNeDeviennentPasUnRendementUnitaire(int $type, int $method, ?float $sortie, ?float $entree, ?float $expected): void
+    {
+        $doc = new DOMDocument();
+        $doc->loadXML('<dpe><logement><generateur_chauffage><donnee_entree><enum_type_generateur_ch_id>' . $type . '</enum_type_generateur_ch_id><enum_methode_saisie_carac_sys_id>' . $method . '</enum_methode_saisie_carac_sys_id>' . ($entree === null ? '' : '<scop>' . $entree . '</scop>') . '</donnee_entree>' . ($sortie === null ? '' : '<donnee_intermediaire><scop>' . $sortie . '</scop></donnee_intermediaire>') . '</generateur_chauffage></logement></dpe>');
+        \CalculDpePHP\Xml\OutputPurger::purge($doc);
+        if ($expected === null) { $this->expectException(\CalculDpePHP\Engine\UnsupportedDpeModelException::class); }
+        (new GenerationNonCombustionCalculator())->calculate($doc->getElementsByTagName('generateur_chauffage')->item(0), new CalculationContext($doc, new TableRepository(self::PROJECT_ROOT . '/resources/tables')));
+        if ($expected !== null) {
+            self::assertEqualsWithDelta($expected, (float)$doc->getElementsByTagName('scop')->item(0)->textContent, 1e-12);
+            self::assertSame(0, $doc->getElementsByTagName('rendement_generation')->length);
+        }
+    }
+
+    public static function autresThermodynamiques(): iterable
+    {
+        foreach ([117, 118] as $type) {
+            yield "$type propre justifié" => [$type, 6, 3.15, null, 3.15];
+            yield "$type saisie entrée prioritaire" => [$type, 6, 3.15, 4.1, 4.1];
+            yield "$type sortie non justifiée" => [$type, 1, 3.15, null, null];
+            yield "$type aucune performance" => [$type, 6, null, null, null];
+            yield "$type performance nulle" => [$type, 6, 0, null, null];
+            yield "$type performance négative" => [$type, 6, -1, null, null];
+        }
+    }
+
     #[DataProvider('scopDepuis2027')]
     public function testLesPacDepuis2027SuiventLeurTableEtLeurEmission(int $type, int $emetteur, string $zone, float $expected): void
     {

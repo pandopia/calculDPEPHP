@@ -243,6 +243,10 @@ final class DpeEngine
                     continue;
                 }
                 $type = $accessor->getIntOrNull('./donnee_entree/' . $champ, $generateur);
+                if ($balise === 'generateur_chauffage' && in_array($type, [117, 118], true)
+                    && \CalculDpePHP\Chauffage\Rendement\GenerationNonCombustionCalculator::otherThermoScop($generateur, $accessor) === null) {
+                    throw new UnsupportedDpeModelException('Générateur thermodynamique ' . $type . ' : SCOP propre connu et justifié requis. Aucun forfait n’est défini pour cette famille ; refus avant purge.');
+                }
                 if ($balise === 'generateur_ecs' && in_array($type, [135, 136, 137, 138, 139, 144], true)
                     && $version !== null && version_compare($version, '2.7', '>=')) {
                     continue;
