@@ -19,6 +19,32 @@ une.
 
 ## Enquêtes closes
 
+### Froid modèle 1.1 — douze exports historiques non retenus (24/10/2026, nuit)
+
+Sélection publique avant calcul : `version_dpe:1.1 AND surface_climatisee:[1 TO *]`,
+douze premiers résultats par date décroissante sur 1 179 résultats :
+2230E0005552T, 2207E0004655J, 2245E0005903V, 2218E0006322X,
+2283E0004286C, 2230E0005821C, 2291E0004321T, 2283E0005575R,
+2134E1017601V, 2134E1013616O, 2106E1012199Z et 2118E1014745J.
+Les douze XML sont téléchargés sans retouche, Licence Ouverte 2.0.
+
+Ils ont bien des entrées d'enveloppe et de climatisation, mais déclarent tous
+`presence_production_pv=0`, `production_pv=0` et un `taux_autoproduction`
+compris entre 3 165 et 8 666. Ce dernier ne peut pas être le taux de §16.2
+p.105, `Tap=1/(1/Tcv+1/Tapl)`, sans production. Le schéma 1.1 ne borne pas
+ce champ : l'audit des blocs ne signale donc pas cette incohérence sémantique.
+Les EER forfaitaires publiés valent aussi 0,9 fois les lignes SEER, y compris
+avant 2008 ; §10.3 p.69–70 distingue EER direct ancien et conversion 0,95 des
+SEER. Aucun changement de coefficient n'est déduit de cette seule observation.
+
+Sondage brut : 1 294 numériques hors tolérance, 102 manquantes, 90
+supplémentaires et six chaînes divergentes, zéro crash. Les absences portent
+sur les conventions historiques d'auxiliaires froid, de PV, de solaire déclaré
+absent et sur le nom ancien de classe, pas sur un nouvel intermédiaire
+calculable. Aucun cas intégré ni budget initialisé. Rouvrir sur des exports
+historiques cohérents ou un texte daté qui justifie une règle différente ;
+ne pas convertir ces sorties en nouveaux forfaits.
+
 ### ETS — rattachement automatique au seul espace tampon non activé (24/10/2026, nuit)
 
 Après correction de l'index public des 21 transparences, A/B isolé sur les

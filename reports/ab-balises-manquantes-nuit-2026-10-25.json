@@ -3,14 +3,14 @@
     "session_started_at_utc": "2026-10-24T21:37:44Z",
     "session_deadline_utc": "2026-10-25T04:37:44Z",
     "session_status": "in_progress",
-    "measured_at_utc": "2026-10-24T23:17:24+00:00",
+    "measured_at_utc": "2026-10-24T23:30:57+00:00",
     "base_engine_revision": "147e5383e48e5f696728cec777fbeeee892e4337",
     "before_revision": {
-        "head": "d0fc2c0",
+        "head": "fe7e3a8",
         "dirty": ""
     },
     "after_revision": {
-        "head": "d0fc2c0",
+        "head": "fe7e3a8",
         "dirty": ""
     },
     "control_method": "Autoload des classes src exportées depuis le commit de départ, Conformite exclu pour garder le juge courant ; seul TableRepository est redirigé vers les tables du même commit. Aucune substitution de valeur calculée ou référence.",
@@ -51,7 +51,7 @@
     },
     "engine_and_tables": {
         "before_tree_sha256": "c07129950cc8553e799493e5a000d0e1167852c9b48361d735904ae8ff1661b0",
-        "after_tree_sha256": "ba3db3fe2aa88b5110f6af3bdf6cc8fa7f5f6f7b3811410f398e18b06d8836cf",
+        "after_tree_sha256": "d82a9e43bb73efe98739eddc312ea668d8c72e3c6e708d3d6f9436e2eb5b47ff",
         "changed_files": {
             "resources/tables/apports/tv_coef_transparence_ets.php": {
                 "before": "9df55c947d6b354887d8707c74e819340bd97321fa29b73c888c2c80d1584450",
@@ -76,6 +76,10 @@
             "src/Chauffage/Rendement/Combustion/ChaudiereDefautCalculator.php": {
                 "before": "5fa512bc16ace56e9f5f09a59a03d7d712a94284ec3379f0abf34482dd889b5e",
                 "after": "e5b1745f889a200ec37c9cae04130a2aeb2ca32f46b1612d589e3a7694d80c2b"
+            },
+            "src/Chauffage/Rendement/GenerationNonCombustionCalculator.php": {
+                "before": "dc6fae5e04a241800cab872fcd039bca04679aaa048e90cd5b1b9a49a050a3aa",
+                "after": "b589915a771c927051c52534007efb061cf87b64652668c925b86e355efc049f"
             },
             "src/Ecs/Rendement/CetAccumulationCalculator.php": {
                 "before": "893c4087aef2006b216571ab0d26fde13d24cbb468cd7cccb381add70474a8ec",
@@ -382,8 +386,8 @@
         }
     },
     "phpunit": {
-        "tests": 7488,
-        "assertions": 24128,
+        "tests": 7669,
+        "assertions": 24432,
         "failures": 0,
         "warnings_or_deprecations": 0,
         "covered_lines": 10973,
@@ -551,6 +555,29 @@
             "degraded_cases": 0,
             "source": "§6.3 p.51–52 et relation reference_lnc du XSD",
             "partial_scope": "Sans association explicite univoque : pas de rattachement inventé, TASK-K99."
+        },
+        "mta_distribution_id_preflight": {
+            "live_corpus_gain": 0,
+            "same_750_case_results": true,
+            "source": "XSD 2.7 et ligne ADEME Rd ECS 9, modèle complet non implémenté K63",
+            "note": "La ligne 9 seule ne contourne plus le refus MTA ; DistributionCalculator refuse aussi une ligne inconnue plutôt que de rendre Rd=1."
+        },
+        "other_thermodynamic_scop_schema_bounds": {
+            "live_corpus_gain": 0,
+            "same_750_case_results": true,
+            "source": "Facettes scop des XSD ADEME : modèles 1/1.1 >0 et ≤8 ; modèles 2+ >1 et ≤8",
+            "note": "Types CH 117/118 : une valeur propre non publiable est refusée avant purge, sans forfait de remplacement ni requalification des anciens modèles.",
+            "regression_tests": {
+                "before": {
+                    "tests": 181,
+                    "failures": 37
+                },
+                "after_targeted": {
+                    "tests": 888,
+                    "assertions": 1868,
+                    "failures": 0
+                }
+            }
         },
         "other_sourced_reproductions": {
             "live_corpus_gain": 0,
